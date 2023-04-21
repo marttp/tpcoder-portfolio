@@ -1,0 +1,28 @@
+---
+import HeaderLink from './HeaderLink.astro';
+import ThemeToggle from './ThemeToggle';
+---
+
+<!-- <header
+  class="bg-gray-800 dark:bg-gray-900 text-gray-200 dark:text-gray-400 py-4 px-6 flex justify-between items-center"
+> -->
+<header
+  class="bg-background-light dark:bg-background-dark  text-text-light dark:text-text-dark py-4 px-6 flex justify-between items-center"
+>
+  <div class="flex items-center">
+    <HeaderLink href="/" class="text-lg font-bold">
+      <img src="/favicon.svg" alt="logo" class="h-8 w-8 mr-2" />
+    </HeaderLink>
+  </div>
+  <nav class="flex items-center space-x-4">
+    <HeaderLink href="/about">About</HeaderLink>
+    <HeaderLink href="/experience">Experiences</HeaderLink>
+    <HeaderLink href="/blog">Blog</HeaderLink>
+    <HeaderLink href="/project">Projects</HeaderLink>
+    <HeaderLink href="/skill">Skills</HeaderLink>
+    <HeaderLink href="/contact">Contact</HeaderLink>
+  </nav>
+  <div class="flex items-center space-x-4">
+    <ThemeToggle client:only />
+  </div>
+</header>

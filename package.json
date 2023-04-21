@@ -1,0 +1,26 @@
+{
+  "name": "newtpcoder",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/mdx": "^0.19.0",
+    "@astrojs/rss": "^2.3.2",
+    "@astrojs/sitemap": "^1.2.2",
+    "@astrojs/solid-js": "^2.1.0",
+    "@astrojs/tailwind": "^3.1.1",
+    "@astrojs/ts-plugin": "^0.4.4",
+    "astro": "^2.3.0",
+    "solid-js": "^1.7.3",
+    "tailwindcss": "^3.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/typography": "^0.5.9"
+  }
+}
