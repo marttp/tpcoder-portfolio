@@ -3,26 +3,66 @@ import HeaderLink from './HeaderLink.astro';
 import ThemeToggle from './ThemeToggle';
 ---
 
-<!-- <header
-  class="bg-gray-800 dark:bg-gray-900 text-gray-200 dark:text-gray-400 py-4 px-6 flex justify-between items-center"
-> -->
 <header
-  class="bg-background-light dark:bg-background-dark  text-text-light dark:text-text-dark py-4 px-6 flex justify-between items-center"
+  class="bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark"
 >
-  <div class="flex items-center">
-    <HeaderLink href="/" class="text-lg font-bold">
-      <img src="/favicon.svg" alt="logo" class="h-8 w-8 mr-2" />
-    </HeaderLink>
+  <div class="py-4 px-6 flex justify-between items-center">
+    <div class="flex items-center">
+      <HeaderLink href="/" class="text-lg font-bold">
+        <img src="/favicon.svg" alt="logo" class="h-8 w-8 mr-2" />
+      </HeaderLink>
+    </div>
+    <nav
+      class="hidden sm:flex sm:items-center sm:space-x-4 flex-col items-center"
+    >
+      <div class="hidden sm:flex items-center space-x-4">
+        <HeaderLink href="/about">About</HeaderLink>
+        <HeaderLink href="/experience">Experiences</HeaderLink>
+        <HeaderLink href="/blog">Blog</HeaderLink>
+        <HeaderLink href="/project">Projects</HeaderLink>
+        <HeaderLink href="/skill">Skills</HeaderLink>
+        <HeaderLink href="/contact">Contact</HeaderLink>
+      </div>
+    </nav>
+    <div class="flex items-center space-x-4">
+      <ThemeToggle client:only />
+      <button class="block sm:hidden" onclick="toggleNav()">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          class="w-6 h-6"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"></path>
+        </svg>
+      </button>
+    </div>
   </div>
-  <nav class="flex items-center space-x-4">
-    <HeaderLink href="/about">About</HeaderLink>
-    <HeaderLink href="/experience">Experiences</HeaderLink>
-    <HeaderLink href="/blog">Blog</HeaderLink>
-    <HeaderLink href="/project">Projects</HeaderLink>
-    <HeaderLink href="/skill">Skills</HeaderLink>
-    <HeaderLink href="/contact">Contact</HeaderLink>
-  </nav>
-  <div class="flex items-center space-x-4">
-    <ThemeToggle client:only />
+  <div
+    class="sm:hidden flex flex-col items-center w-full hidden"
+    id="mobile-menu"
+  >
+    <HeaderLink class="my-1" href="/about">About</HeaderLink>
+    <HeaderLink class="my-1" href="/experience">Experiences</HeaderLink>
+    <HeaderLink class="my-1" href="/blog">Blog</HeaderLink>
+    <HeaderLink class="my-1" href="/project">Projects</HeaderLink>
+    <HeaderLink class="my-1" href="/skill">Skills</HeaderLink>
+    <HeaderLink class="my-1" href="/contact">Contact</HeaderLink>
   </div>
+
+  <script lang="ts">
+    function toggleNav() {
+      const nav = document.getElementById('mobile-menu');
+      if (nav.classList.contains('hidden')) {
+        nav.classList.remove('hidden');
+      } else {
+        nav.classList.add('hidden');
+      }
+    }
+  </script>
 </header>
