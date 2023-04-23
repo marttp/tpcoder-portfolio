@@ -2,6 +2,16 @@
 import HeaderLink from './HeaderLink.astro';
 import ThemeToggle from './ThemeToggle';
 import 'animate.css';
+
+const links = [
+  { href: '/about', label: 'About' },
+  { href: '/experience', label: 'Experiences' },
+  { href: '/blog', label: 'Blogs' },
+  { href: '/project', label: 'Projects' },
+  { href: '/skill', label: 'Skills' },
+  { href: '/activity', label: 'Activities & Volunteers' },
+  { href: '/contact', label: 'Contact' },
+];
 ---
 
 <header>
@@ -15,13 +25,11 @@ import 'animate.css';
       class="hidden md:flex md:items-center md:space-x-4 flex-col items-center"
     >
       <div class="hidden md:flex items-center space-x-4">
-        <HeaderLink href="/about">About</HeaderLink>
-        <HeaderLink href="/experience">Experiences</HeaderLink>
-        <HeaderLink href="/blog">Blogs</HeaderLink>
-        <HeaderLink href="/project">Projects</HeaderLink>
-        <HeaderLink href="/skill">Skills</HeaderLink>
-        <HeaderLink href="/activity">Activities & Volunteers</HeaderLink>
-        <HeaderLink href="/contact">Contact</HeaderLink>
+        {
+          links.map((link) => (
+            <HeaderLink href={link.href}>{link.label}</HeaderLink>
+          ))
+        }
       </div>
     </nav>
     <div class="flex items-center space-x-4">
@@ -47,15 +55,13 @@ import 'animate.css';
     class="md:hidden flex flex-col items-center w-full hidden"
     id="mobile-menu"
   >
-    <HeaderLink class="my-1" href="/about">About</HeaderLink>
-    <HeaderLink class="my-1" href="/experience">Experiences</HeaderLink>
-    <HeaderLink class="my-1" href="/blog">Blogs</HeaderLink>
-    <HeaderLink class="my-1" href="/project">Projects</HeaderLink>
-    <HeaderLink class="my-1" href="/skill">Skills</HeaderLink>
-    <HeaderLink class="my-1" href="/activity">
-      Activities & Volunteers
-    </HeaderLink>
-    <HeaderLink class="my-1" href="/contact">Contact</HeaderLink>
+    {
+      links.map((link) => (
+        <HeaderLink class="my-1" href={link.href}>
+          {link.label}
+        </HeaderLink>
+      ))
+    }
   </div>
 
   <script lang="ts">
