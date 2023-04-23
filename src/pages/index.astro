@@ -8,6 +8,14 @@ import {
   INTRODUCTION,
   START_CAREER,
 } from '../consts';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+dayjs.extend(relativeTime);
+
+const startCareerDate = dayjs(START_CAREER);
+const currentDate = dayjs();
+const diffYears = currentDate.diff(startCareerDate, 'year');
+const diffMonths = currentDate.diff(startCareerDate, 'month') % 12;
 ---
 
 <!DOCTYPE html>
@@ -30,9 +38,7 @@ import {
         <p
           class="my-5 text-base font-normal tracking-wide leading-relaxed dark:text-gray-600"
         >
-          Job Experiences: {
-            new Date().getFullYear() - START_CAREER.getFullYear()
-          }+ years
+          {`Job Experiences: ${diffYears} years ${diffMonths} months`}
         </p>
       </div>
       <div
