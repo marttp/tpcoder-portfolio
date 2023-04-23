@@ -6,3 +6,5 @@ export const SITE_DESCRIPTION = "This is Thanaphoom Babparn's site. The software
 
 export const SITE_URL = "https://portfolio.tpcoder.dev";
 export const SITE_IMAGE = "https://portfolio.tpcoder.dev/image2.jpg";
+
+export const INTRODUCTION = "I'm Thanaphoom Babparn, a software engineer who loves to learn new things and loves to share knowledge. I'm currently working as a software engineer at a startup comp
