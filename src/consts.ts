@@ -3,3 +3,6 @@
 
 export const SITE_TITLE = `Thanaphoom Babparn's site`;
 export const SITE_DESCRIPTION = "This is Thanaphoom Babparn's site. The software engineer who loves to learn new things and loves to share knowledge."
+
+export const SITE_URL = "https://portfolio.tpcoder.dev";
+export const SITE_IMAGE = "https://portfolio.tpcoder.dev/image2.jpg";
