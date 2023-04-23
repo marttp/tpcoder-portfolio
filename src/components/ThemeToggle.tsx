@@ -55,12 +55,23 @@ const ThemeToggle = () => {
 
   createEffect(() => {
     const root = document.documentElement;
+    const body = document.body;
     if (theme() === 'light') {
       root.classList.remove('dark');
       localStorage.theme = 'light';
+      body.style.backgroundColor = '#ffffff';
+      body.style.color = '#2E2E2E';
+      setTimeout(() => {
+        body.style.transition = 'background-color 0.5s ease, color 0.5s ease';
+      }, 50);
     } else {
       localStorage.theme = 'dark';
       root.classList.add('dark');
+      body.style.backgroundColor = '#2E2E2E';
+      body.style.color = '#ffffff';
+      setTimeout(() => {
+        body.style.transition = 'background-color 0.5s ease, color 0.5s ease';
+      }, 50);
     }
   });
 
