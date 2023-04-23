@@ -2,7 +2,12 @@
 import BaseHead from '../components/BaseHead.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer';
-import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
+import {
+  SITE_TITLE,
+  SITE_DESCRIPTION,
+  INTRODUCTION,
+  START_CAREER,
+} from '../consts';
 ---
 
 <!DOCTYPE html>
@@ -12,8 +17,33 @@ import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
   </head>
   <body>
     <Header title={SITE_TITLE} />
-    <main>
-      <h1>Thanaphom Babparn 🙇‍♂️</h1>
+    <main class="flex flex-col md:flex-row px-12 m-10">
+      <div
+        class="w-full md:w-2/3 flex flex-col justify-center items-center md:pr-8 animate__animated animate__backInLeft"
+      >
+        <h1 class="my-5 text-4xl font-bold tracking-tighter leading-tight">
+          Hello World!
+        </h1>
+        <p class="my-5 text-lg font-medium tracking-wide leading-relaxed">
+          {INTRODUCTION}
+        </p>
+        <p
+          class="my-5 text-base font-normal tracking-wide leading-relaxed dark:text-gray-600"
+        >
+          Job Experiences: {
+            new Date().getFullYear() - START_CAREER.getFullYear()
+          }+ years
+        </p>
+      </div>
+      <div
+        class="w-full md:w-2/3 flex justify-center mt-4 animate__animated animate__backInRight"
+      >
+        <img
+          src="/assets/images/profile.jpg"
+          alt="Profile"
+          class="w-full h-auto object-cover rounded-full"
+        />
+      </div>
     </main>
     <Footer />
   </body>
