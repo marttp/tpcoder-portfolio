@@ -76,7 +76,7 @@ const ThemeToggle = () => {
   });
 
   return (
-    <div class="flex items-center p-2">
+    <div class="flex items-center p-2 hover:scale-110">
       <button
         onClick={() => setTheme((t) => (t === 'light' ? 'dark' : 'light'))}
       >
