@@ -78,6 +78,7 @@ const ThemeToggle = () => {
   return (
     <div class="flex items-center p-2 hover:scale-110">
       <button
+        aria-label="Trigger Dark/Light Theme"
         onClick={() => setTheme((t) => (t === 'light' ? 'dark' : 'light'))}
       >
         {theme() === 'light' ? <MoonIcon /> : <SunIcon />}
