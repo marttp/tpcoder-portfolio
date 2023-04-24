@@ -1,5 +1,33 @@
 ---
 import Layout from '../layouts/BaseLayout.astro';
+
+import ContactList from '../components/contact/ContactList';
+import { CONTACT_LIST } from '../data/contact';
 ---
 
-<Layout title="Contact" description="Lorem ipsum dolor sit amet" />
+<Layout
+  title="Contact"
+  description="Thanaphoom Babparn list of possible contact"
+>
+  <div class="flex flex-col justify-center items-center">
+    <h2 class="text-3xl font-bold mb-10">Contact Me</h2>
+    <div class="flex flex-col justify-center items-center">
+      <!-- Image on the left -->
+      <div class="w-full flex justify-center mb-6">
+        <img
+          src="/assets/images/contact-me.webp"
+          alt="Profile"
+          class="w-full md:w-6/12 h-full object-cover rounded-lg shadow-md"
+        />
+      </div>
+
+      <!-- List of contacts on the right -->
+      <div
+        class="w-full flex flex-col items-center mt-8"
+      >
+        <ContactList contacts={CONTACT_LIST} />
+      </div>
+    </div>
+  </div>
+</Layout>
+
