@@ -1,0 +1,86 @@
+{
+  "competitions": [
+    {
+      "name": "PayPay Hackathon in Product November 2022",
+      "type": "hackathon",
+      "country": "Thailand 🇹🇭",
+      "detail": {
+        "type": "team",
+        "award": "CEO award",
+        "role": "backend",
+        "teamName": "Famica"
+      },
+      "date": "2022-11",
+      "resources": [
+        {
+          "type": "link",
+          "url": "https://about.paypay.ne.jp/career/hackathon/2nd/"
+        }
+      ]
+    },
+    {
+      "name": "Redis Hackathon on DEV 2022",
+      "type": "hackathon",
+      "country": "Online 🌐",
+      "date": "2022-08",
+      "detail": {
+        "type": "individual",
+        "award": "-",
+        "projectName": "EmpFriendly"
+      },
+      "resources": [
+        {
+          "type": "link",
+          "url": "https://dev.to/tpbabparn/redis-hackathon-empfriendly-backend-1m4a"
+        }
+      ]
+    },
+    {
+      "name": "Accessible Learning Hackathon 2018",
+      "type": "hackathon",
+      "country": "Thailand 🇹🇭",
+      "date": "2018-08",
+      "detail": {
+        "type": "team",
+        "award": "Second-runner up",
+        "role": "technical lead",
+        "teamName": "Accessibility Friendly"
+      },
+      "resources": [
+        {
+          "type": "images",
+          "url": "https://portfolio.tpcoder.dev/activities/Accessible Learning Hackathon 2018.jpeg"
+        }
+      ]
+    },
+    {
+      "name": "The 10th national Rajamangala Engineering Academic Contest",
+      "type": "contest",
+      "country": "Thailand 🇹🇭",
+      "date": "2018-01",
+      "detail": {
+        "type": "team",
+        "award": "Winner"
+      },
+      "resources": [
+        {
+          "type": "images",
+          "url": "https://portfolio.tpcoder.dev/activities/2018-network-competitions.jpeg"
+        }
+      ]
+    }
+  ],
+  "overseas": [
+    {
+      "name": "2017 International Capstone Design Project Camp",
+      "country": "South Korea 🇰🇷",
+      "place": "Yeungnam University",
+      "resources": [
+        {
+          "type": "images",
+          "url": "https://portfolio.tpcoder.dev/activities/2017 International Capstone Design Project Camp.jpeg"
+        }
+      ]
+    }
+  ]
+}

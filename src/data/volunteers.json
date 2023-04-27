@@ -1,0 +1,38 @@
+{
+  "pin": null,
+  "items": [
+    {
+      "title": "GenMentor#4",
+      "organization": "Generation Thailand",
+      "description": "GenMentor#4",
+      "fromDate": "2022-03",
+      "toDate": "2023-05",
+      "resources": [
+        {
+          "type": "link",
+          "url": "https://www.facebook.com/photo?fbid=213017604747207&set=a.182548761127425"
+        }
+      ]
+    },
+    {
+      "title": "GenMentor#3",
+      "organization": "Generation Thailand",
+      "description": "GenMentor#3",
+      "fromDate": "2022-11",
+      "toDate": "2023-01",
+      "resources": [
+        {
+          "type": "link",
+          "url": "https://www.facebook.com/GenerationTH/posts/pfbid02G2CavNpzWWTF7wmvwbppKuQZhqqBvPDLjGxAWSsVEh3SNvYuMDnNC1pBr4c1QQ5jl"
+        }
+      ]
+    },
+    {
+      "title": "Software Engineer - Backend & DevOps",
+      "organization": "Accenture Thailand",
+      "description": "I'm in a development & operation role at WellSign Team of Accenture Thailand. WellSign is a mobile application project to support people with hearing disabilities in Thailand by representing as an E-Learning application about Thai's sign language.",
+      "fromDate": "2021-03",
+      "toDate": "2022-07"
+    }
+  ]
+}

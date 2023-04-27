@@ -1,0 +1,14 @@
+[
+  {
+    "name": "Certified1",
+    "category": ["cloud", "architect"],
+    "issuedDate": "2019-01-01",
+    "expiredDate": "2020-01-01"
+  },
+  {
+    "name": "Certified2",
+    "category": ["development"],
+    "issuedDate": "2019-01-01",
+    "expiredDate": "2020-01-01"
+  }
+]
