@@ -28,31 +28,35 @@ const educations: EducationExperience[] = experiences.education;
 
   <section>
     <h2 class="text-3xl font-bold mb-4">Educations</h2>
-    <ul class="list-none">
+    <ul class="list-none px-8">
       {
         educations.map((edu, index) => (
-          <li class="mb-8">
-            <h3 class="text-xl font-bold">
-              {edu.degree} in {edu.fieldOfStudy}
-            </h3>
-            <h4 class="text-lg font-bold">{edu.school}</h4>
-            <p class="text-gray-700">
-              {edu.startDate} - {edu.endDate}
-            </p>
+          <div class="flex flex-col justify-center items-center md:flex-row">
+            <li class="mb-8">
+              <h3 class="text-xl font-bold">
+                {edu.degree} in {edu.fieldOfStudy}
+              </h3>
+              <h4 class="text-lg font-bold">{edu.school}</h4>
+              <p class="text-gray-700">
+                {edu.startDate} - {edu.endDate}
+              </p>
+              <div class="my-4">
+                <h4 class="text-lg font-bold">Course relevants</h4>
+                <ul class="list-disc list-inside mt-2">
+                  {edu.courses.map((course, index) => (
+                    <li>{course}</li>
+                  ))}
+                </ul>
+              </div>
+            </li>
             {edu.images.map((image, index) => (
               <img
                 src={image}
                 alt="Graduated images"
-                class="w-10 h-10 mr-2 object-cover rounded-full"
+                class="w-full md:w-2/5 mx-auto my-4 md:my-0 rounded-lg"
               />
             ))}
-            <h4 class="text-lg font-bold">Course relevants</h4>
-            <ul class="list-disc list-inside mt-2">
-              {edu.courses.map((course, index) => (
-                <li>{course}</li>
-              ))}
-            </ul>
-          </li>
+          </div>
         ))
       }
     </ul>
