@@ -6,6 +6,7 @@ type EducationExperience = {
   school: string;
   degree: string;
   fieldOfStudy: string;
+  images: string[];
   startDate: string;
   endDate: string;
   courses: string[];
@@ -15,13 +16,18 @@ const educations: EducationExperience[] = experiences.education;
 ---
 
 <Layout title="About Me" description="Information about Thanaphoom Babparn">
-  <img
-    src="https://avatars.githubusercontent.com/u/34801905?v=4"
-    alt="Thanaphoom Babparn"
-  />
+  <h1 class="text-4xl font-bold mb-4 flex justify-center">About Me</h1>
+  <section class="flex justify-center">
+    <img
+      src="https://avatars.githubusercontent.com/u/34801905?v=4"
+      alt="Thanaphoom Babparn"
+    />
+  </section>
+
+  <div class="border-b-2 border-gray-400 my-8"></div>
 
   <section>
-    <h2 class="text-3xl font-bold mb-4">Education</h2>
+    <h2 class="text-3xl font-bold mb-4">Educations</h2>
     <ul class="list-none">
       {
         educations.map((edu, index) => (
@@ -33,6 +39,14 @@ const educations: EducationExperience[] = experiences.education;
             <p class="text-gray-700">
               {edu.startDate} - {edu.endDate}
             </p>
+            {edu.images.map((image, index) => (
+              <img
+                src={image}
+                alt="Graduated images"
+                class="w-10 h-10 mr-2 object-cover rounded-full"
+              />
+            ))}
+            <h4 class="text-lg font-bold">Course relevants</h4>
             <ul class="list-disc list-inside mt-2">
               {edu.courses.map((course, index) => (
                 <li>{course}</li>
