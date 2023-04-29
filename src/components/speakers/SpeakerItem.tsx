@@ -9,7 +9,7 @@ const SpeakerItem = ({
   index: Accessor<number>;
 }): JSX.Element => (
   <>
-    <div class="mb-8 rounded overflow-hidden shadow-lg p-8 dark:shadow-primary-light">
+    <div class="mb-8 rounded overflow-hidden shadow-lg p-4 md:p-8 dark:shadow-primary-light">
       <h3 class="text-xl font-bold">{speaker.name}</h3>
       <p class="text-gray-700">{speaker.country}</p>
       {/* Handle resources */}

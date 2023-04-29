@@ -11,7 +11,7 @@ const SkillBubbles = (props: SkillBubblesProps) => (
     <div class="flex flex-wrap gap-2">
       <For each={props.skills}>
         {(skill) => (
-          <span class="bg-primary-light text-text py-2 px-4 rounded-full text-sm hover:animate-pulse">
+          <span class="bg-primary-light text-text py-2 px-4 rounded-full text-sm hover:animate-pulse text-center">
             {skill}
           </span>
         )}

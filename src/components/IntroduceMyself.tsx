@@ -20,7 +20,7 @@ const IntroduceMyself: Component<Props> = ({ name, nickname, statement }) => {
           Also known as {' '}
           <span class="font-semibold text-indigo-600">{nickname}</span>
         </p>
-        <article class="mb-4 text-justify">{statement}</article>
+        <article class="mb-4">{statement}</article>
       </div>
     </section>
   );

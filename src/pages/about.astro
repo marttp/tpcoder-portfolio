@@ -17,7 +17,7 @@ const educations: EducationExperience[] = experiences.education;
 
   <section>
     <h2 class="text-3xl font-bold mb-4">Educations</h2>
-    <ul class="list-none px-8">
+    <ul class="list-none md:px-8">
       {
         educations.map((edu, index) => (
           <div class="flex flex-col justify-center items-center md:flex-row">
@@ -30,7 +30,7 @@ const educations: EducationExperience[] = experiences.education;
                 {edu.startDate} - {edu.endDate}
               </p>
               <div class="my-4">
-                <h4 class="text-lg font-bold">Course relevants</h4>
+                <h4 class="text-lg font-bold">Course relevant</h4>
                 <ul class="list-disc list-inside mt-2">
                   {edu.courses.map((course, index) => (
                     <li>{course}</li>

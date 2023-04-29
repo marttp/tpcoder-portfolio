@@ -2,9 +2,10 @@
 import Layout from '../layouts/BaseLayout.astro';
 import SectionTitle from '../components/SectionTitle';
 import experiences from '../data/experiences.json';
-import { ProfessionalExperience } from "../data/props";
+import { ProfessionalExperience } from '../data/props';
 
-const professionalExperiences: ProfessionalExperience[] = experiences.professional;
+const professionalExperiences: ProfessionalExperience[] =
+  experiences.professional;
 ---
 
 <Layout
@@ -16,7 +17,7 @@ const professionalExperiences: ProfessionalExperience[] = experiences.profession
     <ul class="list-none">
       {
         professionalExperiences.map((exp, index) => (
-          <li class="mb-8 rounded overflow-hidden shadow-lg dark:shadow-primary-light p-8">
+          <li class="mb-8 rounded overflow-hidden shadow-lg dark:shadow-primary-light p-4 md:p-8">
             <h3 class="text-xl font-bold">{exp.position}</h3>
             <h4 class="text-lg font-bold">
               {exp.company} - {exp.country}
@@ -24,9 +25,12 @@ const professionalExperiences: ProfessionalExperience[] = experiences.profession
             <p class="text-gray-700">
               {exp.startDate} - {exp.endDate}
             </p>
-            <ul class="list-disc list-inside mt-2 px-8">
+            <ul class="list-disc list-inside mt-2 md:px-8">
               {exp.highlights.map((highlight, index) => (
-                <li>{highlight}</li>
+                <>
+                  <li>{highlight}</li>
+                  <br />
+                </>
               ))}
             </ul>
           </li>
