@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/BaseLayout.astro';
+import SectionTitle from '../components/SectionTitle';
 import experiences from '../data/experiences.json';
 import { ProfessionalExperience } from "../data/props";
 
@@ -11,11 +12,11 @@ const professionalExperiences: ProfessionalExperience[] = experiences.profession
   description="Thanaphoom Babparn experiences along the career path"
 >
   <section>
-    <h2 class="text-3xl font-bold mb-4">Professional Experiences</h2>
+    <SectionTitle title="Professional Experiences" />
     <ul class="list-none">
       {
         professionalExperiences.map((exp, index) => (
-          <li class="mb-8">
+          <li class="mb-8 rounded overflow-hidden shadow-lg dark:shadow-primary-light p-8">
             <h3 class="text-xl font-bold">{exp.position}</h3>
             <h4 class="text-lg font-bold">
               {exp.company} - {exp.country}

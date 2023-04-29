@@ -1,6 +1,7 @@
 ---
 
 import CompetitionsList from '../components/competition/CompetitionsList';
+import SectionTitle from '../components/SectionTitle';
 
 import Layout from '../layouts/BaseLayout.astro';
 import activities from '../data/activities.json';
@@ -31,7 +32,7 @@ if (pinVolunteer) {
   <CompetitionsList competitions={competitions} />
   <div class="border-b-2 border-gray-400 my-8"></div>
   <section>
-    <h2 class="text-3xl font-bold mb-4">Overseas</h2>
+    <h2 class="text-3xl font-bold mb-4 flex justify-center">Overseas</h2>
     {
       overseas.map((oversea, index) => (
         <div class="mb-8">
@@ -45,7 +46,7 @@ if (pinVolunteer) {
   </section>
   <div class="border-b-2 border-gray-400 my-8"></div>
   <section>
-    <h2 class="text-3xl font-bold mb-4">Speakers</h2>
+    <h2 class="text-3xl font-bold mb-4 flex justify-center">Speakers</h2>
     {
       speaker.map((speaker, index) => (
         <div class="mb-8">
@@ -57,7 +58,7 @@ if (pinVolunteer) {
   </section>
   <div class="border-b-2 border-gray-400 my-8"></div>
   <section>
-    <h2 class="text-3xl font-bold mb-4">Volunteers</h2>
+    <h2 class="text-3xl font-bold mb-4 flex justify-center">Volunteers</h2>
     {
       volunteerItems.map((item, index) => (
         <div class="mb-8">

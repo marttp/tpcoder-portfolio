@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/BaseLayout.astro';
+import SectionTitle from '../components/SectionTitle';
 
 import ContactList from '../components/contact/ContactList';
 import { CONTACT_LIST } from '../data/contact';
@@ -9,8 +10,8 @@ import { CONTACT_LIST } from '../data/contact';
   title="Contact"
   description="Thanaphoom Babparn list of possible contact"
 >
+  <SectionTitle title="Contact Me" />
   <div class="flex flex-col justify-center items-center">
-    <h2 class="text-3xl font-bold mb-10">Contact Me</h2>
     <div class="flex flex-col justify-center items-center">
       <!-- Image on the left -->
       <div class="w-full flex justify-center mb-6">

@@ -55,7 +55,7 @@ const CompetitionItem = (props: CompetitionProps): JSX.Element => {
     <div
       class={`${
         isImage && isOdd ? 'flex-row-reverse' : 'flex-row'
-      } flex flex-col md:flex-row items-center mb-8 rounded overflow-hidden shadow-lg p-8`}
+      } flex flex-col md:flex-row items-center mb-8 rounded overflow-hidden shadow-lg p-8 dark:shadow-primary-light`}
     >
       {isImage ? ImageDispaly : Content}
     </div>

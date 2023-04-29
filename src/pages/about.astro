@@ -2,13 +2,14 @@
 import Layout from '../layouts/BaseLayout.astro';
 import experiences from '../data/experiences.json';
 import { EducationExperience } from '../data/props';
+import SectionTitle from '../components/SectionTitle';
 
 const educations: EducationExperience[] = experiences.education;
 ---
 
 <Layout title="About Me" description="Information about Thanaphoom Babparn">
-  <h1 class="text-4xl font-bold mb-4 flex justify-center">About Me</h1>
-  <section class="flex justify-center">
+  <SectionTitle title="About Me" />
+  <section id="introduce-myself" class="flex justify-center">
     <img
       src="https://avatars.githubusercontent.com/u/34801905?v=4"
       class="rounded-lg w-1/2 md:w-1/4"
