@@ -1,14 +1,26 @@
 [
   {
-    "name": "Certified1",
+    "name": "AWS Certified Solutions Architect – Associate",
     "category": ["cloud", "architect"],
-    "issuedDate": "2019-01-01",
-    "expiredDate": "2020-01-01"
+    "issuedDate": "2021-11-26",
+    "expiredDate": "2024-11-26",
+    "resources": [
+      {
+        "type": "link",
+        "url": "https://www.credly.com/badges/28d65c08-45a6-4ed3-8061-8f644cc97323/public_url"
+      }
+    ]
   },
   {
-    "name": "Certified2",
-    "category": ["development"],
-    "issuedDate": "2019-01-01",
-    "expiredDate": "2020-01-01"
+    "name": "Microsoft Certified: DevOps Engineer Expert",
+    "category": ["cloud", "devops"],
+    "issuedDate": "2020-11-13",
+    "expiredDate": "2023-11-13",
+    "resources": [
+      {
+        "type": "link",
+        "url": "https://www.credly.com/badges/776871de-2ca5-42de-8d59-b964c2e3b418/public_url"
+      }
+    ]
   }
 ]

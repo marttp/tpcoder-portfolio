@@ -1,4 +1,73 @@
 {
-  "academic": [],
-  "professional": []
+  "professional": [
+    {
+      "company": "PayPay Corporation",
+      "country": "Japan 🇯🇵",
+      "position": "Backend Engineer",
+      "startDate": "2022-09",
+      "endDate": "Present",
+      "highlights": [
+        "Documented the procedure for production manual operation with readable format and easier to follow.",
+        "Implemented APM on the legacy inherited Spring Boot microservice to able to have the capability of observing the microservice.",
+        "Investigate the feasibility of implementing the approach for limiting the number of database connections and identifying the problem. Followed by optimizing the code change to use the connection pool configuration with HikariCP on the Spring Boot microservice. As a result, the application has a fixed-size pool and also increases the stability and reliability of the core microservice in the ecosystem.",
+        "Implemented a Spark job for grouping the audience based on conditions for creating the campaign and audience with good documentation in Scala programming language.",
+        "Analyzed and developed from the feasible investigation documentation in action by extending the lifetime of data and managing the workflow in Spring Boot and Cadence workflow. As a result, the new business can use the same system that exists used.",
+        "Feasible investigation on the infrastructure and applications scaling impact for support of new business epic. Identify workload increasing as calculation memory usage based on current systems and provide points to make the technical changes."
+      ]
+    },
+    {
+      "company": "Accenture",
+      "country": "Thailand 🇹🇭",
+      "position": "Application Development Senior Analyst",
+      "startDate": "2021-01",
+      "endDate": "2022-07",
+      "highlights": [
+        "Initiated and developed deep links hiding solutions for repayment, by using TTL key-value store, prevent by token scopes.",
+        "Managed as a Backend Lead in the team, and was recognized as the engineer who has strength in mentoring and consulting.",
+        "Advised, consulted, and collaborated on technology terms and software architecture with cross-functional stakeholders, senior engineers, and development managers in the Java enterprise-scale banking/financial project.",
+        "Suggested to Team Lead and take action to design, code, and deploy statement digitization process with Publish-Subscribe pattern with Kafka to eliminate synchronous process, cut processing time from 10 seconds to 2 seconds.",
+        "Conducted training sessions to the development team about Kubernetes, microservices architecture, and cloud-native architecture including the enterprise tools with reliability and security practice, and reduced onboarding time by around 40%.",
+        "Created and maintained Spring WebFlux internal libraries and architect the Java microservice templates for enterprise-scale based on development base practices. As a result, disposing of the duplication of code caused by repetition by around 30%.",
+        "Migrated Kong API Gateway configuration from a manual process that takes hours to 3 minutes by creating the Bash script for automated migration working by reading a JSON configuration file and calling the RESTful configurations API.",
+        "Implemented OAuth 2.0 solution by using Client Credentials and Authorization Code methods for the exchange data process for partner vendors with Kong API Gateway (CE)."
+      ]
+    },
+    {
+      "company": "Aware Technology Solutions",
+      "country": "Thailand 🇹🇭",
+      "position": "Software Engineer",
+      "startDate": "2019-05",
+      "endDate": "2020-12",
+      "highlights": [
+        "Focused on Kotlin Android full-stack development and delivered a software project that supports 1K+ telecommunication company's technical engineers to collect customer information about installing the internet-related.",
+        "Coached new members of software engineers and instructed technologies to the team for innovative products.",
+        "Researched, designed, and managed to build scalability, and reliable system for work time-attendance solution used more than hundreds of users inside corporate by Node.js microservice architecture to work with the Oracle Database.",
+        "Awarded as one of \"Superstar of the company\", due to quality of software solutions delivered and business growth.",
+        "Coded and implementation a Node.js expense approval system to help support the client's internal approval policy as a web application to support 2K+ employees working with PostgreSQL."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "school": "Rajamangala University of Technology Thanyaburi",
+      "degree": "Bachelor of Engineering (B.Eng.)",
+      "fieldOfStudy": "Computer Engineering",
+      "startDate": "2015-08",
+      "endDate": "2019-03",
+      "courses": [
+        "Data structures and Algorithms",
+        "Software Engineering",
+        "Database System",
+        "Operating System",
+        "System Analysis and Design",
+        "Data Communication",
+        "Computer Network",
+        "TCP/IP",
+        "Digital Logic and Circuit",
+        "Computer Organization & Assembly",
+        "Computer Architect",
+        "Big Data"
+      ]
+    }
+  ]
 }

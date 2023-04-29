@@ -1,5 +1,48 @@
 {
-  "technical": [],
-  "relevant": [],
-  "other": []
+  "careerTarget": [
+    "Backend Developer",
+    "Want to be Staff/Principal Software Engineer"
+  ],
+  "technical": [
+    "Java 17+",
+    "Kotlin",
+    "Spring Boot",
+    "Spring WebFlux",
+    "Quarkus",
+    "Docker",
+    "Kubernetes",
+    "SQL",
+    "MongoDB",
+    "Redis",
+    "Kafka",
+    "JavaScript",
+    "TypeScript",
+    "Python",
+    "Go",
+    "Rust",
+    "Cassandra",
+    "Cadence Workflow"
+  ],
+  "relevant": [
+    "Distribute Systems",
+    "Cloud development",
+    "Cloud native architecture",
+    "Serverless architecture",
+    "Microservices",
+    "DevOps",
+    "CI/CD",
+    "Agile",
+    "Android development",
+    "Monitoring",
+    "Troubleshooting",
+    "Performance testing"
+  ],
+  "other": [
+    "Mentoring",
+    "Leadership",
+    "Team player",
+    "Communication",
+    "Problem solving",
+    "Fast learner"
+  ]
 }
