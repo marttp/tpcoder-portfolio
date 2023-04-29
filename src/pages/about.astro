@@ -1,21 +1,17 @@
 ---
 import Layout from '../layouts/BaseLayout.astro';
 import experiences from '../data/experiences.json';
+import introduce from '../data/introduce.json';
 import { EducationExperience } from '../data/props';
 import SectionTitle from '../components/SectionTitle';
+import IntroduceMyself from '../components/IntroduceMyself';
 
 const educations: EducationExperience[] = experiences.education;
 ---
 
 <Layout title="About Me" description="Information about Thanaphoom Babparn">
   <SectionTitle title="About Me" />
-  <section id="introduce-myself" class="flex justify-center">
-    <img
-      src="https://avatars.githubusercontent.com/u/34801905?v=4"
-      class="rounded-lg w-1/2 md:w-1/4"
-      alt="Thanaphoom Babparn"
-    />
-  </section>
+  <IntroduceMyself name={introduce.name} nickname={introduce.nickname} statement={introduce.statement} />
 
   <div class="border-b-2 border-gray-400 my-8"></div>
 
