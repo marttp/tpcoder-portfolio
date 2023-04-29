@@ -1,5 +1,6 @@
 import { JSX } from 'solid-js';
 import { Competition } from '../../data/props';
+import InterestingLink from '../InterestingList';
 
 type CompetitionProps = {
   competition: Competition;
@@ -22,16 +23,7 @@ const CompetitionItem = (props: CompetitionProps): JSX.Element => {
         <div>
           <p class="text-gray-700">Award: {competition.detail?.award}</p>
           {!isImage && (
-            <div class="my-4">
-              <a
-                href={competition.resources?.[0]?.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="border-b hover:opacity-80"
-              >
-                Interesting Link
-              </a>
-            </div>
+            <InterestingLink url={competition.resources?.[0]?.url} index={0}/>
           )}
         </div>
       )}

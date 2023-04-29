@@ -3,6 +3,7 @@ import CompetitionItem from './CompetitionItem';
 import {
   Competition,
 } from '../../data/props';
+import SectionTitle from '../SectionTitle';
 
 type CompetitionsProps = {
   competitions: Competition[];
@@ -13,7 +14,7 @@ const CompetitionsList = (props: CompetitionsProps): JSX.Element => {
 
   return (
     <section>
-      <h2 class="text-3xl font-bold mb-4 flex justify-center">Competitions</h2>
+      <SectionTitle title="Competitions" />
       {competitions.map((competition, index) => (
         <CompetitionItem competition={competition} index={index} />
       ))}

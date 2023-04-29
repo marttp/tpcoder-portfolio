@@ -1,5 +1,7 @@
 ---
 import CompetitionsList from '../components/competition/CompetitionsList';
+import OverseaList from '../components/oversea/OverseaList';
+import SpeakerList from '../components/speakers/SpeakerList';
 
 import Layout from '../layouts/BaseLayout.astro';
 import activities from '../data/activities.json';
@@ -12,6 +14,7 @@ import {
   Volunteer,
   VolunteerItem,
 } from '../data/props';
+import VolunteerList from '../components/volunteers/VolunteerList';
 
 const competitions: Competition[] = activities.competitions;
 const overseas: Oversea[] = activities.overseas;
@@ -27,61 +30,13 @@ if (pinVolunteer) {
   title="Activity"
   description="Activities that I have attended in the past"
 >
-  <CompetitionsList competitions={competitions} />
-  <div class="border-b-2 border-gray-400 my-8"></div>
-  <section>
-    <h2 class="text-3xl font-bold mb-4 flex justify-center">Overseas</h2>
-    {
-      overseas.map((oversea, index) => (
-        <div class="mb-8">
-          <h3 class="text-xl font-bold">{oversea.name}</h3>
-          <p class="text-gray-700">
-            {oversea.country} - {oversea.place}
-          </p>
-        </div>
-      ))
-    }
-  </section>
-  <div class="border-b-2 border-gray-400 my-8"></div>
-  <section>
-    <h2 class="text-3xl font-bold mb-4 flex justify-center">Speakers</h2>
-    {
-      speaker.map((speaker, index) => (
-        <div class="mb-8">
-          <h3 class="text-xl font-bold">{speaker.name}</h3>
-          <p class="text-gray-700">{speaker.country}</p>
-        </div>
-      ))
-    }
-  </section>
-  <div class="border-b-2 border-gray-400 my-8"></div>
-  <section>
-    <h2 class="text-3xl font-bold mb-4 flex justify-center">Volunteers</h2>
-    {
-      volunteerItems.map((item, index) => (
-        <div class="mb-8">
-          <h3 class="text-xl font-bold">{item.title}</h3>
-          <p class="text-gray-700">
-            {item.fromDate} - {item.toDate}
-          </p>
-          <p class="text-gray-700">{item.organization}</p>
-
-          {/* Handle resources */}
-          {item.resources &&
-            item.resources.map((resource, index) => (
-              <div class="my-4">
-                <a
-                  href={resource.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="border-b hover:scale-110"
-                >
-                  Interesting Link
-                </a>
-              </div>
-            ))}
-        </div>
-      ))
-    }
-  </section>
+  <div class="flex flex-col justify-around">
+    <CompetitionsList competitions={competitions} />
+    <div class="border-b-2 border-gray-400 my-8"></div>
+    <OverseaList data={overseas} />
+    <div class="border-b-2 border-gray-400 my-8"></div>
+    <SpeakerList data={speaker} />
+    <div class="border-b-2 border-gray-400 my-8"></div>
+    <VolunteerList data={volunteerItems} />
+  </div>
 </Layout>
