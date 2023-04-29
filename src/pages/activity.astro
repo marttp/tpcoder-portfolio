@@ -1,7 +1,5 @@
 ---
-
 import CompetitionsList from '../components/competition/CompetitionsList';
-import SectionTitle from '../components/SectionTitle';
 
 import Layout from '../layouts/BaseLayout.astro';
 import activities from '../data/activities.json';
@@ -72,24 +70,14 @@ if (pinVolunteer) {
           {item.resources &&
             item.resources.map((resource, index) => (
               <div class="my-4">
-                {resource.type === 'link' && (
-                  <a
-                    href={resource.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="border-b hover:scale-110"
-                  >
-                    Interesting Link
-                  </a>
-                )}
-
-                {resource.type === 'image' && (
-                  <img
-                    src={resource.url}
-                    alt="Resource Image"
-                    class="mx-auto my-4 rounded-lg"
-                  />
-                )}
+                <a
+                  href={resource.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="border-b hover:scale-110"
+                >
+                  Interesting Link
+                </a>
               </div>
             ))}
         </div>

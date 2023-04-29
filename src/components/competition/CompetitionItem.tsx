@@ -22,14 +22,16 @@ const CompetitionItem = (props: CompetitionProps): JSX.Element => {
         <div>
           <p class="text-gray-700">Award: {competition.detail?.award}</p>
           {!isImage && (
-            <a
-              href={competition.resources?.[0]?.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="border-b hover:opacity-80"
-            >
-              Interesting Link
-            </a>
+            <div class="my-4">
+              <a
+                href={competition.resources?.[0]?.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="border-b hover:opacity-80"
+              >
+                Interesting Link
+              </a>
+            </div>
           )}
         </div>
       )}
