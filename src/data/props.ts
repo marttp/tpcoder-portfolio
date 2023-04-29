@@ -77,3 +77,10 @@ export type Social = {
   url: string;
   icon: string;
 };
+
+export type Skillset = {
+  careerTarget: string[];
+  technical: string[];
+  relevant: string[];
+  other: string[];
+};

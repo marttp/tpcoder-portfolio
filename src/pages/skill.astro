@@ -1,8 +1,19 @@
 ---
 import Layout from '../layouts/BaseLayout.astro';
 import SectionTitle from '../components/SectionTitle';
+import SkillBubbles from '../components/skills/SkillBubbles';
+import skills from '../data/skills.json';
 ---
 
-<Layout title="Skills" description="My abilities which able to use in daily basis to made the impact to organization">
+<Layout
+  title="Skills"
+  description="My abilities which able to use in daily basis to made the impact to organization"
+>
   <SectionTitle title="Skills" />
+  <div>
+    <SkillBubbles label="Career Target" skills={skills.careerTarget} />
+    <SkillBubbles label="Technical Skills" skills={skills.technical} />
+    <SkillBubbles label="Relevant Skills" skills={skills.relevant} />
+    <SkillBubbles label="Other Skills" skills={skills.other} />
+  </div>
 </Layout>
