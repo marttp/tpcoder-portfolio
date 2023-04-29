@@ -3,7 +3,7 @@ export type Resource = {
   url: string;
 };
 
-export type Item = {
+export type VolunteerItem = {
   title: string;
   organization: string;
   description: string;
@@ -42,9 +42,9 @@ export type Speaker = {
   resources?: Resource[];
 };
 
-export type ExperienceData = {
-  pin: null | string;
-  items: Item[];
+export type Volunteer = {
+  pin: null | VolunteerItem;
+  items: VolunteerItem[];
 };
 
 export type ActivitiesData = {

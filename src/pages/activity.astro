@@ -3,9 +3,81 @@ import Layout from '../layouts/BaseLayout.astro';
 import activities from '../data/activities.json';
 import volunteers from '../data/volunteers.json';
 
+import {
+  Competition,
+  Oversea,
+  Speaker,
+  Volunteer,
+  VolunteerItem,
+} from '../data/props';
+
+const competitions: Competition[] = activities.competitions;
+const overseas: Oversea[] = activities.overseas;
+const speaker: Speaker[] = activities.speaker;
+const pinVolunteer: null | Volunteer = volunteers.pin;
+let volunteerItems: VolunteerItem[] = volunteers.items;
+if (pinVolunteer) {
+  volunteerItems = [pinVolunteer, ...volunteerItems];
+}
 ---
 
-<Layout title="Activity" description="Activities that I have attended in the past">
-
-
+<Layout
+  title="Activity"
+  description="Activities that I have attended in the past"
+>
+  <section>
+    <h2 class="text-3xl font-bold mb-4">Competitions</h2>
+    {
+      competitions.map((competition, index) => (
+        <div class="mb-8">
+          <h3 class="text-xl font-bold">{competition.name}</h3>
+          <p class="text-gray-700">
+            {competition.date} - {competition.country}
+          </p>
+          <p class="text-gray-700">Award: {competition.detail?.award}</p>
+        </div>
+      ))
+    }
+  </section>
+  <div class="border-b-2 border-gray-400 my-8"></div>
+  <section>
+    <h2 class="text-3xl font-bold mb-4">Overseas</h2>
+    {
+      overseas.map((oversea, index) => (
+        <div class="mb-8">
+          <h3 class="text-xl font-bold">{oversea.name}</h3>
+          <p class="text-gray-700">
+            {oversea.country} - {oversea.place}
+          </p>
+        </div>
+      ))
+    }
+  </section>
+  <div class="border-b-2 border-gray-400 my-8"></div>
+  <section>
+    <h2 class="text-3xl font-bold mb-4">Speakers</h2>
+    {
+      speaker.map((speaker, index) => (
+        <div class="mb-8">
+          <h3 class="text-xl font-bold">{speaker.name}</h3>
+          <p class="text-gray-700">{speaker.country}</p>
+        </div>
+      ))
+    }
+  </section>
+  <div class="border-b-2 border-gray-400 my-8"></div>
+  <section>
+    <h2 class="text-3xl font-bold mb-4">Volunteers</h2>
+    {
+      volunteerItems.map((item, index) => (
+        <div class="mb-8">
+          <h3 class="text-xl font-bold">{item.title}</h3>
+          <p class="text-gray-700">
+            {item.fromDate} - {item.toDate}
+          </p>
+          <p class="text-gray-700">{item.organization}</p>
+        </div>
+      ))
+    }
+  </section>
 </Layout>
