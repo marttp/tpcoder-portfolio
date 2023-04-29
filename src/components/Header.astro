@@ -14,7 +14,8 @@ const links = [
 ];
 ---
 
-<header>
+<!-- <header class="fixed w-full"> -->
+<header class="w-full">
   <div class="py-4 px-6 flex justify-between items-center">
     <div class="flex items-center">
       <HeaderLink href="/" class="text-lg font-bold">
@@ -34,7 +35,11 @@ const links = [
     </nav>
     <div class="flex items-center space-x-4">
       <ThemeToggle client:only />
-      <button class="block md:hidden" onclick="toggleNav()" aria-label="Expand menu">
+      <button
+        class="block md:hidden"
+        onclick="toggleNav()"
+        aria-label="Expand menu"
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           fill="none"

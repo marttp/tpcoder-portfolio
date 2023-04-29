@@ -1,4 +1,7 @@
 ---
+
+import CompetitionsList from '../components/competition/CompetitionsList';
+
 import Layout from '../layouts/BaseLayout.astro';
 import activities from '../data/activities.json';
 import volunteers from '../data/volunteers.json';
@@ -25,20 +28,7 @@ if (pinVolunteer) {
   title="Activity"
   description="Activities that I have attended in the past"
 >
-  <section>
-    <h2 class="text-3xl font-bold mb-4">Competitions</h2>
-    {
-      competitions.map((competition, index) => (
-        <div class="mb-8">
-          <h3 class="text-xl font-bold">{competition.name}</h3>
-          <p class="text-gray-700">
-            {competition.date} - {competition.country}
-          </p>
-          <p class="text-gray-700">Award: {competition.detail?.award}</p>
-        </div>
-      ))
-    }
-  </section>
+  <CompetitionsList competitions={competitions} />
   <div class="border-b-2 border-gray-400 my-8"></div>
   <section>
     <h2 class="text-3xl font-bold mb-4">Overseas</h2>
@@ -76,6 +66,31 @@ if (pinVolunteer) {
             {item.fromDate} - {item.toDate}
           </p>
           <p class="text-gray-700">{item.organization}</p>
+
+          {/* Handle resources */}
+          {item.resources &&
+            item.resources.map((resource, index) => (
+              <div class="my-4">
+                {resource.type === 'link' && (
+                  <a
+                    href={resource.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="border-b hover:scale-110"
+                  >
+                    Interesting Link
+                  </a>
+                )}
+
+                {resource.type === 'image' && (
+                  <img
+                    src={resource.url}
+                    alt="Resource Image"
+                    class="mx-auto my-4 rounded-lg"
+                  />
+                )}
+              </div>
+            ))}
         </div>
       ))
     }
