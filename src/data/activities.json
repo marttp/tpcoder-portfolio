@@ -82,5 +82,21 @@
         }
       ]
     }
+  ],
+  "speaker": [
+    {
+      "name": "Surviving The Tech Industry as a New joiner",
+      "country": "Online 🌐",
+      "resources": [
+        {
+          "type": "images",
+          "url": "https://portfolio.tpcoder.dev/activities/career-path-new-joiner.png"
+        },
+        {
+          "type": "images",
+          "url": "https://portfolio.tpcoder.dev/activities/career-path-new-joiner2.png"
+        }
+      ]
+    }
   ]
 }
