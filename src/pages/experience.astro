@@ -1,5 +1,44 @@
 ---
 import Layout from '../layouts/BaseLayout.astro';
+import experiences from '../data/experiences.json';
+
+type ProfessionalExperience = {
+  company: string;
+  country: string;
+  position: string;
+  startDate: string;
+  endDate: string | 'Present';
+  highlights: string[];
+};
+
+const professionalExperiences: ProfessionalExperience[] = experiences.professional;
 ---
 
-<Layout title="Experiences" description="Lorem ipsum dolor sit amet" />
+<Layout
+  title="Experiences"
+  description="Thanaphoom Babparn experiences along the career path"
+>
+  <section>
+    <h2 class="text-3xl font-bold mb-4">Professional Experiences</h2>
+    <ul class="list-none">
+      {
+        professionalExperiences.map((exp, index) => (
+          <li class="mb-8">
+            <h3 class="text-xl font-bold">{exp.position}</h3>
+            <h4 class="text-lg font-bold">
+              {exp.company} - {exp.country}
+            </h4>
+            <p class="text-gray-700">
+              {exp.startDate} - {exp.endDate}
+            </p>
+            <ul class="list-disc list-inside mt-2 px-8">
+              {exp.highlights.map((highlight, index) => (
+                <li>{highlight}</li>
+              ))}
+            </ul>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+</Layout>

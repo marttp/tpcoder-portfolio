@@ -1,10 +1,46 @@
 ---
 import Layout from '../layouts/BaseLayout.astro';
+import experiences from '../data/experiences.json';
+
+type EducationExperience = {
+  school: string;
+  degree: string;
+  fieldOfStudy: string;
+  startDate: string;
+  endDate: string;
+  courses: string[];
+};
+
+const educations: EducationExperience[] = experiences.education;
 ---
 
-<Layout title="About Me" description="Lorem ipsum dolor sit amet">
+<Layout title="About Me" description="Information about Thanaphoom Babparn">
   <img
     src="https://avatars.githubusercontent.com/u/34801905?v=4"
     alt="Thanaphoom Babparn"
   />
+
+  <section>
+    <h2 class="text-3xl font-bold mb-4">Education</h2>
+    <ul class="list-none">
+      {
+        educations.map((edu, index) => (
+          <li class="mb-8">
+            <h3 class="text-xl font-bold">
+              {edu.degree} in {edu.fieldOfStudy}
+            </h3>
+            <h4 class="text-lg font-bold">{edu.school}</h4>
+            <p class="text-gray-700">
+              {edu.startDate} - {edu.endDate}
+            </p>
+            <ul class="list-disc list-inside mt-2">
+              {edu.courses.map((course, index) => (
+                <li>{course}</li>
+              ))}
+            </ul>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
 </Layout>
