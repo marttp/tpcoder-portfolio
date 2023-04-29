@@ -24,6 +24,14 @@
     "Cadence Workflow"
   ],
   "relevant": [
+    "RESTful",
+    "GraphQL",
+    "RSocket",
+    "gRPC",
+    "Publish/Subscribe",
+    "WebSocket",
+    "Event sourcing",
+    "CQRS",
     "Distribute Systems",
     "Cloud development",
     "Cloud native architecture",

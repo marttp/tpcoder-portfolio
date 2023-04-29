@@ -1,4 +1,5 @@
-import { Social, SOCIAL_LIST } from '../constants/social';
+import { Social } from './props';
+import { SOCIAL_LIST } from './social';
 
 const additionalSocials: Social[] = [
   {

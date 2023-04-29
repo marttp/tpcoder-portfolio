@@ -1,8 +1,4 @@
-export type Social = {
-  name: string;
-  url: string;
-  icon: string;
-};
+import { Social } from './props';
 
 export const SOCIAL_LIST: Social[] = [
   {

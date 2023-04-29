@@ -1,16 +1,7 @@
 ---
 import Layout from '../layouts/BaseLayout.astro';
 import experiences from '../data/experiences.json';
-
-type EducationExperience = {
-  school: string;
-  degree: string;
-  fieldOfStudy: string;
-  images: string[];
-  startDate: string;
-  endDate: string;
-  courses: string[];
-};
+import { EducationExperience } from '../data/props';
 
 const educations: EducationExperience[] = experiences.education;
 ---

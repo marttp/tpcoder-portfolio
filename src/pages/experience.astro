@@ -1,15 +1,7 @@
 ---
 import Layout from '../layouts/BaseLayout.astro';
 import experiences from '../data/experiences.json';
-
-type ProfessionalExperience = {
-  company: string;
-  country: string;
-  position: string;
-  startDate: string;
-  endDate: string | 'Present';
-  highlights: string[];
-};
+import { ProfessionalExperience } from "../data/props";
 
 const professionalExperiences: ProfessionalExperience[] = experiences.professional;
 ---

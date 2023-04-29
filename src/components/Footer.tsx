@@ -1,5 +1,5 @@
 import { createMemo } from 'solid-js';
-import { SOCIAL_LIST } from '../constants/social';
+import { SOCIAL_LIST } from '../data/social';
 import SocialIcon from './SocialIcon';
 
 const Footer = () => {

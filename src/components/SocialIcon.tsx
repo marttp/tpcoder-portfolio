@@ -1,5 +1,5 @@
 import { JSX } from 'solid-js';
-import { Social } from '../constants/social';
+import { Social } from '../data/props';
 
 const SocialIcons = (props: Social) => {
   return (
