@@ -13,6 +13,8 @@ const blog = defineCollection({
       .optional()
       .transform((str) => (str ? new Date(str) : undefined)),
     heroImage: z.string().optional(),
+    tags: z.array(z.string()),
+    language: z.enum(['en', 'th']),
   }),
 });
 
@@ -25,7 +27,6 @@ const project = defineCollection({
       .or(z.date())
       .transform((val) => new Date(val)),
     tags: z.array(z.string()),
-    language: z.enum(['en', 'th']),
     heroImage: z.string().optional(),
   }),
 });
