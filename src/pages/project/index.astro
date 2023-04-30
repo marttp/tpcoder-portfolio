@@ -1,11 +1,33 @@
 ---
 import Layout from '../../layouts/BaseLayout.astro';
 import SectionTitle from '../../components/SectionTitle';
+import { getCollection } from 'astro:content';
+import FormattedDate from '../../components/FormattedDate.astro';
+
+const projects = (await getCollection('project')).sort((a, b) => {
+  if (a.data.pubDate && b.data.pubDate) {
+    return a.data.pubDate.valueOf() - b.data.pubDate.valueOf();
+  }
+  return 0;
+});
 ---
 
 <Layout
   title="Projects"
   description="List of interesting projects which created by Thanaphoom Babparn and all of them are open source."
 >
-  <SectionTitle title="Projects" />
+  <section>
+    <ul>
+      {
+        projects.map((project) => (
+          <li>
+            {project.data.pubDate && (
+              <FormattedDate date={new Date(project.data.pubDate)} />
+            )}
+            <a href={`/project/${project.slug}/`}>{project.data.title}</a>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
 </Layout>
