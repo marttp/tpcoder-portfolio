@@ -1,31 +1,46 @@
 {
   "text": {
-    "title": "Text based",
+    "title": "📚 Text based",
     "courses": [
       {
-        "name": "Course 1",
-        "description": "This is a course",
-        "url": "http://www.google.com"
+        "name": "Leetcode & Technical Interview practices [Java]",
+        "description": "Resources for java developers to prepare for technical interview",
+        "url": "https://github.com/marttp/java-tech-interviews-prep",
+        "lang": "Thai 🇹🇭"
+      },
+      {
+        "name": "Self-Taught Developer Handbooks",
+        "description": "Reading list for self-taught developer who want to learn more about software development and recap some of the basic knowledge",
+        "url": "https://tpbabparn.medium.com/list/selftaught-developer-handbooks-ed6224532647",
+        "lang": "Thai 🇹🇭"
+      },
+      {
+        "name": "ประสบการณ์หางานในต่างประเทศ รูปแบบ Virtual Interviews ของ Introverts Software Engineer สุดมึน",
+        "description": "The interview experiences from introverts software engineer who want to work in foreign countries",
+        "url": "https://tpbabparn.medium.com/ประสบการณ์หางานในต่างประเทศ-รูปแบบ-virtual-interviews-ของ-introverts-software-engineer-สุดมึน-4715493ce709",
+        "lang": "Thai 🇹🇭"
       }
     ]
   },
   "video": {
-    "title": "Video based",
+    "title": "🎥 Video based",
     "courses": [
       {
-        "name": "Course 1",
-        "description": "This is a course",
-        "url": "http://www.google.com"
+        "name": "ไอต้าวแว่นทำ LeetCode - Tackle JS Special Editions",
+        "description": "Leetcode interview pattern but in JS [Some TS]",
+        "url": "https://youtube.com/playlist?list=PLm3A9eDaMzukbLKitQWP_ydRmnQj8jpd9",
+        "lang": "Thai 🇹🇭"
       }
     ]
   },
   "crashcourse": {
-    "title": "Crash course",
+    "title": "🕗 Crash course",
     "courses": [
       {
-        "name": "Course 1",
-        "description": "This is a course",
-        "url": "http://www.google.com"
+        "name": "Architecture for Developer - Session Talks",
+        "description": "Hypothesis Session Talk for someone who want to learn some of software architect in tech industry",
+        "url": "https://youtu.be/2l5twr4b69U",
+        "lang": "Thai 🇹🇭"
       }
     ]
   }

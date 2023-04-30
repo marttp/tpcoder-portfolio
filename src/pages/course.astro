@@ -5,7 +5,6 @@ import courses from '../data/courses.json';
 import CourseTypeSection from '../components/course/CourseTypeSection';
 
 const keys = Object.keys(courses);
-
 ---
 
 <Layout
@@ -13,6 +12,11 @@ const keys = Object.keys(courses);
   description="Free courses and tutorials from Thanaphoom Babparn."
 >
   <SectionTitle title="Free Video & Text based courses" />
-  <!-- Here is newly plan space -->
-  {keys.map(k => <CourseTypeSection />)}
+  <div class="grid grid-cols-3 gap-4">
+    {
+      keys.map((k) => (
+        <CourseTypeSection title={courses[k].title} data={courses[k].courses} />
+      ))
+    }
+  </div>
 </Layout>

@@ -23,9 +23,9 @@ const links = [
       </HeaderLink>
     </div>
     <nav
-      class="hidden md:flex md:items-center md:space-x-4 flex-col items-center"
+      class="hidden lg:flex lg:items-center lg:space-x-4 flex-col items-center"
     >
-      <div class="hidden md:flex items-center space-x-4">
+      <div class="hidden lg:flex items-center space-x-4">
         {
           links.map((link) => (
             <HeaderLink href={link.href}>{link.label}</HeaderLink>
@@ -36,7 +36,7 @@ const links = [
     <div class="flex items-center space-x-4">
       <ThemeToggle client:only />
       <button
-        class="block md:hidden"
+        class="block lg:hidden"
         onclick="toggleNav()"
         aria-label="Expand menu"
       >
@@ -57,7 +57,7 @@ const links = [
     </div>
   </div>
   <div
-    class="md:hidden flex flex-col items-center w-full hidden"
+    class="lg:hidden flex flex-col items-center w-full hidden"
     id="mobile-menu"
   >
     {
