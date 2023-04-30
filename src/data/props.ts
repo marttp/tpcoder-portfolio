@@ -84,3 +84,14 @@ export type Skillset = {
   relevant: string[];
   other: string[];
 };
+
+export type Course = {
+  name: string;
+  description: string;
+  url: string;
+};
+
+export type CourseSection = {
+  title: string;
+  courses: Course[];
+};

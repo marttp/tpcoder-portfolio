@@ -1,6 +1,11 @@
 ---
 import Layout from '../layouts/BaseLayout.astro';
 import SectionTitle from '../components/SectionTitle';
+import courses from '../data/courses.json';
+import CourseTypeSection from '../components/course/CourseTypeSection';
+
+const keys = Object.keys(courses);
+
 ---
 
 <Layout
@@ -8,4 +13,6 @@ import SectionTitle from '../components/SectionTitle';
   description="Free courses and tutorials from Thanaphoom Babparn."
 >
   <SectionTitle title="Free Video & Text based courses" />
+  <!-- Here is newly plan space -->
+  {keys.map(k => <CourseTypeSection />)}
 </Layout>
