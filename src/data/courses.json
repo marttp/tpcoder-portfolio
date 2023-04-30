@@ -1,0 +1,14 @@
+{
+  "text": {
+    "title": "Text based",
+    "courses": []
+  },
+  "video": {
+    "title": "Video based",
+    "courses": []
+  },
+  "crashcourse": {
+    "title": "Crash course",
+    "courses": []
+  }
+}

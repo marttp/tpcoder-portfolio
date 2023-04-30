@@ -3,6 +3,12 @@
     "Backend Developer",
     "Want to be Staff/Principal Software Engineer"
   ],
+  "domain": [
+    "FinTech",
+    "Entertainment",
+    "Retail",
+    "Non-profit organization"
+  ],
   "technical": [
     "Java 17+",
     "Kotlin",
@@ -21,7 +27,12 @@
     "Go",
     "Rust",
     "Cassandra",
-    "Cadence Workflow"
+    "Cadence Workflow",
+    "Scala",
+    "Spark",
+    "AWS",
+    "Azure",
+    "GCP"
   ],
   "relevant": [
     "RESTful",
@@ -45,11 +56,7 @@
     "Troubleshooting",
     "Performance testing"
   ],
-  "languages": [
-    "Thai (Native)",
-    "English (Work)",
-    "Japanese (Basic)"
-  ],
+  "languages": ["Thai (Native)", "English (Work)", "Japanese (Basic)"],
   "other": [
     "Mentoring",
     "Leadership",
