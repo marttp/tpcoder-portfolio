@@ -12,7 +12,7 @@ const keys = Object.keys(courses);
   description="Free courses and tutorials from Thanaphoom Babparn."
 >
   <SectionTitle title="Free Video & Text based courses" />
-  <div class="grid grid-cols-3 gap-4">
+  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
     {
       keys.map((k) => (
         <CourseTypeSection title={courses[k].title} data={courses[k].courses} />
