@@ -1,10 +1,9 @@
 ---
-import BaseHead from '../../components/header/BaseHead.astro';
-import Header from '../../components/header/Header.astro';
-import Footer from '../../components/Footer';
+import Layout from '../../layouts/BaseLayout.astro';
 import { SITE_TITLE, SITE_DESCRIPTION } from '../../consts';
 import { getCollection } from 'astro:content';
 import FormattedDate from '../../components/FormattedDate.astro';
+import SectionTitle from '../../components/SectionTitle';
 
 const posts = (await getCollection('blog')).sort((a, b) => {
   if (a.data.pubDate && b.data.pubDate) {
@@ -14,46 +13,23 @@ const posts = (await getCollection('blog')).sort((a, b) => {
 });
 ---
 
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
-    <style>
-      ul {
-        list-style-type: none;
-        padding: unset;
+<Layout
+  title="Blog"
+  description="List of blog posts written by me (Thanaphoom Babparn)"
+>
+  <SectionTitle title="This page under construction 🏗️👷" />
+  <!-- <section>
+    <ul>
+      {
+        projects.map((project) => (
+          <li>
+            {project.data.pubDate && (
+              <FormattedDate date={new Date(project.data.pubDate)} />
+            )}
+            <a href={`/project/${project.slug}/`}>{project.data.title}</a>
+          </li>
+        ))
       }
-      ul li {
-        display: flex;
-      }
-      ul li :global(time) {
-        flex: 0 0 130px;
-        font-style: italic;
-      }
-      ul li a:visited {
-        color: #0edcaa;
-      }
-    </style>
-  </head>
-  <body>
-    <Header />
-    <main class="px-12 m-10">
-      <h1 class="my-10">Still in progress...</h1>
-      <section>
-        <ul>
-          {
-            posts.map((post) => (
-              <li>
-                {post.data.pubDate && (
-                  <FormattedDate date={new Date(post.data.pubDate)} />
-                )}
-                <a href={`/blog/${post.slug}/`}>{post.data.title}</a>
-              </li>
-            ))
-          }
-        </ul>
-      </section>
-    </main>
-    <Footer />
-  </body>
-</html>
+    </ul>
+  </section> -->
+</Layout>
