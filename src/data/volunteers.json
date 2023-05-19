@@ -1,5 +1,17 @@
 {
-  "pin": null,
+  "pin": {
+    "title": "มาร์ท ธนภูมิ #GenMentorJSD เมนเทอร์สายเทคฯ ผู้ปูทางผู้เรียนสู่อาชีพใหม่",
+    "organization": "Generation Thailand",
+    "description": "I have the interview opportunity about what/why I keep mentoring and coaching. What are the mindset behind each actions and so on",
+    "fromDate": "2022-03",
+    "toDate": "2023-05",
+    "resources": [
+      {
+        "type": "link",
+        "url": "https://thailand.generation.org/stories/%E0%B8%A1%E0%B8%B2%E0%B8%A3%E0%B8%97-%E0%B8%98%E0%B8%99%E0%B8%A0%E0%B8%A1-genmentorjsd-%E0%B9%80%E0%B8%A1%E0%B8%99%E0%B9%80%E0%B8%97%E0%B8%AD%E0%B8%A3%E0%B8%AA%E0%B8%B2%E0%B8%A2%E0%B9%80%E0%B8%97%E0%B8%84%E0%B8%AF-%E0%B8%9C%E0%B8%9B%E0%B8%97%E0%B8%B2%E0%B8%87%E0%B8%9C%E0%B9%80%E0%B8%A3%E0%B8%A2%E0%B8%99%E0%B8%AA%E0%B8%AD%E0%B8%B2%E0%B8%8A%E0%B8%9E%E0%B9%83%E0%B8%AB%E0%B8%A1/"
+      }
+    ]
+  },
   "items": [
     {
       "title": "GenMentor#4",
