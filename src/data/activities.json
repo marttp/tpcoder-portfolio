@@ -6,7 +6,9 @@
       "country": "Japan 🇯🇵",
       "detail": {
         "type": "team",
-        "role": "backend & system integration"
+        "award": "-",
+        "role": "backend & system integration",
+        "teamName": "AI Overlords"
       },
       "date": "2023-05",
       "resources": [
