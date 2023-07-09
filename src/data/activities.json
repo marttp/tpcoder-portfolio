@@ -1,6 +1,22 @@
 {
   "competitions": [
     {
+      "name": "PayPay Hackathon in Product - Data Science & AI (2023)",
+      "type": "hackathon",
+      "country": "Japan 🇯🇵",
+      "detail": {
+        "type": "team",
+        "role": "backend & system integration"
+      },
+      "date": "2023-05",
+      "resources": [
+        {
+          "type": "link",
+          "url": "https://about.paypay.ne.jp/career/hackathon/3rd/"
+        }
+      ]
+    },
+    {
       "name": "PayPay Hackathon in Product November 2022",
       "type": "hackathon",
       "country": "Japan 🇯🇵",
