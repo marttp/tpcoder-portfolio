@@ -26,6 +26,12 @@
     "title": "🎥 Video based",
     "courses": [
       {
+        "name": "ความรู้ Cloud computing สำหรับ Dev งานยุ่ง",
+        "description": "Knowledge transfer ในเรื่องของ Cloud computing ทั้งแบบที่เป็น Managed service และแบบที่ต้องทำเอง",
+        "url": "https://www.youtube.com/playlist?list=PLm3A9eDaMzung5XmJYiPSxlUcocpuZlqF",
+        "lang": "Thai 🇹🇭"
+      },
+      {
         "name": "ไอต้าวแว่นทำ LeetCode - Tackle JS Special Editions",
         "description": "Leetcode interview pattern but in JS [Some TS]",
         "url": "https://youtube.com/playlist?list=PLm3A9eDaMzukbLKitQWP_ydRmnQj8jpd9",
