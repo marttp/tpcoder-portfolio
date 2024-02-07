@@ -7,6 +7,10 @@
       "startDate": "2022-09",
       "endDate": "Present",
       "highlights": [
+        "Noticed the FCM legacy API usage and migrated to Firebase Admin SDK approach to send to group of target device before the application cannot using push notification anymore.",
+        "Planned and migrated the push notification system from Spring Boot 2.2 to Spring Boot 3.2 with stable planning, As a result, Push domain is transforming from legacy to state-of-the-art within 4 months.",
+        "Migrated spark job to use new dataset with the approach that makes the further process faster.",
+        "Collaborated across tech/non-tech teams, designed the timeline notification delivery system from scratch including drafting, functional/non-functional requirements, and implemented the workloads with Kotlin - Spring Boot, Spring WebFlux with the Cadence Workflow, and Kafka integration. As a result, Reduced 100 hours per month for the marketing team, unlocked capabilities for marketing team to create workflow during weekends, and Increased annual GMV by 4M JPY.",
         "Documented the procedure for production manual operation with readable format and easier to follow.",
         "Implemented APM on the legacy inherited Spring Boot microservice to able to have the capability of observing the microservice.",
         "Investigate the feasibility of implementing the approach for limiting the number of database connections and identifying the problem. Followed by optimizing the code change to use the connection pool configuration with HikariCP on the Spring Boot microservice. As a result, the application has a fixed-size pool and also increases the stability and reliability of the core microservice in the ecosystem.",
