@@ -59,6 +59,12 @@
         "description": "Introduction of backend development concepts & approaches when tackle the job and business problems",
         "url": "https://youtu.be/ELWRQAWsrvA?si=S2sWc51GFTYHaWWZ",
         "lang": "Thai 🇹🇭"
+      },
+      {
+        "name": "Basic of transforming requirements to backend solutions - Session Talk",
+        "description": "This session will talk about the nature of backend development, how to transform requirements to backend solutions and how to tackle the problems without jumping into the code",
+        "url": "https://youtu.be/RWrlcort75s?si=KJYGNgs_VWb-zTQg",
+        "lang": "Thai 🇹🇭"
       }
     ]
   }
