@@ -83,6 +83,12 @@
         "description": "This session will talk about the nature of backend development, how to transform requirements to backend solutions and how to tackle the problems without jumping into the code",
         "url": "https://youtu.be/RWrlcort75s?si=KJYGNgs_VWb-zTQg",
         "lang": "Thai 🇹🇭"
+      },
+      {
+        "name": "Git Crash Course สไตล์แอดมาร์ท",
+        "description": "พอดีแอดมาร์ทต้องอัพโค้ด เพื่อเอาขึ้นเป็น Example ให้กับ Java backend bootcamp แอดมาร์ทก็เลยทำวีดีโอในการใช้งาน Git ไปเลย เพื่อจะได้ไม่เป็นการเสียเวลาครับ 🙇‍♂️",
+        "url": "https://youtu.be/C5HhnTGom9o?si=MMNCj0SssqWpj5xH",
+        "lang": "Thai 🇹🇭"
       }
     ]
   }
