@@ -1,7 +1,27 @@
 [
   {
+    "name": "AWS Certified Developer – Associate",
+    "category": [
+      "aws",
+      "cloud",
+      "developer"
+    ],
+    "issuedDate": "2023-08-23",
+    "expiredDate": "2026-08-23",
+    "resources": [
+      {
+        "type": "link",
+        "url": "https://www.credly.com/badges/a718f2b1-b7a6-495e-afe4-adec8efe8e00/public_url"
+      }
+    ]
+  },
+  {
     "name": "AWS Certified Solutions Architect – Associate",
-    "category": ["cloud", "architect"],
+    "category": [
+      "aws",
+      "cloud",
+      "architect"
+    ],
     "issuedDate": "2021-11-26",
     "expiredDate": "2024-11-26",
     "resources": [
@@ -13,7 +33,11 @@
   },
   {
     "name": "Microsoft Certified: DevOps Engineer Expert",
-    "category": ["cloud", "devops"],
+    "category": [
+      "azure",
+      "cloud",
+      "devops"
+    ],
     "issuedDate": "2020-11-13",
     "expiredDate": "2025-11-14",
     "resources": [
