@@ -4,6 +4,7 @@ import { SITE_TITLE, SITE_DESCRIPTION } from '../../consts';
 import { getCollection } from 'astro:content';
 import FormattedDate from '../../components/FormattedDate.astro';
 import SectionTitle from '../../components/SectionTitle';
+import { SOCIAL_LIST } from '../../data/social';
 
 const posts = (await getCollection('blog')).sort((a, b) => {
   if (a.data.pubDate && b.data.pubDate) {
@@ -17,7 +18,16 @@ const posts = (await getCollection('blog')).sort((a, b) => {
   title="Blog"
   description="List of blog posts written by me (Thanaphoom Babparn)"
 >
-  <SectionTitle title="This page under construction 🏗️👷" />
+  <!-- <SectionTitle title="This page under construction 🏗️👷" /> -->
+  <section id="medium-blog" class="flex justify-center">
+    <h2 class="text-xl font-bold mb-2">
+      Currently, I wrote blogs/articles here. Please kindly check.
+      I won't applied Medium Partner Program which mean you can read it freely without any subscription 🙇‍♂️
+    </h2>
+    <p class="text-sm mb-2">
+      {SOCIAL_LIST[1].url}
+    </p>
+  </section>
   <!-- <section>
     <ul>
       {
