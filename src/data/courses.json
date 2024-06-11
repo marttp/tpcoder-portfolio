@@ -89,6 +89,12 @@
         "description": "พอดีแอดมาร์ทต้องอัพโค้ด เพื่อเอาขึ้นเป็น Example ให้กับ Java backend bootcamp แอดมาร์ทก็เลยทำวีดีโอในการใช้งาน Git ไปเลย เพื่อจะได้ไม่เป็นการเสียเวลาครับ 🙇‍♂️",
         "url": "https://youtu.be/C5HhnTGom9o?si=MMNCj0SssqWpj5xH",
         "lang": "Thai 🇹🇭"
+      },
+      {
+        "name": "SOLID principles crash course สไตล์แอดมาร์ท",
+        "description": "This video is part of Java backend bootcamp. However, It can separate to own video since it's explaining about SOLID concept and how transform from bad to good enough design",
+        "url": "https://youtu.be/1r1doEAGyus?si=NBRk0x8wegA9GhXX",
+        "lang": "Thai 🇹🇭"
       }
     ]
   }
