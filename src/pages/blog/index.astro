@@ -1,12 +1,12 @@
 ---
-import Layout from '../../layouts/BaseLayout.astro';
-import { SITE_TITLE, SITE_DESCRIPTION } from '../../consts';
-import { getCollection } from 'astro:content';
-import FormattedDate from '../../components/FormattedDate.astro';
-import SectionTitle from '../../components/SectionTitle';
-import { SOCIAL_LIST } from '../../data/social';
+import Layout from "../../layouts/BaseLayout.astro";
+import { SITE_TITLE, SITE_DESCRIPTION } from "../../consts";
+import { getCollection } from "astro:content";
+import FormattedDate from "../../components/FormattedDate.astro";
+import SectionTitle from "../../components/SectionTitle";
+import { SOCIAL_LIST } from "../../data/social";
 
-const posts = (await getCollection('blog')).sort((a, b) => {
+const posts = (await getCollection("blog")).sort((a, b) => {
   if (a.data.pubDate && b.data.pubDate) {
     return a.data.pubDate.valueOf() - b.data.pubDate.valueOf();
   }
@@ -19,13 +19,21 @@ const posts = (await getCollection('blog')).sort((a, b) => {
   description="List of blog posts written by me (Thanaphoom Babparn)"
 >
   <!-- <SectionTitle title="This page under construction 🏗️👷" /> -->
-  <section id="medium-blog" class="flex justify-center">
+  <section id="medium-blog" class="flex flex-col justify-center items-center">
     <h2 class="text-sm mb-2">
-      Currently, I wrote blogs/articles here. Please kindly check.
-      I won't applied Medium Partner Program which mean you can read it freely without any subscription 🙇‍♂️
+      Currently, I wrote blogs/articles here. Please kindly check. I won't
+      applied Medium Partner Program which mean you can read it freely without
+      any subscription 🙇‍♂️
     </h2>
-    <p class="text-sm mb-2">
-      {SOCIAL_LIST[1].url}
+    <p class="text-sm mb-2 mt-4">
+      <a
+        href={SOCIAL_LIST[1].url}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="bg-primary-light text-text py-2 px-4 rounded-full text-sm hover:bg-primary-dark hover:text-white transition-colors"
+      >
+        {SOCIAL_LIST[1].url}
+      </a>
     </p>
   </section>
   <!-- <section>
