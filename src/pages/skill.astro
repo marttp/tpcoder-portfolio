@@ -2,7 +2,9 @@
 import Layout from '../layouts/BaseLayout.astro';
 import SectionTitle from '../components/SectionTitle';
 import SkillBubbles from '../components/skills/SkillBubbles';
+import CertifiedContainer from '../components/skills/CertifiedContainer';
 import skills from '../data/skills.json';
+import certified from '../data/certified.json';
 ---
 
 <Layout
@@ -17,5 +19,6 @@ import skills from '../data/skills.json';
     <SkillBubbles label="Relevant Skills" skills={skills.relevant} />
     <SkillBubbles label="Languages" skills={skills.languages} />
     <SkillBubbles label="Other Skills" skills={skills.other} />
+    <CertifiedContainer label="Certified" certifiedList={certified} />
   </div>
 </Layout>
