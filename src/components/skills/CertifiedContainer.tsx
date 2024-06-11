@@ -28,7 +28,7 @@ const CertifiedContainer = (props: CertifiedContainerProps) => (
                         href={certified.resources[0]?.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="bg-primary-light text-text py-2 px-4 rounded-full text-sm hover:bg-primary-dark transition-colors"
+                        class="bg-primary-light text-text py-2 px-4 rounded-full text-sm hover:bg-primary-dark hover:text-white transition-colors"
                     >
                         {certified.name}
                     </a>
