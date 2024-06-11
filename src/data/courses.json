@@ -32,6 +32,12 @@
     "title": "🎥 Video based",
     "courses": [
       {
+        "name": "Java Backend Developer Bootcamp [2024]",
+        "description": "Bootcamp สอนการทำ Backend ด้วยภาษา Java มีเป้าหมายให้ผู้เรียนเริ่มจาก 0 ไปจนถึงเป็น Backend Developer อย่างมีคุณภาพในระยะยาว",
+        "url": "https://youtube.com/playlist?list=PLm3A9eDaMzukMQtdDoeOR-HbFN35vieQY&si=YWZGqRpmfDq_59as",
+        "lang": "Thai 🇹🇭"
+      },
+      {
         "name": "ความรู้ Cloud computing สำหรับ Dev งานยุ่ง",
         "description": "Knowledge transfer ในเรื่องของ Cloud computing ทั้งแบบที่เป็น Managed service และแบบที่ต้องทำเอง",
         "url": "https://www.youtube.com/playlist?list=PLm3A9eDaMzung5XmJYiPSxlUcocpuZlqF",
