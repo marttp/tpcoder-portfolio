@@ -46,5 +46,53 @@
         "url": "https://www.credly.com/badges/776871de-2ca5-42de-8d59-b964c2e3b418/public_url"
       }
     ]
+  },
+  {
+    "name": "Google Cloud Certified - Professional Cloud Developer Certification [EXPIRED]",
+    "category": [
+      "gcp",
+      "cloud",
+      "developer"
+    ],
+    "issuedDate": "2019-11-04",
+    "expiredDate": "2023-11-04",
+    "resources": [
+      {
+        "type": "link",
+        "url": "https://www.credly.com/badges/0b132d79-86eb-4358-8490-270c70cbe0a1/public_url"
+      }
+    ]
+  },
+  {
+    "name": "Google Cloud Certified - Professional Cloud Architect Certification [EXPIRED]",
+    "category": [
+      "gcp",
+      "cloud",
+      "architect"
+    ],
+    "issuedDate": "2020-01-27",
+    "expiredDate": "2022-01-27",
+    "resources": [
+      {
+        "type": "link",
+        "url": "https://www.credly.com/badges/eb1a945d-fe46-4160-b1d7-a41001584a44/public_url"
+      }
+    ]
+  },
+  {
+    "name": "Google Cloud Certified - Associate Cloud Engineer Certification [EXPIRED]",
+    "category": [
+      "gcp",
+      "cloud",
+      "cloud-engineer"
+    ],
+    "issuedDate": "2019-12-09",
+    "expiredDate": "2022-12-09",
+    "resources": [
+      {
+        "type": "link",
+        "url": "https://www.credly.com/badges/f8ca9e58-f210-410c-a26f-65380fff71a6/public_url"
+      }
+    ]
   }
 ]
