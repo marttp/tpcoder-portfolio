@@ -1,7 +1,8 @@
 {
   "careerTarget": [
     "Backend Developer",
-    "Want to be Staff/Principal Software Engineer"
+    "Path of Staff/Principal Software Engineer",
+    "Solutions Architect"
   ],
   "domain": [
     "FinTech",
@@ -10,7 +11,7 @@
     "Non-profit organization"
   ],
   "technical": [
-    "Java 17+",
+    "Java 21+",
     "Kotlin",
     "Spring Boot",
     "Spring WebFlux",
@@ -26,6 +27,8 @@
     "Python",
     "Go",
     "Rust",
+    "Actix",
+    "Axum",
     "Cassandra",
     "Cadence Workflow",
     "Scala",
