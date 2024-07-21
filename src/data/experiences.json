@@ -7,6 +7,7 @@
       "startDate": "2022-09",
       "endDate": "Present",
       "highlights": [
+        "Architected and rewrited critical services for support personalized asset on mobile application. Rewrited from Akka Actor to Spring Boot 3.2 based on Kotlin.",
         "Reduced infrastructure cost for $1500 by detected unused push silent service which were running on production and processed to remove them",
         "Noticed the FCM legacy API usage and migrated to Firebase Admin SDK approach to send to group of target device before the application cannot using push notification without further error.",
         "Planned and migrated the push notification system from Spring Boot 2.2 to Spring Boot 3.2 with stable planning, As a result, Push domain is transforming from legacy to state-of-the-art within 4 months.",
