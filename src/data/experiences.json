@@ -16,7 +16,7 @@
         "Documented the procedure for production manual operation with readable format and easier to follow.",
         "Implemented APM on the legacy inherited Spring Boot microservice to able to have the capability of observing the microservice.",
         "Investigate the feasibility of implementing the approach for limiting the number of database connections and identifying the problem. Followed by optimizing the code change to use the connection pool configuration with HikariCP on the Spring Boot microservice. As a result, the application has a fixed-size pool and also increases the stability and reliability of the core microservice in the ecosystem.",
-        "Implemented a Spark job for grouping the audience based on conditions for creating the campaign and audience with good documentation in Scala programming language.",
+        "Implemented a Spark job for grouping the audience based on conditions for creating the campaign and audience with good documentation in Scala programming language. The results of the job are used for the marketing team to create a campaign and audience for the marketing campaign to increase GMV. For example, one job has increased GMV for 10M JPY per month.",
         "Analyzed and developed from the feasible investigation documentation in action by extending the lifetime of data and managing the workflow in Spring Boot and Cadence workflow. As a result, the new business can use the same system that exists used.",
         "Feasible investigation on the infrastructure and applications scaling impact for support of new business epic. Identify workload increasing as calculation memory usage based on current systems and provide points to make the technical changes."
       ]
