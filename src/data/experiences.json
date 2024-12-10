@@ -7,6 +7,7 @@
       "startDate": "2022-09",
       "endDate": "Present",
       "highlights": [
+        "Led a cross-functional team comprising frontend and DevOps engineers to enhance a campaign management platform. These enhancements enabled secure data handling within a dedicated support room, resulting in an annual cost saving of 3 million yen.",
         "Supported and mentored the sub-team to develop the new feature for marketing communincation strategy systems",
         "Architected and rewrited critical services for support personalized asset on mobile application. Rewrited from Akka Actor to Spring Boot 3.2 based on Kotlin.",
         "Reduced infrastructure cost for $1500 by detected unused push silent service which were running on production and processed to remove them",
