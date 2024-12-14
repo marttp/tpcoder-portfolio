@@ -21,4 +21,5 @@ pnpm-debug.log*
 .DS_Store
 
 package-lock.json
+bun.lockb
 .idea
