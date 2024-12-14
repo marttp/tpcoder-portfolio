@@ -1,6 +1,6 @@
-import { For, JSX } from 'solid-js';
+import { For, JSX } from "solid-js";
 
-import { Course } from '../../data/props';
+import { Course } from "../../data/props";
 
 const CourseTypeSection = ({
   title,
@@ -28,6 +28,17 @@ const CourseTypeSection = ({
           </div>
         )}
       </For>
+    </div>
+    <p class="text-l mb-4 flex justify-center items-center text-center">
+      In case of you want to support me. I really appreciate. Thank you very
+      much. 🙇‍♂️
+    </p>
+    <div class="w-full flex justify-center mb-6">
+      <img
+        src="/assets/images/ThanaphoomBabparn-PromptPay-100THB.jpg"
+        alt="PromptPay QR Code 100THB for Thanaphoom Babparn as donate"
+        class="w-full md:w-3/12 h-full object-cover rounded-lg shadow-md"
+      />
     </div>
   </div>
 );
