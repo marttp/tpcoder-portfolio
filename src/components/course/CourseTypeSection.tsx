@@ -23,7 +23,7 @@ const CourseTypeSection = ({
             >
               {course.name}
             </a>
-            <p class="text-sm text-gray-900">{course.description}</p>
+            <p class="text-sm text-black dark:text-gray-500">{course.description}</p>
             <p class="text-sm">{`Language: ${course.lang}`}</p>
           </div>
         )}
