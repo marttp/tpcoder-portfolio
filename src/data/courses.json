@@ -1,167 +1,202 @@
-{
-  "text": {
-    "title": "📚 Text based",
-    "courses": [
-      {
-        "name": "Leetcode & Technical Interview practices [Java]",
-        "description": "Resources for java developers to prepare for technical interview",
-        "url": "https://github.com/marttp/java-tech-interviews-prep",
-        "lang": "Thai 🇹🇭"
-      },
-      {
-        "name": "Self-Taught Developer Handbooks",
-        "description": "Reading list for self-taught developer who want to learn more about software development and recap some of the basic knowledge",
-        "url": "https://tpbabparn.medium.com/list/selftaught-developer-handbooks-ed6224532647",
-        "lang": "Thai 🇹🇭"
-      },
-      {
-        "name": "ประสบการณ์หางานในต่างประเทศ รูปแบบ Virtual Interviews ของ Introverts Software Engineer สุดมึน",
-        "description": "The interview experiences from introverts software engineer who want to work in foreign countries",
-        "url": "https://tpbabparn.medium.com/ประสบการณ์หางานในต่างประเทศ-รูปแบบ-virtual-interviews-ของ-introverts-software-engineer-สุดมึน-4715493ce709",
-        "lang": "Thai 🇹🇭"
-      },
-      {
-        "name": "รู้อะไรไม่สู้รู้งี้ แบบ Software engineer style",
-        "description": "The lesson learn from software engineer who work in tech industry for a while and want to share the knowledge to the new generation of software engineer",
-        "url": "https://tpbabparn.medium.com/list/software-engineer-style-23e8b107d76e",
-        "lang": "Thai 🇹🇭"
-      },
-      {
-        "name": "TP Coder's Post - Resume crafting for software engineer",
-        "description": "โพสต์คำแนะนำในการทำ Resume สำหรับ Software Engineer",
-        "url": "https://www.facebook.com/tpcoder/posts/pfbid0ir5cwHih9fGhKvdmTrKgXJV4hH2nFsJ5Hmf5ZvYTfPorZWtfoSNRx4PKX7HeooFLl",
-        "lang": "Thai 🇹🇭"
-      },
-      {
-        "name": "TP Coder's Post - การทำ LinkedIn เบื้องต้น",
-        "description": "โพสต์คำแนะนำในการทำ LinkedIn เบื้องต้น สำหรับคนที่ไม่เคยทำมาก่อน หรือต้องการทำให้มันดีมากขึ้น",
-        "url": "https://www.facebook.com/tpcoder/posts/pfbid02PcPWjcSwVZTjiGS24V4Ru8HutoXKuHFFfML61J7UpYoS5BAi2Bk5Fo2gqvUtGiRql",
-        "lang": "Thai 🇹🇭"
-      },
-      {
-        "name": "TP Coder's Post - Side project guideline",
-        "description": "Definition of side projects และ tips",
-        "url": "https://www.facebook.com/tpcoder/posts/pfbid02yeUGK336hnESqRcMibdAedxGZ8AbmMJzx17Zgwy7oA3hzUZdf5beC6NZoq7V8gRBl",
-        "lang": "Thai 🇹🇭"
-      }
-    ]
+[
+  {
+    "name": "Leetcode & Technical Interview practices [Java]",
+    "description": "Resources for java developers to prepare for technical interview",
+    "url": "https://github.com/marttp/java-tech-interviews-prep",
+    "lang": "Thai 🇹🇭",
+    "format": "Text",
+    "topic": "Interview & Career Prep"
   },
-  "video": {
-    "title": "🎥 Video based",
-    "courses": [
-      {
-        "name": "Data Structures & Algorithms in Java ที่พอจำเป็นในการใช้สมัครงาน",
-        "description": "ยกระดับความรู้พื้นฐานของ Java Developer และบุคคลที่สนใจในการเรียนรู้ Data Structures และ Algorithms โดยมีเป้าหมายเพื่อให้ทักษะที่จำเป็นสำหรับการสมัครงาน โดยเฉพาะ Technical interview กับบริษัทต่าง ๆ",
-        "url": "https://youtube.com/playlist?list=PLm3A9eDaMzun0A4KBOHYBAr8m_4Avad5C&si=09fLwdKp0gmCCdOV",
-        "lang": "Thai 🇹🇭"
-      },
-      {
-        "name": "Java Backend Developer Bootcamp [2024]",
-        "description": "Bootcamp สอนการทำ Backend ด้วยภาษา Java มีเป้าหมายให้ผู้เรียนเริ่มจาก 0 ไปจนถึงเป็น Backend Developer อย่างมีคุณภาพในระยะยาว",
-        "url": "https://youtube.com/playlist?list=PLm3A9eDaMzukMQtdDoeOR-HbFN35vieQY&si=YWZGqRpmfDq_59as",
-        "lang": "Thai 🇹🇭"
-      },
-      {
-        "name": "Kotlin สำหรับ Java Backend Developer - 2025",
-        "description": "องค์ความรู้เบื้องต้น และเนื้อหาเท่าที่ใช้สำหรับการนำ Kotlin เข้าไปใช้ในการเขียน Backend จากภาษา Java ประกอบไปด้วย Fundamentals และการทำ Backend services เหมือนเดิม สอนตามใจ ไม่แสวงหาผลกำไร",
-        "url": "https://youtube.com/playlist?list=PLm3A9eDaMzul3sAM9CXQ9HCswSc0xbq4i&si=Thlkoce-L8yl6a18",
-        "lang": "Thai 🇹🇭"
-      },
-      {
-        "name": "A Developer's Guide for Architecting Business Systems [2025]",
-        "description": "ความรู้ทางธุรกิจและการออกแบบระบบของชาว Developers",
-        "url": "https://youtube.com/playlist?list=PLm3A9eDaMzulLqmP_6RJb_OUAsHtGU04R&si=Zd9w5J86lKVPWeGd",
-        "lang": "Thai 🇹🇭"
-      },
-      {
-        "name": "สร้าง Home Lab Kubernetes cluster ด้วย Raspberry Pi สำหรับใช้งานในบ้านหรือห้องส่วนตัว",
-        "description": "Playlist นี้รวบรวมวิธีการตั้งค่า home lab สำหรับใช้งานที่บ้าน ซึ่งเหมาะอย่างยิ่งสำหรับผู้ที่ต้องการเปลี่ยนค่าใช้จ่ายรายเดือนสำหรับ Cloud โดยเลือกใช้วิธีการจัดการเครื่องเซิร์ฟเวอร์ภายในบ้านเป็นทางเลือกแทน",
-        "url": "https://youtube.com/playlist?list=PLm3A9eDaMzuk-tJXdclIaNs5FnbSfBxiw&si=cWGLHoNuef8she9j",
-        "lang": "Thai 🇹🇭"
-      },
-      {
-        "name": "ความรู้ Cloud computing สำหรับ Dev งานยุ่ง",
-        "description": "Knowledge transfer ในเรื่องของ Cloud computing ทั้งแบบที่เป็น Managed service และแบบที่ต้องทำเอง",
-        "url": "https://www.youtube.com/playlist?list=PLm3A9eDaMzung5XmJYiPSxlUcocpuZlqF",
-        "lang": "Thai 🇹🇭"
-      },
-      {
-        "name": "รวมอธิบาย Data Structures & Algorithms แบบที่ผมไม่ใช่อาจารย์",
-        "description": "The explanation of Data Structures & Algorithms in a way that not academic style but my own style",
-        "url": "https://youtube.com/playlist?list=PLm3A9eDaMzunadDn8CeMNdo9WOHn6coXv&si=Hfuac7w7xUShypq1",
-        "lang": "Thai 🇹🇭"
-      },
-      {
-        "name": "ไอต้าวแว่นทำ LeetCode - Tackle JS Special Editions",
-        "description": "Leetcode interview pattern but in JS [Some TS]",
-        "url": "https://youtube.com/playlist?list=PLm3A9eDaMzukbLKitQWP_ydRmnQj8jpd9",
-        "lang": "Thai 🇹🇭"
-      },
-      {
-        "name": "Node.js (JS) Backend Course - 2023",
-        "description": "Course สอนการทำ Backend ด้วย Node.js",
-        "url": "https://youtube.com/playlist?list=PLm3A9eDaMzukp-YCK4McEDFcigogvjB5V",
-        "lang": "Thai 🇹🇭"
-      }
-    ]
+  {
+    "name": "Self-Taught Developer Handbooks",
+    "description": "Reading list for self-taught developer who want to learn more about software development and recap some of the basic knowledge",
+    "url": "https://tpbabparn.medium.com/list/selftaught-developer-handbooks-ed6224532647",
+    "lang": "Thai 🇹🇭",
+    "format": "Text",
+    "topic": "General Software Engineering"
   },
-  "crashcourse": {
-    "title": "🕗 Crash course",
-    "courses": [
-      {
-        "name": "Architecture for Developer - Session Talks",
-        "description": "Hypothesis Session Talk for someone who want to learn some of software architect in tech industry",
-        "url": "https://youtu.be/2l5twr4b69U",
-        "lang": "Thai 🇹🇭"
-      },
-      {
-        "name": "Backend development beginner guideline - Session Talks",
-        "description": "Introduction of backend development concepts & approaches when tackle the job and business problems",
-        "url": "https://youtu.be/ELWRQAWsrvA?si=S2sWc51GFTYHaWWZ",
-        "lang": "Thai 🇹🇭"
-      },
-      {
-        "name": "Basic of transforming requirements to backend solutions - Session Talk",
-        "description": "This session will talk about the nature of backend development, how to transform requirements to backend solutions and how to tackle the problems without jumping into the code",
-        "url": "https://youtu.be/RWrlcort75s?si=KJYGNgs_VWb-zTQg",
-        "lang": "Thai 🇹🇭"
-      },
-      {
-        "name": "Git Crash Course สไตล์แอดมาร์ท",
-        "description": "พอดีแอดมาร์ทต้องอัพโค้ด เพื่อเอาขึ้นเป็น Example ให้กับ Java backend bootcamp แอดมาร์ทก็เลยทำวีดีโอในการใช้งาน Git ไปเลย เพื่อจะได้ไม่เป็นการเสียเวลาครับ 🙇‍♂️",
-        "url": "https://youtu.be/C5HhnTGom9o?si=MMNCj0SssqWpj5xH",
-        "lang": "Thai 🇹🇭"
-      },
-      {
-        "name": "SOLID principles crash course สไตล์แอดมาร์ท",
-        "description": "This video is part of Java backend bootcamp. However, It can separate to own video since it's explaining about SOLID concept and how transform from bad to good enough design",
-        "url": "https://youtu.be/1r1doEAGyus?si=NBRk0x8wegA9GhXX",
-        "lang": "Thai 🇹🇭"
-      },
-      {
-        "name": "Tips & Tricks - Data structures ใช้บ่อยบนภาษา Java ตอนสัมภาษณ์งาน และทำ Online Assessment",
-        "description": "วีดีโอนี้ แอดมาร์ทได้รวบรวมโครงสร้างข้อมูลสำเร็จรูปที่ใช้ในภาษา Java เพื่อเตรียมพร้อมสำหรับการสัมภาษณ์งานในโอกาสต่างๆ พร้อมทั้งแทรกคำแนะนำและเทคนิคต่างๆ ตามสไตล์ของแอดมาร์ท",
-        "url": "https://youtu.be/K9KzARJUIsU",
-        "lang": "Thai 🇹🇭"
-      },
-      {
-        "name": "Introduction to DBMS with PostgreSQL สำหรับใช้งานทั่วไป",
-        "description": "วีดีโอนี้แอดมาร์ทจะพามาศึกษา และแสดงตัวอย่างในการใช้งานฐานข้อมูลเชิงสัมพันธ์ หรือ Relational database ด้วย SQL ซึ่งเอาจริง ๆ ทักษะ SQL ไม่จำเป็นต้องเป็นสาย Developer เพราะ Database นั้นถูกสร้างขึ้นมาให้เหมาะสมกับคนทั่ว ๆ ไปนี่แหละ ที่อยากจะเก็บข้อมูลไว้ใช้ในอนาคต",
-        "url": "https://youtu.be/vlOugsopjyg",
-        "lang": "Thai 🇹🇭"
-      },
-      {
-        "name": "Mock Interview เพื่อการศึกษา feat. เพจ เมื่อฉันมีสามีเป็นโปรแกรมเมอร์",
-        "description": "วีดีโอนี้เป็นการทำ Mock Interview เพื่อใช้เป็นตัวอย่างให้เห็นว่า เมื่อเราไปสัมภาษณ์งานในสาย Programming เราอาจจะพบเจอกับอะไรบ้าง โดยได้รับความช่วยเหลือจากพี่ต๊อด แอดมินเพจ เมื่อฉันมีสามีเป็นโปรแกรมเมอร์ 🙇‍♂️",
-        "url": "https://youtu.be/PaJxy8qSMOE?si=0SpLafxzm6t_Fxpd",
-        "lang": "Thai 🇹🇭"
-      },
-      {
-        "name": "Fundamentals of Software Engineering แบบเร็ว ๆ ใน 1 ชั่วโมง",
-        "description": "องค์ความรู้เบื้องต้นเกี่ยวกับวิศวกรรมซอฟต์แวร์",
-        "url": "https://youtu.be/LqD-2bDOoYA?si=4tG2AwdBancc1oUy",
-        "lang": "Thai 🇹🇭"
-      }
-    ]
+  {
+    "name": "ประสบการณ์หางานในต่างประเทศ รูปแบบ Virtual Interviews ของ Introverts Software Engineer สุดมึน",
+    "description": "The interview experiences from introverts software engineer who want to work in foreign countries",
+    "url": "https://tpbabparn.medium.com/ประสบการณ์หางานในต่างประเทศ-รูปแบบ-virtual-interviews-ของ-introverts-software-engineer-สุดมึน-4715493ce709",
+    "lang": "Thai 🇹🇭",
+    "format": "Text",
+    "topic": "Interview & Career Prep"
+  },
+  {
+    "name": "รู้อะไรไม่สู้รู้งี้ แบบ Software engineer style",
+    "description": "The lesson learn from software engineer who work in tech industry for a while and want to share the knowledge to the new generation of software engineer",
+    "url": "https://tpbabparn.medium.com/list/software-engineer-style-23e8b107d76e",
+    "lang": "Thai 🇹🇭",
+    "format": "Text",
+    "topic": "Backend & Architecture"
+  },
+  {
+    "name": "TP Coder's Post - Resume crafting for software engineer",
+    "description": "โพสต์คำแนะนำในการทำ Resume สำหรับ Software Engineer",
+    "url": "https://www.facebook.com/tpcoder/posts/pfbid0ir5cwHih9fGhKvdmTrKgXJV4hH2nFsJ5Hmf5ZvYTfPorZWtfoSNRx4PKX7HeooFLl",
+    "lang": "Thai 🇹🇭",
+    "format": "Text",
+    "topic": "Interview & Career Prep"
+  },
+  {
+    "name": "TP Coder's Post - การทำ LinkedIn เบื้องต้น",
+    "description": "โพสต์คำแนะนำในการทำ LinkedIn เบื้องต้น สำหรับคนที่ไม่เคยทำมาก่อน หรือต้องการทำให้มันดีมากขึ้น",
+    "url": "https://www.facebook.com/tpcoder/posts/pfbid02PcPWjcSwVZTjiGS24V4Ru8HutoXKuHFFfML61J7UpYoS5BAi2Bk5Fo2gqvUtGiRql",
+    "lang": "Thai 🇹🇭",
+    "format": "Text",
+    "topic": "Interview & Career Prep"
+  },
+  {
+    "name": "TP Coder's Post - Side project guideline",
+    "description": "Definition of side projects และ tips",
+    "url": "https://www.facebook.com/tpcoder/posts/pfbid02yeUGK336hnESqRcMibdAedxGZ8AbmMJzx17Zgwy7oA3hzUZdf5beC6NZoq7V8gRBl",
+    "lang": "Thai 🇹🇭",
+    "format": "Text",
+    "topic": "General Software Engineering"
+  },
+  {
+    "name": "Data Structures & Algorithms in Java ที่พอจำเป็นในการใช้สมัครงาน",
+    "description": "ยกระดับความรู้พื้นฐานของ Java Developer และบุคคลที่สนใจในการเรียนรู้ Data Structures และ Algorithms โดยมีเป้าหมายเพื่อให้ทักษะที่จำเป็นสำหรับการสมัครงาน โดยเฉพาะ Technical interview กับบริษัทต่าง ๆ",
+    "url": "https://youtube.com/playlist?list=PLm3A9eDaMzun0A4KBOHYBAr8m_4Avad5C&si=09fLwdKp0gmCCdOV",
+    "lang": "Thai 🇹🇭",
+    "format": "Video",
+    "topic": "Data Structures & Algorithms"
+  },
+  {
+    "name": "Java Backend Developer Bootcamp [2024]",
+    "description": "Bootcamp สอนการทำ Backend ด้วยภาษา Java มีเป้าหมายให้ผู้เรียนเริ่มจาก 0 ไปจนถึงเป็น Backend Developer อย่างมีคุณภาพในระยะยาว",
+    "url": "https://youtube.com/playlist?list=PLm3A9eDaMzukMQtdDoeOR-HbFN35vieQY&si=YWZGqRpmfDq_59as",
+    "lang": "Thai 🇹🇭",
+    "format": "Video",
+    "topic": "Backend & Architecture"
+  },
+  {
+    "name": "Kotlin สำหรับ Java Backend Developer - 2025",
+    "description": "องค์ความรู้เบื้องต้น และเนื้อหาเท่าที่ใช้สำหรับการนำ Kotlin เข้าไปใช้ในการเขียน Backend จากภาษา Java ประกอบไปด้วย Fundamentals และการทำ Backend services เหมือนเดิม สอนตามใจ ไม่แสวงหาผลกำไร",
+    "url": "https://youtube.com/playlist?list=PLm3A9eDaMzul3sAM9CXQ9HCswSc0xbq4i&si=Thlkoce-L8yl6a18",
+    "lang": "Thai 🇹🇭",
+    "format": "Video",
+    "topic": "Backend & Architecture"
+  },
+  {
+    "name": "A Developer's Guide for Architecting Business Systems [2025]",
+    "description": "ความรู้ทางธุรกิจและการออกแบบระบบของชาว Developers",
+    "url": "https://youtube.com/playlist?list=PLm3A9eDaMzulLqmP_6RJb_OUAsHtGU04R&si=Zd9w5J86lKVPWeGd",
+    "lang": "Thai 🇹🇭",
+    "format": "Video",
+    "topic": "Backend & Architecture"
+  },
+  {
+    "name": "สร้าง Home Lab Kubernetes cluster ด้วย Raspberry Pi สำหรับใช้งานในบ้านหรือห้องส่วนตัว",
+    "description": "Playlist นี้รวบรวมวิธีการตั้งค่า home lab สำหรับใช้งานที่บ้าน ซึ่งเหมาะอย่างยิ่งสำหรับผู้ที่ต้องการเปลี่ยนค่าใช้จ่ายรายเดือนสำหรับ Cloud โดยเลือกใช้วิธีการจัดการเครื่องเซิร์ฟเวอร์ภายในบ้านเป็นทางเลือกแทน",
+    "url": "https://youtube.com/playlist?list=PLm3A9eDaMzuk-tJXdclIaNs5FnbSfBxiw&si=cWGLHoNuef8she9j",
+    "lang": "Thai 🇹🇭",
+    "format": "Video",
+    "topic": "DevOps & Infrastructure"
+  },
+  {
+    "name": "ความรู้ Cloud computing สำหรับ Dev งานยุ่ง",
+    "description": "Knowledge transfer ในเรื่องของ Cloud computing ทั้งแบบที่เป็น Managed service และแบบที่ต้องทำเอง",
+    "url": "https://www.youtube.com/playlist?list=PLm3A9eDaMzung5XmJYiPSxlUcocpuZlqF",
+    "lang": "Thai 🇹🇭",
+    "format": "Video",
+    "topic": "DevOps & Infrastructure"
+  },
+  {
+    "name": "รวมอธิบาย Data Structures & Algorithms แบบที่ผมไม่ใช่อาจารย์",
+    "description": "The explanation of Data Structures & Algorithms in a way that not academic style but my own style",
+    "url": "https://youtube.com/playlist?list=PLm3A9eDaMzunadDn8CeMNdo9WOHn6coXv&si=Hfuac7w7xUShypq1",
+    "lang": "Thai 🇹🇭",
+    "format": "Video",
+    "topic": "Data Structures & Algorithms"
+  },
+  {
+    "name": "ไอต้าวแว่นทำ LeetCode - Tackle JS Special Editions",
+    "description": "Leetcode interview pattern but in JS [Some TS]",
+    "url": "https://youtube.com/playlist?list=PLm3A9eDaMzukbLKitQWP_ydRmnQj8jpd9",
+    "lang": "Thai 🇹🇭",
+    "format": "Video",
+    "topic": "Interview & Career Prep"
+  },
+  {
+    "name": "Node.js (JS) Backend Course - 2023",
+    "description": "Course สอนการทำ Backend ด้วย Node.js",
+    "url": "https://youtube.com/playlist?list=PLm3A9eDaMzukp-YCK4McEDFcigogvjB5V",
+    "lang": "Thai 🇹🇭",
+    "format": "Video",
+    "topic": "Backend & Architecture"
+  },
+  {
+    "name": "Architecture for Developer - Session Talks",
+    "description": "Hypothesis Session Talk for someone who want to learn some of software architect in tech industry",
+    "url": "https://youtu.be/2l5twr4b69U",
+    "lang": "Thai 🇹🇭",
+    "format": "Crash Course",
+    "topic": "Backend & Architecture"
+  },
+  {
+    "name": "Backend development beginner guideline - Session Talks",
+    "description": "Introduction of backend development concepts & approaches when tackle the job and business problems",
+    "url": "https://youtu.be/ELWRQAWsrvA?si=S2sWc51GFTYHaWWZ",
+    "lang": "Thai 🇹🇭",
+    "format": "Crash Course",
+    "topic": "Backend & Architecture"
+  },
+  {
+    "name": "Basic of transforming requirements to backend solutions - Session Talk",
+    "description": "This session will talk about the nature of backend development, how to transform requirements to backend solutions and how to tackle the problems without jumping into the code",
+    "url": "https://youtu.be/RWrlcort75s?si=KJYGNgs_VWb-zTQg",
+    "lang": "Thai 🇹🇭",
+    "format": "Crash Course",
+    "topic": "Backend & Architecture"
+  },
+  {
+    "name": "Git Crash Course สไตล์แอดมาร์ท",
+    "description": "พอดีแอดมาร์ทต้องอัพโค้ด เพื่อเอาขึ้นเป็น Example ให้กับ Java backend bootcamp แอดมาร์ทก็เลยทำวีดีโอในการใช้งาน Git ไปเลย เพื่อจะได้ไม่เป็นการเสียเวลาครับ 🙇‍♂️",
+    "url": "https://youtu.be/C5HhnTGom9o?si=MMNCj0SssqWpj5xH",
+    "lang": "Thai 🇹🇭",
+    "format": "Crash Course",
+    "topic": "Version Control"
+  },
+  {
+    "name": "SOLID principles crash course สไตล์แอดมาร์ท",
+    "description": "This video is part of Java backend bootcamp. However, It can separate to own video since it's explaining about SOLID concept and how transform from bad to good enough design",
+    "url": "https://youtu.be/1r1doEAGyus?si=NBRk0x8wegA9GhXX",
+    "lang": "Thai 🇹🇭",
+    "format": "Crash Course",
+    "topic": "Backend & Architecture"
+  },
+  {
+    "name": "Tips & Tricks - Data structures ใช้บ่อยบนภาษา Java ตอนสัมภาษณ์งาน และทำ Online Assessment",
+    "description": "วีดีโอนี้ แอดมาร์ทได้รวบรวมโครงสร้างข้อมูลสำเร็จรูปที่ใช้ในภาษา Java เพื่อเตรียมพร้อมสำหรับการสัมภาษณ์งานในโอกาสต่างๆ พร้อมทั้งแทรกคำแนะนำและเทคนิคต่างๆ ตามสไตล์ของแอดมาร์ท",
+    "url": "https://youtu.be/K9KzARJUIsU",
+    "lang": "Thai 🇹🇭",
+    "format": "Crash Course",
+    "topic": "Data Structures & Algorithms"
+  },
+  {
+    "name": "Introduction to DBMS with PostgreSQL สำหรับใช้งานทั่วไป",
+    "description": "วีดีโอนี้แอดมาร์ทจะพามาศึกษา และแสดงตัวอย่างในการใช้งานฐานข้อมูลเชิงสัมพันธ์ หรือ Relational database ด้วย SQL ซึ่งเอาจริง ๆ ทักษะ SQL ไม่จำเป็นต้องเป็นสาย Developer เพราะ Database นั้นถูกสร้างขึ้นมาให้เหมาะสมกับคนทั่ว ๆ ไปนี่แหละ ที่อยากจะเก็บข้อมูลไว้ใช้ในอนาคต",
+    "url": "https://youtu.be/vlOugsopjyg",
+    "lang": "Thai 🇹🇭",
+    "format": "Crash Course",
+    "topic": "DevOps & Infrastructure"
+  },
+  {
+    "name": "Mock Interview เพื่อการศึกษา feat. เพจ เมื่อฉันมีสามีเป็นโปรแกรมเมอร์",
+    "description": "วีดีโอนี้เป็นการทำ Mock Interview เพื่อใช้เป็นตัวอย่างให้เห็นว่า เมื่อเราไปสัมภาษณ์งานในสาย Programming เราอาจจะพบเจอกับอะไรบ้าง โดยได้รับความช่วยเหลือจากพี่ต๊อด แอดมินเพจ เมื่อฉันมีสามีเป็นโปรแกรมเมอร์ 🙇‍♂️",
+    "url": "https://youtu.be/PaJxy8qSMOE?si=0SpLafxzm6t_Fxpd",
+    "lang": "Thai 🇹🇭",
+    "format": "Crash Course",
+    "topic": "Interview & Career Prep"
+  },
+  {
+    "name": "Fundamentals of Software Engineering แบบเร็ว ๆ ใน 1 ชั่วโมง",
+    "description": "องค์ความรู้เบื้องต้นเกี่ยวกับวิศวกรรมซอฟต์แวร์",
+    "url": "https://youtu.be/LqD-2bDOoYA?si=4tG2AwdBancc1oUy",
+    "lang": "Thai 🇹🇭",
+    "format": "Crash Course",
+    "topic": "General Software Engineering"
   }
-}
+]
