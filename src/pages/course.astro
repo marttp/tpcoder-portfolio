@@ -1,38 +1,151 @@
 ---
 import Layout from "../layouts/BaseLayout.astro";
 import SectionTitle from "../components/SectionTitle";
-import courses from "../data/courses.json";
-import CourseTypeSection from "../components/course/CourseTypeSection";
+import CourseItem from "../components/course/CourseItem";
+import type { Course } from "../components/course/CourseItem";
+import allCourses from "../data/courses.json";
 
-const keys = Object.keys(courses);
+// --- Data Processing ---
+const coursesByTopic: Record<string, Course[]> = {};
+allCourses.forEach(course => {
+  const topic = course.topic;
+  if (!coursesByTopic[topic]) {
+    coursesByTopic[topic] = [];
+  }
+  coursesByTopic[topic].push(course as Course);
+});
+
+const sortedTopics = Object.keys(coursesByTopic).sort();
 ---
 
 <Layout
   title="Courses"
   description="Free courses and tutorials from Thanaphoom Babparn."
 >
-  <SectionTitle title="Free Video & Text based courses" />
-  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+  <SectionTitle title="Free Learning Resources" />
+
+  <!-- Search Input - No Solid Component -->
+  <div class="w-full max-w-md mx-auto mb-8">
+    <div class="relative">
+      <input
+        id="searchInput"
+        type="text"
+        placeholder="Search courses..."
+        class="w-full py-2 px-4 pr-10 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+      <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <div id="courseContainer" class="flex flex-col space-y-10">
     {
-      keys.map((k) => (
-        <CourseTypeSection title={courses[k].title} data={courses[k].courses} />
+      sortedTopics.map((topic) => (
+        <section data-topic={topic} class="course-section">
+          <h2 class="text-2xl font-semibold mb-4 border-b border-gray-300 dark:border-gray-600 pb-2">{topic}</h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {coursesByTopic[topic].map((course) => (
+              <div 
+                data-course-name={course.name.toLowerCase()} 
+                data-course-description={course.description.toLowerCase()} 
+                data-course-lang={course.lang.toLowerCase()} 
+                class="course-item"
+              >
+                <CourseItem course={course as Course} client:load />
+              </div>
+            ))}
+          </div>
+        </section>
       ))
     }
   </div>
+
+  <div id="noResults" class="hidden text-center py-8 text-gray-500 dark:text-gray-400">
+    No courses found matching your search. Try different keywords.
+  </div>
+
+  {/* Support Section */}
+  <SectionTitle title="Support Me 🙏" />
   <p class="text-l mb-4 flex justify-center items-center text-center">
-    In case of you want to support me. I really appreciate. Thank you very much.
-    🙇‍♂️
+    If you find these resources helpful, consider supporting my work. Thank you very much!
   </p>
-  <div class="w-full flex flex-col items-center mb-6 md:flex-row md:justify-center">
+  <div class="w-full flex flex-col items-center mb-6 md:flex-row md:justify-center md:space-x-4 space-y-4 md:space-y-0">
     <img
       src="/assets/images/ThanaphoomBabparn-PromptPay-100THB.jpg"
       alt="PromptPay QR Code 100THB for supporting Thanaphoom Babparn as donation"
-      class="w-1/2 md:w-3/12 h-full object-cover rounded-lg shadow-md m-1"
+      class="w-1/2 md:w-3/12 h-auto object-cover rounded-lg shadow-md"
     />
     <img
       src="/assets/images/Stripe-Supporting-Thanaphoom-Babparn.png"
       alt="Stripe QR Code 100THB for supporting Thanaphoom Babparn as donation"
-      class="w-1/2 md:w-3/12 h-full object-cover rounded-lg shadow-md m-1"
+      class="w-1/2 md:w-3/12 h-auto object-cover rounded-lg shadow-md"
     />
   </div>
 </Layout>
+
+<script>
+  // Simplified search implementation using vanilla JS
+  document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('searchInput') as HTMLInputElement;
+    const sections = document.querySelectorAll('.course-section');
+    const noResults = document.getElementById('noResults');
+    
+    if (!searchInput || !noResults) return;
+    
+    searchInput.addEventListener('input', function(this: HTMLInputElement) {
+      const searchTerm = this.value.toLowerCase().trim();
+      let hasVisibleCourses = false;
+      
+      // Show all courses when search is empty
+      if (searchTerm === '') {
+        document.querySelectorAll('.course-item').forEach(item => {
+          item.classList.remove('hidden');
+        });
+        
+        sections.forEach(section => {
+          section.classList.remove('hidden');
+        });
+        
+        noResults.classList.add('hidden');
+        return;
+      }
+      
+      // Filter courses
+      sections.forEach(section => {
+        let sectionHasVisibleItems = false;
+        const courseItems = section.querySelectorAll('.course-item');
+        
+        courseItems.forEach(item => {
+          const name = item.getAttribute('data-course-name') || '';
+          const description = item.getAttribute('data-course-description') || '';
+          const lang = item.getAttribute('data-course-lang') || '';
+          
+          if (name.includes(searchTerm) || description.includes(searchTerm) || lang.includes(searchTerm)) {
+            item.classList.remove('hidden');
+            sectionHasVisibleItems = true;
+            hasVisibleCourses = true;
+          } else {
+            item.classList.add('hidden');
+          }
+        });
+        
+        // Toggle section visibility
+        if (sectionHasVisibleItems) {
+          section.classList.remove('hidden');
+        } else {
+          section.classList.add('hidden');
+        }
+      });
+      
+      // Toggle "No results" message
+      if (hasVisibleCourses) {
+        noResults.classList.add('hidden');
+      } else {
+        noResults.classList.remove('hidden');
+      }
+    });
+  });
+</script>
