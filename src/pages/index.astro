@@ -16,6 +16,14 @@ const startCareerDate = dayjs(START_CAREER);
 const currentDate = dayjs();
 const diffYears = currentDate.diff(startCareerDate, 'year');
 const diffMonths = currentDate.diff(startCareerDate, 'month') % 12;
+const headTitles = [
+  "Inequality can start with empathy",
+  "Saying 'I can't do it' doesn't mean you truly can't - it just means you haven't learned how yet.",
+  "I build bridges, not just between systems, but between people",
+  "Since high school, my dream is to make the world a better place",
+  "Something meaningful, not just playing around with technology",
+  "Technology should elevate everyone, not just the privileged few"
+];
 ---
 
 <!DOCTYPE html>
@@ -27,10 +35,10 @@ const diffMonths = currentDate.diff(startCareerDate, 'month') % 12;
     <Header title={SITE_TITLE} />
     <main class="flex-grow flex flex-col md:flex-row px-2 md:px-12 m-10">
       <div
-        class="w-full md:w-2/3 flex flex-col justify-center items-center md:pr-8 animate__animated animate__backInLeft"
+        class="w-full md:w-1/2 flex flex-col justify-center items-center md:pr-8 animate__animated animate__backInLeft"
       >
         <h1 class="my-5 text-4xl font-bold tracking-tighter leading-tight">
-          Hello World!
+          {headTitles[Math.floor(Math.random() * headTitles.length)]}
         </h1>
         <p class="my-5 text-lg font-medium tracking-wide leading-relaxed">
           {INTRODUCTION}
@@ -42,15 +50,15 @@ const diffMonths = currentDate.diff(startCareerDate, 'month') % 12;
         </p>
       </div>
       <div
-        class="w-full md:w-2/3 flex justify-center mt-4 animate__animated animate__backInRight"
+        class="w-full md:w-1/2 flex justify-center items-center mt-4 md:mt-0 animate__animated animate__backInRight"
       >
-        <img
-          src="/assets/images/profile.webp"
-          alt="Profile"
-          class="w-full h-auto object-cover rounded-lg"
-          width="1057"
-          height="845"
-        />
+        <div class="w-full md:w-11/12 lg:w-10/12">
+          <img
+            src="/assets/images/profile.webp"
+            alt="Profile"
+            class="w-full h-auto object-cover rounded-lg shadow-lg"
+          />
+        </div>
       </div>
     </main>
     <Footer />

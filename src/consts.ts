@@ -8,5 +8,5 @@ export const SITE_DESCRIPTION =
 export const SITE_URL = 'https://portfolio.tpcoder.dev';
 export const SITE_IMAGE = 'https://portfolio.tpcoder.dev/image2.jpg';
 
-export const INTRODUCTION = `I'm Thanaphoom Babparn (Mart), a software engineer who loves to learn new things, improve himself. Loves to share knowledge and want to make impact on the world.`;
+export const INTRODUCTION = `I'm Thanaphoom Babparn (Mart), a product-minded software engineer who loves to learn every situations and expand the world view. Loves to share knowledge and contribute to society. Always seek opportunity to make positive impact to the world.`;
 export const START_CAREER = new Date('2019-05-15');
