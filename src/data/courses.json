@@ -198,5 +198,13 @@
     "lang": "Thai 🇹🇭",
     "format": "Crash Course",
     "topic": "General Software Engineering"
+  },
+  {
+    "name": "Fundamentals of Software Architecture เพียงพอสำหรับคนเริ่มต้น",
+    "description": "องค์ความรู้เบื้องต้นเกี่ยวกับสถาปัตยกรรมซอฟต์แวร์เพียงพอสำหรับ Entry - Mid Level หรือบุคคลที่ต้องการเริ่มต้นศึกษา Software Architecture",
+    "url": "https://youtu.be/YSQAXPRLZ4o",
+    "lang": "Thai 🇹🇭",
+    "format": "Crash Course",
+    "topic": "Backend & Architecture"
   }
 ]
