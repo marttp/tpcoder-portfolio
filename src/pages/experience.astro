@@ -1,8 +1,8 @@
 ---
-import Layout from '../layouts/BaseLayout.astro';
-import SectionTitle from '../components/SectionTitle';
-import experiences from '../data/experiences.json';
-import { ProfessionalExperience } from '../data/props';
+import Layout from "../layouts/BaseLayout.astro";
+import SectionTitle from "../components/SectionTitle";
+import experiences from "../data/experiences.json";
+import { ProfessionalExperience } from "../data/props";
 
 const professionalExperiences: ProfessionalExperience[] =
   experiences.professional;
@@ -14,6 +14,27 @@ const professionalExperiences: ProfessionalExperience[] =
 >
   <section>
     <SectionTitle title="Professional Experiences" />
+    <div class="resume-download mb-8 p-6 border border-gray-300 dark:border-primary-light rounded-lg shadow-md">
+      <h3 class="text-xl font-bold mb-2">Complete Resume</h3>
+      <p class="mb-4">
+        Get access to my detailed professional resume with comprehensive information about my skills,
+        projects, and achievements. Perfect for recruiters or anyone interested in my full work history.
+      </p>
+      <div class="flex items-center">
+        <a
+          href="https://buymeacoffee.com/tpbabparn/e/405561"
+          class="inline-flex items-center px-4 py-2 bg-primary-light text-black hover:bg-primary-dark hover:text-white font-medium rounded-lg transition-colors"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          Download Resume ($10)
+        </a>
+        <span class="ml-4 text-sm text-gray-600 dark:text-gray-300">Secure payment via Buy Me A Coffee</span>
+      </div>
+    </div>
     <ul class="list-none">
       {
         professionalExperiences.map((exp, index) => (
