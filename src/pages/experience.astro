@@ -46,10 +46,13 @@ const professionalExperiences: ProfessionalExperience[] =
             <p class="text-gray-700">
               {exp.startDate} - {exp.endDate}
             </p>
-            <ul class="list-disc list-inside mt-2 md:px-8">
+            <ul class="list-none pl-4 md:pl-8 mt-2 md:px-8">
               {exp.highlights.map((highlight, index) => (
                 <>
-                  <li>{highlight}</li>
+                  <li class="flex items-start">
+                    <span class="mr-2">🟢</span>
+                    {highlight}
+                  </li>
                   <br />
                 </>
               ))}
