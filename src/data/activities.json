@@ -1,6 +1,24 @@
 {
   "competitions": [
     {
+      "name": "PayPay Hackathon in Product - January 2025",
+      "type": "hackathon",
+      "country": "Japan 🇯🇵",
+      "detail": {
+        "type": "solo",
+        "award": "Generative AI Hack Award",
+        "role": "Team leader",
+        "teamName": "As You Wish"
+      },
+      "date": "2025-01",
+      "resources": [
+        {
+          "type": "images",
+          "url": "https://portfolio.tpcoder.dev/assets/images/activities/Mart - PayPay Hackathon 2025.jpg"
+        }
+      ]
+    },
+    {
       "name": "PayPay Hackathon in Product - Group Synergies (2023)",
       "type": "hackathon",
       "country": "Japan 🇯🇵",
