@@ -1,11 +1,21 @@
 {
   "professional": [
     {
+      "company": "PayPay Card Corporation",
+      "country": "Japan 🇯🇵",
+      "position": "Backend Engineer (Payment Processing)",
+      "startDate": "2025-04",
+      "endDate": "Present",
+      "highlights": [
+        "Analyze greenfield codebase which communicate with external system by TCP connection. Created common library for handling serialize/deserialize byte array message to object and reuse across projects"
+      ]
+    },
+    {
       "company": "PayPay Corporation",
       "country": "Japan 🇯🇵",
-      "position": "Backend Engineer",
+      "position": "Backend Engineer (Growth Platform)",
       "startDate": "2022-09",
-      "endDate": "Present",
+      "endDate": "2025-04",
       "highlights": [
         "Led the enhancement of a mission-critical campaign management platform to enable secure data handling within a dedicated support room, collaborating with cross-functional teams to ensure seamless integration with existing functionalities. Eliminated costly SMS communications, saving 3 million yen annually.",
         "Supported and mentored the sub-team to develop the new feature for marketing communication strategy systems",
