@@ -7,7 +7,8 @@
       "startDate": "2025-04",
       "endDate": "Present",
       "highlights": [
-        "Analyze greenfield codebase which communicate with external system by TCP connection. Created common library for handling serialize/deserialize byte array message to object and reuse across projects"
+        "Analyze greenfield codebase which communicate with external system by TCP connection. Created common library for handling serialize/deserialize byte array message to object and reuse across projects",
+        "Initiated GitHub Actions to run E2E test for validating the payment processing flow before release"
       ]
     },
     {
