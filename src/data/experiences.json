@@ -7,6 +7,7 @@
       "startDate": "2025-04",
       "endDate": "Present",
       "highlights": [
+        "Developed chargeback application system to handle dispute transactions and streamline the chargeback process for security center and card holder interactions. ",
         "Designed solution for idempotent frontend processor payment event before for passing it to transaction message by using combination between Kafka exactly_once_v2 process guarantee and put original message for recovery and investigation purpose. Fallback failure by sending it to dead letter topic (DLQ idea).",
         "Conducted scenarios testing for OTP case to ensure functionality result between cross-functional team",
         "Analyze greenfield codebase which communicate with external system by TCP connection. Created common library for handling serialize/deserialize byte array message to object and reuse across projects",
