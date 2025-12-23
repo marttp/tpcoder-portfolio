@@ -1,11 +1,23 @@
 {
   "professional": [
     {
-      "company": "PayPay Card Corporation",
+      "company": "Coda",
+      "country": "Thailand 🇹🇭",
+      "position": "Software Engineer",
+      "startDate": "2025-12",
+      "endDate": "Present",
+      "highlights": [
+        "Integrated Charge Intent API to handle tax-exclusive cases and signed new data into existing JWT",
+        "Enhanced onboarding documentation by authoring the 'Dynamic Environment 101' handbook, clarifying the usage of personal developer workspaces to streamline new hire ramp-up.",
+        "Established Java code formatting standards and implemented a uniform formatter to ensure code consistency and reduce code review friction."
+      ]
+    },
+    {
+      "company": "PayPay Card Corporation (Secondment)",
       "country": "Japan 🇯🇵",
       "position": "Backend Engineer (Payment Processing)",
       "startDate": "2025-04",
-      "endDate": "Present",
+      "endDate": "2025-11",
       "highlights": [
         "Developed chargeback application system to handle dispute transactions and streamline the chargeback process for security center and card holder interactions. ",
         "Designed solution for idempotent frontend processor payment event before for passing it to transaction message by using combination between Kafka exactly_once_v2 process guarantee and put original message for recovery and investigation purpose. Fallback failure by sending it to dead letter topic (DLQ idea).",
@@ -19,7 +31,7 @@
       "country": "Japan 🇯🇵",
       "position": "Backend Engineer (Growth Platform)",
       "startDate": "2022-09",
-      "endDate": "2025-04",
+      "endDate": "2025-11",
       "highlights": [
         "Led the enhancement of a mission-critical campaign management platform to enable secure data handling within a dedicated support room, collaborating with cross-functional teams to ensure seamless integration with existing functionalities. Eliminated costly SMS communications, saving 3 million yen annually.",
         "Supported and mentored the sub-team to develop the new feature for marketing communication strategy systems",
