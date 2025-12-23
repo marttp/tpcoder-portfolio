@@ -23,9 +23,9 @@ const ActivitiesEnhanced: Component<Props> = (props) => {
   const totalActivities = competitions.length + volunteers.length + overseas.length + speakers.length;
   const awards = competitions.filter(c => c.detail?.award && c.detail.award !== '-').length;
   const countries = new Set([
-    ...competitions.map(c => c.country).filter(c => !c.includes('Online')),
-    ...overseas.map(o => o.country).filter(c => !c.includes('Online')),
-    ...speakers.map(s => s.country).filter(c => !c.includes('Online'))
+    ...competitions.map(c => c.country),
+    ...overseas.map(o => o.country),
+    ...speakers.map(s => s.country)
   ]).size;
 
   const years = new Set([
