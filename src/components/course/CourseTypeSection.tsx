@@ -1,6 +1,7 @@
-import { For, JSX } from "solid-js";
+import { For } from "solid-js";
+import type { JSX } from "solid-js";
 
-import { Course } from "../../data/props";
+import type { Course } from "../../data/props";
 
 const CourseTypeSection = ({
   title,

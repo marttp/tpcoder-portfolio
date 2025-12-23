@@ -1,7 +1,7 @@
 import { For } from 'solid-js';
 import SectionTitle from '../SectionTitle';
 import VolunteerItem from './VolunteerItem';
-import { VolunteerItem as Item } from '../../data/props';
+import type { VolunteerItem as Item } from '../../data/props';
 
 const VolunteerList = ({ data }: { data: Item[] }) => (
   <section>
