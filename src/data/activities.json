@@ -1,6 +1,39 @@
 {
   "competitions": [
     {
+      "name": "Google DeepMind - Vibe Code with Gemini 3 Pro in AI Studio",
+      "type": "hackathon",
+      "country": "Online 🌐",
+      "detail": {
+        "type": "individual",
+        "award": "-",
+        "projectName": "Product Fusion Lab"
+      },
+      "date": "2025-12",
+      "resources": [
+        {
+          "type": "link",
+          "url": "https://www.kaggle.com/competitions/gemini-3/writeups/product-fusion-lab"
+        }
+      ]
+    },
+    {
+      "name": "Agents Intensive - Capstone Project",
+      "type": "hackathon",
+      "country": "Online 🌐",
+      "detail": {
+        "type": "individual",
+        "award": "-"
+      },
+      "date": "2025-12",
+      "resources": [
+        {
+          "type": "link",
+          "url": "https://www.kaggle.com/competitions/agents-intensive-capstone-project/writeups/new-writeup-1764497523468"
+        }
+      ]
+    },
+    {
       "name": "PayPay Hackathon in Product - January 2025",
       "type": "hackathon",
       "country": "Japan 🇯🇵",
