@@ -1,4 +1,4 @@
-import type { Social } from './props';
+import { Social } from './props';
 
 export const SOCIAL_LIST: Social[] = [
   {

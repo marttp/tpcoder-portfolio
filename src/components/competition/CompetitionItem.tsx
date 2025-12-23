@@ -1,5 +1,5 @@
-import type { JSX } from 'solid-js';
-import type { Competition } from '../../data/props';
+import { JSX } from 'solid-js';
+import { Competition } from '../../data/props';
 import InterestingLink from '../InterestingList';
 
 type CompetitionProps = {

@@ -1,4 +1,4 @@
-import type { JSX } from 'solid-js';
+import { JSX } from 'solid-js';
 import Contact from './Contact';
 
 type Props = {

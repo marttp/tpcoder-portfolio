@@ -1,4 +1,4 @@
-import type { JSX } from 'solid-js';
+import { JSX } from 'solid-js';
 
 type Props = {
   name: string;

@@ -1,6 +1,6 @@
-import type { JSX } from 'solid-js';
+import { JSX } from 'solid-js';
 import CompetitionItem from './CompetitionItem';
-import type {
+import {
   Competition,
 } from '../../data/props';
 import SectionTitle from '../SectionTitle';

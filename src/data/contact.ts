@@ -1,4 +1,4 @@
-import type { Social } from './props';
+import { Social } from './props';
 import { SOCIAL_LIST } from './social';
 
 const additionalSocials: Social[] = [

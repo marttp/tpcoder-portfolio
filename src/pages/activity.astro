@@ -1,20 +1,25 @@
 ---
+import CompetitionsList from '../components/competition/CompetitionsList';
+import OverseaList from '../components/oversea/OverseaList';
+import SpeakerList from '../components/speakers/SpeakerList';
+
 import Layout from '../layouts/BaseLayout.astro';
 import activities from '../data/activities.json';
 import volunteers from '../data/volunteers.json';
 
-import type {
+import {
   Competition,
   Oversea,
   Speaker,
+  Volunteer,
   VolunteerItem,
 } from '../data/props';
-import ActivitiesEnhanced from '../components/activities/ActivitiesEnhanced';
+import VolunteerList from '../components/volunteers/VolunteerList';
 
 const competitions: Competition[] = activities.competitions;
 const overseas: Oversea[] = activities.overseas;
 const speaker: Speaker[] = activities.speaker;
-const pinVolunteer = volunteers.pin;
+const pinVolunteer: null | Volunteer = volunteers.pin;
 let volunteerItems: VolunteerItem[] = volunteers.items;
 if (pinVolunteer) {
   volunteerItems = [pinVolunteer, ...volunteerItems];
@@ -22,14 +27,16 @@ if (pinVolunteer) {
 ---
 
 <Layout
-  title="Activities & Volunteering"
-  description="Competitions, hackathons, volunteer work, speaking engagements, and international activities"
+  title="Activity"
+  description="Activities that I have attended in the past"
 >
-  <ActivitiesEnhanced
-    competitions={competitions}
-    volunteers={volunteerItems}
-    overseas={overseas}
-    speakers={speaker}
-    client:load
-  />
+  <div class="flex flex-col justify-around">
+    <CompetitionsList competitions={competitions} />
+    <div class="border-b-2 border-gray-400 my-8"></div>
+    <OverseaList data={overseas} />
+    <div class="border-b-2 border-gray-400 my-8"></div>
+    <SpeakerList data={speaker} />
+    <div class="border-b-2 border-gray-400 my-8"></div>
+    <VolunteerList data={volunteerItems} />
+  </div>
 </Layout>
