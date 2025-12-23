@@ -14,6 +14,32 @@
   },
   "items": [
     {
+      "title": "GenMentor#11",
+      "organization": "Generation Thailand",
+      "description": "I have been selected to be GenMentor in JSD#11 with expertise in Software engineering fields. The role is responsible for coaching and mentoring mentees including consulting the career path for career switchers in the technology industry.",
+      "fromDate": "2025-12",
+      "toDate": "2026-02",
+      "resources": [
+        {
+          "type": "link",
+          "url": "https://www.facebook.com/reel/1216311887042851"
+        }
+      ]
+    },
+    {
+      "title": "GenMentor#9",
+      "organization": "Generation Thailand",
+      "description": "I have been selected to be GenMentor in JSD#9 with expertise in Software engineering fields. The role is responsible for coaching and mentoring mentees including consulting the career path for career switchers in the technology industry.",
+      "fromDate": "2025-06",
+      "toDate": "2025-09",
+      "resources": [
+        {
+          "type": "link",
+          "url": "https://fb.watch/E9MkKAMVa_/"
+        }
+      ]
+    },
+    {
       "title": "GenMentor#8",
       "organization": "Generation Thailand",
       "description": "I have been selected to be GenMentor in JSD#8 with expertise in Software engineering fields. The role is responsible for coaching and mentoring mentees including consulting the career path for career switchers in the technology industry.",
