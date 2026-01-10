@@ -9,7 +9,7 @@ const GenMentorGroup = ({ items }: { items: Item[] }) => {
     <div class="mb-8">
       <button
         onClick={() => setIsExpanded(!isExpanded())}
-        class="w-full text-left rounded overflow-hidden shadow-lg p-4 md:p-8 dark:shadow-primary-light hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        class="w-full text-left rounded overflow-hidden border border-gray-300 dark:border-primary-light p-4 md:p-8 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
       >
         <div class="flex justify-between items-center">
           <div>

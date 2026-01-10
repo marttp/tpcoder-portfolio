@@ -9,7 +9,7 @@ const VolunteerItem = ({
   index: Accessor<number>;
 }): JSX.Element => (
   <>
-    <div class="mb-8 rounded overflow-hidden shadow-lg p-4 md:p-8 dark:shadow-primary-light">
+    <div class="mb-8 rounded overflow-hidden border border-gray-300 dark:border-primary-light p-4 md:p-8">
       <h3 class="text-xl font-bold">{item.title}</h3>
       <p class="text-gray-700">
         {item.fromDate} - {item.toDate}

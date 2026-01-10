@@ -47,7 +47,7 @@ const CourseItem = ({ course }: { course: Course }): JSX.Element => {
   const styles = formatBadgeStyles[course.format] || formatBadgeStyles.Default;
 
   return (
-    <div class="h-full flex flex-col p-4 rounded-lg border bg-slate-50 border-slate-200 dark:bg-background-dark dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow duration-200">
+    <div class="h-full flex flex-col p-4 rounded-lg border bg-slate-50 border-slate-200 dark:bg-background-dark dark:border-slate-700">
       {/* Title */}
       <a
         href={course.url}
