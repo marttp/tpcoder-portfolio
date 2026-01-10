@@ -42,6 +42,16 @@ export type Speaker = {
   resources?: Resource[];
 };
 
+export type Commitment = {
+  name: string;
+  description: string;
+  type: string;
+  startDate: string;
+  status: string;
+  impact: string;
+  resources?: Resource[];
+};
+
 export type Volunteer = {
   pin: null | VolunteerItem;
   items: VolunteerItem[];
@@ -51,6 +61,7 @@ export type ActivitiesData = {
   competitions: Competition[];
   overseas: Oversea[];
   speaker: Speaker[];
+  commitments: Commitment[];
 };
 
 export type ProfessionalExperience = {

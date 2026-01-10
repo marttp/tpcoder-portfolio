@@ -12,6 +12,7 @@ import {
 } from '../data/props';
 import ActivityTabs from '../components/activity/ActivityTabs';
 
+const commitments: any[] = activities.commitments || [];
 const competitions: Competition[] = activities.competitions;
 const overseas: Oversea[] = activities.overseas;
 const speaker: Speaker[] = activities.speaker;
@@ -27,6 +28,7 @@ if (pinVolunteer) {
   description="Activities that I have attended in the past"
 >
   <ActivityTabs
+    commitments={commitments}
     competitions={competitions}
     overseas={overseas}
     speakers={speaker}

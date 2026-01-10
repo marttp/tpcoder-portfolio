@@ -3,11 +3,13 @@ import CompetitionsList from '../competition/CompetitionsList';
 import OverseaList from '../oversea/OverseaList';
 import SpeakerList from '../speakers/SpeakerList';
 import VolunteerList from '../volunteers/VolunteerList';
-import { Competition, Oversea, Speaker, VolunteerItem } from '../../data/props';
+import CommitmentList from '../commitment/CommitmentList';
+import { Competition, Oversea, Speaker, VolunteerItem, Commitment } from '../../data/props';
 
-type ActivitySection = 'competitions' | 'overseas' | 'speakers' | 'volunteers';
+type ActivitySection = 'commitments' | 'competitions' | 'overseas' | 'speakers' | 'volunteers';
 
 interface ActivityTabsProps {
+  commitments: Commitment[];
   competitions: Competition[];
   overseas: Oversea[];
   speakers: Speaker[];
@@ -15,9 +17,10 @@ interface ActivityTabsProps {
 }
 
 const ActivityTabs = (props: ActivityTabsProps) => {
-  const [activeTab, setActiveTab] = createSignal<ActivitySection>('competitions');
+  const [activeTab, setActiveTab] = createSignal<ActivitySection>('commitments');
 
   const tabs = [
+    { id: 'commitments' as ActivitySection, label: 'Commitments', count: props.commitments.length },
     { id: 'competitions' as ActivitySection, label: 'Competitions', count: props.competitions.length },
     { id: 'overseas' as ActivitySection, label: 'Overseas', count: props.overseas.length },
     { id: 'speakers' as ActivitySection, label: 'Speakers', count: props.speakers.length },
@@ -45,6 +48,9 @@ const ActivityTabs = (props: ActivityTabsProps) => {
 
       {/* Tab Content */}
       <div class="transition-all duration-300">
+        <Show when={activeTab() === 'commitments'}>
+          <CommitmentList data={props.commitments} />
+        </Show>
         <Show when={activeTab() === 'competitions'}>
           <CompetitionsList competitions={props.competitions} />
         </Show>

@@ -185,5 +185,25 @@
         }
       ]
     }
+  ],
+  "commitments": [
+    {
+      "name": "TP Coder Innovation Hub - Hands-On Initiative",
+      "description": "A non-profit digital ecosystem dedicated to empowering Thai tech talent through accessible education, community support, and real-world opportunities. Breaking the 'experience trap' by providing structured learning paths, GitHub-based projects with professional code reviews, and mentorship to build job-ready portfolios.",
+      "type": "ongoing",
+      "startDate": "2024",
+      "status": "active",
+      "impact": "Creating equal opportunities for Thai developers regardless of location, physical ability, or economic background. Special focus on helping people with disabilities access remote work opportunities and enabling talent outside major tech hubs to reach global standards.",
+      "resources": [
+        {
+          "type": "link",
+          "url": "https://hub.tpcoder.dev/hands-on/"
+        },
+        {
+          "type": "link",
+          "url": "https://hub.tpcoder.dev"
+        }
+      ]
+    }
   ]
 }
