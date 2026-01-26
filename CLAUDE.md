@@ -141,3 +141,25 @@ Edit the corresponding JSON files in `src/data/` following the TypeScript types 
 ## Dark Mode
 
 The site implements dark mode using Tailwind's `class` strategy. The theme toggle is a Solid.js component in `src/components/header/ThemeToggle.tsx` that persists preference to localStorage.
+
+## Solid.js in Astro Best Practices
+
+### Client Directives
+- Use `client:only="solid-js"` for interactive components with click handlers or state to avoid hydration issues in production builds
+- `client:load` can cause hydration mismatches where event handlers don't attach properly in static builds
+- Example: `<MyComponent client:only="solid-js" />`
+
+### Rendering Lists
+- Use Solid's `<For>` component instead of `.map()` for rendering lists with interactivity
+- This ensures proper event handler attachment and reactivity
+
+```tsx
+// Correct - use <For>
+import { For } from 'solid-js';
+<For each={items}>
+  {(item) => <button onClick={() => handleClick(item.id)}>{item.label}</button>}
+</For>
+
+// Avoid - .map() can cause issues with event handlers
+{items.map((item) => <button onClick={() => handleClick(item.id)}>{item.label}</button>)}
+```
