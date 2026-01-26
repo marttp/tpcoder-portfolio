@@ -1,4 +1,4 @@
-import { createSignal, Show } from 'solid-js';
+import { createSignal, Show, For } from 'solid-js';
 import CompetitionsList from '../competition/CompetitionsList';
 import OverseaList from '../oversea/OverseaList';
 import SpeakerList from '../speakers/SpeakerList';
@@ -31,19 +31,22 @@ const ActivityTabs = (props: ActivityTabsProps) => {
     <div class="w-full">
       {/* Tab Navigation */}
       <div class="flex flex-wrap gap-2 mb-8 border-b-2 border-gray-300 dark:border-gray-600 pb-4">
-        {tabs.map((tab) => (
-          <button
-            onClick={() => setActiveTab(tab.id)}
-            class={`px-6 py-3 rounded-t-lg font-semibold transition-all ${
-              activeTab() === tab.id
-                ? 'bg-primary-light text-black dark:text-white dark:bg-primary-dark border-b-4 border-primary-dark dark:border-primary-light'
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-            }`}
-          >
-            {tab.label}
-            <span class="ml-2 text-sm opacity-75">({tab.count})</span>
-          </button>
-        ))}
+        <For each={tabs}>
+          {(tab) => (
+            <button
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              class={`px-6 py-3 rounded-t-lg font-semibold transition-all cursor-pointer ${
+                activeTab() === tab.id
+                  ? 'bg-primary-light text-black dark:text-white dark:bg-primary-dark border-b-4 border-primary-dark dark:border-primary-light'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+              }`}
+            >
+              {tab.label}
+              <span class="ml-2 text-sm opacity-75">({tab.count})</span>
+            </button>
+          )}
+        </For>
       </div>
 
       {/* Tab Content */}
