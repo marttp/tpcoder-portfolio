@@ -172,6 +172,20 @@
   ],
   "speaker": [
     {
+      "name": "The Overseas Tech Journey: A Practical Retrospective - National Coding Day 2026",
+      "country": "Thailand 🇹🇭",
+      "resources": [
+        {
+          "type": "link",
+          "url": "https://www.eventpop.me/e/119561"
+        },
+        {
+          "type": "link",
+          "url": "https://www.facebook.com/ThaiProgrammerSociety/posts/pfbid02xWtggvbMyrm4Yn1f1DPVuzNskFo3Za4MSPTFd1s1fUBGLc1HB8PvS21sC9pBeJ14l"
+        }
+      ]
+    },
+    {
       "name": "Surviving The Tech Industry as a New joiner",
       "country": "Online 🌐",
       "resources": [
