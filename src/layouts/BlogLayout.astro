@@ -111,6 +111,8 @@ const { title, description, pubDate, updatedDate, heroImage } = Astro.props;
           prose-code:text-sm prose-code:text-pink-600 dark:prose-code:text-pink-400
           prose-pre:bg-gray-900 prose-pre:text-gray-100
           prose-pre:rounded-lg prose-pre:p-4 prose-pre:overflow-x-auto
+          [&_pre_code]:bg-transparent [&_pre_code]:p-0
+          dark:[&_pre_code]:bg-transparent
           prose-img:rounded-lg prose-img:shadow-md
           prose-hr:border-gray-200 dark:prose-hr:border-gray-700
         ">
