@@ -1,53 +1,149 @@
 ---
 import Layout from "../../layouts/BaseLayout.astro";
-import { SITE_TITLE, SITE_DESCRIPTION } from "../../consts";
 import { getCollection } from "astro:content";
-import FormattedDate from "../../components/FormattedDate.astro";
 import SectionTitle from "../../components/SectionTitle";
+import BlogCard from "../../components/blog/BlogCard";
+import TagFilter from "../../components/blog/TagFilter";
 import { SOCIAL_LIST } from "../../data/social";
 
 const posts = (await getCollection("blog")).sort((a, b) => {
   if (a.data.pubDate && b.data.pubDate) {
-    return a.data.pubDate.valueOf() - b.data.pubDate.valueOf();
+    return b.data.pubDate.valueOf() - a.data.pubDate.valueOf();
   }
   return 0;
 });
+
+// Extract unique tags from all posts
+const allTags = [...new Set(posts.flatMap((post) => post.data.tags))].sort();
 ---
 
 <Layout
   title="Blog"
   description="List of blog posts written by me (Thanaphoom Babparn)"
 >
-  <!-- <SectionTitle title="This page under construction 🏗️👷" /> -->
-  <section id="medium-blog" class="flex flex-col justify-center items-center">
-    <h2 class="text-sm mb-2">
-      Currently, I wrote blogs/articles here. Please kindly check. I won't
-      applied Medium Partner Program which mean you can read it freely without
-      any subscription 🙇‍♂️
-    </h2>
-    <p class="text-sm mb-2 mt-4">
-      <a
-        href={SOCIAL_LIST[1].url}
-        target="_blank"
-        rel="noopener noreferrer"
-        class="bg-primary-light text-text py-2 px-4 rounded-full text-sm hover:bg-primary-dark hover:text-white transition-colors"
-      >
-        {SOCIAL_LIST[1].url}
-      </a>
+  <!-- Medium Articles Section -->
+  <section id="medium-blog" class="flex flex-col justify-center items-center mb-10">
+    <h2 class="text-xl font-semibold mb-2">Medium Articles</h2>
+    <p class="text-sm mb-4 text-center max-w-xl">
+      I also write articles on Medium. You can read them freely without any subscription.
     </p>
+    <a
+      href={SOCIAL_LIST[1].url}
+      target="_blank"
+      rel="noopener noreferrer"
+      class="bg-primary-light text-text py-2 px-4 rounded-full text-sm hover:bg-primary-dark hover:text-white transition-colors"
+    >
+      View Medium Profile
+    </a>
   </section>
-  <!-- <section>
-    <ul>
-      {
-        projects.map((project) => (
-          <li>
-            {project.data.pubDate && (
-              <FormattedDate date={new Date(project.data.pubDate)} />
-            )}
-            <a href={`/project/${project.slug}/`}>{project.data.title}</a>
-          </li>
-        ))
-      }
-    </ul>
-  </section> -->
+
+  <SectionTitle title="Local Blog Posts" />
+
+  <!-- Search Input -->
+  <div class="w-full max-w-md mx-auto mb-6">
+    <div class="relative">
+      <input
+        id="searchInput"
+        type="text"
+        placeholder="Search blog posts..."
+        class="w-full py-2 px-4 pr-10 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+      <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tag Filter -->
+  <TagFilter tags={allTags} client:only="solid-js" />
+
+  <!-- Blog Posts Grid -->
+  <div id="blogContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    {
+      posts.map((post) => (
+        <div
+          class="blog-item"
+          data-blog-title={post.data.title.toLowerCase()}
+          data-blog-description={post.data.description.toLowerCase()}
+          data-blog-tags={post.data.tags.join(",").toLowerCase()}
+        >
+          <BlogCard
+            post={{
+              slug: post.slug,
+              title: post.data.title,
+              description: post.data.description,
+              pubDate: post.data.pubDate,
+              heroImage: post.data.heroImage,
+              tags: post.data.tags,
+              language: post.data.language,
+            }}
+            client:only="solid-js"
+          />
+        </div>
+      ))
+    }
+  </div>
+
+  <div id="noResults" class="hidden text-center py-8 text-gray-500 dark:text-gray-400">
+    No blog posts found matching your search. Try different keywords or tags.
+  </div>
 </Layout>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const searchInput = document.getElementById("searchInput") as HTMLInputElement;
+    const blogItems = document.querySelectorAll(".blog-item");
+    const noResults = document.getElementById("noResults");
+
+    let currentSearchTerm = "";
+    let currentTag = "all";
+
+    if (!searchInput || !noResults) return;
+
+    const filterPosts = () => {
+      let hasVisiblePosts = false;
+
+      blogItems.forEach((item) => {
+        const title = item.getAttribute("data-blog-title") || "";
+        const description = item.getAttribute("data-blog-description") || "";
+        const tags = item.getAttribute("data-blog-tags") || "";
+
+        const matchesSearch =
+          currentSearchTerm === "" ||
+          title.includes(currentSearchTerm) ||
+          description.includes(currentSearchTerm) ||
+          tags.includes(currentSearchTerm);
+
+        const matchesTag =
+          currentTag === "all" || tags.split(",").includes(currentTag.toLowerCase());
+
+        if (matchesSearch && matchesTag) {
+          item.classList.remove("hidden");
+          hasVisiblePosts = true;
+        } else {
+          item.classList.add("hidden");
+        }
+      });
+
+      if (hasVisiblePosts) {
+        noResults.classList.add("hidden");
+      } else {
+        noResults.classList.remove("hidden");
+      }
+    };
+
+    // Search input handler
+    searchInput.addEventListener("input", function (this: HTMLInputElement) {
+      currentSearchTerm = this.value.toLowerCase().trim();
+      filterPosts();
+    });
+
+    // Global tag filter handler
+    window.handleTagFilter = (tag: string) => {
+      currentTag = tag;
+      filterPosts();
+    };
+  });
+</script>
