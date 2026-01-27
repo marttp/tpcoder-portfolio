@@ -1,0 +1,111 @@
+---
+interface Props {
+  chart: string;
+  size?: 'small' | 'medium' | 'large';
+}
+
+const { chart, size = 'large' } = Astro.props;
+
+const sizeClasses = {
+  small: 'mermaid-small',
+  medium: 'mermaid-medium',
+  large: 'mermaid-large',
+};
+---
+
+<div class={`mermaid-container ${sizeClasses[size]}`}>
+  <div class="mermaid-wrapper">
+    <pre class="mermaid">{chart}</pre>
+  </div>
+</div>
+
+<style>
+  .mermaid-container {
+    width: 100%;
+    margin: 2rem 0;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    overflow-x: auto;
+  }
+
+  .mermaid-wrapper {
+    display: flex;
+    justify-content: center;
+    min-width: fit-content;
+  }
+
+  .mermaid {
+    background: transparent !important;
+  }
+
+  /* Size variants */
+  .mermaid-small .mermaid {
+    font-size: 12px;
+  }
+
+  .mermaid-small :global(svg) {
+    max-width: 100%;
+    height: auto;
+    min-height: 150px;
+  }
+
+  .mermaid-medium .mermaid {
+    font-size: 14px;
+  }
+
+  .mermaid-medium :global(svg) {
+    max-width: 100%;
+    height: auto;
+    min-height: 250px;
+  }
+
+  .mermaid-large .mermaid {
+    font-size: 16px;
+  }
+
+  .mermaid-large :global(svg) {
+    max-width: 100%;
+    height: auto;
+    min-height: 300px;
+    width: 100%;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .mermaid-container {
+      padding: 1rem;
+      margin: 1.5rem -1rem;
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+    }
+
+    .mermaid-small :global(svg),
+    .mermaid-medium :global(svg),
+    .mermaid-large :global(svg) {
+      min-height: auto;
+      transform: scale(0.9);
+      transform-origin: center;
+    }
+  }
+
+  @media (min-width: 769px) {
+    .mermaid-large :global(svg) {
+      min-width: 600px;
+    }
+  }
+
+  /* Mermaid node styling overrides */
+  .mermaid-container :global(.node rect),
+  .mermaid-container :global(.node polygon),
+  .mermaid-container :global(.node circle) {
+    stroke-width: 2px;
+  }
+
+  .mermaid-container :global(.edgeLabel) {
+    font-size: 12px;
+  }
+
+  </style>
