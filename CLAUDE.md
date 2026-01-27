@@ -142,6 +142,52 @@ Edit the corresponding JSON files in `src/data/` following the TypeScript types 
 
 The site implements dark mode using Tailwind's `class` strategy. The theme toggle is a Solid.js component in `src/components/header/ThemeToggle.tsx` that persists preference to localStorage.
 
+## Blog Section
+
+### Blog Components
+
+Located in `src/components/blog/`:
+- `BlogCard.tsx`: Solid.js component for blog post cards with hero image, title, language badge, tags, and date
+- `TagFilter.tsx`: Solid.js component for tag filter buttons using `<For>` component
+- `MermaidDiagram.astro`: Wrapper component for Mermaid diagrams in MDX posts
+
+### Blog Index Page
+
+`src/pages/blog/index.astro` features:
+- Medium Articles section with link to external Medium profile
+- Search input for filtering posts by title, description, and tags
+- Tag filter buttons (uses `client:only="solid-js"`)
+- Responsive grid layout (1/2/3 columns)
+- Vanilla JS search with data attributes pattern (same as course page)
+
+### Blog Layout
+
+`src/layouts/BlogLayout.astro` includes:
+- Prose styling with Tailwind Typography for readable content
+- Dark/light mode support with black text in light mode
+- Hero image display with rounded corners and shadow
+- Mermaid.js integration for diagrams
+- Code block styling (transparent background for code inside pre)
+- Back to blog navigation link
+
+### Mermaid Diagrams
+
+To add diagrams in MDX blog posts:
+
+```mdx
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+<MermaidDiagram chart={`
+  flowchart LR
+    A[Start] --> B[Process] --> C[End]
+`} />
+
+<!-- With size prop: small, medium, large (default) -->
+<MermaidDiagram chart={`...`} size="medium" />
+```
+
+Mermaid uses a consistent light purple/lavender theme regardless of site dark/light mode.
+
 ## Solid.js in Astro Best Practices
 
 ### Client Directives
