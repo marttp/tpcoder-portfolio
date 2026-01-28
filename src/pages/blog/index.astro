@@ -1,7 +1,6 @@
 ---
 import Layout from "../../layouts/BaseLayout.astro";
 import { getCollection } from "astro:content";
-import SectionTitle from "../../components/SectionTitle";
 import BlogCard from "../../components/blog/BlogCard";
 import TagFilter from "../../components/blog/TagFilter";
 import { SOCIAL_LIST } from "../../data/social";
@@ -21,25 +20,46 @@ const allTags = [...new Set(posts.flatMap((post) => post.data.tags))].sort();
   title="Blog"
   description="List of blog posts written by me (Thanaphoom Babparn)"
 >
+  <!-- Tab Navigation -->
+  <div class="flex justify-center mb-8">
+    <div class="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 p-1 bg-gray-100 dark:bg-gray-800">
+      <button
+        id="tab-medium"
+        class="tab-btn px-6 py-2 rounded-md text-sm font-medium transition-all"
+        data-tab="medium"
+      >
+        Medium Articles
+      </button>
+      <button
+        id="tab-local"
+        class="tab-btn px-6 py-2 rounded-md text-sm font-medium transition-all"
+        data-tab="local"
+      >
+        Local Blog
+      </button>
+    </div>
+  </div>
+
   <!-- Medium Articles Section -->
-  <section id="medium-blog" class="flex flex-col justify-center items-center mb-10">
-    <h2 class="text-xl font-semibold mb-2">Medium Articles</h2>
-    <p class="text-sm mb-4 text-center max-w-xl">
-      I also write articles on Medium. You can read them freely without any subscription.
-    </p>
-    <a
-      href={SOCIAL_LIST[1].url}
-      target="_blank"
-      rel="noopener noreferrer"
-      class="bg-primary-light text-text py-2 px-4 rounded-full text-sm hover:bg-primary-dark hover:text-white transition-colors"
-    >
-      View Medium Profile
-    </a>
+  <section id="medium-content" class="tab-content flex flex-col justify-center items-center">
+    <div class="text-center max-w-2xl">
+      <p class="text-sm mb-6 text-gray-600 dark:text-gray-400">
+        I write articles on Medium covering software development, technology insights, and more. You can read them freely without any subscription.
+      </p>
+      <a
+        href={SOCIAL_LIST[1].url}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-block bg-primary-light text-text py-3 px-6 rounded-full text-sm font-medium hover:bg-primary-dark hover:text-white transition-colors"
+      >
+        View Medium Profile
+      </a>
+    </div>
   </section>
 
-  <SectionTitle title="Local Blog Posts" />
-
-  <!-- Search Input -->
+  <!-- Local Blog Section -->
+  <section id="local-content" class="tab-content hidden">
+    <!-- Search Input -->
   <div class="w-full max-w-md mx-auto mb-6">
     <div class="relative">
       <input
@@ -86,13 +106,66 @@ const allTags = [...new Set(posts.flatMap((post) => post.data.tags))].sort();
     }
   </div>
 
-  <div id="noResults" class="hidden text-center py-8 text-gray-500 dark:text-gray-400">
-    No blog posts found matching your search. Try different keywords or tags.
-  </div>
+    <div id="noResults" class="hidden text-center py-8 text-gray-500 dark:text-gray-400">
+      No blog posts found matching your search. Try different keywords or tags.
+    </div>
+  </section>
 </Layout>
+
+<style>
+  .tab-btn {
+    color: #6b7280;
+  }
+  .tab-btn.active {
+    background-color: white;
+    color: #111827;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  }
+  :global(.dark) .tab-btn {
+    color: #9ca3af;
+  }
+  :global(.dark) .tab-btn.active {
+    background-color: #374151;
+    color: #f9fafb;
+  }
+</style>
 
 <script>
   document.addEventListener("DOMContentLoaded", () => {
+    // Tab switching logic
+    const tabButtons = document.querySelectorAll(".tab-btn");
+    const mediumContent = document.getElementById("medium-content");
+    const localContent = document.getElementById("local-content");
+
+    const switchTab = (tab: string) => {
+      tabButtons.forEach((btn) => {
+        if (btn.getAttribute("data-tab") === tab) {
+          btn.classList.add("active");
+        } else {
+          btn.classList.remove("active");
+        }
+      });
+
+      if (tab === "medium") {
+        mediumContent?.classList.remove("hidden");
+        localContent?.classList.add("hidden");
+      } else {
+        mediumContent?.classList.add("hidden");
+        localContent?.classList.remove("hidden");
+      }
+    };
+
+    // Set default active tab
+    switchTab("medium");
+
+    tabButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tab = btn.getAttribute("data-tab");
+        if (tab) switchTab(tab);
+      });
+    });
+
+    // Blog search and filter logic
     const searchInput = document.getElementById("searchInput") as HTMLInputElement;
     const blogItems = document.querySelectorAll(".blog-item");
     const noResults = document.getElementById("noResults");
