@@ -11,7 +11,7 @@
         "Ensured payment reliability by maintaining the automated test suite for Tokenized Charge, covering both 3DS and non-3DS card payment scenarios.",
         "Integrated Charge Intent API to handle tax-exclusive cases and signed new data into existing JWT",
         "Enhanced onboarding documentation by authoring the 'Dynamic Environment 101' handbook, clarifying the usage of personal developer workspaces to streamline new hire ramp-up.",
-        "Established Java code formatting standards and implemented a uniform formatter to ensure code consistency and reduce code review friction."
+        "Proactively audited departmental PRs to identify consistency gaps and established a unified Java formatting standard, currently piloting the rollout in a core service to set the blueprint for future expansion."
       ]
     },
     {
