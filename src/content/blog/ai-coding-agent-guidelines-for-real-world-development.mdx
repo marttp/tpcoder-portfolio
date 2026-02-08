@@ -1,0 +1,207 @@
+---
+title: 'AI Coding Agent Guidelines: How I Set Rules for AI to Work in Real Codebases'
+description: 'Sharing my approach to defining guidelines for AI coding agents — from planning, execution, verification, to error recovery — so they behave like a disciplined engineer on your team.'
+pubDate: '2026-02-08'
+tags: ['AI', 'Software Engineering', 'Developer Experience', 'Coding Agent', 'Best Practices']
+language: 'en'
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+If you've been following the AI-assisted development space, you'll know that AI coding agents are no longer just autocomplete on steroids. They can now plan multi-step tasks, edit files across your codebase, run tests, and even commit code. But here's the thing — **without clear guidelines, they can also make a mess faster than any junior developer you've ever seen.**
+
+Over the past months, I've been experimenting with AI coding agents in real-world projects and I've learned that the key to getting reliable output isn't just "better prompts." It's about establishing a set of **operating principles and workflows** — essentially a `claude.md` or system instruction — that makes the agent behave like a disciplined software engineer.
+
+In this post, I'll share the guidelines I use and why each one matters. Let's dive in.
+
+## The Core Philosophy: Correctness Over Cleverness
+
+Before anything else, these are the non-negotiable principles I set:
+
+1. **Correctness over cleverness** — Prefer boring, readable solutions that are easy to maintain.
+2. **Smallest change that works** — Minimize blast radius; don't refactor adjacent code unless necessary.
+3. **Leverage existing patterns** — Follow the project's conventions before introducing new abstractions.
+4. **Prove it works** — "Seems right" is not done. Validate with tests, build, or lint.
+5. **Be explicit about uncertainty** — If the agent can't verify something, it should say so.
+
+These might sound obvious, but you'd be surprised how often AI agents want to "improve" your codebase by adding abstractions, extra error handling, or clever patterns that nobody asked for. Setting these principles upfront keeps the agent focused.
+
+## Workflow Orchestration: How the Agent Should Think
+
+This is where it gets interesting. I define a clear workflow for how the agent should approach any non-trivial task.
+
+<MermaidDiagram chart={`
+flowchart TD
+    A[Receive Task] --> B{Non-trivial?\n3+ steps / multi-file}
+    B -->|Yes| C[Enter Plan Mode]
+    B -->|No| D[Execute Directly]
+    C --> E[Write Plan with\nVerification Steps]
+    E --> F[Spawn Subagents\nfor Research]
+    F --> G[Synthesize Findings]
+    G --> H[Implement Smallest\nSafe Slice]
+    H --> I[Run Tests / Lint / Build]
+    I --> J{Pass?}
+    J -->|Yes| K[Mark Complete\n+ Verification Story]
+    J -->|No| L[Stop & Diagnose]
+    L --> M[Update Plan]
+    M --> H
+    D --> I
+`} />
+
+The key ideas here:
+
+### Plan Mode by Default
+
+For anything non-trivial (3+ steps, multi-file changes, architectural decisions), the agent enters **plan mode** first. It writes a plan with verification steps included — not as an afterthought.
+
+If new information comes in that invalidates the plan, the agent must **stop, update the plan, then continue**. No plowing ahead with an outdated strategy.
+
+### Subagent Strategy
+
+I encourage the agent to use subagents (parallel workers) for tasks like:
+- Repo exploration and pattern discovery
+- Test failure triage
+- Dependency research
+
+Each subagent gets **one focused objective** with a concrete deliverable. "Find where X is implemented and list files + key functions" is much better than "look around."
+
+### Incremental Delivery
+
+This is critical. The agent should prefer **thin vertical slices** over big-bang changes:
+
+<MermaidDiagram chart={`
+flowchart LR
+    A[Implement\nSlice 1] --> B[Test &\nVerify]
+    B --> C[Implement\nSlice 2]
+    C --> D[Test &\nVerify]
+    D --> E[Implement\nSlice 3]
+    E --> F[Test &\nVerify]
+    F --> G[Done]
+`} size="medium" />
+
+Small, verifiable increments. Each slice is implement, test, verify — then expand. This dramatically reduces the risk of the agent going off the rails for 20 files before you realize something is wrong.
+
+## Error Handling: The Stop-the-Line Rule
+
+One of the most important guidelines I set is the **"Stop-the-Line" rule.** If anything unexpected happens — test failures, build errors, behavior regressions — the agent must:
+
+1. **Stop** adding features immediately
+2. **Preserve** evidence (error output, repro steps)
+3. **Return** to diagnosis and re-plan
+
+No "let me just push through this error." No ignoring warnings. Full stop.
+
+### The Triage Checklist
+
+When a bug or failure occurs, the agent follows this exact sequence:
+
+<MermaidDiagram chart={`
+flowchart TD
+    A[Bug / Failure Detected] --> B[1. Reproduce Reliably]
+    B --> C[2. Localize the Failure]
+    C --> D[3. Reduce to Minimal Case]
+    D --> E[4. Fix Root Cause]
+    E --> F[5. Add Regression Test]
+    F --> G[6. Verify End-to-End]
+    G --> H{All Green?}
+    H -->|Yes| I[Resume Original Task]
+    H -->|No| B
+`} />
+
+The order matters. **Reproduce first**, then localize (which layer — UI, API, DB, build tooling?), then reduce to a minimal failing case, fix the root cause (not symptoms), add regression coverage, and finally verify end-to-end.
+
+This prevents the agent from guessing at fixes or applying band-aids that break something else downstream.
+
+## Task Management: File-Based and Auditable
+
+I use a simple file-based system (`tasks/todo.md`) for the agent to track its work. Here's the template:
+
+```markdown
+- [ ] Restate goal + acceptance criteria
+- [ ] Locate existing implementation / patterns
+- [ ] Design: minimal approach + key decisions
+- [ ] Implement smallest safe slice
+- [ ] Add/adjust tests
+- [ ] Run verification (lint/tests/build/manual repro)
+- [ ] Summarize changes + verification story
+- [ ] Record lessons (if any)
+```
+
+The important parts:
+- **Acceptance criteria** are defined upfront — what must be true when done
+- **Verification is explicit** — not hidden at the end
+- **Lessons are captured** — after any correction, the agent writes to `tasks/lessons.md` so it doesn't repeat the same mistake
+
+## Communication: High-Signal, Low-Noise
+
+AI agents can be incredibly verbose. I set clear rules:
+
+- **Lead with outcome and impact**, not process narration
+- **Reference concrete artifacts** — file paths, command names, error messages
+- **Ask questions only when truly blocked** — and when asking, provide a recommended default
+- **Show the verification story** — what you ran, what the outcome was
+
+<MermaidDiagram chart={`
+flowchart LR
+    A[Agent Wants\nto Communicate] --> B{Blocked?}
+    B -->|No| C[Continue Working\nSilently]
+    B -->|Yes| D[Ask ONE\nTargeted Question]
+    D --> E[Include\nRecommended Default]
+    E --> F[State What Changes\nBased on Answer]
+`} size="medium" />
+
+The goal is to minimize back-and-forth while maximizing clarity when communication does happen.
+
+## Self-Improvement Loop
+
+This is something I'm particularly excited about. After any user correction or discovered mistake, the agent:
+
+1. Adds an entry to `tasks/lessons.md` capturing:
+   - The failure mode
+   - The detection signal
+   - A prevention rule
+2. Reviews this file at session start and before major refactors
+
+Over time, this creates an **institutional memory** for the agent — a growing list of "don't do this" rules specific to your project.
+
+<MermaidDiagram chart={`
+flowchart TD
+    A[Mistake Occurs] --> B[Capture in\nlessons.md]
+    B --> C[Failure Mode +\nDetection Signal +\nPrevention Rule]
+    C --> D[Next Session Start]
+    D --> E[Review lessons.md]
+    E --> F[Apply Prevention\nRules Proactively]
+    F --> G[Fewer Mistakes\nOver Time]
+`} size="medium" />
+
+## Definition of Done
+
+Finally, a task is **done** when:
+
+- Behavior matches acceptance criteria
+- Tests, lint, typecheck, and build pass (or there's a documented reason they weren't run)
+- Risky changes have a rollback/flag strategy
+- Code follows existing conventions and is readable
+- A short **verification story** exists: "what changed + how we know it works"
+
+"Seems right" or "should work" is never enough. The agent must prove it.
+
+## My Takeaway
+
+Working with AI coding agents has taught me something interesting about software engineering itself. The guidelines I've written for AI agents are essentially the same principles I'd want any engineer on my team to follow:
+
+- **Plan before coding**
+- **Work in small increments**
+- **Verify everything**
+- **Communicate clearly**
+- **Learn from mistakes**
+
+The difference is that with AI agents, you can't rely on implicit team culture or years of experience. You have to **write everything down explicitly.** And honestly? That exercise has made me a better engineer too.
+
+If you're starting to work with AI coding agents, I'd encourage you to write your own set of guidelines. Start with the principles that matter most to your team and project, and evolve them as you learn what works.
+
+Give more, learn more. Be better each day.
+
+---
+
+*These guidelines are based on my experience working with AI coding agents across multiple projects. They're a living document that evolves as the tools and my understanding improve.*
