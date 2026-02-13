@@ -7,11 +7,14 @@
       "startDate": "2025-12",
       "endDate": "Present",
       "highlights": [
-        "Setup the foundational configuration for the Card Service, decoupling Tokenized Charge functionality into PCI-compliant and non-PCI modules to enhance security and maintainability.",
+        "Developed a suite of internal utility tools — including JWT Debugger, Protobuf Decoder, JSON Linter, Mermaid Diagram exporter, Gantt Chart planner, and a sensitive-info image blur editor — reducing the team's reliance on external sites for daily development workflows and mitigating potential data exposure risks.",
+        "Setup the foundational configuration for the Vault Service, decoupling Tokenized Charge functionality into PCI-compliant and non-PCI modules to enhance security and maintainability.",
         "Ensured payment reliability by maintaining the automated test suite for Tokenized Charge, covering both 3DS and non-3DS card payment scenarios.",
         "Integrated Charge Intent API to handle tax-exclusive cases and signed new data into existing JWT",
+        "Created a new joiner hands-on checklist designed as a gamified walkthrough, enabling newcomers to simulate the real work environment and experience the end-to-end process firsthand, accelerating onboarding ramp-up time.",
         "Enhanced onboarding documentation by authoring the 'Dynamic Environment 101' handbook, clarifying the usage of personal developer workspaces to streamline new hire ramp-up.",
-        "Proactively audited departmental PRs to identify consistency gaps and established a unified Java formatting standard, currently piloting the rollout in a core service to set the blueprint for future expansion."
+        "Initiated a standardized code formatting guide for the Codapay team using Spotless with Palantir style across Gradle/Maven projects, raising the code quality bar where no prior standard existed.",
+        "Proactively audited departmental PRs to identify consistency gaps, currently piloting the rollout of a unified formatting standard in a core service to set the blueprint for future expansion."
       ]
     },
     {
