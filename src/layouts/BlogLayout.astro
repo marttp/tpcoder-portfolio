@@ -7,7 +7,10 @@ import FormattedDate from '../components/FormattedDate.astro';
 
 type Props = CollectionEntry<'blog'>['data'];
 
-const { title, description, pubDate, updatedDate, heroImage } = Astro.props;
+const { title, description, pubDate, updatedDate, heroImage, language, translationSlug } = Astro.props;
+
+const translationLabel = language === 'en' ? 'อ่านเป็นภาษาไทย' : 'Read in English';
+const translationFlag = language === 'en' ? '🇹🇭' : '🇺🇸';
 ---
 
 <html lang="en">
@@ -83,6 +86,17 @@ const { title, description, pubDate, updatedDate, heroImage } = Astro.props;
               </div>
             )}
           </div>
+          {translationSlug && (
+            <div class="mt-4">
+              <a
+                href={`/blog/${translationSlug}/`}
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <span>{translationFlag}</span>
+                <span>{translationLabel}</span>
+              </a>
+            </div>
+          )}
         </header>
 
         <hr class="border-gray-200 dark:border-gray-700 mb-8" />
