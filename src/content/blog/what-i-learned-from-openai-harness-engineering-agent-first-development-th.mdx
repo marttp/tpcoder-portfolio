@@ -1,0 +1,303 @@
+---
+title: "What I Learned from OpenAI's Harness Engineering: Building Software with 0 Lines of Human-Written Code (Is This the Future?)"
+description: "วิเคราะห์สิ่งที่ OpenAI แชร์เรื่องการสร้าง product ทั้งหมดด้วย Codex agents — อะไรพัง อะไร compound และมันหมายความว่าอย่างไรสำหรับ backend engineer ที่กำลังคิดเรื่อง agent-first future"
+pubDate: "2026-02-17"
+tags:
+  [
+    "AI",
+    "Software Engineering",
+    "Coding Agent",
+    "Backend",
+    "Architecture",
+    "Developer Experience",
+  ]
+language: "th"
+translationSlug: "what-i-learned-from-openai-harness-engineering-agent-first-development"
+---
+
+import MermaidDiagram from "../../components/blog/MermaidDiagram.astro";
+
+OpenAI เพิ่งเผยแพร่บทความชื่อ ["Harness engineering: leveraging Codex in an agent-first world"](https://openai.com/index/harness-engineering/) และหลังจากอ่านจบ implications สำหรับ backend engineer นั้นยากที่จะมองข้าม
+
+สรุปสั้นๆ: ทีมเล็กๆ ที่ OpenAI สร้างและ ship internal product โดย **ไม่เขียน code เองแม้แต่บรรทัดเดียว** ทุกบรรทัด — application logic, tests, CI configuration, documentation, observability, internal tooling — ถูกเขียนโดย Codex agents ทีมประเมินว่าใช้เวลาประมาณ **1/10 เท่า** เมื่อเทียบกับการเขียน code ด้วยมือ
+
+นี่ไม่ใช่ toy demo ผลิตภัณฑ์มี daily internal users และ external alpha testers มันถูก ship, deploy, พัง, และแก้ไข ทั้งหมดโดย agents
+
+หลังจากอ่านทั้งหมด มี patterns ที่ resonate กับวิธีการออกแบบ backend systems อย่างมาก — และบางอย่างก็ท้าทาย engineering norms แบบเดิมอย่างสิ้นเชิง นี่คือ breakdown ของสิ่งที่โดดเด่นและทำไมมันถึงสำคัญ
+
+## The Setup: From Empty Repo to a Million Lines in 5 Months
+
+ทีมเริ่มจาก git repository ที่ว่างเปล่าในช่วงปลายเดือนสิงหาคม 2025 scaffold เริ่มต้น — repo structure, CI config, formatting rules, package manager setup, และ application framework — ถูก generate โดย Codex CLI ที่ใช้ GPT-5 แม้แต่ไฟล์ `AGENTS.md` เริ่มต้นที่บอก agents ว่าจะทำงานใน repository อย่างไร ก็ถูกเขียนโดย Codex เอง
+
+ห้าเดือนต่อมา:
+
+- **~1,000,000 บรรทัดของ code** ครอบคลุม application logic, infrastructure, tooling, documentation, และ internal developer utilities
+- **~1,500 pull requests** ถูกเปิดและ merge
+- เริ่มจาก **3 engineers** เพิ่มเป็น **7**
+- Average throughput: **3.5 PRs ต่อ engineer ต่อวัน**
+- Throughput **เพิ่มขึ้น** เมื่อทีมโตขึ้น (ซึ่ง counterintuitive มาก — ปกติคนมากขึ้นหมายถึง coordination overhead มากขึ้น)
+
+Constraint ที่พวกเขาตั้งไว้สำหรับตัวเองน่าสนใจเป็นพิเศษ: **มนุษย์ไม่เคย contribute code โดยตรง** นี่ไม่ใช่เรื่องบังเอิญ เป็น deliberate philosophy เพื่อบังคับให้ทีมสร้าง infrastructure ที่ทำให้ agents productive สูงสุด
+
+## Redefining What "Engineering" Means
+
+ส่วนนี้คือสิ่งที่ resonate มากที่สุดจากมุมมอง backend
+
+ความก้าวหน้าช่วงแรกช้ากว่าที่คาด — ไม่ใช่เพราะ Codex ไม่มีความสามารถ แต่เพราะ **environment ถูก specify ไม่เพียงพอ** Agent ขาด tools, abstractions, และ internal structure ที่จำเป็นสำหรับการทำงานไปสู่ high-level goals
+
+นี่คือปัญหาเดียวกับที่ backend engineers เจอเมื่อ onboard team members ใหม่หรือ set up microservices ใหม่ ถ้า environment ไม่มี clear boundaries, documented conventions, และ abstractions ที่เหมาะสม แม้แต่มนุษย์ที่เก่งก็ลำบาก Agents แค่ทำให้ gap นั้นเห็นชัดและเร็วขึ้น
+
+การตอบสนองของทีมคือ depth-first: แตก goals ใหญ่เป็น building blocks เล็กๆ prompt agent ให้สร้าง blocks เหล่านั้น และใช้มันเพื่อ unlock tasks ที่ซับซ้อนขึ้น เมื่ออะไรล้มเหลว คำถามไม่เคยเป็น "try harder" — แต่เป็น:
+
+> "Capability อะไรที่ขาดหายไป และจะทำให้มัน legible และ enforceable สำหรับ agent ได้อย่างไร?"
+
+จากมุมมองของ backend engineer นี่คือ **platform engineering สำหรับ AI agents** โดยแท้จริง Discipline เดียวกับที่ใช้สร้าง internal developer platforms — clear APIs, self-service tooling, documented guardrails — ตอนนี้ apply กับการ enable agent productivity
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A[Human Engineer] -->|Writes prompt| B[Codex Agent]
+    B -->|Opens PR| C[Agent Reviewers]
+    C -->|Feedback loop| B
+    B -->|Escalates when stuck| A
+    C -->|All satisfied| D[Merge]
+`}
+  size="medium"
+/>
+
+บทบาทของมนุษย์ shift จากการเขียน code ไปเป็น **การออกแบบ environments, specify intent, และสร้าง feedback loops** มนุษย์ interact กับระบบเกือบทั้งหมดผ่าน prompts — อธิบาย task, run agent, แล้วปล่อยให้มัน open pull request Agent reviewers หลายตัวให้ feedback ใน loop จนทุกตัวพอใจ มนุษย์อาจ review PRs แต่ไม่จำเป็นต้องทำ
+
+## Making the Application Legible to Agents
+
+ส่วนนี้คือจุดที่ backend engineering implications ชัดเจนที่สุด
+
+เมื่อ code throughput เพิ่มขึ้น bottleneck กลายเป็น **human QA capacity** ทางออกของทีม: ทำให้ application เอง legible ต่อ Codex โดยตรง
+
+### Browser Automation for UI Validation
+
+พวกเขาทำให้ app boot ได้ per git worktree เพื่อให้ Codex launch และ drive instance หนึ่งต่อหนึ่ง change พวกเขา wire **Chrome DevTools Protocol** เข้ากับ agent runtime และสร้าง skills สำหรับทำงานกับ DOM snapshots, screenshots, และ navigation ทำให้ Codex สามารถ reproduce bugs, validate fixes, และ reason เกี่ยวกับ UI behavior ได้โดยตรง
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    A[Codex selects target] --> B[Snapshot state BEFORE]
+    B --> C[Trigger UI path]
+    C --> D[Observe runtime events\\nvia Chrome DevTools]
+    D --> E[Snapshot state AFTER]
+    E --> F{Clean?}
+    F -->|No| G[Apply fixes & restart]
+    G --> A
+    F -->|Yes| H[Task complete]
+`}
+  size="medium"
+/>
+
+### Full Observability Stack in Local Dev
+
+ส่วนนี้คือสิ่งที่ตื่นเต้นที่สุดในฐานะคนที่ทำงานกับ observability ทุกวัน พวกเขาให้ Codex มี **full local observability stack** — logs, metrics, และ traces — ที่เป็น ephemeral per worktree แต่ละ agent ทำงานบน version ที่ isolated เต็มที่ของ app รวมถึง observability data ของตัวเอง ซึ่งจะถูก torn down เมื่อ task เสร็จ
+
+Agents สามารถ query logs ด้วย **LogQL** และ metrics ด้วย **PromQL** ด้วย context นี้ prompts แบบนี้จึง tractable:
+
+- _"Ensure service startup completes in under 800ms"_
+- _"No span in these four critical user journeys exceeds two seconds"_
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A[App] -->|Logs, Metrics, Traces| B[Vector]
+    B --> C[Victoria Logs\\nLogQL]
+    B --> D[Victoria Metrics\\nPromQL]
+    B --> E[Victoria Traces\\nTraceQL]
+    C & D & E --> F[Codex queries\\n& correlates signals]
+    F --> G[Implements fixes]
+    G --> A
+`}
+  size="medium"
+/>
+
+พวกเขาเห็น single Codex runs ทำงานบน task เดียว **นานกว่าหกชั่วโมง** เป็นประจำ — บ่อยครั้งในขณะที่มนุษย์กำลังนอนหลับ Night shift ที่ไม่ต้องมีคน staff
+
+จากมุมมอง backend systems นี่คือ **SRE-as-code**: performance budgets, latency SLOs, และ startup time requirements ถูก encode เป็น agent-executable prompts แทนที่จะเป็น dashboards ที่มนุษย์นั่งจ้อง
+
+## Repository Knowledge as the System of Record
+
+ส่วนนี้ validate สิ่งที่ backend engineers หลายคนรู้อยู่แล้ว: **documentation architecture สำคัญเท่ากับ code architecture**
+
+### The "One Big AGENTS.md" Anti-Pattern
+
+ทีมเริ่มจากการพยายามใส่ทุกอย่างลงใน `AGENTS.md` ไฟล์เดียวขนาดใหญ่ ล้มเหลวตามที่คาด:
+
+1. **Context มีจำกัด** — instruction file ขนาดยักษ์ crowd out task จริง, code, และ docs ที่เกี่ยวข้อง
+2. **Guidance มากเกินไปกลายเป็นไม่มี guidance** — เมื่อทุกอย่าง "สำคัญ" ไม่มีอะไรสำคัญ
+3. **มัน rot ทันที** — manual monolithic กลายเป็นสุสานของ stale rules
+4. **ยากที่จะ verify** — blob เดียวไม่เอื้อต่อ mechanical checks
+
+### Progressive Disclosure Instead
+
+แทนที่จะทำแบบนั้น พวกเขาใช้ `AGENTS.md` เป็น **table of contents** (~100 บรรทัด) ที่ชี้ไปยัง deeper sources of truth:
+
+```
+AGENTS.md
+ARCHITECTURE.md
+docs/
+├── design-docs/
+│   ├── index.md
+│   ├── core-beliefs.md
+│   └── ...
+├── exec-plans/
+│   ├── active/
+│   ├── completed/
+│   └── tech-debt-tracker.md
+├── generated/
+│   └── db-schema.md
+├── product-specs/
+│   ├── index.md
+│   ├── new-user-onboarding.md
+│   └── ...
+├── references/
+│   ├── design-system-reference-llms.txt
+│   ├── nixpacks-llms.txt
+│   └── uv-llms.txt
+├── DESIGN.md
+├── FRONTEND.md
+├── PLANS.md
+├── PRODUCT_SENSE.md
+├── QUALITY_SCORE.md
+├── RELIABILITY.md
+└── SECURITY.md
+```
+
+วิธีนี้ enable **progressive disclosure**: agents เริ่มจาก entry point ที่เล็กและ stable แล้วถูกสอนว่าจะ look next ที่ไหน แทนที่จะถูก overwhelm ตั้งแต่แรก
+
+พวกเขา enforce สิ่งนี้แบบ mechanical — dedicated linters และ CI jobs validate ว่า knowledge base เป็น up to date, cross-linked, และ structured ถูกต้อง **"Doc-gardening" agent** ตัวหนึ่ง scan หา stale documentation เป็นประจำแล้ว open fix-up PRs
+
+Key insight ตรงนี้ทรงพลัง:
+
+> จากมุมมองของ agent อะไรก็ตามที่มัน access ไม่ได้ใน context ขณะ run ถือว่าไม่มีอยู่จริง Knowledge ที่อยู่ใน Google Docs, chat threads, หรือหัวคน ไม่สามารถ access ได้ สิ่งที่มันเห็นได้มีแค่ repository-local, versioned artifacts เท่านั้น
+
+การคุยใน Slack ที่ align ทีมเรื่อง architectural pattern? ถ้าไม่ได้ commit ลง repo มันก็ illegible สำหรับ agent — เหมือนกับที่ new hire ที่เข้ามาอีกสามเดือนจะไม่รู้เรื่อง
+
+นี่คือ pattern ที่ backend teams ควร adopt โดยไม่ต้องสนว่าจะใช้ AI agents หรือเปล่า Discipline ของการทำให้ decisions discoverable ใน repo คือ good engineering practice
+
+## Enforcing Architecture and Taste Mechanically
+
+ส่วนนี้ resonate กับ experience ในการสร้าง enterprise-scale systems ทีมสร้าง **rigid architectural model** — แต่ละ business domain แบ่งเป็น fixed layers ที่มี dependency directions ที่ validated อย่างเข้มงวด
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    T[Types] --> Co[Config] --> R[Repo]
+    P[Providers] --> S[Service] --> Rt[Runtime] --> U[UI]
+    Ut[Utils] --> P
+`}
+  size="medium"
+/>
+
+กฎ: ภายในแต่ละ business domain, code ขึ้นต่อ "forward" ผ่าน fixed layers ได้เท่านั้น (Types → Config → Repo → Service → Runtime → UI) Cross-cutting concerns (auth, connectors, telemetry, feature flags) เข้าผ่าน single explicit interface: **Providers**
+
+สิ่งนี้ถูก enforce แบบ mechanical ผ่าน custom linters และ structural tests — ทั้งหมด generate โดย Codex Error messages ใน lints เหล่านั้นถูกเขียนให้ inject **remediation instructions** เข้าไปใน agent context ดังนั้นเมื่อ lint fail agent จะรู้ทันทีว่าต้องแก้อย่างไร
+
+Quote สำคัญจากบทความ:
+
+> นี่คือ architecture แบบที่ปกติจะเลื่อนออกไปจนกว่าจะมี engineer หลายร้อยคน แต่กับ coding agents มันเป็น early prerequisite: constraints คือสิ่งที่ allow speed โดยไม่มี decay หรือ architectural drift
+
+ทีมยังมี observation ที่ pragmatic เกี่ยวกับ technology choices: **"boring" technologies** มีแนวโน้มที่จะง่ายกว่าสำหรับ agents ในการ model เนื่องจาก composability, API stability, และ representation ใน training set ในบางกรณี พวกเขาให้ agent **reimplement subsets of functionality** แทนที่จะ pull third-party libraries เข้ามา — เพราะ internal implementation ที่ tightly integrated และ 100%-tested นั้น legible กว่าสำหรับ future agent runs เมื่อเทียบกับ generic npm package ที่มี behavior ไม่แน่นอน
+
+สิ่งนี้สอดคล้องกับสิ่งที่สังเกตได้ใน backend engineering: projects ที่ scale ได้ดีที่สุดไม่ค่อยเป็นโปรเจกต์ที่ใช้ frameworks ใหม่ล่าสุด แต่เป็นโปรเจกต์ที่มี boundaries ชัดที่สุดและ behavior ที่ predictable ที่สุด
+
+## Throughput Changes the Merge Philosophy
+
+ส่วนนี้ counterintuitive ที่สุด เมื่อ agent throughput เพิ่มขึ้น **engineering norms แบบเดิมกลับ counterproductive**
+
+- PRs มีอายุสั้น
+- Minimal blocking merge gates
+- Test flakes ถูกจัดการด้วย follow-up runs แทนที่จะ block progress อย่างไม่มีกำหนด
+- Corrections ราคาถูก; การรอราคาแพง
+
+ทีม acknowledge ว่าสิ่งนี้จะ irresponsible ใน low-throughput environment แต่เมื่อระบบสามารถ produce และ fix code ได้เร็วกว่าที่มนุษย์จะ review ได้ cost calculus ก็เปลี่ยน Bottleneck คือ human attention ไม่ใช่ code production
+
+## The Full Autonomy Loop
+
+ผลลัพธ์ที่น่าประทับใจที่สุด: ด้วย single prompt Codex สามารถ drive new feature แบบ end-to-end ได้:
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    A[Receive prompt] --> B[Validate codebase state]
+    B --> C[Reproduce reported bug]
+    C --> D[Record video of failure]
+    D --> E[Implement fix]
+    E --> F[Validate fix by driving app]
+    F --> G[Record video of resolution]
+    G --> H[Open pull request]
+    H --> I[Respond to agent/human feedback]
+    I --> J[Detect & fix build failures]
+    J --> K{Human judgment needed?}
+    K -->|Yes| L[Escalate to human]
+    K -->|No| M[Merge]
+`}
+/>
+
+ทีมระวังที่จะ note ว่าสิ่งนี้ขึ้นอยู่กับ structure และ tooling เฉพาะของ repository พวกเขาอย่างมาก และไม่ควร assume ว่า generalize ได้โดยไม่มี investment ที่คล้ายกัน
+
+## Entropy and Garbage Collection: The Honest Part
+
+ส่วนนี้รู้สึก real ที่สุด Full agent autonomy สร้าง **entropy** Codex replicate patterns ที่มีอยู่แล้ว — แม้แต่ suboptimal ones เมื่อเวลาผ่านไปสิ่งนี้นำไปสู่ drift
+
+ทีมเริ่มต้นจากการใช้ **ทุกวันศุกร์ (20% ของสัปดาห์)** ทำความสะอาด "AI slop" ซึ่งไม่ scale
+
+ทางออก: encode **"golden principles"** ลงใน repository และ run recurring cleanup process ตาม regular cadence, background Codex tasks scan หา deviations, update quality grades, และ open targeted refactoring PRs ส่วนใหญ่ review ได้ในเวลาไม่ถึงนาทีและ automerge ได้
+
+พวกเขาอธิบายสิ่งนี้ว่าเป็น **garbage collection** สำหรับ codebase:
+
+> Technical debt เหมือนกู้ดอกเบี้ยสูง: เกือบทุกครั้งมันดีกว่าที่จะจ่ายลง continuously เป็น increments เล็กๆ แทนที่จะปล่อยให้มัน compound แล้วมาจัดการเป็น painful bursts
+
+นี่คือ insight ที่ transferable ที่สุดในทั้งบทความ ไม่ว่า code จะ agent-generated หรือ human-written, continuous small cleanups ชนะ quarterly "tech debt sprints" ทุกครั้ง
+
+## My Two Cents: What This Means for Backend Engineers
+
+หลังจากอ่านทั้งหมด มีหลายสิ่งที่โดดเด่น:
+
+### 1. Backend Engineers Become Platform Engineers for Agents
+
+Skills ที่สำคัญใน agent-first world — การออกแบบ clear APIs, สร้าง observability pipelines, enforce architectural boundaries, สร้าง self-service tooling — คือ skills เดียวกันกับที่ backend และ platform engineers มีอยู่แล้ว นี่ไม่ใช่ pivot แต่เป็น elevation
+
+### 2. "Boring" Technology Wins (Again)
+
+Observation ที่ว่า agents ทำงานได้ดีกว่ากับ technologies ที่ composable, stable, well-documented นั้น validate สิ่งที่ backend engineers ที่มี experience รู้: technology choice ที่ดีที่สุดมักเป็นอันที่ predictable ที่สุด Spring Boot, PostgreSQL, well-structured REST APIs — สิ่งเหล่านี้ valuable มากขึ้น ไม่ใช่น้อยลง เมื่อ agents เป็นคนเขียน code
+
+### 3. Documentation Becomes Infrastructure
+
+การ shift จาก "docs เป็น nice to have" เป็น "docs คือ system of record ที่ agents depend on" นั้นสำคัญมาก ถ้า experience ของทีมนี้เป็นตัวชี้วัด engineers ที่ invest ใน documentation architecture จะมี outsized leverage ใน agent-first environments
+
+### 4. The 20% "AI Slop" Problem is Real
+
+การยอมรับอย่างตรงไปตรงมาว่าทีมใช้เวลาหนึ่งวันเต็มต่อสัปดาห์ทำความสะอาด agent-generated mess — ก่อนที่จะ automate มันได้ — คือ detail แบบที่มักถูกตัดออกจาก corporate blog posts มัน suggest ว่าทีมไหนก็ตามที่ adopt heavy agent usage ควร budget สำหรับ entropy management ตั้งแต่วันแรก
+
+### 5. The Feedback Loop is the Product
+
+Meta-observation ที่น่าสนใจที่สุด: product ที่ทีมสร้างจริงๆ ไม่ใช่แค่ internal beta app แต่คือ **development environment เอง** — linters, observability stack, documentation structure, review loops App เป็นเกือบจะ side effect ของการสร้างระบบที่ agents สามารถทำงานได้อย่าง reliable
+
+## What's Still Unknown (And That's Okay)
+
+ทีม honest เกี่ยวกับสิ่งที่ยังไม่รู้:
+
+- Architectural coherence evolve อย่างไรเมื่อผ่านไป **หลายปี** ในระบบที่ fully agent-generated?
+- Human judgment เพิ่ม **leverage มากที่สุด** ตรงไหน?
+- ระบบนี้ evolve อย่างไรเมื่อ models **capable มากขึ้น** เรื่อยๆ?
+
+เหล่านี้คือคำถามที่ถูกต้อง และการที่ทีมที่ OpenAI — ที่มี access ถึง models ที่ capable ที่สุด — ยังคงถามคำถามเหล่านี้ suggest ว่าพวกเราที่เหลือมีเวลาเรียนรู้และ adapt แทนที่จะ panic
+
+---
+
+## Summary
+
+บทความ harness engineering ของ OpenAI คือหนึ่งใน concrete examples ที่ชัดเจนที่สุดของ agent-first software development ในทางปฏิบัติ มันไม่ได้เกี่ยวกับการ remove engineers — แต่เกี่ยวกับการเปลี่ยนสิ่งที่ engineers ทำ การ shift จาก "เขียน code" เป็น "ออกแบบ environments ที่ agents เขียน code" เป็นเรื่องจริง และ skills ที่สำคัญที่สุดคือ architecture, observability, documentation, และ feedback loop design
+
+สำหรับ backend engineers โดยเฉพาะ takeaway นั้น encouraging: discipline ในการสร้าง reliable, observable, well-bounded systems คือสิ่งที่ทำให้ agent-first development เป็นไปได้ Foundation ถูกสร้างไว้แล้ว — แค่ต้องชี้ไปในทิศทางใหม่
+
+Give more, learn more. Be better each day.
+
+---
+
+**Reference:** [Harness engineering: leveraging Codex in an agent-first world — OpenAI (Feb 13, 2026)](https://openai.com/index/harness-engineering/)
