@@ -22,16 +22,16 @@ const TagFilter = (props: TagFilterProps): JSX.Element => {
     }) as EventListener);
   });
 
+  const baseClass = "px-4 py-2 rounded-lg font-medium transition-all cursor-pointer border";
+  const activeClass = "bg-primary-light text-black border-primary-dark dark:bg-primary-dark dark:text-white dark:border-primary-light";
+  const inactiveClass = "bg-transparent border-gray-300 text-gray-700 hover:border-gray-500 dark:border-gray-700 dark:text-gray-400 dark:hover:border-gray-500";
+
   return (
     <div class="flex flex-wrap gap-2 mb-6">
       <button
         type="button"
         onClick={() => handleTagClick("all")}
-        class={`px-4 py-2 rounded-lg font-medium transition-all cursor-pointer ${
-          activeTag() === "all"
-            ? "bg-primary-light text-black dark:text-white dark:bg-primary-dark border-b-2 border-primary-dark dark:border-primary-light"
-            : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
-        }`}
+        class={`${baseClass} ${activeTag() === "all" ? activeClass : inactiveClass}`}
       >
         All
       </button>
@@ -40,11 +40,7 @@ const TagFilter = (props: TagFilterProps): JSX.Element => {
           <button
             type="button"
             onClick={() => handleTagClick(tag)}
-            class={`px-4 py-2 rounded-lg font-medium transition-all cursor-pointer ${
-              activeTag() === tag
-                ? "bg-primary-light text-black dark:text-white dark:bg-primary-dark border-b-2 border-primary-dark dark:border-primary-light"
-                : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
-            }`}
+            class={`${baseClass} ${activeTag() === tag ? activeClass : inactiveClass}`}
           >
             {tag}
           </button>

@@ -78,7 +78,7 @@ const BlogCard = ({ post }: { post: BlogPost }): JSX.Element => {
       <div class="flex flex-wrap gap-1 mb-2">
         <For each={post.tags}>
           {(tag) => (
-            <span class="text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+            <span class="text-xs px-2 py-0.5 rounded font-medium border border-gray-300 text-gray-700 dark:border-gray-700 dark:text-gray-400">
               {tag}
             </span>
           )}

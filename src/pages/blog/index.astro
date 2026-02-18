@@ -22,7 +22,7 @@ const allTags = [...new Set(posts.flatMap((post) => post.data.tags))].sort();
 >
   <!-- Tab Navigation -->
   <div class="flex justify-center mb-8">
-    <div class="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 p-1 bg-gray-100 dark:bg-gray-800">
+    <div class="inline-flex rounded-lg border border-gray-300 dark:border-transparent p-1 bg-gray-100 dark:bg-black dark:bg-opacity-30">
       <button
         id="tab-local"
         class="tab-btn px-6 py-2 rounded-md text-sm font-medium transition-all"
@@ -41,7 +41,7 @@ const allTags = [...new Set(posts.flatMap((post) => post.data.tags))].sort();
   </div>
 
   <!-- Medium Articles Section -->
-  <section id="medium-content" class="tab-content flex flex-col justify-center items-center">
+  <section id="medium-content" class="tab-content hidden flex flex-col justify-center items-center">
     <div class="text-center max-w-2xl">
       <p class="text-sm mb-6 text-gray-600 dark:text-gray-400">
         I write articles on Medium covering software development, technology insights, and more. You can read them freely without any subscription.
@@ -58,7 +58,7 @@ const allTags = [...new Set(posts.flatMap((post) => post.data.tags))].sort();
   </section>
 
   <!-- Local Blog Section -->
-  <section id="local-content" class="tab-content hidden">
+  <section id="local-content" class="tab-content">
     <!-- Search Input -->
   <div class="w-full max-w-md mx-auto mb-6">
     <div class="relative">
@@ -122,11 +122,15 @@ const allTags = [...new Set(posts.flatMap((post) => post.data.tags))].sort();
     box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   }
   :global(.dark) .tab-btn {
-    color: #9ca3af;
+    color: #BFBFBF;
+  }
+  :global(.dark) .tab-btn:hover:not(.active) {
+    color: #FFFFFF;
   }
   :global(.dark) .tab-btn.active {
-    background-color: #374151;
-    color: #f9fafb;
+    background-color: #0A453E;
+    color: #FFFFFF;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.3);
   }
 </style>
 
@@ -156,7 +160,7 @@ const allTags = [...new Set(posts.flatMap((post) => post.data.tags))].sort();
     };
 
     // Set default active tab
-    switchTab("medium");
+    switchTab("local");
 
     tabButtons.forEach((btn) => {
       btn.addEventListener("click", () => {
