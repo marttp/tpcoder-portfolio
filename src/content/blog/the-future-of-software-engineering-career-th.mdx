@@ -1,13 +1,14 @@
 ---
-title: 'อนาคตของอาชีพ Software Engineer: อะไรจะเปลี่ยนไปเมื่อ AI เขียน Code แทน'
-description: 'สรุปและวิเคราะห์ว่า AI กำลังเปลี่ยนแปลงอาชีพ Software Engineer อย่างไร — ตั้งแต่เส้นทาง Bootcamp ที่แคบลง จนถึงการเกิดขึ้นของ Local Software Agency — พร้อมเหตุผลว่าทำไมแต่ละการเปลี่ยนแปลงจึงสำคัญ'
-pubDate: '2026-02-13'
-tags: ['AI', 'Software Engineering', 'Career', 'Future of Work', 'Industry Trends']
-language: 'th'
-translationSlug: 'the-future-of-software-engineering-career'
+title: "อนาคตของอาชีพ Software Engineer: อะไรจะเปลี่ยนไปเมื่อ AI เขียน Code แทน"
+description: "สรุปและวิเคราะห์ว่า AI กำลังเปลี่ยนแปลงอาชีพ Software Engineer อย่างไร — ตั้งแต่เส้นทาง Bootcamp ที่แคบลง จนถึงการเกิดขึ้นของ Local Software Agency — พร้อมเหตุผลว่าทำไมแต่ละการเปลี่ยนแปลงจึงสำคัญ"
+pubDate: "2026-02-13"
+tags:
+  ["AI", "Software Engineering", "Career", "Future of Work", "Industry Trends"]
+language: "th"
+translationSlug: "the-future-of-software-engineering-career"
 ---
 
-import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+import MermaidDiagram from "../../components/blog/MermaidDiagram.astro";
 
 มีการถกเถียงกันใน online community เกี่ยวกับว่าจะเกิดอะไรขึ้นกับอาชีพ software engineer เมื่อ AI สามารถ implement feature ได้เร็วกว่า junior developer ส่วนใหญ่ การสนทนาเริ่มจากแนวคิดที่ว่า **review กลายเป็น bottleneck** ใน software development — มนุษย์ต้องตรวจสอบ output ที่ AI สร้างขึ้น — และนำไปสู่คำถามที่ใหญ่กว่า: สิ่งนี้หมายความว่าอย่างไรสำหรับคนที่เพิ่งเริ่มต้นอาชีพวันนี้?
 
@@ -23,14 +24,16 @@ Model นั้นใช้ได้เมื่อบริษัทต้อ�
 
 เมื่อ AI จัดการ implementation คุณค่าจะ shift ไปที่ **judgment** — ความสามารถในการประเมินว่า output ถูกต้อง efficient และเหมาะกับ context หรือไม่ และ judgment ต้องการความเข้าใจอย่างลึกซึ้งว่าสิ่งต่างๆ work อย่างไร
 
-<MermaidDiagram chart={`
+<MermaidDiagram
+  chart={`
 flowchart TD
     A[AI Generates Code] --> B{Engineer Reviews}
     B -->|Understands Fundamentals| C[Can Evaluate Correctness\nSpot Edge Cases\nAssess Trade-offs]
     B -->|Surface-Level Knowledge| D[Cannot Distinguish\nGood Output from\nSubtle Bugs]
     C --> E[Ship with Confidence]
     D --> F[Ship with Risk]
-`} />
+`}
+/>
 
 ลองพิจารณา concrete scenarios:
 
@@ -46,7 +49,8 @@ Bootcamp model ถูกสร้างบน assumption เฉพาะ: บร
 
 Pipeline นั้นกำลังแคบลง — และ signal มองเห็นได้แล้วใน hiring data และ job boards
 
-<MermaidDiagram chart={`
+<MermaidDiagram
+  chart={`
 flowchart LR
     subgraph Before["Before AI (Previous Model)"]
         A1[Bootcamp\n12 weeks] --> B1[Junior Role\nOn-the-Job Training] --> C1[Mid-Level\n2-3 years]
@@ -55,7 +59,9 @@ flowchart LR
         A2[Bootcamp\n12 weeks] --> B2[Junior Roles\nShrinking]
         B2 -.->|Gap| C2[???]
     end
-`} size="medium" />
+`}
+  size="medium"
+/>
 
 **ทำไมสิ่งนี้เกิดขึ้น:** Senior engineer ที่มี AI tools สามารถ handle งานที่เคย distribute ให้ junior developer หลายคนได้ — bug fixes, simple features, routine maintenance Economics ของการจ้างคนที่ต้อง extensive training ยากขึ้นเมื่อ alternative คือการ amplify existing senior talent
 
@@ -92,14 +98,16 @@ Internship คือ apprenticeship รูปแบบใหม่ เป็น 
 
 **AI-assisted engineering เปลี่ยน equation นี้โดย fundamental**
 
-<MermaidDiagram chart={`
+<MermaidDiagram
+  chart={`
 flowchart TD
     A[Small Business\nHas Specific Need] --> B{Before AI}
     A --> C{After AI}
     B --> D[Too Expensive\nUse Generic SaaS\nor Nothing]
     C --> E[Local Developer\nBuilds Custom Solution\nin Hours/Days]
     E --> F[Affordable\nTailored to Workflow\nMaintainable]
-`} />
+`}
+/>
 
 Developer ที่ competent พร้อม AI tools สามารถ build custom software ในชั่วโมงที่เคยต้องใช้เวลาหลายสัปดาห์หรือเดือน สิ่งนี้เปิด entirely new market:
 
@@ -119,7 +127,8 @@ Developer ที่ competent พร้อม AI tools สามารถ build 
 
 จากการสนทนา นี่คือ summary ว่า landscape กำลัง shift อย่างไรใน different career stages:
 
-<MermaidDiagram chart={`
+<MermaidDiagram
+  chart={`
 flowchart TD
     A[Where Are You?] --> B[Student]
     A --> C[Career Changer]
@@ -133,7 +142,8 @@ flowchart TD
     D --> D1[Enormous opportunity\nin custom software]
     D --> D2[Position for markets\nthat could not\nafford software before]
     D --> D3[Leverage AI tools\nto multiply output]
-`} />
+`}
+/>
 
 ## Takeaway
 
@@ -147,8 +157,6 @@ Core argument ตรงไปตรงมา: **human in the loop จะไม�
 
 อนาคตเป็นของคนที่ judge ได้ว่าบางอย่าง correct หรือไม่ — ไม่ใช่แค่ว่ามัน compiles
 
-Give more, learn more. Be better each day.
-
 ---
 
-*บทความนี้สรุปและ restructure จากบทความที่มีการพูดถึงกันอย่างกว้างขวางเกี่ยวกับอนาคตของอาชีพ software engineer ในยุค AI การสนทนาเดิม explore ว่า AI implementation speed shift value ไปสู่ human judgment อย่างไร และหมายความว่าอย่างไรสำหรับ education, hiring และ new market opportunities Landscape กำลัง evolve rapidly — observations เหล่านี้ reflect current moment*
+_บทความนี้สรุปและ restructure จากบทความที่มีการพูดถึงกันอย่างกว้างขวางเกี่ยวกับอนาคตของอาชีพ software engineer ในยุค AI การสนทนาเดิม explore ว่า AI implementation speed shift value ไปสู่ human judgment อย่างไร และหมายความว่าอย่างไรสำหรับ education, hiring และ new market opportunities Landscape กำลัง evolve rapidly — observations เหล่านี้ reflect current moment_

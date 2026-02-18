@@ -1,12 +1,19 @@
 ---
-title: 'Sharing Guidelines for AI Coding Agents: What Actually Works in Real Codebases'
-description: 'A practical summary of guidelines for AI coding agents covering planning, execution, verification, and error recovery — with reasons behind why each rule seems effective and examples of how to apply them.'
-pubDate: '2026-02-08'
-tags: ['AI', 'Software Engineering', 'Developer Experience', 'Coding Agent', 'Best Practices']
-language: 'en'
+title: "Sharing Guidelines for AI Coding Agents: What Actually Works in Real Codebases"
+description: "A practical summary of guidelines for AI coding agents covering planning, execution, verification, and error recovery — with reasons behind why each rule seems effective and examples of how to apply them."
+pubDate: "2026-02-08"
+tags:
+  [
+    "AI",
+    "Software Engineering",
+    "Developer Experience",
+    "Coding Agent",
+    "Best Practices",
+  ]
+language: "en"
 ---
 
-import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+import MermaidDiagram from "../../components/blog/MermaidDiagram.astro";
 
 AI coding agents nowadays can do more than autocomplete. They plan multi-step tasks, edit files across a codebase, run tests, and even commit code. But without clear guidelines, they also make a mess faster than expected — over-engineering, adding unnecessary abstractions, or ignoring project conventions entirely.
 
@@ -30,7 +37,8 @@ Five principles keep showing up across effective agent configurations:
 
 The most effective pattern observed is a structured decision flow for how agents approach tasks:
 
-<MermaidDiagram chart={`
+<MermaidDiagram
+  chart={`
 flowchart TD
     A[Receive Task] --> B{Non-trivial?\n3+ steps / multi-file}
     B -->|Yes| C[Enter Plan Mode]
@@ -46,7 +54,8 @@ flowchart TD
     L --> M[Update Plan]
     M --> H
     D --> I
-`} />
+`}
+/>
 
 ### Plan Mode by Default
 
@@ -61,6 +70,7 @@ If new information invalidates the plan, the rule is: **stop, update the plan, t
 ### Subagent Strategy (Parallelize Intelligently)
 
 Subagents (parallel workers) handle focused research tasks:
+
 - Repo exploration and pattern discovery
 - Test failure triage
 - Dependency research
@@ -73,7 +83,8 @@ Each subagent gets **one focused objective** with a concrete deliverable.
 
 Instead of big-bang changes, the effective approach uses **thin vertical slices**:
 
-<MermaidDiagram chart={`
+<MermaidDiagram
+  chart={`
 flowchart LR
     A[Implement\nSlice 1] --> B[Test &\nVerify]
     B --> C[Implement\nSlice 2]
@@ -81,7 +92,9 @@ flowchart LR
     D --> E[Implement\nSlice 3]
     E --> F[Test &\nVerify]
     F --> G[Done]
-`} size="medium" />
+`}
+  size="medium"
+/>
 
 **Why this works:** When an agent modifies 20 files before running any verification, a single failure can be nearly impossible to trace. With incremental delivery, each slice is small enough to verify independently, making it obvious where things went wrong.
 
@@ -101,7 +114,8 @@ No "let me just push through this error." No ignoring warnings. Full stop.
 
 When a bug or failure occurs, the most effective agents follow this exact sequence:
 
-<MermaidDiagram chart={`
+<MermaidDiagram
+  chart={`
 flowchart TD
     A[Bug / Failure Detected] --> B[1. Reproduce Reliably]
     B --> C[2. Localize the Failure]
@@ -112,7 +126,8 @@ flowchart TD
     G --> H{All Green?}
     H -->|Yes| I[Resume Original Task]
     H -->|No| B
-`} />
+`}
+/>
 
 The order matters. **Reproduce first**, then localize (which layer — UI, API, DB, build tooling?), reduce to a minimal failing case, fix root cause (not symptoms), add regression coverage, and verify end-to-end.
 
@@ -134,6 +149,7 @@ A simple file-based system (`tasks/todo.md`) for tracking work proves surprising
 ```
 
 **Why this works:** Three reasons:
+
 - **Acceptance criteria upfront** — defines what "done" actually means before coding starts
 - **Verification is explicit** — not hidden at the end as an optional step
 - **Lessons are captured** — after any correction, the agent writes to `tasks/lessons.md` so the same mistake is not repeated
@@ -147,14 +163,17 @@ AI agents can be incredibly verbose. The effective pattern is:
 - **Ask questions only when truly blocked** — and when asking, provide a recommended default
 - **Show the verification story** — what was run, what the outcome was
 
-<MermaidDiagram chart={`
+<MermaidDiagram
+  chart={`
 flowchart LR
     A[Agent Wants\nto Communicate] --> B{Blocked?}
     B -->|No| C[Continue Working\nSilently]
     B -->|Yes| D[Ask ONE\nTargeted Question]
     D --> E[Include\nRecommended Default]
     E --> F[State What Changes\nBased on Answer]
-`} size="medium" />
+`}
+  size="medium"
+/>
 
 **Why this works:** Every unnecessary message from the agent is an interruption. The rule "ask ONE targeted question with a recommended default" prevents the agent from dumping five questions at once or asking things it could figure out from the codebase.
 
@@ -170,7 +189,8 @@ One of the most interesting patterns observed: after any user correction or disc
 
 Then reviews this file at session start and before major refactors.
 
-<MermaidDiagram chart={`
+<MermaidDiagram
+  chart={`
 flowchart TD
     A[Mistake Occurs] --> B[Capture in\nlessons.md]
     B --> C[Failure Mode +\nDetection Signal +\nPrevention Rule]
@@ -178,7 +198,9 @@ flowchart TD
     D --> E[Review lessons.md]
     E --> F[Apply Prevention\nRules Proactively]
     F --> G[Fewer Mistakes\nOver Time]
-`} size="medium" />
+`}
+  size="medium"
+/>
 
 **Why this works:** Without this, AI agents repeat the same mistakes across sessions because they have no persistent memory. The lessons file acts as an **institutional memory** — a growing list of project-specific "don't do this" rules that compound over time.
 
@@ -210,8 +232,6 @@ The difference with AI agents is that none of this can be implicit. There is no 
 
 For anyone starting to work with AI coding agents, writing your own set of guidelines is worth the effort. Start with the principles that matter most to the team and project, and evolve them based on what actually works. This is just a learning approach. You can make it alternatively or make it better.
 
-Give more, learn more. Be better each day.
-
 ---
 
-*This summary is based on observing various AI coding agent configurations and guidelines across different projects. The space is evolving rapidly — what works today will likely be refined as the tools improve.*
+_This summary is based on observing various AI coding agent configurations and guidelines across different projects. The space is evolving rapidly — what works today will likely be refined as the tools improve._

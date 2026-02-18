@@ -1,13 +1,14 @@
 ---
-title: 'The Future of the Software Engineering Career: What Changes When AI Writes the Code'
-description: 'A summary and analysis of how AI is reshaping software engineering careers — from the closing bootcamp pipeline to the rise of local software agencies — with reasons behind why each shift matters and practical takeaways.'
-pubDate: '2026-02-13'
-tags: ['AI', 'Software Engineering', 'Career', 'Future of Work', 'Industry Trends']
-language: 'en'
-translationSlug: 'the-future-of-software-engineering-career-th'
+title: "The Future of the Software Engineering Career: What Changes When AI Writes the Code"
+description: "A summary and analysis of how AI is reshaping software engineering careers — from the closing bootcamp pipeline to the rise of local software agencies — with reasons behind why each shift matters and practical takeaways."
+pubDate: "2026-02-13"
+tags:
+  ["AI", "Software Engineering", "Career", "Future of Work", "Industry Trends"]
+language: "en"
+translationSlug: "the-future-of-software-engineering-career-th"
 ---
 
-import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+import MermaidDiagram from "../../components/blog/MermaidDiagram.astro";
 
 A discussion has been circulating online about what happens to software engineering careers when AI can implement features faster than most junior developers. The conversation started from the idea that **review is now the bottleneck** in software development — humans verifying AI-generated output — and naturally led to a bigger question: what does this mean for someone starting their career today?
 
@@ -23,14 +24,16 @@ That model worked when companies needed people to write code. When the bottlenec
 
 When AI handles the implementation, the value shifts to **judgment** — the ability to evaluate whether the output is correct, efficient, and appropriate for the context. And judgment requires deep understanding of how things actually work.
 
-<MermaidDiagram chart={`
+<MermaidDiagram
+  chart={`
 flowchart TD
     A[AI Generates Code] --> B{Engineer Reviews}
     B -->|Understands Fundamentals| C[Can Evaluate Correctness\nSpot Edge Cases\nAssess Trade-offs]
     B -->|Surface-Level Knowledge| D[Cannot Distinguish\nGood Output from\nSubtle Bugs]
     C --> E[Ship with Confidence]
     D --> F[Ship with Risk]
-`} />
+`}
+/>
 
 Consider concrete scenarios:
 
@@ -46,7 +49,8 @@ The bootcamp model was built on a specific assumption: companies would hire deve
 
 That pipeline is narrowing — and the signal is already visible in hiring data and job boards.
 
-<MermaidDiagram chart={`
+<MermaidDiagram
+  chart={`
 flowchart LR
     subgraph Before["Before AI (Previous Model)"]
         A1[Bootcamp\n12 weeks] --> B1[Junior Role\nOn-the-Job Training] --> C1[Mid-Level\n2-3 years]
@@ -55,7 +59,9 @@ flowchart LR
         A2[Bootcamp\n12 weeks] --> B2[Junior Roles\nShrinking]
         B2 -.->|Gap| C2[???]
     end
-`} size="medium" />
+`}
+  size="medium"
+/>
 
 **Why this is happening:** A senior engineer with AI tools can now handle the work that used to be distributed across multiple junior developers — bug fixes, simple features, routine maintenance. The economics of hiring someone who needs extensive training become harder to justify when the alternative is amplifying existing senior talent.
 
@@ -92,14 +98,16 @@ For decades, custom software was only economically viable for large organization
 
 **AI-assisted engineering fundamentally changes this equation.**
 
-<MermaidDiagram chart={`
+<MermaidDiagram
+  chart={`
 flowchart TD
     A[Small Business\nHas Specific Need] --> B{Before AI}
     A --> C{After AI}
     B --> D[Too Expensive\nUse Generic SaaS\nor Nothing]
     C --> E[Local Developer\nBuilds Custom Solution\nin Hours/Days]
     E --> F[Affordable\nTailored to Workflow\nMaintainable]
-`} />
+`}
+/>
 
 A competent developer with AI tools can now build custom software in hours that previously required weeks or months. This opens an entirely new market:
 
@@ -119,7 +127,8 @@ A competent developer with AI tools can now build custom software in hours that 
 
 Based on the discussion, here is a summary of how the landscape is shifting across different career stages:
 
-<MermaidDiagram chart={`
+<MermaidDiagram
+  chart={`
 flowchart TD
     A[Where Are You?] --> B[Student]
     A --> C[Career Changer]
@@ -133,7 +142,8 @@ flowchart TD
     D --> D1[Enormous opportunity\nin custom software]
     D --> D2[Position for markets\nthat could not\nafford software before]
     D --> D3[Leverage AI tools\nto multiply output]
-`} />
+`}
+/>
 
 ## Takeaway
 
@@ -147,8 +157,6 @@ What changes is **which humans, doing what work, for whom.**
 
 The future belongs to those who can judge whether something is correct — not just whether it compiles.
 
-Give more, learn more. Be better each day.
-
 ---
 
-*This post summarizes and restructures a widely discussed article on the future of software engineering careers in the age of AI. The original discussion explores how AI implementation speed shifts value toward human judgment, and what that means for education, hiring, and new market opportunities. The landscape is evolving rapidly — these observations reflect the current moment.*
+_This post summarizes and restructures a widely discussed article on the future of software engineering careers in the age of AI. The original discussion explores how AI implementation speed shifts value toward human judgment, and what that means for education, hiring, and new market opportunities. The landscape is evolving rapidly — these observations reflect the current moment._
