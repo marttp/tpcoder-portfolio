@@ -24,18 +24,18 @@ const allTags = [...new Set(posts.flatMap((post) => post.data.tags))].sort();
   <div class="flex justify-center mb-8">
     <div class="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 p-1 bg-gray-100 dark:bg-gray-800">
       <button
-        id="tab-medium"
-        class="tab-btn px-6 py-2 rounded-md text-sm font-medium transition-all"
-        data-tab="medium"
-      >
-        Medium Articles
-      </button>
-      <button
         id="tab-local"
         class="tab-btn px-6 py-2 rounded-md text-sm font-medium transition-all"
         data-tab="local"
       >
         Local Blog
+      </button>
+      <button
+        id="tab-medium"
+        class="tab-btn px-6 py-2 rounded-md text-sm font-medium transition-all"
+        data-tab="medium"
+      >
+        Medium Articles
       </button>
     </div>
   </div>
