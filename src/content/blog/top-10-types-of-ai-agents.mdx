@@ -1,0 +1,109 @@
+---
+title: "Top 10 Types of AI Agents: From Reactive to Multi-Agent Systems"
+description: "A practical guide to the 10 types of AI agents — from simple reactive agents to complex multi-agent systems. Learn how each type works, when to use it, and where they show up in real-world applications."
+pubDate: "2026-02-24"
+tags:
+  [
+    "AI",
+    "Agent",
+    "LLM",
+    "Software Architecture",
+    "Machine Learning",
+  ]
+heroImage: "/assets/images/blogs/top 10 types of ai agents.jpg"
+language: "en"
+---
+
+import MermaidDiagram from "../../components/blog/MermaidDiagram.astro";
+import AgentTypeTabs from "../../components/blog/AgentTypeTabs.astro";
+
+AI agents are everywhere now — coding assistants, autonomous cars, game NPCs, recommendation engines. But not all agents are built the same way. The term "AI agent" covers a wide spectrum of architectures, from a thermostat that flips on when the room gets cold to a swarm of agents negotiating with each other in real time.
+
+Understanding the different types helps you pick the right architecture for the problem you're solving. Over-engineering a simple automation with a full planning agent is wasteful. Under-engineering a complex decision system with a basic reactive agent is fragile.
+
+This post breaks down **10 types of AI agents**, how each one works, and where they fit in practice.
+
+## The Classic Foundation: Russell & Norvig's Agent Types
+
+Before diving in, it's worth noting that many of these types trace back to Stuart Russell and Peter Norvig's textbook *Artificial Intelligence: A Modern Approach* (Chapter 2). Their taxonomy — simple reflex agents, model-based reflex agents, goal-based agents, utility-based agents, and learning agents — forms the foundation that the broader AI community has expanded upon. The 10 types below include these classics plus several additional architectures that have become important in modern AI systems.
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    subgraph simple["Simpler"]
+        direction TB
+        A["Reactive Agent"]
+        B["Reflex Agent\nwith Memory"]
+    end
+    subgraph intermediate["Intermediate"]
+        direction TB
+        C["Model-Based Agent"]
+        D["Goal-Based Agent"]
+        E["Utility-Based Agent"]
+    end
+    subgraph advanced["Advanced"]
+        direction TB
+        F["Planning Agent"]
+        G["Learning Agent"]
+        H["Rational Agent"]
+    end
+    subgraph specialized["Specialized"]
+        direction TB
+        I["Task-Specific Agent"]
+        J["Multi-Agent System"]
+    end
+    simple --> intermediate --> advanced --> specialized
+`}
+  size="large"
+/>
+
+---
+
+## The 10 Agent Types
+
+<AgentTypeTabs />
+
+---
+
+## Comparison Table
+
+| Type | Memory | Learning | Planning | Best For |
+| --- | --- | --- | --- | --- |
+| Reactive | No | No | No | Simple, fast responses |
+| Reflex + Memory | Yes | No | No | Context-aware reactions |
+| Model-Based | Yes | No | Partial | Partially observable environments |
+| Goal-Based | Yes | No | Yes | Clear objective pursuit |
+| Utility-Based | Yes | No | Yes | Multi-objective optimization |
+| Learning | Yes | Yes | Varies | Improving over time |
+| Rational | Varies | Varies | Yes | Optimal decision-making |
+| Task-Specific | Varies | Varies | Varies | Focused domain tasks |
+| Planning | Yes | Varies | Yes | Complex multi-step tasks |
+| Multi-Agent | Yes | Varies | Yes | Large-scale distributed problems |
+
+## Choosing the Right Agent Type
+
+There's no single "best" type — it depends on your problem:
+
+- **Simple, well-defined environment?** Start with a **reactive agent**. Don't over-engineer.
+- **Need context from past interactions?** Add memory — use a **reflex agent with memory** or **model-based agent**.
+- **Clear goal to achieve?** Use a **goal-based agent**.
+- **Multiple competing objectives?** Use a **utility-based agent**.
+- **Complex multi-step task?** Use a **planning agent**.
+- **Environment changes and you need adaptation?** Use a **learning agent**.
+- **One specific domain to optimize?** Use a **task-specific agent**.
+- **Problem too big for one agent?** Use a **multi-agent system**.
+
+In practice, most production AI systems are **hybrids**. A self-driving car combines reactive components (emergency braking), model-based reasoning (predicting traffic), utility-based decision-making (balancing speed and safety), and learning (improving from driving data). The art is in knowing which architecture to apply where.
+
+---
+
+**References:**
+
+- [Artificial Intelligence: A Modern Approach - Russell & Norvig (Chapter 2)](https://aima.cs.berkeley.edu/)
+- [Types of AI Agents - IBM](https://www.ibm.com/think/topics/ai-agent-types)
+- [Types of AI Agents: A Practical Guide - Codecademy](https://www.codecademy.com/article/types-of-ai-agents)
+- [Model-Based Reflex Agents in AI - GeeksforGeeks](https://www.geeksforgeeks.org/artificial-intelligence/model-based-reflex-agents-in-ai/)
+- [Utility-Based Agents in AI - GeeksforGeeks](https://www.geeksforgeeks.org/artificial-intelligence/utility-based-agents-in-ai/)
+- [What is AI Agent Planning? - IBM](https://www.ibm.com/think/topics/ai-agent-planning)
+- [AI Agents: From Reactive to Self-Learning Systems - Zencoder](https://zencoder.ai/blog/types-of-ai-agents-from-reactive-to-self-learning-systems)
+- [Types of AI Agents: Simple, Model-Based, and Goal-Oriented Guide](https://rits.center/blog/types-of-ai-agents-simple-model-based-and-goal-oriented-explained)
