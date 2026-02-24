@@ -48,6 +48,9 @@ const translationFlag = language === 'en' ? '🇹🇭' : '🇺🇸';
           edgeLabelTextColor: '#0f172a',
         }
       });
+
+      // Expose mermaid to window for manual rendering (e.g., in ContentTabs)
+      window.mermaid = mermaid;
     </script>
     <Header />
     <main class="max-w-4xl mx-auto px-4 md:px-8 py-8">
