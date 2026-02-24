@@ -1,0 +1,113 @@
+---
+title: "สรุป 10 ประเภทของ AI Agents: จาก Reactive สู่ Multi-Agent Systems"
+description: "เจาะลึก 10 ประเภทของ AI Agents ตั้งแต่ระบบตอบสนองง่ายๆ ไปจนถึง Multi-agent systems ที่ซับซ้อน เรียนรู้วิธีการทำงาน สถานการณ์ที่ควรใช้ และตัวอย่างในโลกจริง"
+pubDate: "2026-02-24"
+tags:
+  [
+    "AI",
+    "Agent",
+    "LLM",
+    "Software Architecture",
+    "Machine Learning",
+  ]
+heroImage: "/assets/images/blogs/top 10 types of ai agents.jpg"
+language: "th"
+translationSlug: "top-10-types-of-ai-agents"
+---
+
+import MermaidDiagram from "../../components/blog/MermaidDiagram.astro";
+import AgentTypeTabsTH from "../../components/blog/AgentTypeTabsTH.astro";
+
+ทุกวันนี้ AI Agents อยู่รอบตัวเราไปหมดแล้วครับ ไม่ว่าจะเป็น Coding Assistants, รถยนต์ไร้คนขับ, NPC ในเกม หรือระบบ Recommendation ต่างๆ แต่ที่จริงแล้วเอเจนต์แต่ละตัวไม่ได้ถูกสร้างขึ้นมาเหมือนกันซะทีเดียว คำว่า "AI Agent" นั้นครอบคลุมสถาปัตยกรรมที่กว้างมาก ตั้งแต่ตัวควบคุมอุณหภูมิ (Thermostat) ที่แค่ทำงานเมื่ออากาศเย็น ไปจนถึงฝูงเอเจนต์ (Swarm) ที่กำลังเจรจาต่อรองกันแบบ Real-time
+
+การเข้าใจประเภทต่างๆ ของเอเจนต์จะช่วยให้เราเลือกสถาปัตยกรรมที่เหมาะสมกับปัญหาที่เรากำลังแก้ครับ เพราะการใช้ Planning Agent ที่ซับซ้อนมาแก้ปัญหา Automation ง่ายๆ นั้นถือว่าสิ้นเปลืองเกินไป (Over-engineering) ในขณะที่การใช้ Reactive Agent พื้นฐานมาจัดการกับระบบการตัดสินใจที่ซับซ้อนก็อาจจะเปราะบางเกินไป (Under-engineering)
+
+ในโพสต์นี้ ผมขอสรุป **10 ประเภทของ AI Agents** ว่าแต่ละแบบทำงานยังไง และนำไปใช้จริงในกรณีไหนได้บ้างครับ
+
+## พื้นฐานดั้งเดิม: ประเภทเอเจนต์ของ Russell & Norvig
+
+ก่อนจะลงลึก อยากจะโน้ตไว้นิดนึงครับว่าประเภทของเอเจนต์เหล่านี้ส่วนใหญ่มีต้นกำเนิดมาจากหนังสือเล่มดังอย่าง *Artificial Intelligence: A Modern Approach* ของ Stuart Russell และ Peter Norvig (บทที่ 2) การแบ่งประเภทของเขา ไม่ว่าจะเป็น Simple Reflex Agents, Model-based Reflex Agents, Goal-based Agents, Utility-based Agents และ Learning Agents ถือเป็นรากฐานที่ชุมชน AI นำมาต่อยอดจนกลายเป็นระบบที่ซับซ้อนในปัจจุบัน
+
+มาลองดูภาพรวมของความซับซ้อนในแต่ละระดับกันครับ:
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    subgraph simple["เรียบง่ายกว่า (Simpler)"]
+        direction TB
+        A["Reactive Agent"]
+        B["Reflex Agent
+with Memory"]
+    end
+    subgraph intermediate["ระดับกลาง (Intermediate)"]
+        direction TB
+        C["Model-Based Agent"]
+        D["Goal-Based Agent"]
+        E["Utility-Based Agent"]
+    end
+    subgraph advanced["ระดับสูง (Advanced)"]
+        direction TB
+        F["Planning Agent"]
+        G["Learning Agent"]
+        H["Rational Agent"]
+    end
+    subgraph specialized["เฉพาะทาง (Specialized)"]
+        direction TB
+        I["Task-Specific Agent"]
+        J["Multi-Agent System"]
+    end
+    simple --> intermediate --> advanced --> specialized
+`}
+  size="large"
+/>
+
+---
+
+## 10 ประเภทของเอเจนต์ (แบบเจาะลึก)
+
+<AgentTypeTabsTH />
+
+---
+
+## ตารางเปรียบเทียบ
+
+| ประเภท | มีหน่วยความจำ (Memory) | เรียนรู้ได้ (Learning) | วางแผนได้ (Planning) | เหมาะสำหรับ |
+| --- | --- | --- | --- | --- |
+| Reactive | No | No | No | การตอบสนองที่เรียบง่ายและรวดเร็ว |
+| Reflex + Memory | Yes | No | No | การตอบสนองที่ต้องใช้บริบท |
+| Model-Based | Yes | No | Partial | สภาพแวดล้อมที่รับรู้ได้บางส่วน |
+| Goal-Based | Yes | No | Yes | การไล่ตามเป้าหมายที่ชัดเจน |
+| Utility-Based | Yes | No | Yes | การเพิ่มประสิทธิภาพหลายเป้าหมาย |
+| Learning | Yes | Yes | Varies | การพัฒนาตัวเองเมื่อเวลาผ่านไป |
+| Rational | Varies | Varies | Yes | การตัดสินใจที่สมเหตุสมผลที่สุด |
+| Task-Specific | Varies | Varies | Varies | งานเฉพาะทางในโดเมนที่จำกัด |
+| Planning | Yes | Varies | Yes | งานซับซ้อนที่มีหลายขั้นตอน |
+| Multi-Agent | Yes | Varies | Yes | ปัญหาระดับใหญ่ที่ต้องกระจายงาน |
+
+## วิธีเลือกประเภทเอเจนต์ที่ใช่
+
+ไม่มีคำว่า "ดีที่สุด" เพียงหนึ่งเดียวครับ ทุกอย่างขึ้นอยู่กับโจทย์ที่คุณกำลังแก้:
+
+- **สภาพแวดล้อมเรียบง่ายและกำหนดไว้ชัดเจน?** เริ่มด้วย **reactive agent** ก็พอ อย่า Over-engineer
+- **ต้องการบริบทจากการปฏิสัมพันธ์ในอดีต?** เพิ่ม Memory เข้าไป — ใช้ **reflex agent with memory** หรือ **model-based agent**
+- **มีเป้าหมายที่ชัดเจนต้องทำให้สำเร็จ?** ใช้ **goal-based agent**
+- **มีเป้าหมายหลายอย่างที่ขัดแย้งกันและต้องเลือกทางที่ดีที่สุด?** ใช้ **utility-based agent**
+- **งานซับซ้อนที่มีหลายขั้นตอนต้องทำตามลำดับ?** ใช้ **planning agent**
+- **สภาพแวดล้อมเปลี่ยนไปเรื่อยๆ และคุณต้องการการปรับตัว?** ใช้ **learning agent**
+- **มีหนึ่งโดเมนเฉพาะที่ต้องการ Optimize ให้ดีที่สุด?** ใช้ **task-specific agent**
+- **ปัญหาใหญ่เกินกว่าเอเจนต์ตัวเดียวจะรับไหว?** ใช้ **multi-agent system**
+
+ในทางปฏิบัติ ระบบ AI ในระดับ Production ส่วนใหญ่มักจะเป็น **แบบผสม (Hybrids)** ครับ เช่น รถยนต์ไร้คนขับจะรวมทั้งส่วนที่เป็น Reactive (การเบรกฉุกเฉิน), การให้เหตุผลแบบ Model-based (การคาดการณ์การจราจร), การตัดสินใจแบบ Utility-based (การรักษาสมดุลความเร็วและความปลอดภัย) และการเรียนรู้แบบ Learning (การปรับปรุงจากข้อมูลการขับขี่จริง) ศิลปะคือการรู้ว่าควรใช้สถาปัตยกรรมไหนกับส่วนใดของระบบครับ
+
+---
+
+**References:**
+
+- [Artificial Intelligence: A Modern Approach - Russell & Norvig (Chapter 2)](https://aima.cs.berkeley.edu/)
+- [Types of AI Agents - IBM](https://www.ibm.com/think/topics/ai-agent-types)
+- [Types of AI Agents: A Practical Guide - Codecademy](https://www.codecademy.com/article/types-of-ai-agents)
+- [Model-Based Reflex Agents in AI - GeeksforGeeks](https://www.geeksforgeeks.org/artificial-intelligence/model-based-reflex-agents-in-ai/)
+- [Utility-Based Agents in AI - GeeksforGeeks](https://www.geeksforgeeks.org/artificial-intelligence/utility-based-agents-in-ai/)
+- [What is AI Agent Planning? - IBM](https://www.ibm.com/think/topics/ai-agent-planning)
+- [AI Agents: From Reactive to Self-Learning Systems - Zencoder](https://zencoder.ai/blog/types-of-ai-agents-from-reactive-to-self-learning-systems)
+- [Types of AI Agents: Simple, Model-Based, and Goal-Oriented Guide](https://rits.center/blog/types-of-ai-agents-simple-model-based-and-goal-oriented-explained)

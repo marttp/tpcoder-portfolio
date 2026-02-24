@@ -1,0 +1,515 @@
+---
+import ContentTabs from './ContentTabs.astro';
+import type { Tab } from './ContentTabs.astro';
+
+interface AgentType {
+  id: string;
+  label: string;
+  description: string;
+  workflowSteps: string[];
+  chart: string;
+  examples: string[];
+  whenToUse: string;
+  limitation: string;
+}
+
+const agents: AgentType[] = [
+  {
+    id: 'reactive',
+    label: '1. Reactive',
+    description: 'ประเภทที่เรียบง่ายที่สุด Reactive Agent จะตอบสนองต่อ input ปัจจุบันโดยไม่มีหน่วยความจำ (Memory) หรือการเรียนรู้ มันรับรู้สภาพแวดล้อม จับคู่กับกฎที่ตั้งไว้ แล้วก็ลงมือทำทันที ไม่มีประวัติ ไม่มีแผน และไม่มีสถานะภายใน (Internal State)',
+    workflowSteps: [
+      'รับ Input จากภายนอก',
+      'จับคู่กับกฎ (Rule) ที่กำหนดไว้ล่วงหน้า',
+      'เลือกการตอบสนองที่เหมาะสมที่สุด',
+      'ประเมินการกระทำที่เป็นไปได้',
+      'ลงมือทำ (Execute action)',
+      'รอรับ Input ครั้งต่อไป',
+    ],
+    chart: `flowchart LR
+    A["Receive
+External Input"] --> B["Match with
+Predefined Rule"]
+    B --> C["Select Best
+Match"]
+    C --> D["Execute
+Action"]
+    D --> E["Wait for
+Next Input"]
+    E --> A`,
+    examples: [
+      'หุ่นยนต์ดูดฝุ่นที่หันหลังกลับเมื่อชนกำแพง',
+      'เครื่องปรับอากาศที่ทำงานเมื่ออุณหภูมิสูงเกินเกณฑ์',
+      'เซนเซอร์เปิดไฟอัตโนมัติเมื่อตรวจพบการเคลื่อนไหว',
+      'Chatbot พื้นฐานที่ใช้ตรรกะ if-then ในการตอบ',
+    ],
+    whenToUse: 'เมื่อต้องการการตอบสนองที่รวดเร็วและคาดเดาได้ในสภาพแวดล้อมที่กำหนดไว้อย่างชัดเจน Reactive Agent ใช้ทรัพยากรน้อยและดูแลรักษาง่าย',
+    limitation: 'การไม่มีหน่วยความจำหมายถึงไม่มีการเรียนรู้ เอเจนต์ไม่สามารถปรับตัวเข้ากับสถานการณ์ใหม่ๆ หรือพัฒนาตัวเองเมื่อเวลาผ่านไป หากสภาพแวดล้อมมีความซับซ้อนหรือต้องการบริบทจากอดีต Reactive Agent จะทำงานไม่ได้',
+  },
+  {
+    id: 'reflex-memory',
+    label: '2. Reflex + Memory',
+    description: 'เป็นการอัปเกรดจาก Reactive Agent โดยยังคงใช้การตอบสนองตามกฎเหมือนเดิม แต่เพิ่ม **หน่วยความจำ (Memory) ของสถานะในอดีต** เข้ามา ทำให้สามารถตัดสินใจได้ดีขึ้นโดยพิจารณาจากบริบททางประวัติศาสตร์ควบคู่ไปกับ input ปัจจุบัน',
+    workflowSteps: [
+      'รับรู้ Input ปัจจุบัน',
+      'ตรวจสอบข้อมูลย้อนหลังในหน่วยความจำ',
+      'จับคู่กับกฎ (โดยพิจารณาทั้งสถานะปัจจุบันและอดีต)',
+      'จัดลำดับความสำคัญตามประสบการณ์ที่ผ่านมา',
+      'เลือกทางเลือกที่ดีที่สุด',
+      'ลงมือทำ action ที่เลือก',
+    ],
+    chart: `flowchart TD
+    A["Sense Current
+Input"] --> B["Check
+Historical Data"]
+    B --> C["Match with Rules
+(Current + Past States)"]
+    C --> D["Prioritize Based
+on Past Experience"]
+    D --> E["Choose Best
+Option"]
+    E --> F["Perform
+Selected Action"]
+    F --> G["Store in
+Memory"]
+    G --> A`,
+    examples: [
+      'Smart Thermostat ที่ปรับอุณหภูมิตามพฤติกรรมการใช้งานของคุณในสัปดาห์ที่ผ่านมา',
+      'ระบบกรองอีเมลขยะ (Spam filter) ที่พัฒนาดีขึ้นตามอีเมลที่คุณเคยทำเครื่องหมายว่าเป็นสแปม',
+      'ระบบสัญญาณไฟจราจรที่ใช้ข้อมูลการไหลของรถในช่วงเวลาที่ผ่านมาเพื่อปรับจังหวะไฟ',
+    ],
+    whenToUse: 'เมื่อสภาพแวดล้อมไม่สามารถรับรู้ได้ทั้งหมดในครั้งเดียว และบริบทในอดีตช่วยให้การตัดสินใจมีคุณภาพมากขึ้น แต่ยังไม่จำเป็นต้องมีโมเดลจำลองโลกที่สมบูรณ์',
+    limitation: 'แม้จะมีหน่วยความจำช่วย แต่เอเจนต์ยังคงพึ่งพากฎที่กำหนดไว้ล่วงหน้า มันไม่สามารถให้เหตุผลเกี่ยวกับเป้าหมายหรือวางแผนล่วงหน้าได้ — มันแค่ทำตามรูปแบบที่เคยเห็นได้ดีขึ้นเท่านั้น',
+  },
+  {
+    id: 'model-based',
+    label: '3. Model-Based',
+    description: 'เอเจนต์ประเภทนี้จะสร้างและคงไว้ซึ่ง **โมเดลจำลองโลกภายใน (Internal Model of the World)** มันไม่ได้แค่ตอบสนองต่อสิ่งที่เห็นตอนนี้ แต่มันใช้โมเดลเพื่อทำความเข้าใจว่าโลกทำงานอย่างไร คาดการณ์ผลลัพธ์ และตัดสินใจได้อย่างชาญฉลาดแม้ข้อมูลจากเซนเซอร์จะไม่ครบถ้วน',
+    workflowSteps: [
+      'รับรู้สถานะของสภาพแวดล้อม',
+      'อัปเดตโมเดลโลกภายใน',
+      'จำลองสถานะถัดไปที่เป็นไปได้',
+      'ประเมินผลลัพธ์ที่คาดการณ์ไว้',
+      'เลือกการกระทำที่ดีที่สุด',
+      'ลงมือทำ action',
+    ],
+    chart: `flowchart TD
+    A["Percept"] --> B["Sensor Model
+(How do my sensors
+relate to world state?)"]
+    B --> C["Internal Model
+(How does the
+world work?)"]
+    C --> D["Current State
+Estimate"]
+    D --> E["Condition-Action
+Rules"]
+    E --> F["Action"]
+    F -->|"Transition Model
+(How do my actions
+affect the world?)"| C`,
+    examples: [
+      'รถยนต์ไร้คนขับที่แปลข้อมูลจากเซนเซอร์และคาดการณ์ตำแหน่งของรถคันอื่นในอนาคต',
+      'หุ่นยนต์ดูดฝุ่นที่สร้างแผนที่ห้องและวางแผนเส้นทางการทำความสะอาดที่มีประสิทธิภาพ',
+      'AI ในวิดีโอเกมที่คาดการณ์การเคลื่อนที่ของผู้เล่น',
+    ],
+    whenToUse: 'เมื่อสภาพแวดล้อมมีการเปลี่ยนแปลงตลอดเวลา (Dynamic) และรับรู้ได้ไม่ครบถ้วน โมเดลภายในช่วยให้เอเจนต์รับมือกับความไม่แน่นอนและข้อมูลที่ไม่สมบูรณ์ได้อย่างสง่างาม',
+    limitation: 'โมเดลจะดีได้เท่ากับข้อสันนิษฐานที่ใช้สร้างมันขึ้นมาเท่านั้น หากโลกจริงต่างจากโมเดล การตัดสินใจจะผิดพลาดทันที นอกจากนี้การสร้างโมเดลที่แม่นยำยังใช้ทรัพยากรการคำนวณสูงมาก',
+  },
+  {
+    id: 'goal-based',
+    label: '4. Goal-Based',
+    description: 'เหนือกว่า Model-based Agent ด้วยการเพิ่ม **เป้าหมาย (Goal)** ที่ชัดเจน แทนที่จะแค่ตอบสนองหรือจำลองโลก เอเจนต์ประเภทนี้จะประเมินการกระทำตามว่าสิ่งนั้นช่วยให้ขยับเข้าใกล้เป้าหมายที่กำหนดไว้หรือไม่',
+    workflowSteps: [
+      'รับ Input ปัจจุบัน',
+      'ระบุเป้าหมายปัจจุบัน',
+      'วางแผนการกระทำที่เป็นไปได้',
+      'จำลองเส้นทางสู่เป้าหมาย',
+      'เลือกเส้นทางที่เหมาะสมที่สุด',
+      'ดำเนินการตามแผน',
+    ],
+    chart: `flowchart TD
+    A["Get Current
+Input"] --> B["Identify
+Current Goal"]
+    B --> C["Plan Possible
+Actions"]
+    C --> D["Simulate
+Goal Paths"]
+    D --> E{"Does action
+move toward goal?"}
+    E -->|"Yes"| F["Select
+Optimal Path"]
+    E -->|"No"| C
+    F --> G["Execute
+Planned Action"]`,
+    examples: [
+      'ระบบนำทาง GPS ที่หาเส้นทางเพื่อไปยังจุดหมายปลายทาง',
+      'AI หมากรุกที่ประเมินตาเดินเพื่อนำไปสู่การรุกฆาต (Checkmate)',
+      'ระบบ CRM ที่พยายามดึงลูกค้าที่หยุดใช้งานให้กลับมาซื้อซ้ำ',
+    ],
+    whenToUse: 'เมื่อมีวัตถุประสงค์ที่ชัดเจน และเอเจนต์ต้องวางแผนลำดับการกระทำเพื่อบรรลุเป้าหมายนั้น Goal-based Agent ใช้อัลกอริทึมการค้นหาและวางแผนที่ทำให้ยืดหยุ่นกว่า Reflex หรือ Model-based Agent',
+    limitation: 'เป้าหมายมักจะเป็นแบบ Binary (สำเร็จหรือไม่สำเร็จ) เอเจนต์ไม่ได้ถูกออกแบบมาให้จัดการกับการแลกเปลี่ยน (Trade-offs) ระหว่างเป้าหมายที่ขัดแย้งกัน หรือการหาว่าเป้าหมายนั้นสำเร็จ "ดีแค่ไหน" ซึ่งต้องใช้ Utility-based Agent แทน',
+  },
+  {
+    id: 'utility-based',
+    label: '5. Utility-Based',
+    description: 'ต่อยอดจาก Goal-based Agent ด้วยการเพิ่ม **ฟังก์ชันอรรถประโยชน์ (Utility Function)** — ซึ่งเป็นมาตรวัดทางคณิตศาสตร์ว่าผลลัพธ์แต่ละอย่างน่าพึงพอใจแค่ไหน แทนที่จะถามแค่ "ฉันถึงเป้าหมายหรือยัง?" มันจะถามว่า "ผลลัพธ์นี้ดีแค่ไหนเมื่อเทียบกับทางเลือกอื่น?"',
+    workflowSteps: [
+      'รับรู้สถานะสภาพแวดล้อม',
+      'ลิสต์การกระทำที่เป็นไปได้ทั้งหมด',
+      'เปรียบเทียบทางเลือกโดยกำหนดค่าอรรถประโยชน์ (Utility scores)',
+      'ประเมินความคุ้มค่าของแต่ละผลลัพธ์',
+      'เลือกการกระทำที่ให้ค่าอรรถประโยชน์สูงสุด',
+      'ลงมือทำ',
+    ],
+    chart: `flowchart TD
+    A["Sense Environment
+State"] --> B["List Possible
+Actions"]
+    B --> C["Action A"]
+    B --> D["Action B"]
+    B --> E["Action C"]
+    C --> F["Utility = 0.7"]
+    D --> G["Utility = 0.9"]
+    E --> H["Utility = 0.4"]
+    F --> I["Compare
+All Utilities"]
+    G --> I
+    H --> I
+    I --> J["Choose Max
+Utility: Action B"]
+    J --> K["Execute"]`,
+    examples: [
+      'รถยนต์ไร้คนขับที่ปรับสมดุลระหว่างความเร็ว ความปลอดภัย ความประหยัดน้ำมัน และความสบายของผู้โดยสาร',
+      'ระบบแนะนำคอนเทนต์ (Recommendation Engine) ที่จัดอันดับตามความพึงพอใจที่คาดการณ์ไว้ของผู้ใช้',
+      'ระบบจัดการพลังงานที่ปรับสมดุลระหว่างต้นทุน ความสะดวกสบาย และผลกระทบต่อสิ่งแวดล้อม',
+      'ระบบวินิจฉัยทางการแพทย์ที่แนะนำการรักษาตามผลประโยชน์ที่คาดหวังต่อคนไข้',
+    ],
+    whenToUse: 'เมื่อมีวัตถุประสงค์ที่ขัดแย้งกันหลายอย่างและเอเจนต์ต้องตัดสินใจแลกเปลี่ยน Utility-based Agent เก่งมากในเรื่องการเพิ่มประสิทธิภาพสูงสุดภายใต้ความไม่แน่นอน (Optimization under uncertainty)',
+    limitation: 'การออกแบบฟังก์ชันอรรถประโยชน์ที่ดีนั้นยากมาก หากค่าน้ำหนักหรือฟังก์ชันผิดพลาด เอเจนต์จะไปปรับจูนผิดจุดทันที และการคำนวณ Utility สำหรับทุกทางเลือกยังใช้ทรัพยากรสูงมาก',
+  },
+  {
+    id: 'learning',
+    label: '6. Learning',
+    description: 'เอเจนต์ที่ **พัฒนาตัวเองได้เมื่อเวลาผ่านไป** โดยการเรียนรู้จากประสบการณ์ Russell และ Norvig นิยามส่วนประกอบสำคัญ 4 อย่าง: **Performance element** (ลงมือทำ), **Critic** (ประเมินผล), **Learning element** (ปรับเปลี่ยนพฤติกรรม) และ **Problem generator** (เสนอการทดลองใหม่ๆ)',
+    workflowSteps: [
+      'รับ Input ใหม่',
+      'ประเมินการกระทำก่อนหน้า (ผ่าน Critic)',
+      'ปรับโมเดลภายใน (Learning element)',
+      'อัปเดตกลยุทธ์การตัดสินใจ',
+      'เลือกการกระทำที่ดีที่สุด',
+      'เก็บผลลัพธ์เพื่อการเรียนรู้ในอนาคต',
+    ],
+    chart: `flowchart TD
+    E["Environment"] --> S["Sensors"]
+    S --> PE["Performance
+Element"]
+    PE --> A["Actuators"]
+    A --> E
+    S --> C["Critic"]
+    C -->|"Feedback"| LE["Learning
+Element"]
+    LE -->|"Changes"| PE
+    PG["Problem
+Generator"] -->|"Experiments"| PE
+    LE -->|"Goals"| PG`,
+    examples: [
+      'AlphaGo ที่เรียนรู้จากเกมหลายล้านเกมเพื่อเป็นสุดยอดฝีมือโกะ',
+      'ระบบแนะนำสินค้าที่ขัดเกลาคำแนะนำตามการคลิกและการให้คะแนนของผู้ใช้',
+      'ระบบตรวจจับการฉ้อโกงที่ปรับตัวตามพฤติกรรมการโกงรูปแบบใหม่ๆ',
+      'โมเดลภาษา (LLM) ที่ถูก Fine-tune ด้วยมนุษย์ (RLHF)',
+    ],
+    whenToUse: 'เมื่อสภาพแวดล้อมมีความซับซ้อน เปลี่ยนแปลงตลอดเวลา หรือไม่เป็นที่เข้าใจอย่างถ่องแท้ตั้งแต่ต้น Learning Agent เป็นประเภทเดียวที่สามารถพัฒนาได้จริงโดยไม่ต้องเขียนโปรแกรมใหม่',
+    limitation: 'การเรียนรู้ต้องใช้ข้อมูล และข้อมูลที่แย่ก็นำไปสู่การเรียนรู้ที่แย่ นอกจากนี้ยังมีเรื่องของ Exploration-Exploitation trade-off คือเอเจนต์ต้องรักษาสมดุลระหว่างการลองสิ่งใหม่ๆ (Exploration) กับการทำสิ่งที่รู้ว่าได้ผลดีอยู่แล้ว (Exploitation)',
+  },
+  {
+    id: 'rational',
+    label: '7. Rational',
+    description: 'Rational Agent จะเลือก **การกระทำที่เหมาะสมที่สุดตามตรรกะเสมอ** เมื่อพิจารณาจากความรู้และความสามารถที่มี คำว่า "Rational" ไม่ได้หมายความว่าต้องรู้ทุกอย่าง (Omniscient) แต่หมายถึงการตัดสินใจที่ดีที่สุดเท่าที่จะทำได้ด้วยข้อมูลที่มีอยู่ในมือ',
+    workflowSteps: [
+      'วิเคราะห์สภาพแวดล้อมทั้งหมด',
+      'ลิสต์ทางเลือกที่มีอยู่ทั้งหมด',
+      'ประมาณการผลลัพธ์ของแต่ละทางเลือก',
+      'เลือกการกระทำที่เหมาะสมที่สุด (Optimal)',
+      'ดำเนินการตามที่เลือก',
+      'ประเมินประสิทธิภาพ',
+    ],
+    chart: `flowchart TD
+    A["Analyze Full
+Environment"] --> B["List All
+Available Options"]
+    B --> C["Estimate Outcomes
+for Each Option"]
+    C --> D["Choose Optimal
+Action"]
+    D --> E["Execute
+Choice"]
+    E --> F["Evaluate
+Performance"]
+    F -->|"Performance
+Measure"| A`,
+    examples: [
+      'ระบบเทรดหุ้นอัตโนมัติที่เพิ่มผลตอบแทนพอร์ตโฟลิโอสูงสุดตามข้อมูลตลาด',
+      'ตัวคำนวณโลจิสติกส์ที่หาเส้นทางการจัดส่งที่มีประสิทธิภาพสูงสุด',
+      'เอเจนต์ใดๆ ที่ออกแบบมาเพื่อเพิ่มมาตรวัดประสิทธิภาพ (Performance measure) ให้สูงสุด',
+    ],
+    whenToUse: 'เมื่อคุณสามารถนิยามคำว่า "Optimal" (เหมาะสมที่สุด) ได้ชัดเจนด้วยมาตรวัดประสิทธิภาพ และเอเจนต์มีข้อมูลเพียงพอที่จะให้เหตุผลเกี่ยวกับมัน',
+    limitation: 'ความเป็นเหตุเป็นผล (Rationality) ถูกจำกัดด้วยพลังการคำนวณและข้อมูล ในทางปฏิบัติเอเจนต์มักจะต้อง "Satisfice" (เลือกการกระทำที่ "ดีพอ") แทนที่จะคำนวณหาสิ่งที่เหมาะสมที่สุดจริงๆ โดยเฉพาะในสภาพแวดล้อมที่มีข้อจำกัดเรื่องเวลา ซึ่งนี่คือสิ่งที่ Herbert Simon เรียกว่า "Bounded Rationality"',
+  },
+  {
+    id: 'task-specific',
+    label: '8. Task-Specific',
+    description: 'เอเจนต์ที่ถูกสร้างขึ้นเพื่อ **งานเฉพาะเจาะจงเพียงอย่างเดียว** แทนที่จะเป็นเอเจนต์ทั่วไป มันจะมีเครื่องมือ คำแนะนำ และตรรกะที่ออกแบบมาเพื่อโดเมนนั้นๆ โดยเฉพาะ เช่น การเขียน, การสรุปความ, การรีวิวโค้ด, การวิเคราะห์ข้อมูล เป็นต้น',
+    workflowSteps: [
+      'รับ Input เฉพาะทาง',
+      'ระบุประเภทของงาน',
+      'ประมวลผลโดยใช้ตรรกะเฉพาะโดเมน',
+      'เรียกใช้เครื่องมือที่จำเป็น',
+      'ส่งออกผลลัพธ์ในรูปแบบที่กำหนด',
+      'บันทึกการทำงานสำเร็จ',
+    ],
+    chart: `flowchart LR
+    A["Receive
+Specific Input"] --> B["Identify
+Task Type"]
+    B --> C["Process Using
+Domain Logic"]
+    C --> D["Fetch Required
+Tools"]
+    D --> E["Return Formatted
+Output"]
+    E --> F["Log Task
+Completion"]`,
+    examples: [
+      'GitHub Copilot (การเติมโค้ด)',
+      'Grammarly (การแก้ไขการเขียน)',
+      'CI/CD Bot ที่รันเทสและรายงานผล',
+      'Claude Code skills (แต่ละ skill คือ Task-specific agent)',
+    ],
+    whenToUse: 'เมื่อต้องการความแม่นยำและความน่าเชื่อถือสูงสำหรับงานที่กำหนดไว้ชัดเจน การจำกัดขอบเขตช่วยให้คุณปรับแต่งเครื่องมือ Prompt และ Guardrails ของเอเจนต์ให้เหมาะสมที่สุดสำหรับโดเมนนั้น',
+    limitation: 'ไม่มีความสามารถรอบด้าน (Generality) เอเจนต์ที่ทำหน้าที่รีวิวโค้ดไม่สามารถเขียนอีเมลได้ คุณต้องมีเอเจนต์แยกกันสำหรับงานที่ต่างกัน (หรือใช้ Multi-agent system ในการรวบรวมพวกมัน)',
+  },
+  {
+    id: 'planning',
+    label: '9. Planning',
+    description: 'เอเจนต์ที่เน้นการสร้าง **แผนระยะยาว** มากกว่าการตอบสนองทันที มันจะย่อยเป้าหมายที่ซับซ้อนให้กลายเป็นแผนงานทีละขั้นตอน (Sub-tasks) ประเมินเส้นทาง และตรวจสอบการดำเนินการ — พร้อมปรับเปลี่ยนแผนเมื่อสถานการณ์เปลี่ยนไป',
+    workflowSteps: [
+      'ระบุเป้าหมายสุดท้าย',
+      'ย่อยขั้นตอนที่เป็นไปได้',
+      'สร้างแผนการกระทำ (Action plan)',
+      'ประเมินแต่ละเส้นทาง',
+      'ดำเนินการทีละขั้นตอน',
+      'ติดตามผลและปรับปรุงแผน',
+    ],
+    chart: `flowchart TD
+    A["Complex Goal"] --> B["Task Decomposition"]
+    B --> C["Sub-goal 1"]
+    B --> D["Sub-goal 2"]
+    B --> E["Sub-goal 3"]
+    C --> F["Plan Steps"]
+    D --> G["Plan Steps"]
+    E --> H["Plan Steps"]
+    F --> I["Execute & Monitor"]
+    G --> I
+    H --> I
+    I -->|"Replan if needed"| B`,
+    examples: [
+      'AI Coding Agent ที่ย่อยงาน "สร้าง REST API พร้อม Auth" เป็นงานย่อย: วางโครงโปรเจกต์, สร้างโมเดล, เพิ่ม Route, ทำ JWT, เขียน Test',
+      'หุ่นยนต์ในคลังสินค้าที่วางแผนลำดับการหยิบและวางของ',
+      'Agentic AI patterns ของ Andrew Ng ซึ่งการวางแผนถูกระบุว่าเป็นรูปแบบการออกแบบที่สำคัญที่ LLM ตัดสินใจลำดับการกระทำเอง',
+    ],
+    whenToUse: 'สำหรับงานที่ซับซ้อนและมีหลายขั้นตอน ซึ่งการตอบสนองทันทีนั้นไม่เพียงพอ Planning Agent จะโดดเด่นมากเมื่อต้องประสานงานหลายการกระทำในลำดับที่เฉพาะเจาะจง',
+    limitation: 'การวางแผนใช้เวลาและพลังการคำนวณ ในสภาพแวดล้อมที่รวดเร็ว (เช่น การขับรถ หรือการประมูลแบบ Real-time) ความล่าช้าจากการวางแผนอาจเป็นปัญหาได้ และแผนอาจจะล้าสมัยหากสภาพแวดล้อมเปลี่ยนเร็วกว่าที่เอเจนต์จะวางแผนใหม่ได้ทัน',
+  },
+  {
+    id: 'multi-agent',
+    label: '10. Multi-Agent',
+    description: 'ไม่ใช่แค่เอเจนต์ตัวเดียว แต่เป็น **ระบบของเอเจนต์หลายตัว (System of multiple agents)** ที่ทำงานร่วมกัน — ไม่ว่าจะร่วมมือกัน แข่งขันกัน หรือเจรจากัน — เพื่อแก้ปัญหาที่ซับซ้อนเกินกว่าที่เอเจนต์ตัวเดียวจะรับมือได้',
+    workflowSteps: [
+      'สังเกตสภาพแวดล้อมที่ใช้ร่วมกัน',
+      'สื่อสารกับเอเจนต์ตัวอื่น',
+      'เจรจาเป้าหมายร่วมกัน',
+      'แชร์ความรู้เฉพาะส่วน',
+      'ทำหน้าที่ตามบทบาทที่ได้รับมอบหมาย',
+      'อัปเดตสถานะของระบบ',
+    ],
+    chart: `flowchart TD
+    ENV["Shared Environment"] --> A1["Agent 1
+(Writer)"]
+    ENV --> A2["Agent 2
+(Reviewer)"]
+    ENV --> A3["Agent 3
+(Tester)"]
+    A1 <-->|"Communicate"| A2
+    A2 <-->|"Communicate"| A3
+    A1 <-->|"Communicate"| A3
+    A1 --> R1["Write Code"]
+    A2 --> R2["Review Code"]
+    A3 --> R3["Run Tests"]
+    R1 --> OUT["Combined
+System Output"]
+    R2 --> OUT
+    R3 --> OUT`,
+    examples: [
+      'ทีม AI Coding Agents ที่ตัวหนึ่งเขียนโค้ด อีกตัวรีวิว และอีกตัวเขียนเทส',
+      'Swarm robotics (หุ่นยนต์ฝูงบินที่ประสานงานกันในภารกิจค้นหาและกู้ภัย)',
+      'แบบจำลองตลาดการเงินที่มีเอเจนต์ผู้ซื้อและผู้ขาย',
+      'เครือข่ายเซนเซอร์แบบกระจายตัวที่แชร์ข้อมูลเพื่อสร้างภาพรวมระดับโลก',
+      'Framework อย่าง CrewAI, AutoGen และ LangGraph',
+    ],
+    whenToUse: 'เมื่อปัญหามีขนาดใหญ่เกินไปหรือกระจายตัวเกินกว่าเอเจนต์เดียวจะจัดการได้ Multi-agent system ช่วยให้ทำงานขนานกันได้ (Parallel processing) มีความเชี่ยวชาญเฉพาะทาง (Specialization) และมีความทนทาน (Resilience) หากตัวหนึ่งพัง ตัวอื่นก็ทำงานแทนได้',
+    limitation: 'การประสานงานนั้นยากมาก (Coordination overhead) ทั้งเรื่องการสื่อสาร เป้าหมายที่อาจขัดแย้งกันเอง และพฤติกรรมแปลกๆ ที่คาดไม่ถึงที่อาจเกิดขึ้นได้ การดีบั๊ก Multi-agent system นั้นยากกว่าเอเจนต์เดียวอย่างมหาศาล',
+  },
+];
+
+const tabs: Tab[] = agents.map((a) => ({ id: a.id, label: a.label }));
+---
+
+<ContentTabs tabs={tabs}>
+  {agents.map((agent, index) => (
+    <div data-panel={agent.id}>
+      <p class="panel-description" set:html={agent.description} />
+
+      <h4 class="panel-heading">หลักการทำงาน:</h4>
+      <ol class="panel-list panel-list-ordered">
+        {agent.workflowSteps.map((step) => (
+          <li>{step}</li>
+        ))}
+      </ol>
+
+      <div class="mermaid-container mermaid-medium">
+        <div class="mermaid-wrapper">
+          <pre class={index === 0 ? 'mermaid' : 'mermaid-lazy'}>{agent.chart}</pre>
+        </div>
+      </div>
+
+      <h4 class="panel-heading">ตัวอย่างในโลกจริง:</h4>
+      <ul class="panel-list">
+        {agent.examples.map((example) => (
+          <li>{example}</li>
+        ))}
+      </ul>
+
+      <h4 class="panel-heading">ควรใช้เมื่อไหร่:</h4>
+      <p class="panel-text">{agent.whenToUse}</p>
+
+      <h4 class="panel-heading">ข้อจำกัด:</h4>
+      <p class="panel-text">{agent.limitation}</p>
+    </div>
+  ))}
+</ContentTabs>
+
+<style>
+  /* Panel Typography */
+  .panel-description {
+    font-size: 1.125rem;
+    line-height: 1.75;
+    color: #000000;
+    margin-bottom: 1.5rem;
+  }
+
+  :global(.dark) .panel-description {
+    color: #d1d5db;
+  }
+
+  .panel-heading {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #000000;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  :global(.dark) .panel-heading {
+    color: #ffffff;
+  }
+
+  .panel-list {
+    list-style-type: disc;
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .panel-list-ordered {
+    list-style-type: decimal;
+  }
+
+  .panel-list li {
+    color: #000000;
+    margin-bottom: 0.5rem;
+    line-height: 1.625;
+  }
+
+  :global(.dark) .panel-list li {
+    color: #d1d5db;
+  }
+
+  .panel-text {
+    color: #000000;
+    line-height: 1.75;
+    margin-bottom: 1rem;
+  }
+
+  :global(.dark) .panel-text {
+    color: #d1d5db;
+  }
+
+  /* Mermaid diagram styles (replicated from MermaidDiagram.astro) */
+  .mermaid-container {
+    width: 100%;
+    margin: 1.5rem 0;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    overflow-x: auto;
+  }
+
+  .mermaid-wrapper {
+    display: flex;
+    justify-content: center;
+    min-width: fit-content;
+  }
+
+  :global(.mermaid), .mermaid-lazy {
+    background: transparent !important;
+  }
+
+  .mermaid-medium :global(.mermaid),
+  .mermaid-medium .mermaid-lazy {
+    font-size: 14px;
+  }
+
+  .mermaid-medium :global(svg) {
+    max-width: 100%;
+    height: auto;
+    min-height: 250px;
+  }
+
+  @media (max-width: 768px) {
+    .mermaid-container {
+      padding: 1rem;
+      margin: 1rem -1rem;
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+    }
+
+    .mermaid-medium :global(svg) {
+      min-height: auto;
+      transform: scale(0.9);
+      transform-origin: center;
+    }
+  }
+
+  .mermaid-container :global(.node rect),
+  .mermaid-container :global(.node polygon),
+  .mermaid-container :global(.node circle) {
+    stroke-width: 2px;
+  }
+
+  .mermaid-container :global(.edgeLabel) {
+    font-size: 12px;
+  }
+</style>

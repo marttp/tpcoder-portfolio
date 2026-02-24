@@ -79,6 +79,7 @@ Each tutorial starts from a genuine curiosity or problem, builds something concr
 ## Bilingual Publishing Strategy
 
 Many articles are published in **both English and Thai** versions:
+
 - Resumize project guide
 - Spring AI Function Calling tutorial
 - Advent of Code learnings
@@ -114,13 +115,13 @@ Regular publishing across multiple content types (reviews, tutorials, reflection
 
 ## Recurring Themes in Writing
 
-| Theme | How It Appears | Example |
-|-------|---------------|---------|
-| Backend engineering is evolving, not dying | AI framed as backend's next chapter, not its replacement | "AI Agents make backend teams the core solution enablers" |
-| Learning in public | Documents the process including struggles, not just polished results | Advent of Code: admits needing community help after puzzle 18 |
-| Data over opinions | Benchmarks show nuanced/mixed results rather than declaring winners | k6 test: Axum wins GET, Spring WebFlux wins POST |
-| Bridging Thai and global dev communities | Bilingual content, mentorship programs | EN/TH article pairs, GenTH JSD mentoring |
-| Side projects as learning vehicles | Each project is both a learning exercise and publishable content | Resumize (Rust + RAG), Reddit agent (ADK) |
+| Theme                                      | How It Appears                                                       | Example                                                       |
+| ------------------------------------------ | -------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Backend engineering is evolving, not dying | AI framed as backend's next chapter, not its replacement             | "AI Agents make backend teams the core solution enablers"     |
+| Learning in public                         | Documents the process including struggles, not just polished results | Advent of Code: admits needing community help after puzzle 18 |
+| Data over opinions                         | Benchmarks show nuanced/mixed results rather than declaring winners  | k6 test: Axum wins GET, Spring WebFlux wins POST              |
+| Bridging Thai and global dev communities   | Bilingual content, mentorship programs                               | EN/TH article pairs, GenTH JSD mentoring                      |
+| Side projects as learning vehicles         | Each project is both a learning exercise and publishable content     | Resumize (Rust + RAG), Reddit agent (ADK)                     |
 
 ---
 
@@ -139,7 +140,12 @@ To write in the TP Coder style:
 9. **Go thorough over brief** - depth is the differentiator, not brevity
 10. **Ground speculation in specifics** - name the technologies, protocols, and tools rather than speaking abstractly
 
+## Custom style by human
+
+11. No "Give more, learn more. Be better each day." in the article
+12. No "Be kind and be inspired." in the article
+
 ---
 
-*Research conducted: February 2026*
-*Source: Medium ([tpbabparn.medium.com](https://tpbabparn.medium.com/))*
+_Research conducted: February 2026_
+_Source: Medium ([tpbabparn.medium.com](https://tpbabparn.medium.com/))_
