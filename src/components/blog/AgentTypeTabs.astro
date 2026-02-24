@@ -1,0 +1,464 @@
+---
+import ContentTabs from './ContentTabs.astro';
+import type { Tab } from './ContentTabs.astro';
+
+interface AgentType {
+  id: string;
+  label: string;
+  description: string;
+  workflowSteps: string[];
+  chart: string;
+  examples: string[];
+  whenToUse: string;
+  limitation: string;
+}
+
+const agents: AgentType[] = [
+  {
+    id: 'reactive',
+    label: '1. Reactive',
+    description: 'The simplest type. A reactive agent responds to current input without any memory or learning. It perceives the environment, matches against a rule, and acts — that\'s it. No history, no planning, no internal state.',
+    workflowSteps: [
+      'Receive external input',
+      'Match with a predefined rule',
+      'Select the best match',
+      'Evaluate possible actions',
+      'Execute the action',
+      'Wait for the next input',
+    ],
+    chart: `flowchart LR
+    A["Receive\\nExternal Input"] --> B["Match with\\nPredefined Rule"]
+    B --> C["Select Best\\nMatch"]
+    C --> D["Execute\\nAction"]
+    D --> E["Wait for\\nNext Input"]
+    E --> A`,
+    examples: [
+      'A robot vacuum that turns when it hits a wall',
+      'A thermostat that activates heating when temperature drops below a threshold',
+      'Automatic light sensors that turn on when motion is detected',
+      'Basic chatbots with if-then response logic',
+    ],
+    whenToUse: 'When you need fast, predictable responses in well-defined environments. Reactive agents are computationally cheap and easy to maintain.',
+    limitation: 'No memory means no learning. The agent cannot adapt to new situations or improve over time. If the environment is partially observable or requires context from past interactions, a reactive agent will fail.',
+  },
+  {
+    id: 'reflex-memory',
+    label: '2. Reflex + Memory',
+    description: 'An upgrade to the reactive agent. It still uses rule-based responses, but now maintains <strong>memory of past states</strong>. This allows it to make better decisions by considering historical context alongside current input.',
+    workflowSteps: [
+      'Sense current input',
+      'Check historical data',
+      'Match with rules (considering past states)',
+      'Prioritize based on past experience',
+      'Choose the best option',
+      'Perform the selected action',
+    ],
+    chart: `flowchart TD
+    A["Sense Current\\nInput"] --> B["Check\\nHistorical Data"]
+    B --> C["Match with Rules\\n(Current + Past States)"]
+    C --> D["Prioritize Based\\non Past Experience"]
+    D --> E["Choose Best\\nOption"]
+    E --> F["Perform\\nSelected Action"]
+    F --> G["Store in\\nMemory"]
+    G --> A`,
+    examples: [
+      'A smart thermostat that adjusts based on your usage patterns over the past week',
+      'An email spam filter that improves its rules based on which emails you\'ve previously marked as spam',
+      'A traffic light system that uses recent traffic flow data to adjust timing',
+    ],
+    whenToUse: 'When the environment is partially observable and past context improves decision quality, but you don\'t need a full world model.',
+    limitation: 'Memory helps, but the agent still relies on predefined rules. It cannot reason about goals or plan ahead — it just pattern-matches better.',
+  },
+  {
+    id: 'model-based',
+    label: '3. Model-Based',
+    description: 'This agent builds and maintains an <strong>internal model of the world</strong>. It doesn\'t just react to what it sees right now — it uses its model to understand how the world works, predict outcomes, and make informed decisions even when sensor data is incomplete.',
+    workflowSteps: [
+      'Sense the environment state',
+      'Update the internal model',
+      'Simulate possible next states',
+      'Evaluate predicted outcomes',
+      'Choose the best action',
+      'Perform the action',
+    ],
+    chart: `flowchart TD
+    A["Percept"] --> B["Sensor Model\\n(How do my sensors\\nrelate to world state?)"]
+    B --> C["Internal Model\\n(How does the\\nworld work?)"]
+    C --> D["Current State\\nEstimate"]
+    D --> E["Condition-Action\\nRules"]
+    E --> F["Action"]
+    F -->|"Transition Model\\n(How do my actions\\naffect the world?)"| C`,
+    examples: [
+      'Self-driving cars interpreting sensor data and predicting where other vehicles will be',
+      'A robot vacuum that builds a map of the room and plans efficient cleaning paths',
+      'Video game AI opponents that anticipate player movements',
+    ],
+    whenToUse: 'When the environment is dynamic and partially observable. The internal model lets the agent handle uncertainty and incomplete information gracefully.',
+    limitation: 'The model is only as good as its assumptions. If the real world diverges from the model, decisions become unreliable. Building accurate models is also computationally expensive.',
+  },
+  {
+    id: 'goal-based',
+    label: '4. Goal-Based',
+    description: 'Goes beyond model-based agents by introducing an explicit <strong>goal</strong>. Instead of just reacting or modeling the world, this agent evaluates actions based on whether they move it closer to achieving a defined objective.',
+    workflowSteps: [
+      'Get current input',
+      'Identify the current goal',
+      'Plan possible actions',
+      'Simulate goal paths',
+      'Select the optimal path',
+      'Execute the planned action',
+    ],
+    chart: `flowchart TD
+    A["Get Current\\nInput"] --> B["Identify\\nCurrent Goal"]
+    B --> C["Plan Possible\\nActions"]
+    C --> D["Simulate\\nGoal Paths"]
+    D --> E{"Does action\\nmove toward goal?"}
+    E -->|"Yes"| F["Select\\nOptimal Path"]
+    E -->|"No"| C
+    F --> G["Execute\\nPlanned Action"]`,
+    examples: [
+      'A GPS navigation system finding the route to your destination',
+      'A chess engine evaluating moves that lead toward checkmate',
+      'A customer re-engagement system that tries to bring back inactive users',
+    ],
+    whenToUse: 'When there is a clear objective and the agent needs to plan sequences of actions to achieve it. Goal-based agents use search and planning algorithms that make them more flexible than reflex or model-based agents.',
+    limitation: 'Goals are typically binary — achieved or not achieved. The agent doesn\'t naturally handle trade-offs between competing objectives or optimize for "how well" a goal is achieved. For that, you need a utility-based agent.',
+  },
+  {
+    id: 'utility-based',
+    label: '5. Utility-Based',
+    description: 'Extends the goal-based agent with a <strong>utility function</strong> — a mathematical measure of how desirable each outcome is. Instead of just asking "did I reach the goal?", it asks "how good is this outcome compared to alternatives?"',
+    workflowSteps: [
+      'Sense the environment state',
+      'List all possible actions',
+      'Compare all options by assigning utility values',
+      'Assign utility values to each outcome',
+      'Choose the maximum utility action',
+      'Execute that action',
+    ],
+    chart: `flowchart TD
+    A["Sense Environment\\nState"] --> B["List Possible\\nActions"]
+    B --> C["Action A"]
+    B --> D["Action B"]
+    B --> E["Action C"]
+    C --> F["Utility = 0.7"]
+    D --> G["Utility = 0.9"]
+    E --> H["Utility = 0.4"]
+    F --> I["Compare\\nAll Utilities"]
+    G --> I
+    H --> I
+    I --> J["Choose Max\\nUtility: Action B"]
+    J --> K["Execute"]`,
+    examples: [
+      'A self-driving car balancing speed, safety, fuel efficiency, and passenger comfort',
+      'A recommendation engine ranking content by predicted user satisfaction',
+      'An energy management system balancing cost, comfort, and environmental impact',
+      'Medical diagnosis systems recommending treatments based on expected patient benefit',
+    ],
+    whenToUse: 'When there are multiple competing objectives and the agent needs to make trade-offs. Utility-based agents excel at optimization under uncertainty.',
+    limitation: 'Designing a good utility function is hard. If the weights or the function itself are poorly calibrated, the agent optimizes for the wrong thing. Utility computation can also be expensive — evaluating all possible actions continuously requires significant resources.',
+  },
+  {
+    id: 'learning',
+    label: '6. Learning',
+    description: 'An agent that <strong>improves over time</strong> by learning from experience. Russell and Norvig define four key components: the <strong>performance element</strong> (acts), the <strong>critic</strong> (evaluates), the <strong>learning element</strong> (modifies behavior), and the <strong>problem generator</strong> (suggests new experiments).',
+    workflowSteps: [
+      'Receive new input',
+      'Evaluate previous actions (via the critic)',
+      'Adjust the internal model (learning element)',
+      'Update the decision strategy',
+      'Choose the best action',
+      'Store results for future learning',
+    ],
+    chart: `flowchart TD
+    E["Environment"] --> S["Sensors"]
+    S --> PE["Performance\\nElement"]
+    PE --> A["Actuators"]
+    A --> E
+    S --> C["Critic"]
+    C -->|"Feedback"| LE["Learning\\nElement"]
+    LE -->|"Changes"| PE
+    PG["Problem\\nGenerator"] -->|"Experiments"| PE
+    LE -->|"Goals"| PG`,
+    examples: [
+      'AlphaGo learning from millions of games to become superhuman at Go',
+      'A recommendation system that refines suggestions based on user clicks and ratings',
+      'A fraud detection system that adapts to new types of fraudulent behavior over time',
+      'Language models fine-tuned with human feedback (RLHF)',
+    ],
+    whenToUse: 'When the environment is complex, changing, or not fully understood upfront. Learning agents are the only type that can genuinely improve without being explicitly reprogrammed.',
+    limitation: 'Learning requires data, and bad data leads to bad learning. The exploration-exploitation trade-off is also real — the agent needs to balance trying new things (exploration) against doing what already works (exploitation).',
+  },
+  {
+    id: 'rational',
+    label: '7. Rational',
+    description: 'A rational agent always chooses the <strong>most logically optimal action</strong> given its knowledge and capabilities. "Rational" doesn\'t mean "omniscient" — it means making the best possible decision with the information available.',
+    workflowSteps: [
+      'Analyze the full environment',
+      'List all available options',
+      'Estimate outcomes for each option',
+      'Choose the optimal action',
+      'Execute the choice',
+      'Evaluate performance',
+    ],
+    chart: `flowchart TD
+    A["Analyze Full\\nEnvironment"] --> B["List All\\nAvailable Options"]
+    B --> C["Estimate Outcomes\\nfor Each Option"]
+    C --> D["Choose Optimal\\nAction"]
+    D --> E["Execute\\nChoice"]
+    E --> F["Evaluate\\nPerformance"]
+    F -->|"Performance\\nMeasure"| A`,
+    examples: [
+      'An automated trading system that maximizes expected portfolio returns given market data',
+      'A logistics optimizer that finds the most efficient delivery routes',
+      'Any agent designed around a formal performance measure it tries to maximize',
+    ],
+    whenToUse: 'When you can clearly define "optimal" with a performance measure and the agent has access to enough information to reason about it.',
+    limitation: 'Rationality is bounded by computation and information. In practice, agents often have to satisfice (pick a "good enough" action) rather than compute the truly optimal one, especially in time-constrained environments. This is what Herbert Simon called "bounded rationality."',
+  },
+  {
+    id: 'task-specific',
+    label: '8. Task-Specific',
+    description: 'An agent custom-built for a <strong>single focused task</strong>. Instead of being general-purpose, it has specialized tools, instructions, and logic designed for one domain — writing, summarizing, code review, data analysis, etc.',
+    workflowSteps: [
+      'Receive specific input',
+      'Identify the task type',
+      'Process using domain-specific logic',
+      'Fetch required tools',
+      'Return formatted output',
+      'Log task completion',
+    ],
+    chart: `flowchart LR
+    A["Receive\\nSpecific Input"] --> B["Identify\\nTask Type"]
+    B --> C["Process Using\\nDomain Logic"]
+    C --> D["Fetch Required\\nTools"]
+    D --> E["Return Formatted\\nOutput"]
+    E --> F["Log Task\\nCompletion"]`,
+    examples: [
+      'GitHub Copilot (code completion)',
+      'Grammarly (writing correction)',
+      'A CI/CD bot that runs tests and reports results',
+      'Claude Code skills (each skill is essentially a task-specific agent)',
+    ],
+    whenToUse: 'When you need high accuracy and reliability for a well-defined task. Narrowing the scope lets you optimize the agent\'s tools, prompts, and guardrails for that specific domain.',
+    limitation: 'No generality. A task-specific agent for code review cannot handle email drafting. You need separate agents for separate tasks (or a multi-agent system to orchestrate them).',
+  },
+  {
+    id: 'planning',
+    label: '9. Planning',
+    description: 'An agent that focuses on <strong>long-term plans</strong> rather than immediate reactions. It decomposes complex goals into step-by-step action plans, evaluates paths, and monitors execution — adjusting the plan when things change.',
+    workflowSteps: [
+      'Define the final goal',
+      'Map possible steps',
+      'Create an action plan',
+      'Evaluate each path',
+      'Execute step-by-step',
+      'Monitor and adjust',
+    ],
+    chart: `flowchart TD
+    A["Complex Goal"] --> B["Task Decomposition"]
+    B --> C["Sub-goal 1"]
+    B --> D["Sub-goal 2"]
+    B --> E["Sub-goal 3"]
+    C --> F["Plan Steps"]
+    D --> G["Plan Steps"]
+    E --> H["Plan Steps"]
+    F --> I["Execute & Monitor"]
+    G --> I
+    H --> I
+    I -->|"Replan if needed"| B`,
+    examples: [
+      'An AI coding agent that breaks "build a REST API with auth" into sub-tasks: scaffold project, create models, add routes, implement JWT, write tests',
+      'A warehouse robot planning a sequence of pick-and-place operations',
+      'Andrew Ng\'s agentic AI patterns — planning is identified as a key design pattern where the LLM autonomously decides on action sequences',
+    ],
+    whenToUse: 'For complex, multi-step tasks where immediate reaction isn\'t enough. Planning agents shine when the task requires coordinating multiple actions in a specific order.',
+    limitation: 'Planning takes time and computation. In fast-paced environments (autonomous driving, real-time bidding), the delay from planning can be a problem. Plans can also become stale if the environment changes faster than the agent can replan.',
+  },
+  {
+    id: 'multi-agent',
+    label: '10. Multi-Agent',
+    description: 'Not a single agent but a <strong>system of multiple agents</strong> that work together — cooperating, competing, or negotiating — to solve problems that are too complex for any single agent.',
+    workflowSteps: [
+      'Observe the shared environment',
+      'Communicate with other agents',
+      'Negotiate shared goals',
+      'Share local knowledge',
+      'Perform assigned roles',
+      'Update the system state',
+    ],
+    chart: `flowchart TD
+    ENV["Shared Environment"] --> A1["Agent 1\\n(Writer)"]
+    ENV --> A2["Agent 2\\n(Reviewer)"]
+    ENV --> A3["Agent 3\\n(Tester)"]
+    A1 <-->|"Communicate"| A2
+    A2 <-->|"Communicate"| A3
+    A1 <-->|"Communicate"| A3
+    A1 --> R1["Write Code"]
+    A2 --> R2["Review Code"]
+    A3 --> R3["Run Tests"]
+    R1 --> OUT["Combined\\nSystem Output"]
+    R2 --> OUT
+    R3 --> OUT`,
+    examples: [
+      'A team of AI coding agents where one writes code, one reviews, and one writes tests',
+      'Swarm robotics (multiple drones coordinating a search-and-rescue operation)',
+      'Financial market simulations with buyer and seller agents',
+      'Distributed sensor networks where agents share local observations to build a global picture',
+      'CrewAI, AutoGen, and LangGraph multi-agent frameworks',
+    ],
+    whenToUse: 'When the problem is too large or too distributed for a single agent. Multi-agent systems enable parallel processing, specialization, and resilience (if one agent fails, others can compensate).',
+    limitation: 'Coordination is hard. Communication overhead, conflicting goals between agents, and emergent unexpected behaviors are real challenges. Debugging a multi-agent system is significantly harder than debugging a single agent.',
+  },
+];
+
+const tabs: Tab[] = agents.map((a) => ({ id: a.id, label: a.label }));
+---
+
+<ContentTabs tabs={tabs}>
+  {agents.map((agent, index) => (
+    <div data-panel={agent.id}>
+      <p class="panel-description" set:html={agent.description} />
+
+      <h4 class="panel-heading">How it works:</h4>
+      <ol class="panel-list panel-list-ordered">
+        {agent.workflowSteps.map((step) => (
+          <li>{step}</li>
+        ))}
+      </ol>
+
+      <div class="mermaid-container mermaid-medium">
+        <div class="mermaid-wrapper">
+          <pre class={index === 0 ? 'mermaid' : 'mermaid-lazy'}>{agent.chart}</pre>
+        </div>
+      </div>
+
+      <h4 class="panel-heading">Real-world examples:</h4>
+      <ul class="panel-list">
+        {agent.examples.map((example) => (
+          <li>{example}</li>
+        ))}
+      </ul>
+
+      <h4 class="panel-heading">When to use it:</h4>
+      <p class="panel-text">{agent.whenToUse}</p>
+
+      <h4 class="panel-heading">Limitation:</h4>
+      <p class="panel-text">{agent.limitation}</p>
+    </div>
+  ))}
+</ContentTabs>
+
+<style>
+  /* Panel Typography */
+  .panel-description {
+    font-size: 1.125rem;
+    line-height: 1.75;
+    color: #000000;
+    margin-bottom: 1.5rem;
+  }
+
+  :global(.dark) .panel-description {
+    color: #d1d5db;
+  }
+
+  .panel-heading {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #000000;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  :global(.dark) .panel-heading {
+    color: #ffffff;
+  }
+
+  .panel-list {
+    list-style-type: disc;
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .panel-list-ordered {
+    list-style-type: decimal;
+  }
+
+  .panel-list li {
+    color: #000000;
+    margin-bottom: 0.5rem;
+    line-height: 1.625;
+  }
+
+  :global(.dark) .panel-list li {
+    color: #d1d5db;
+  }
+
+  .panel-text {
+    color: #000000;
+    line-height: 1.75;
+    margin-bottom: 1rem;
+  }
+
+  :global(.dark) .panel-text {
+    color: #d1d5db;
+  }
+
+  /* Mermaid diagram styles (replicated from MermaidDiagram.astro) */
+  .mermaid-container {
+    width: 100%;
+    margin: 1.5rem 0;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    overflow-x: auto;
+  }
+
+  .mermaid-wrapper {
+    display: flex;
+    justify-content: center;
+    min-width: fit-content;
+  }
+
+  :global(.mermaid), .mermaid-lazy {
+    background: transparent !important;
+  }
+
+  .mermaid-medium :global(.mermaid),
+  .mermaid-medium .mermaid-lazy {
+    font-size: 14px;
+  }
+
+  .mermaid-medium :global(svg) {
+    max-width: 100%;
+    height: auto;
+    min-height: 250px;
+  }
+
+  @media (max-width: 768px) {
+    .mermaid-container {
+      padding: 1rem;
+      margin: 1rem -1rem;
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+    }
+
+    .mermaid-medium :global(svg) {
+      min-height: auto;
+      transform: scale(0.9);
+      transform-origin: center;
+    }
+  }
+
+  .mermaid-container :global(.node rect),
+  .mermaid-container :global(.node polygon),
+  .mermaid-container :global(.node circle) {
+    stroke-width: 2px;
+  }
+
+  .mermaid-container :global(.edgeLabel) {
+    font-size: 12px;
+  }
+</style>

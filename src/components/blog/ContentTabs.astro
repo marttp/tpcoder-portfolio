@@ -1,0 +1,186 @@
+---
+export interface Tab {
+  id: string;
+  label: string;
+}
+
+interface Props {
+  tabs: Tab[];
+}
+
+const { tabs } = Astro.props;
+---
+
+<div class="content-tabs not-prose">
+  <!-- Tab Navigation -->
+  <div class="tab-nav">
+    {tabs.map((tab, index) => (
+      <button
+        type="button"
+        class={`tab-btn ${index === 0 ? 'active' : ''}`}
+        data-tab={tab.id}
+      >
+        {tab.label}
+      </button>
+    ))}
+  </div>
+
+  <!-- Tab Panels (provided via slot, each child must have data-panel="tabId") -->
+  <div class="tab-panels">
+    <slot />
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const containers = document.querySelectorAll('.content-tabs');
+
+    containers.forEach((container) => {
+      const tabButtons = container.querySelectorAll('.tab-btn');
+      const tabPanels = container.querySelectorAll('[data-panel]');
+      const rendered = new Set<string>();
+
+      // Mark the first panel as rendered (Mermaid startOnLoad handles it)
+      if (tabPanels.length > 0) {
+        const firstId = tabPanels[0].getAttribute('data-panel') || '';
+        rendered.add(firstId);
+      }
+
+      // Hide all panels except the first
+      tabPanels.forEach((panel, index) => {
+        if (index > 0) panel.classList.add('hidden');
+      });
+
+      async function renderLazyMermaid(panel: Element) {
+        const lazyElements = panel.querySelectorAll('.mermaid-lazy');
+        if (lazyElements.length === 0) return;
+
+        lazyElements.forEach((el) => {
+          el.classList.remove('mermaid-lazy');
+          el.classList.add('mermaid');
+        });
+
+        try {
+          // @ts-ignore - mermaid is loaded globally via CDN in BlogLayout
+          const mermaid = window.mermaid;
+          if (mermaid) {
+            await mermaid.run({ nodes: Array.from(lazyElements) });
+          }
+        } catch (e) {
+          console.warn('Mermaid render failed, retrying...', e);
+          setTimeout(async () => {
+            try {
+              // @ts-ignore
+              if (window.mermaid) await window.mermaid.run({ nodes: Array.from(lazyElements) });
+            } catch (_) {}
+          }, 500);
+        }
+      }
+
+      function switchTab(tabId: string) {
+        tabButtons.forEach((btn) => {
+          btn.classList.toggle('active', btn.getAttribute('data-tab') === tabId);
+        });
+
+        tabPanels.forEach((panel) => {
+          const panelId = panel.getAttribute('data-panel');
+          if (panelId === tabId) {
+            panel.classList.remove('hidden');
+            if (!rendered.has(panelId!)) {
+              rendered.add(panelId!);
+              renderLazyMermaid(panel);
+            }
+          } else {
+            panel.classList.add('hidden');
+          }
+        });
+      }
+
+      tabButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const tabId = btn.getAttribute('data-tab');
+          if (tabId) switchTab(tabId);
+        });
+      });
+    });
+  });
+</script>
+
+<style>
+  /* Tab Navigation */
+  .tab-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #d1d5db;
+  }
+
+  :global(.dark) .tab-nav {
+    border-bottom-color: #4b5563;
+  }
+
+  .tab-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem 0.5rem 0 0;
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+    cursor: pointer;
+    border: none;
+    background-color: #f3f4f6;
+    color: #374151;
+  }
+
+  :global(.dark) .tab-btn {
+    background-color: #374151;
+    color: #d1d5db;
+  }
+
+  .tab-btn:hover {
+    background-color: #e5e7eb;
+  }
+
+  :global(.dark) .tab-btn:hover {
+    background-color: #4b5563;
+  }
+
+  .tab-btn.active {
+    background-color: #0EDCAA;
+    color: #000000;
+    border-bottom: 3px solid #0A453E;
+  }
+
+  :global(.dark) .tab-btn.active {
+    background-color: #0A453E;
+    color: #ffffff;
+    border-bottom-color: #0EDCAA;
+  }
+
+  /* Mobile: 2-column grid */
+  @media (max-width: 700px) {
+    .tab-nav {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.375rem;
+    }
+
+    .tab-btn {
+      font-size: 0.75rem;
+      padding: 0.5rem 0.625rem;
+      border-radius: 0.375rem;
+      text-align: center;
+    }
+  }
+
+  /* Tab Panel animation */
+  .tab-panels :global([data-panel]:not(.hidden)) {
+    animation: fadeIn 0.2s ease-in;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+</style>
