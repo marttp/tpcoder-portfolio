@@ -7,6 +7,7 @@
       "startDate": "2025-12",
       "endDate": "Present",
       "highlights": [
+        "Designed and implemented a configurable batch job for PCI raw data deletion from storage, ensuring compliance with PCI-DSS audit requirements. Proposed and drove the schedule reduction from the initial 1-month interval down to 1-hour in production, leveraging payment processing domain experience to minimize sensitive data retention.",
         "Developed a suite of internal utility tools — including JWT Debugger, Protobuf Decoder, JSON Linter, Mermaid Diagram exporter, Gantt Chart planner, and a sensitive-info image blur editor — reducing the team's reliance on external sites for daily development workflows and mitigating potential data exposure risks.",
         "Setup the foundational configuration for the Vault Service, decoupling Tokenized Charge functionality into PCI-compliant and non-PCI modules to enhance security and maintainability.",
         "Ensured payment reliability by maintaining the automated test suite for Tokenized Charge, covering both 3DS and non-3DS card payment scenarios.",
