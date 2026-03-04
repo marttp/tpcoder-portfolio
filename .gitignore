@@ -23,3 +23,6 @@ pnpm-debug.log*
 package-lock.json
 bun.lockb
 .idea
+
+# Blog migrations
+medium-posts/
