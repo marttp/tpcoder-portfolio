@@ -147,5 +147,22 @@ To write in the TP Coder style:
 
 ---
 
+## Social Media Posts (Facebook)
+
+Before writing a FB post for a blog article, **always ask the user**:
+- ต้องการกี่คำ? (e.g., 50, 100, 150)
+- ต้องการรายละเอียดแค่ไหน? (e.g., แค่ headline สั้นๆ / สรุป key points / เกือบครบทุกประเด็น)
+
+Then follow these rules:
+
+1. **Summarize directly** — give the actual key points in the post itself. Readers should get real value from the post alone, not just a teaser.
+2. **No hard sell** — don't push or guilt people into clicking. End with a simple neutral line like "ฉบับเต็มอ่านได้ที่ [link]" and leave it at that. No "ห้ามพลาด", no "รีบอ่านเลย".
+3. **Use data when available** — concrete numbers (e.g., "25% drop", "70-90% AI-generated") are more compelling than vague claims.
+4. **Match the blog's tone** — semi-official, practical, experienced engineer talking to peers. Not a marketing announcement.
+5. **Thai version uses English tech terms** where they're more natural, same as blog articles.
+6. **No emojis in body text** — keep it clean. One link emoji at the end is acceptable but not required.
+
+---
+
 _Research conducted: February 2026_
 _Source: Medium ([tpbabparn.medium.com](https://tpbabparn.medium.com/))_
