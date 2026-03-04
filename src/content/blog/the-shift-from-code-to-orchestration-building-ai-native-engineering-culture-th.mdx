@@ -62,15 +62,15 @@ flowchart TD
 
 สถานการณ์นี้ทำให้ entry-level แข่งขันหนักมาก junior ที่จะเข้าวงการตอนนี้ต้องเก่ง **ทั้ง** fundamentals แบบดั้งเดิมและ AI orchestration — ไม่ใช่อย่างใดอย่างหนึ่ง
 
-**พูดตรงๆ:** ไม่คิดว่า junior roles จะหายไปเลยนะ แต่ bar มันขยับขึ้นแล้ว คนที่จะรอดคือคนที่โชว์ได้ว่า productive กับ AI tools ตั้งแต่วันแรก ไม่ใช่คนที่ต้องใช้เวลา 3–6 เดือนกว่าจะเริ่มทำงานจริงได้
+ไม่คิดว่า junior roles จะหายไปเลยนะ แต่ bar มันขยับขึ้นแล้ว คนที่จะรอดคือคนที่โชว์ได้ว่า productive กับ AI tools ตั้งแต่วันแรก ไม่ใช่คนที่ต้องใช้เวลา 3–6 เดือนกว่าจะเริ่มทำงานจริงได้
 
 ## Part 2 — Top AI-Native Engineers Orchestrate Agents ยังไง
 
-มาเข้าเรื่องจริงจังกัน สิ่งที่เห็นคือ engineer ที่เก่งเรื่อง AI agents **ไม่ได้** ทิ้ง computer science แบบดั้งเดิมเลย พวกเขายังพึ่ง system design กับ algorithmic thinking เต็มๆ เพื่อ guide ว่า agents ควรทำอะไร การโยน agents หลายตัวใส่ปัญหาไม่ได้แปลว่าจะดีขึ้น — ถ้าไม่ manage มันจะเละ
+สิ่งที่เห็นคือ engineer ที่เก่งเรื่อง AI agents **ไม่ได้** ทิ้ง computer science แบบดั้งเดิมเลย พวกเขายังพึ่ง system design กับ algorithmic thinking เต็มๆ เพื่อ guide ว่า agents ควรทำอะไร การโยน agents หลายตัวใส่ปัญหาไม่ได้แปลว่าจะดีขึ้น — ถ้าไม่ manage มันจะเละ
 
 [GitHub engineering blog บอกไว้](https://github.blog/ai-and-ml/generative-ai/multi-agent-workflows-often-fail-heres-how-to-engineer-ones-that-dont/) ว่า multi-agent workflows มักพังเพราะ agents คุยกันไม่รู้เรื่อง share state แบบ implicit หรือมี ordering assumptions ที่พังเงียบๆ
 
-นี่คือ patterns ที่เห็นว่า work จริง:
+นี่คือ patterns ที่เห็นว่า work:
 
 ### สร้างทีละชิ้น (Build It Up Piecemeal)
 
@@ -123,7 +123,7 @@ Taste มันมาจาก "last mile" ของการ develop — ตอ
 
 แล้วก็ continuous experimentation เป็นเรื่องที่ขาดไม่ได้ แม้แต่ AI organizations ระดับท็อปก็ทำจริงจัง [Anthropic เอา models ตัวเองมาใช้งานจริงตลอด](https://cloudnativenow.com/editorial-calendar/best-of-2025/how-anthropic-dogfoods-on-claude-code-2/) — ใช้ Claude rewrite ระบบของตัวเอง หา bug จริง เจอ limitation จริงใน production Hacking, iteration เร็วๆ, dogfooding — ต้องฝัง deep เข้าไปใน SDLC
 
-**พูดตรงๆ:** ถ้าทีมไม่ได้ใช้ AI tools สร้างระบบที่ manage AI tools เอง ก็กำลังทิ้ง compounding improvements ไป feedback loop ของ "ใช้ tool → เจอจุดอ่อน → ปรับปรุง tool → ทำซ้ำ" คือจุดที่ engineering taste ถูก sharpen จริงๆ ในยุคนี้
+ถ้าทีมไม่ได้ใช้ AI tools สร้างระบบที่ manage AI tools เอง ก็กำลังทิ้ง compounding improvements ไป feedback loop ของ "ใช้ tool → เจอจุดอ่อน → ปรับปรุง tool → ทำซ้ำ" คือจุดที่ engineering taste ถูก sharpen จริงๆ ในยุคนี้
 
 ## Part 4 — ทำไมโลกยังต้องการ Junior Software Engineers
 
