@@ -1,0 +1,184 @@
+---
+title: "จาก Code สู่ Orchestration: การสร้าง AI-Native Engineering Culture"
+description: "มุมมองของเราต่อสิ่งที่กำลังเปลี่ยนแปลงจริงๆ ในวงการ Software Engineering — จากการเขียน syntax ไปสู่การ orchestrate autonomous agents — และมันส่งผลยังไงต่อ junior engineers, codebase design, และ engineering taste"
+pubDate: "2026-03-04"
+tags:
+  [
+    "AI",
+    "Software Engineering",
+    "Career",
+    "Multi-Agent",
+    "Backend",
+    "Engineering Culture",
+  ]
+heroImage: "/assets/images/blogs/shift-ai-native-engineer/hero-image.jpg"
+language: "th"
+translationSlug: "the-shift-from-code-to-orchestration-building-ai-native-engineering-culture"
+---
+
+import MermaidDiagram from "../../components/blog/MermaidDiagram.astro";
+
+ช่วงนี้นั่งคิดเรื่องนี้บ่อยมาก — role ของ software engineer มันกำลังเปลี่ยนไปยังไงกันแน่? ไม่ใช่แบบ "AI จะมาแทนเรา" ที่เห็นตาม headline นะ แต่แบบจับต้องได้จริงๆ ว่าการทำงานในแต่ละวันมันต่างออกไปยังไง วิธีที่เรา design systems, จัดการ workflows, สร้างทีม — ทุกอย่างกำลังขยับจากการนั่งเขียน code เองทุกบรรทัด ไปเป็นการ orchestrate agents ให้ทำงานแทน
+
+จะเล่าให้ฟังว่าเห็นอะไรบ้าง ไม่ได้บอกว่ามีคำตอบทุกอย่างนะ แต่จากที่สังเกต workflow ตัวเอง อ่าน reports ต่างๆ แล้วก็ดูว่าทีมระดับท็อปเขาปรับตัวกันยังไง มีหลายอย่างที่ชัดพอจะแชร์ได้
+
+## การมาถึงของ AI-Native Engineer
+
+พูดง่ายๆ คือตอนนี้มี engineer รุ่นใหม่ที่ใช้ AI เป็นเครื่องมือหลักในการทำงานเลย ไม่ใช่แค่ลองเล่นๆ ไม่ใช่ nice-to-have แต่เป็น default way of working ไปแล้ว
+
+แล้วมันหน้าตาเป็นยังไง? ก็คือ role ของ engineer คนเดียวมันขยายออก เราไม่ได้แค่นั่งเขียน code อีกต่อไป เรากลายเป็น **manager ของ specialized agents** — แต่ละตัวรับผิดชอบ domain เฉพาะ แต่ละตัวต้อง brief ให้ชัดและ verify ผลงาน เหมือนกับ manage ทีม engineers จริงๆ เลย
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    E["AI-Native Engineer"] --> A1["Agent: Backend Logic"]
+    E --> A2["Agent: Frontend UI"]
+    E --> A3["Agent: Test Generation"]
+    E --> A4["Agent: Code Review"]
+    A1 --> V1["Verify Output"]
+    A2 --> V2["Verify Output"]
+    A3 --> V3["Verify Output"]
+    A4 --> V4["Verify Output"]
+    V1 --> I["Integrate & Ship"]
+    V2 --> I
+    V3 --> I
+    V4 --> I
+`}
+/>
+
+ฟังดูเว่อร์ แต่ไม่ใช่เรื่องในอนาคตนะ [Anthropic รายงานว่า 70–90% ของ code ถูกสร้างโดย AI แล้ว](https://fortune.com/2026/01/29/100-percent-of-code-at-anthropic-and-openai-is-now-ai-written-boris-cherny-roon/) ทีม data infrastructure, security, inference logic, แม้แต่ growth marketing ก็ใช้ Claude Code เป็นเครื่องมือประจำวัน คนที่ไม่ได้เป็น engineer ด้วยซ้ำก็เขียน plain text อธิบาย data workflows แล้วได้ automated execution ออกมา
+
+ถ้า frontier organizations อยู่ตรงนี้แล้ว ที่เหลือก็ตามมาไม่นาน
+
+## Part 1 — เกิดอะไรขึ้นกับ Junior Software Engineers?
+
+ส่วนนี้น่าสนใจแต่ก็น่าห่วงไปพร้อมกัน ตอนนี้ตลาด tech talent มันเจอ "perfect storm" — ปัจจัยสามอย่างชนกันพอดี:
+
+1. **Market Corrections:** หลังปี 2021 ที่จ้างกันเยอะเกิน พอ layoffs มา experienced talent ก็ล้นตลาด แข่งกันหา role เดียวกัน
+2. **CS Graduates ทะลัก:** คนจบ CS เพิ่มขึ้น 2-3 เท่าในสิบปีที่ผ่านมา ทั้งในไทยและต่างประเทศ
+3. **AI เข้ามาแทน:** ฝั่ง management กำลังคิดอยู่ว่าจะจ้างคนเพิ่มแบบเดิม หรือใช้ AI-native engineers น้อยกว่าแต่ได้ output เท่ากัน
+
+ตัวเลขมันชัดเจน [Entry-level hiring ที่ 15 tech firms ใหญ่สุดลดลง 25% จากปี 2023 ถึง 2024](https://www.cio.com/article/4062024/demand-for-junior-developers-softens-as-ai-takes-over.html) developers อายุ 22–25 ถูกจ้างน้อยลงเกือบ 20% จาก peak ปลายปี 2022 แล้วก็ [54% ของ engineering leaders บอกว่าจะจ้าง junior น้อยลง](https://stackoverflow.blog/2025/12/26/ai-vs-gen-z/) เพราะ AI copilots ทำให้ seniors ทำงานได้มากขึ้นเอง
+
+คำถามที่ถูกถามในห้องประชุม: _"จ้าง junior เงินเดือน $90K ทำไม ในเมื่อ GitHub Copilot แค่ $10/เดือน?"_
+
+สถานการณ์นี้ทำให้ entry-level แข่งขันหนักมาก junior ที่จะเข้าวงการตอนนี้ต้องเก่ง **ทั้ง** fundamentals แบบดั้งเดิมและ AI orchestration — ไม่ใช่อย่างใดอย่างหนึ่ง
+
+**พูดตรงๆ:** ไม่คิดว่า junior roles จะหายไปเลยนะ แต่ bar มันขยับขึ้นแล้ว คนที่จะรอดคือคนที่โชว์ได้ว่า productive กับ AI tools ตั้งแต่วันแรก ไม่ใช่คนที่ต้องใช้เวลา 3–6 เดือนกว่าจะเริ่มทำงานจริงได้
+
+## Part 2 — Top AI-Native Engineers Orchestrate Agents ยังไง
+
+มาเข้าเรื่องจริงจังกัน สิ่งที่เห็นคือ engineer ที่เก่งเรื่อง AI agents **ไม่ได้** ทิ้ง computer science แบบดั้งเดิมเลย พวกเขายังพึ่ง system design กับ algorithmic thinking เต็มๆ เพื่อ guide ว่า agents ควรทำอะไร การโยน agents หลายตัวใส่ปัญหาไม่ได้แปลว่าจะดีขึ้น — ถ้าไม่ manage มันจะเละ
+
+[GitHub engineering blog พูดไว้ตรงๆ](https://github.blog/ai-and-ml/generative-ai/multi-agent-workflows-often-fail-heres-how-to-engineer-ones-that-dont/) ว่า multi-agent workflows มักพังเพราะ agents คุยกันไม่รู้เรื่อง share state แบบ implicit หรือมี ordering assumptions ที่พังเงียบๆ
+
+นี่คือ patterns ที่เห็นว่า work จริง:
+
+### สร้างทีละชิ้น (Build It Up Piecemeal)
+
+อย่าปล่อย 10 agents พร้อมกัน approach ที่ถูกคือค่อยๆ ทำ:
+
+1. ให้ **agent ตัวเดียว** ทำ isolated task แล้ว verify output ให้เรียบร้อย
+2. พอมั่นใจแล้ว ค่อยเพิ่ม **agent ตัวที่สอง** สำหรับ domain ที่แยกกันชัดๆ (เช่น ตัวนึงทำ backend อีกตัวทำ frontend)
+3. กำหนดขอบเขตงานให้ชัด **ก่อน** เพิ่ม complexity
+
+**ตัวอย่าง:** สมมติจะสร้าง API endpoint ใหม่พร้อม tests แทนที่จะปล่อย agents ทำ "backend + frontend + tests + docs" พร้อมกัน ให้เริ่มจาก agent ตัวเดียวเขียน handler ก่อน ดูว่า compile ได้ make sense ดี แล้วค่อยปล่อยอีกตัวเขียน tests ทีหลัง ให้แต่ละตัวทำงานกับ baseline ที่ verify แล้ว
+
+### Context Switching คือ Core Skill
+
+การ manage agents มันคล้ายกับการ manage คนเลย เหมือนกำลัง kick off งานหลายๆ เส้นพร้อมกันกับ "interns" ที่ไฟแรงมาก สิ่งที่แยก engineer ที่เก่งออกมาคือความสามารถในการ **maintain state** — สลับไปดูงานของ Agent A แล้วก็กลับมาดู Agent B โดยไม่ลืมภาพรวมของ architecture ทั้งหมด
+
+มันยากกว่าที่คิดจริงๆ เคยเจอตัวเองกำลัง review output ของ Agent B แล้วลืม constraint ที่ set ไว้ให้ Agent A ไปเลย discipline ที่ต้องใช้มันเหมือนกับเป็น tech lead ที่ดูหลาย workstreams พร้อมกัน
+
+### Agent-Friendly Codebase
+
+ปล่อย agent เข้า repo แล้วมันต้องการ environment ที่ชัดเจนถึงจะทำงานได้ดี
+
+- **Strict Contracts:** Test coverage คือสัญญาว่า code ถูก ถ้าไม่มี tests ที่ดี agents ก็ทำงานแบบตาบอด แล้ว **จะ** พัง build แน่นอน
+- **Documentation Parity:** Code กับ docs (เช่น READMEs, `CLAUDE.md`) ต้อง sync กัน ถ้า code บอกอย่าง docs บอกอีกอย่าง agent จะงง แล้วก็ hallucinate คำตอบออกมาเอง
+
+**ตัวอย่าง:** ลองนึกว่า agent ต้องเพิ่ม field ใหม่ใน data model ถ้า README บอกว่า "ใช้ snake_case ทุกที่" แต่ codebase จริงๆ ครึ่งนึงเป็น camelCase — agent ก็ต้องเดา แล้วมันอาจเดาผิด ถึงจุดนี้ engineering consistency ไม่ใช่แค่ good practice อีกแล้ว มันคือ **สิ่งที่ต้องมีก่อน** ถึงจะ scale ด้วย automation ได้
+
+### เมื่อได้ Spaghetti Code
+
+Agents ทำให้ error ลุกลามเร็วมาก ถ้า agent ตีความ code ที่ยุ่งเหยิงผิดตั้งแต่ step แรก มันจะ double down กับ error นั้นใน step ถัดไป technical debt ทวีคูณขึ้นไปเรื่อยๆ
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["Inconsistent\nCodebase"] --> B["Agent Misinterprets\nPattern"]
+    B --> C["Builds on Wrong\nAssumption"]
+    C --> D["Compounds Error\nin Next Step"]
+    D --> E["Technical Debt\nMultiplied"]
+    style A fill:#ff6b6b,color:#fff
+    style E fill:#ff6b6b,color:#fff
+`}
+/>
+
+เพราะฉะนั้น codebase ต้องเรียบร้อยก่อนจะปล่อย agent เข้าไป design patterns ต้อง consistent ถ้าระบบมีสอง APIs ต่างกันในการสร้าง object เดียวกัน agent **จะ** เดาว่าใช้ตัวไหน strict linting, architectural rules ที่ชัด, `CLAUDE.md` ที่ maintain ดี — พวกนี้คือสิ่งที่ต้องมี ไม่ใช่ optional
+
+## Part 3 — Functional Software vs. Incredible Software
+
+มีเรื่องนึงที่ AI tools ไม่ได้บอกเรา: ระยะห่างระหว่าง code ที่แค่ "ใช้ได้" กับ software ที่ดีจริงๆ มันคือ engineering **"taste"**
+
+Taste มันมาจาก "last mile" ของการ develop — ตอนที่ push ผ่าน requirements พื้นฐานไปแก้ edge cases ที่ซับซ้อน AI agent generate CRUD endpoint ที่ work ได้ในไม่กี่วินาที แต่การตัดสินใจว่า endpoint นั้นควร handle rate limiting ยังไงตอน traffic พุ่ง degradation strategy ควรเป็นแบบไหน error responses ช่วยให้ downstream consumers เข้าใจหรือสับสนกว่าเดิม — นั่นแหละคือ taste มันมาจากประสบการณ์และจากการแคร์มากพอที่จะ push ผ่าน "มันก็ work แล้วนี่"
+
+แล้วก็ continuous experimentation เป็นเรื่องที่ขาดไม่ได้ แม้แต่ AI organizations ระดับท็อปก็ทำจริงจัง [Anthropic เอา models ตัวเองมาใช้งานจริงตลอด](https://cloudnativenow.com/editorial-calendar/best-of-2025/how-anthropic-dogfoods-on-claude-code-2/) — ใช้ Claude rewrite ระบบของตัวเอง หา bug จริง เจอ limitation จริงใน production Hacking, iteration เร็วๆ, dogfooding — ต้องฝัง deep เข้าไปใน SDLC
+
+**พูดตรงๆ:** ถ้าทีมไม่ได้ใช้ AI tools สร้างระบบที่ manage AI tools เอง ก็กำลังทิ้ง compounding improvements ไป feedback loop ของ "ใช้ tool → เจอจุดอ่อน → ปรับปรุง tool → ทำซ้ำ" คือจุดที่ engineering taste ถูก sharpen จริงๆ ในยุคนี้
+
+## Part 4 — ทำไมโลกยังต้องการ Junior Software Engineers
+
+อ่านมาถึงตรงนี้อาจคิดว่ากำลังบอกว่าไม่ต้องจ้าง junior แล้ว ตรงกันข้ามเลย การมองข้าม junior talent ตอนนี้เป็นความผิดพลาดเชิงกลยุทธ์
+
+เหตุผลคือ:
+
+**Senior engineers มี bias** คุ้นชินกับ paradigms เฉพาะ — framework ที่ถนัด วิธี debug ที่เคยใช้มาตลอด mental model ว่าระบบ "ควร" เป็นยังไง ประสบการณ์นี้มีค่านะ แต่มันก็ทำให้ต้านทานของใหม่ได้เหมือนกัน เคยเห็น senior engineers ปฏิเสธใช้ AI coding tools เพราะ "เขียนเองเร็วกว่า" — พลาดประเด็นที่ว่า skill ไม่ใช่ความเร็วในการพิมพ์ แต่เป็น orchestration leverage ต่างหาก
+
+**Junior engineers เป็น blank slates** ไม่มี "แผลเป็นจากอุตสาหกรรม" ที่ทำให้กลัว risk ด้วย CS training ที่สอนให้ break down ปัญหาแบบ algorithmic พวกเขามีความสามารถในการปรับตัว debug, customize, แก้ AI-generated code ได้ แทนที่จะทิ้ง tool ตั้งแต่เจอปัญหาแรก
+
+[Stack Overflow วิเคราะห์เรื่อง AI vs Gen Z developers](https://stackoverflow.blog/2025/12/26/ai-vs-gen-z/) ไว้น่าสนใจ: AI-native juniors สมัยนี้มาถึงพร้อมกับ fluency ใน Copilot หรือ ChatGPT อยู่แล้ว แทนที่จะใช้เวลาหลายสัปดาห์เรียน syntax พวกเขาเริ่ม contribute ได้เกือบทันที — ถ้า organization ให้ environment ที่ดีพอ
+
+**ตัวอย่าง:** junior ที่ไม่เคยสร้าง REST API มาก่อน แต่รู้วิธี prompt agent ให้ scaffold ขึ้นมา แล้ว review output เทียบกับ design patterns ที่เรียนมา — คนนี้อาจ productive กว่าตั้งแต่วันแรก เทียบกับ junior เมื่อห้าปีก่อนที่ต้องจำ framework boilerplate ก่อนจะเขียน endpoint แรกได้
+
+ความกล้าที่จะลุยงานยากๆ ทำให้พวกเขาเป็น asset ที่ทรงพลังมากในยุค AI กุญแจคือให้ architectural guardrails กับ code review processes ที่แน่น ไม่ใช่กั้นไม่ให้เจอของยาก
+
+## ทำไมถึงสร้าง TP Coder Innovation Hub
+
+นี่แหละคือเหตุผลหลักๆ เลยที่สร้าง [TP Coder Innovation Hub](https://hub.tpcoder.dev/) ขึ้นมา — non-profit digital ecosystem เพื่อ empower คนไทยในสาย tech
+
+![TP Coder Innovation Hub](/assets/images/blogs/shift-ai-native-engineer/innovation-hub-landing-page.jpg)
+
+เห็น trend นี้มาตั้งแต่ปีที่แล้ว สัญญาณชัดมาก: การจ้าง junior ชะลอ AI tools เร่งเร็วขึ้นเรื่อยๆ ช่องว่างระหว่างสิ่งที่ industry คาดหวังกับสิ่งที่คนจบใหม่ทำได้จริงก็กว้างขึ้น คิดตลอดว่า ถ้า industry เปลี่ยนเร็วขนาดนี้ ต้องมีคนช่วย generation ถัดไป bridge gap ตรงนี้ แล้วหลังจาก mentor ผ่าน Generation Thailand's JSD program มากว่า 7 cohorts ก็เห็นกับตาว่ามีคนเก่งเยอะมากที่ติดอยู่ใน "experience trap" — หางานไม่ได้เพราะไม่มีประสบการณ์ แต่ได้ประสบการณ์ไม่ได้เพราะไม่มีใครจ้าง
+
+AI ทำให้ trap นี้ **แย่ลง** และ **ดีขึ้น** พร้อมกัน แย่ลงเพราะบริษัทคาดหวังให้แม้แต่ junior productive ตั้งแต่วันแรก ดีขึ้นเพราะถ้ามี guidance ที่ดี AI tools บีบอัด learning curve ได้มหาศาล — mentee ที่เรียนรู้ orchestrate agents เป็น สร้าง job-ready portfolio ได้ในหลักสัปดาห์แทนที่จะเป็นหลักเดือน
+
+นั่นคือสิ่งที่ Hub ทำ: **structured learning paths, GitHub-based projects ที่มี professional code reviews, และ mentorship** เพื่อสร้าง portfolio ที่โชว์ capability จริง ไม่ใช่แค่ทำ tutorial จบ เรา focus สร้างโอกาสให้ Thai developers ทุกคน ไม่ว่าจะอยู่ที่ไหน มีข้อจำกัดทางร่างกายแบบไหน หรือ background เศรษฐกิจเป็นยังไง มีคนเก่งนอกกรุงเทพฯ มีคนพิการที่ thrive ใน remote work ได้ มี career switchers ที่แค่ต้องการโอกาสที่ดี
+
+การ shift จาก code ไปสู่ orchestration ไม่ใช่แค่ trend ที่นั่งดูเฉยๆ ได้ สำหรับเราแล้ว มันคือเหตุผลที่ต้องลุกขึ้นมาทำอะไรสักอย่าง — เพื่อให้ Thai developers รุ่นต่อไปไม่ถูกทิ้งไว้ข้างหลัง แต่กลายเป็น AI-native engineering workforce ที่ adaptable ที่สุดในภูมิภาค
+
+## สรุป
+
+การ shift จาก code ไปสู่ orchestration ไม่ใช่เรื่องอนาคต มันเกิดขึ้นแล้ว Engineers ที่จะรอดคือคนที่:
+
+1. **Treat AI agents เป็น team members** ไม่ใช่กล่องดำวิเศษ
+2. **ลงทุนดูแล codebase** ให้พร้อมสำหรับ automation ไม่ใช่ค่อยมาจัดการทีหลัง
+3. **พัฒนา engineering taste** ผ่านการลองจริง ใช้จริง dogfood จริง
+4. **โอบรับ junior talent** ในฐานะคนที่ปรับตัวได้ดีที่สุดในยุค AI-native
+
+Role ของ software engineer ไม่ได้หดตัว มันขยาย — จากคนเขียน code ไปเป็นคน architect ระบบ manage agents และตัดสินใจในเรื่องที่ไม่มี model ไหน automate ได้
+
+สำหรับเรา นั่นเป็นงานที่น่าสนใจกว่าที่เคยทำมาก่อนอีก
+
+---
+
+## อ่านเพิ่มเติม
+
+ถ้าอยาก dive deeper ในหัวข้อที่พูดถึง ลองอ่านบทความพวกนี้ดู:
+
+- [**Agent Skills คืออะไร?**](/blog/what-is-agent-skills-about-th) — Deep dive เรื่องการให้ AI agents มี modular skills แทน monolithic prompts เกี่ยวข้องกับ "agent-friendly codebase" ใน Part 2
+- [**Sharing Guidelines for AI Coding Agents**](/blog/ai-coding-agent-guidelines-for-real-world-development) — Guidelines จริงๆ สำหรับจัดโครงสร้างว่า agents ควร plan, execute, verify งานยังไง playbook เบื้องหลัง orchestration ที่พูดถึงที่นี่
+- [**จาก Monolithic Agents สู่ Composable Workflows**](/blog/from-monolithic-agents-to-composable-workflows-th) — Microservices patterns ใช้ยังไงกับ multi-agent systems ขยายความจาก "สร้างทีละชิ้น" ใน Part 2
+- [**สรุป 10 ประเภทของ AI Agents**](/blog/top-10-types-of-ai-agents-th) — ภาพรวม agent architectures ตั้งแต่ reactive ถึง multi-agent systems เอาไว้เข้าใจว่าจะ orchestrate agents แบบไหนได้บ้าง
+- [**สิ่งที่ได้เรียนรู้จาก Harness Engineering ของ OpenAI**](/blog/what-i-learned-from-openai-harness-engineering-agent-first-development-th) — Case study จริงของการสร้าง software ด้วย 0 lines of human-written code ทั้ง promise และ edge cases ของ agent-driven development
+- [**อนาคตของอาชีพ Software Engineer**](/blog/the-future-of-software-engineering-career-th) — มุมมองกว้างขึ้นว่า role ของ SE เปลี่ยนไปยังไงเมื่อ AI เขียน code แทน บทความคู่กับเรื่องนี้
