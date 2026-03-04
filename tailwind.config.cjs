@@ -73,6 +73,9 @@ module.exports = {
         900: '#854D0E',
       },
     },
+    fontFamily: {
+      sans: ['Roboto', 'sans-serif'],
+    },
     extend: {
       spacing: {
         128: '32rem',
