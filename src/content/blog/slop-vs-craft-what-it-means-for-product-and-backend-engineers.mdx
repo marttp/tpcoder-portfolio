@@ -1,0 +1,111 @@
+---
+title: 'My Two Cents on "Slop vs. Craft" — What It Means for Product Engineers and Backend Teams (Maybe?)'
+description: 'After watching the Y Combinator "Slop vs. Craft" discussion, here''s what I took away as a backend-focused product engineer — from vibe coding euphoria to the feature treadmill, and why retention is the metric that actually matters.'
+pubDate: "2026-03-05"
+tags: ["Software Engineering", "Product Engineering", "Backend", "AI", "Career"]
+language: "en"
+heroImage: "/assets/images/blogs/slop-vs-craft/hero-banner.png"
+---
+
+I recently watched the "Slop vs. Craft" discussion by Dalton and Michael, and it hit closer to home than I expected. As someone who spends most of my time in backend systems and thinks a lot about how engineering decisions shape products, this video forced me to reflect on patterns I've been seeing — and honestly, patterns I've been guilty of myself.
+
+So here's what I took away, filtered through my lens as a backend-focused product engineer.
+
+---
+
+## The "Vibe Coding" Phase — I Get It, Because I've Been There
+
+Let me be upfront: I love AI coding tools. Claude Code, Cursor, Windsurf — watching code fly across the screen while tokens burn feels like pair-programming with the fastest engineer alive. There's a real dopamine hit when you prompt something and a working endpoint appears in seconds.
+
+But here's what I had to admit to myself: **generating code fast is not the same as building something valuable.** I've caught myself in moments where the excitement of shipping quickly masked the fact that I hadn't validated whether the feature actually solved a user problem. That's developer euphoria, not product-market fit.
+
+From a backend perspective, this is dangerous. We can spin up microservices, wire up message queues, set up entire infrastructure — all in a fraction of the time it used to take. But speed without direction just means you arrive at the wrong destination faster.
+
+---
+
+## What "Slop" Looks Like in Backend and Product Engineering
+
+Dalton and Michael define "slop" as software that demos well but fundamentally fails to solve the end-user's actual problem. When I mapped this to backend work, two patterns jumped out:
+
+### The Feature Treadmill
+
+Because AI makes shipping nearly frictionless, the default response when a product underperforms is to add more features on top of a weak core. You can spot this in codebases where teams keep stacking features — dozens of endpoints, multiple background workers, several notification channels — yet the core use case still doesn't work reliably.
+
+In backend terms, this looks like over-engineering: adding caching layers, event-driven architectures, and complex orchestration before the basic request-response flow is even validated with real users. We solve infrastructure problems that don't exist yet while ignoring the ones that do.
+
+### The Turkey Graph
+
+This metaphor stuck with me. A "Turkey Startup" has metrics that go up and up — until one day the algorithm changes or users churn, and the whole thing collapses instantly, like a turkey on Thanksgiving.
+
+This happens more often than people admit. A team optimizes for throughput numbers and DAU graphs that look beautiful in dashboards. But when you dig into retention data, the story is completely different. High sign-ups, low return visits. The backend scales perfectly for users who aren't coming back.
+
+---
+
+## We've Seen This Before — Historical Patterns That Backend Engineers Should Remember
+
+The video walks through previous "slop cycles" in tech, and honestly, every one of them has a backend engineering lesson:
+
+- **Web 2.0 SEO Spam**: Content farms gamed Google's algorithm. Great early graphs, zero durability. The backend equivalent? Building systems optimized for vanity metrics rather than genuine user value.
+
+- **Early Mobile Era**: Flashy apps (virtual lightsabers, anyone?) with deceptive annual subscription models. The backend lesson? A polished API surface means nothing if the underlying logic is hollow.
+
+- **Crypto / ICO Craze**: Low-effort plugins launched just to dump tokens and exit. This is the "spin up a boilerplate, deploy to production, call it a product" pattern that AI tools make even easier today.
+
+The common thread? In every cycle, the people who built for durability — who invested in understanding their domain deeply — were the ones still standing when the hype faded.
+
+---
+
+## Accelerated "Pivot Hell" — The Trap I Almost Fell Into
+
+This was the most personally relevant warning for me. Pre-AI, pivoting took real effort. You had to rewrite code, redesign schemas, re-architect services. That friction was painful, but it also forced conviction — you didn't abandon a direction unless you had strong reasons.
+
+Today, you can prompt an AI to "clone Salesforce" and have a working prototype almost immediately. While this sounds like an advantage, it's actually a trap. Because prototyping is practically free, it becomes too easy to abandon hard problems and pivot into shiny new domains you know nothing about.
+
+Here's the backend engineer's version of this trap: **if you can generate your entire service layer from a prompt, so can everyone else. Your moat is zero.**
+
+I've caught myself doing this with side projects — the moment something gets hard, the temptation is to start a new project because the "starting" phase is so easy now. But the hard problems — data modeling for complex domains, handling edge cases in distributed systems, making something truly reliable at scale — those still require deep, sustained engineering effort that no amount of AI acceleration can shortcut.
+
+---
+
+## Retention Over Extraction — The Metric That Actually Matters
+
+When teams optimize purely for top-line metrics (user growth, DAUs), it's easy to fall into dark patterns — spamming push notifications or sending deceptive emails to artificially pump the numbers. This treats users as resources to be extracted from.
+
+As a backend engineer, I think the single most honest metric is **retention**. Retention forces you to ask uncomfortable questions:
+
+- Is the API response time actually acceptable for the user's workflow?
+- Does the data model support the real-world complexity users encounter?
+- Are we handling errors gracefully, or are users silently hitting dead ends?
+- Is the system reliable enough that users trust it with their actual work?
+
+These are backend problems. And they're the kind of problems that don't get solved by generating more code faster — they get solved by understanding the domain deeply and engineering thoughtfully.
+
+---
+
+## What I'm Taking Away From This
+
+We're entering what the video calls a symmetric "Slop War" — an arms race of who can generate the most AI-produced output to make the graphs go up. The only guaranteed winners of a slop war are the entities selling the API tokens.
+
+My takeaway as a product engineer who lives in backend code:
+
+**Use AI to accelerate craft, not to mass-produce slop**.
+
+Concretely, that means:
+
+- Use AI tools to handle boilerplate so you can spend more time on domain understanding and system design
+- Validate with real users before scaling infrastructure
+- Optimize for retention, not acquisition vanity metrics
+- Stay with hard problems long enough to actually solve them, instead of pivoting every time the initial excitement fades
+- Maintain what the video calls "taste" — not in the UI design sense, but in the sense of standing behind the code you push to production
+
+I don't have all the answers here. Maybe the AI-accelerated world will shake out differently than the previous hype cycles. But the pattern of "easy tools leading to low-effort output leading to market saturation leading to collapse" has repeated enough times that I think it's worth paying attention to.
+
+The backend engineers and product engineers who invest in understanding their users' real problems — not just shipping features fast — are the ones who will build things that last.
+
+---
+
+**Reference:**
+
+![Dalton & Michael](/assets/images/blogs/slop-vs-craft/Dalton%20&%20Michael.jpg)
+
+[Slop vs Craft — Dalton & Michael](https://youtu.be/YzHyRZMBs04)
