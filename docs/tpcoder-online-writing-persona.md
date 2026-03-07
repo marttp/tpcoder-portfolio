@@ -150,6 +150,7 @@ To write in the TP Coder style:
 ## Social Media Posts (Facebook)
 
 Before writing a FB post for a blog article, **always ask the user**:
+
 - ต้องการกี่คำ? (e.g., 50, 100, 150)
 - ต้องการรายละเอียดแค่ไหน? (e.g., แค่ headline สั้นๆ / สรุป key points / เกือบครบทุกประเด็น)
 
@@ -161,6 +162,7 @@ Then follow these rules:
 4. **Match the blog's tone** — semi-official, practical, experienced engineer talking to peers. Not a marketing announcement.
 5. **Thai version uses English tech terms** where they're more natural, same as blog articles.
 6. **No emojis in body text** — keep it clean. One link emoji at the end is acceptable but not required.
+7. ในภาษาไทย ห้ามใช้คำว่า "นี่เป็นสัญญาณชัดเจนครับ" หรือ pattern ใด ๆ ที่อ่านก็รู้ว่าเป็น AI เขียนขึ้นมา
 
 ---
 
