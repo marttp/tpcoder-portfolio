@@ -1,1 +1,110 @@
-[]
+[
+  {
+    "title": "ลองเล่น Cron Jobs บน Express.js กัน",
+    "description": "Exploring how to set up and use cron jobs in Express.js for scheduling recurring tasks.",
+    "tags": ["Node.js", "Express.js", "Cron Job"],
+    "pubDate": "2019-07-28",
+    "language": "th",
+    "mediumSlug": "ลองเล่น-cron-jobs-บน-express-js-กัน-4493084dcc53",
+    "github": "https://github.com/marttp/express-cron-sample"
+  },
+  {
+    "title": "จัดการ Temporary file storage ด้วย Cron jobs บน Express.js",
+    "description": "Managing temporary file storage cleanup using scheduled cron jobs in Express.js.",
+    "tags": ["Node.js", "Express.js", "Cron Job"],
+    "pubDate": "2019-07-29",
+    "language": "th",
+    "mediumSlug": "จัดการ-temporary-file-storage-ด้วย-cron-jobs-บน-express-js-aec75af2821a",
+    "github": "https://github.com/marttp/file-mgmt-cron-job-express"
+  },
+  {
+    "title": "ส่งข้อมูลจาก Backend to Client ด้วย Server-Sent Events (Express.js)",
+    "description": "Implementing real-time data streaming from backend to client using Server-Sent Events in Express.js.",
+    "tags": ["Node.js", "Express.js", "Server-Sent Events"],
+    "pubDate": "2020-02-09",
+    "language": "th",
+    "mediumSlug": "ส่งข้อมูลจาก-backend-to-client-ด้วย-server-sent-events-express-js-15d8ecaded64",
+    "github": "https://github.com/marttp/sse-expressjs-example"
+  },
+  {
+    "title": "Upload ไฟล์ Excel บน Spring Boot (Kotlin) ไปยัง MongoDB",
+    "description": "Uploading and processing Excel files in Spring Boot with Kotlin, storing data into MongoDB.",
+    "tags": ["Spring Boot", "Kotlin", "MongoDB"],
+    "pubDate": "2021-05-24",
+    "language": "th",
+    "mediumSlug": "upload-ไฟล์-excel-บน-spring-boot-kotlin-ไปยัง-mongodb-e1e7f19222e5",
+    "github": "https://github.com/marttp/spring-boot-kt-upload-excel-file-to-mongodb"
+  },
+  {
+    "title": "[Tutorial] มาทำ Background Processing บน Spring Boot ให้ง่ายขึ้นด้วย JobRunr (Spring Boot Kotlin)",
+    "description": "Tutorial on simplifying background job processing in Spring Boot using the JobRunr library with Kotlin.",
+    "tags": ["Spring Boot", "Kotlin", "JobRunr"],
+    "pubDate": "2023-06-03",
+    "language": "th",
+    "mediumSlug": "tutorial-มาทำ-background-processing-บน-spring-boot-ให้ง่ายขึ้นด้วย-jobrunr-spring-boot-kotlin-2ebe13ebc20f",
+    "github": "https://github.com/marttp/poc-spring-boot-kt-jobrunr"
+  },
+  {
+    "title": "Spring Boot 3.3 + OpenTelemetry (Agent) with otel-lgtm",
+    "description": "Setting up observability for Spring Boot 3.3 using OpenTelemetry Java Agent with the LGTM stack template.",
+    "tags": ["Spring Boot", "Java", "OpenTelemetry", "Observability"],
+    "pubDate": "2024-03-21",
+    "language": "en",
+    "mediumSlug": "spring-boot-3-3-opentelemetry-agent-with-otel-lgtm-c9ecb100998e",
+    "github": "https://github.com/marttp/spring-boot-lgtm-opentelemetry-template"
+  },
+  {
+    "title": "Java และ Ollama — Unlock พลัง Generative AI ให้ชาว Java ด้วย LangChain4j (Model on locally)",
+    "description": "Integrating Ollama with Java using LangChain4j to unlock local Generative AI capabilities for Java developers.",
+    "tags": ["Java", "LangChain4j", "Ollama", "Generative AI"],
+    "pubDate": "2024-03-26",
+    "language": "th",
+    "mediumSlug": "java-และ-ollama-unlock-พลัง-generative-ai-ให้ชาว-java-ด้วย-langchain4j-model-on-locally-e07fb9fc0160",
+    "github": "https://github.com/marttp/20240325-java-langchain4j-explore"
+  },
+  {
+    "title": "In-house LLM application by Spring AI + Ollama",
+    "description": "Building an in-house LLM application using Spring AI framework integrated with Ollama for local model inference.",
+    "tags": ["Spring Boot", "Spring AI", "Ollama", "LLM"],
+    "pubDate": "2024-04-05",
+    "language": "en",
+    "mediumSlug": "in-house-llm-application-by-spring-ai-ollama-91c48e2d2d38",
+    "github": "https://github.com/marttp/20240331-developer-assistant-vaadin"
+  },
+  {
+    "title": "Feasibility of implementing cronjob with Rust programming language",
+    "description": "Exploring different approaches and feasibility of implementing cron job scheduling in Rust.",
+    "tags": ["Rust", "Cron Job"],
+    "pubDate": "2024-04-12",
+    "language": "en",
+    "mediumSlug": "feasibility-of-implementing-cronjob-with-rust-programming-language-186eaed0a7d8",
+    "github": "https://github.com/marttp/20240412-rust-cronjob"
+  },
+  {
+    "title": "Guide for your new resume to apply the dream job with Resumize (My Rust & RAG side project)",
+    "description": "A Rust & RAG side project that helps generate tailored resumes for job applications using AI.",
+    "tags": ["Rust", "RAG", "LLM", "Side Project"],
+    "pubDate": "2024-05-01",
+    "language": "en",
+    "mediumSlug": "guide-for-your-new-resume-to-apply-the-dream-job-with-resumize-my-rust-rag-side-project-486cce64e7ea",
+    "github": "https://github.com/marttp/resumize"
+  },
+  {
+    "title": "Sharing Knowledge and Concepts of AI Agent Development: My Experience from the AI Agents Intensive Course",
+    "description": "Sharing key concepts and knowledge about AI agent development from the AI Agents Intensive course by Google.",
+    "tags": ["AI Agent", "Google", "Generative AI"],
+    "pubDate": "2025-06-21",
+    "language": "en",
+    "mediumSlug": "sharing-knowledge-and-concepts-of-ai-agent-development-my-experience-from-the-ai-agents-intensive-d05c3d49047f",
+    "github": "https://github.com/marttp/ai-agent-intensive-course-blog"
+  },
+  {
+    "title": "Just another Reddit ideas discovery agent by using ADK (Agent Development Kit)",
+    "description": "Building a Reddit ideas discovery agent using Google's Agent Development Kit (ADK) for automated idea exploration.",
+    "tags": ["Python", "ADK", "AI Agent", "Google"],
+    "pubDate": "2025-06-28",
+    "language": "en",
+    "mediumSlug": "just-another-reddit-ideas-discovery-agent-by-using-adk-agent-development-kit-7300eee03897",
+    "github": "https://github.com/marttp/20250624-product-ideas-daily"
+  }
+]
