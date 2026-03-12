@@ -90,6 +90,15 @@
     "github": "https://github.com/marttp/resumize"
   },
   {
+    "title": "Blind-Friendly-v2: AI-Powered Navigation with Gemma 3n (early preview)",
+    "description": "A mobile navigation assistant for visually impaired users, leveraging on-device Gemma 3n for real-time scene understanding and voice guidance — no internet required.",
+    "tags": ["Android", "Kotlin", "Gemma", "Accessibility", "Side Project"],
+    "pubDate": "2025-05-25",
+    "language": "en",
+    "mediumSlug": "blind-friendly-v2-ai-powered-navigation-with-gemma-3n-early-preview-side-project-16ce366cde7a",
+    "github": "https://github.com/marttp/Blind-Friendly-v2"
+  },
+  {
     "title": "Sharing Knowledge and Concepts of AI Agent Development: My Experience from the AI Agents Intensive Course",
     "description": "Sharing key concepts and knowledge about AI agent development from the AI Agents Intensive course by Google.",
     "tags": ["AI Agent", "Google", "Generative AI"],
