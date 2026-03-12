@@ -1,34 +1,91 @@
 ---
 import Layout from '../../layouts/BaseLayout.astro';
 import SectionTitle from '../../components/SectionTitle';
-import { getCollection } from 'astro:content';
-import FormattedDate from '../../components/FormattedDate.astro';
+import ProjectCard from '../../components/project/ProjectCard';
+import type { ProjectItem } from '../../data/props';
+import projectsData from '../../data/projects.json';
 
-const projects = (await getCollection('project')).sort((a, b) => {
-  if (a.data.pubDate && b.data.pubDate) {
-    return a.data.pubDate.valueOf() - b.data.pubDate.valueOf();
-  }
-  return 0;
-});
+const projects: ProjectItem[] = (projectsData as ProjectItem[]).sort(
+  (a, b) => new Date(b.pubDate).valueOf() - new Date(a.pubDate).valueOf()
+);
 ---
 
 <Layout
   title="Projects"
-  description="List of interesting projects which created by Thanaphoom Babparn and all of them are open source."
+  description="List of interesting projects and technical explorations by Thanaphoom Babparn."
 >
-  <SectionTitle title="This page under construction 🏗️👷" />
-  <!-- <section>
-    <ul>
-      {
-        projects.map((project) => (
-          <li>
-            {project.data.pubDate && (
-              <FormattedDate date={new Date(project.data.pubDate)} />
-            )}
-            <a href={`/project/${project.slug}/`}>{project.data.title}</a>
-          </li>
-        ))
-      }
-    </ul>
-  </section> -->
+  <SectionTitle title="Projects" />
+
+  <!-- Search Input -->
+  <div class="w-full max-w-md mx-auto mb-6">
+    <div class="relative">
+      <input
+        id="searchInput"
+        type="text"
+        placeholder="Search projects..."
+        class="w-full py-2 px-4 pr-10 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+      <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Projects Grid -->
+  <div id="projectContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    {
+      projects.map((project) => (
+        <div
+          class="project-item"
+          data-project-title={project.title.toLowerCase()}
+          data-project-description={project.description.toLowerCase()}
+          data-project-tags={project.tags.join(",").toLowerCase()}
+        >
+          <ProjectCard project={project} client:only="solid-js" />
+        </div>
+      ))
+    }
+  </div>
+
+  <div id="noResults" class="hidden text-center py-8 text-gray-500 dark:text-gray-400">
+    No projects found matching your search. Try different keywords or tags.
+  </div>
 </Layout>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const searchInput = document.getElementById("searchInput") as HTMLInputElement;
+    const projectItems = document.querySelectorAll(".project-item");
+    const noResults = document.getElementById("noResults");
+
+    if (!searchInput || !noResults) return;
+
+    searchInput.addEventListener("input", function (this: HTMLInputElement) {
+      const searchTerm = this.value.toLowerCase().trim();
+      let hasVisible = false;
+
+      projectItems.forEach((item) => {
+        const title = item.getAttribute("data-project-title") || "";
+        const description = item.getAttribute("data-project-description") || "";
+        const tags = item.getAttribute("data-project-tags") || "";
+
+        const matches =
+          searchTerm === "" ||
+          title.includes(searchTerm) ||
+          description.includes(searchTerm) ||
+          tags.includes(searchTerm);
+
+        if (matches) {
+          item.classList.remove("hidden");
+          hasVisible = true;
+        } else {
+          item.classList.add("hidden");
+        }
+      });
+
+      noResults.classList.toggle("hidden", hasVisible);
+    });
+  });
+</script>

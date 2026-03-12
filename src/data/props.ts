@@ -107,3 +107,15 @@ export type CourseSection = {
   title: string;
   courses: Course[];
 };
+
+export type ProjectItem = {
+  title: string;
+  description: string;
+  tags: string[];
+  pubDate: string;
+  language: 'en' | 'th';
+  mediumSlug?: string;
+  github?: string;
+  heroImage?: string;
+  slug?: string;
+};
