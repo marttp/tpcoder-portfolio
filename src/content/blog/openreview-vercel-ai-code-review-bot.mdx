@@ -1,0 +1,130 @@
+---
+title: "Building an Automated Code Review Bot with Vercel's OpenReview (Hands-On, Lessons Learned)"
+description: "My experience self-hosting Vercel's OpenReview from setup to testing real security vulnerabilities — plus a cost analysis on whether it's worth adopting for your team."
+pubDate: "2026-03-15"
+tags:
+  [
+    "AI",
+    "Software Engineering",
+    "Code Review",
+    "Developer Experience",
+    "Backend",
+  ]
+language: "en"
+heroImage: "/assets/images/blogs/open-review-poc/openreview-poc-hero-image.jpg"
+translationSlug: "openreview-vercel-ai-code-review-bot-th"
+---
+
+Today I want to dig into using AI to automate the code review process, with an open-source project from the Vercel team called **OpenReview**.
+
+This article is a summary from a video on my own channel. I'll keep it straight to the point and practical — walking through the concept behind it, how to set it up, and testing it against a real security vulnerability to evaluate whether this tool is worth adopting for your team.
+
+---
+
+## What is OpenReview?
+
+OpenReview is an open-source AI Code Review Bot designed to be self-hosted on Vercel. It's currently in Beta status (originally built as an internal Vercel project for testing their own technologies).
+
+Under the hood, it's powered by **Claude Sonnet 4.6** via the Vercel AI SDK, and supports an Agent Skills system that runs inside a Vercel Sandbox — a fully isolated environment.
+
+**Core workflow:**
+
+1. A developer creates a Pull Request (PR) and tags the bot (e.g., typing `@openreview` in a comment)
+2. A Webhook sends the event to a Vercel Workflow
+3. An agent spins up inside the Vercel Sandbox to clone the repo, inspect the diff, run linters or other configured tools
+4. It analyzes the results and posts back as inline suggestion comments directly on the PR
+
+On top of that, OpenReview comes with built-in skills for specialized reviews — Next.js best practices, caching patterns, React Native, performance optimization — which load automatically when the context matches. You can also create custom skills via the `.agents/skills/` directory in your repository.
+
+---
+
+## Test Objective: Broken Access Control
+
+To prove that AI can genuinely serve as a second pair of eyes, I chose to test it against OWASP's #1 security vulnerability: **Broken Access Control**.
+
+For those unfamiliar, Broken Access Control is a vulnerability where one user can view or modify another user's content by bypassing permissions or due to missing authorization checks at the endpoint level.
+
+I intentionally wrote code with this vulnerability hidden in a PR and let the bot inspect it.
+
+---
+
+## Setup and Deployment (Updated for Beta)
+
+Since the project is still in Beta, the documentation may have gaps or inconsistencies in places. Here's a summary of the setup steps that actually worked:
+
+### Deploy on Vercel
+
+Hit the Deploy button from the project's GitHub page. I'd recommend provisioning a Redis instance alongside it (the docs say it's optional, but the system needs it for the Workflow).
+
+### Create a GitHub App
+
+This is needed for reading and writing data in your repository.
+
+**Required permissions:**
+
+- `Contents` — Read & Write
+- `Issues` — Read & Write
+- `Pull requests` — Read & Write
+- `Metadata` — Read-only
+
+**Subscribe to events:**
+
+- `Issue comment`
+- `Pull request review comment`
+
+**Webhook URL:** Set it to `https://<your-vercel-domain>/api/webhooks` and configure a Webhook Secret.
+
+### Configure Environment Variables
+
+Pull the values from your GitHub App and set them in the Vercel project:
+
+- `ANTHROPIC_API_KEY`
+- `GITHUB_APP_ID`
+- `GITHUB_APP_INSTALLATION_ID`
+- `GITHUB_APP_PRIVATE_KEY`
+- `GITHUB_APP_WEBHOOK_SECRET`
+- `REDIS_URL` (optional but recommended)
+
+*(Note: During my testing, the system still worked without setting `ANTHROPIC_API_KEY` because it was internally hardcoded to route through Vercel's AI Gateway. But for long-term usage, you should prepare your own API key.)*
+
+---
+
+## Testing OpenReview on a Real Pull Request
+
+After installing the GitHub App on the repository, I opened a PR with the hidden vulnerability and commented:
+
+```
+@openreview check for security vulnerabilities
+```
+
+It took about 1-2 minutes to process, and the bot returned results directly in the PR. It caught:
+
+- **Critical:** Flagged hardcoded JWT values in the code
+- **High:** Detected missing authorization on `PUT` and `DELETE` methods (which was exactly the Broken Access Control I had planted)
+
+The bot also generated a clean summary table with severity levels for easy reading. What's interesting is that you can continue the conversation through comments — for example, asking `@openreview explain how the authentication flow works` or requesting refactoring suggestions for the next module.
+
+Another feature worth mentioning is the reaction system. If you react with a 👍 or ❤️ on a suggestion, the bot will commit the fix automatically. If you react with 👎 or 😕, it skips it. This makes controlling the flow very straightforward.
+
+---
+
+## Cost Analysis
+
+Running all the commands in this demo (code review + refactoring suggestions) consumed roughly 63,000 tokens, costing approximately **$0.09 - $0.25**.
+
+To put that in perspective: if you hire a senior engineer at international rates ($80-$100 per hour) to manually read through unfamiliar legacy code looking for issues, spending hours on it adds up to a significant cost.
+
+Using a tool like OpenReview is **well worth the price**. It serves as a second pair of eyes for the first pass, reducing routine workload and catching basic human errors.
+
+Of course, we don't need to trust AI 100% of the time. The final decision is always ours. But having an assistant that flags overlooked issues will boost productivity and reduce risk for your product in the long run.
+
+---
+
+I hope this article gives everyone a sense of what's possible when you bring AI agents into the code review process. If you're interested, go check out the OpenReview project directly on Vercel's GitHub.
+
+---
+
+**Reference:**
+
+- [OpenReview — Vercel Labs (GitHub)](https://github.com/vercel-labs/openreview)
+- [Demo Video — TP Coder](https://www.youtube.com/watch?v=i6hitrMK-so)
