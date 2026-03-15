@@ -1,0 +1,130 @@
+---
+title: "สร้าง Code Review Bot อัตโนมัติด้วย OpenReview จาก Vercel (ลองเล่นจริง เจ็บจริง)"
+description: "สรุปประสบการณ์จากการลอง Self-host OpenReview ของ Vercel ตั้งแต่ Setup จนถึงทดสอบหา Security Vulnerability จริง พร้อมวิเคราะห์ว่าคุ้มค่าแค่ไหนสำหรับทีม"
+pubDate: "2026-03-15"
+tags:
+  [
+    "AI",
+    "Software Engineering",
+    "Code Review",
+    "Developer Experience",
+    "Backend",
+  ]
+language: "th"
+translationSlug: "openreview-vercel-ai-code-review-bot"
+heroImage: "/assets/images/blogs/open-review-poc/openreview-poc-hero-image.jpg"
+---
+
+สวัสดีครับทุกคน ผม TP Coder วันนี้ผมจะมาเจาะลึกการนำ AI มาช่วยพัฒนากระบวนการทำ Code Review ให้เป็นอัตโนมัติ ด้วยโปรเจกต์ Open-Source ตัวใหม่จากทีม Vercel ที่ชื่อว่า **OpenReview**
+
+บทความนี้ผมสรุปมาจากวิดีโอบนช่องของผมเอง โดยจะเล่าแบบตรงไปตรงมา เน้นผลลัพธ์ที่ใช้งานได้จริง พาดูตั้งแต่คอนเซปต์เบื้องหลัง, วิธีการติดตั้ง ไปจนถึงการทดสอบหาช่องโหว่ด้านความปลอดภัย เพื่อประเมินว่าเครื่องมือนี้คุ้มค่าที่จะนำไปปรับใช้ในทีมของคุณหรือไม่
+
+---
+
+## รู้จักกับ OpenReview
+
+OpenReview คือ Open-Source สำหรับสร้าง AI Code Review Bot ที่ออกแบบมาให้เรานำไป Self-host บน Vercel ได้เลย สถานะในปัจจุบันยังเป็นเวอร์ชัน Beta (เดิมทีทีม Vercel สร้างขึ้นมาเพื่อเป็นโปรเจกต์สำหรับใช้และทดสอบเทคโนโลยีกันเองภายในทีม)
+
+ขุมพลังเบื้องหลังของมันถูกขับเคลื่อนด้วยโมเดล **Claude Sonnet 4.6** ผ่าน Vercel AI SDK และรองรับระบบ Agent Skills ที่ทำงานภายใน Vercel Sandbox แบบ Isolated environment
+
+**Flow การทำงานหลัก:**
+
+1. Developer สร้าง Pull Request (PR) และ Tag เรียก Bot (เช่น พิมพ์ `@openreview` ในคอมเมนต์)
+2. ระบบ Webhook จะส่ง Event ไปยัง Vercel Workflow
+3. Agent ภายใน Vercel Sandbox จะถูกสร้างขึ้นมาเพื่อโคลนโค้ด ตรวจสอบ Diff รัน Linter หรือ Tools ต่าง ๆ ตามที่กำหนด
+4. วิเคราะห์ผลลัพธ์แล้วส่งกลับมาเป็นคอมเมนต์ (Inline suggestions) แนะนำการแก้ไขลงใน PR ทันที
+
+นอกจากนี้ OpenReview ยังมี Built-in Skills สำหรับ Review เฉพาะทาง เช่น Next.js best practices, caching patterns, React Native, performance optimization ซึ่งจะ Load เข้ามาอัตโนมัติเมื่อ Context ตรง และเรายังสามารถสร้าง Custom Skills เพิ่มเองได้ผ่านโฟลเดอร์ `.agents/skills/` ใน Repository ของเรา
+
+---
+
+## กำหนดเป้าหมายการทดสอบ: Broken Access Control
+
+เพื่อพิสูจน์ว่า AI สามารถเป็น Second Pair of Eyes ให้เราได้จริง ผมเลือกทดสอบระบบนี้ด้วย Security Vulnerability ยอดฮิตอันดับ 1 ของ OWASP อย่าง **Broken Access Control**
+
+สำหรับคนที่ไม่คุ้นเคย Broken Access Control คือช่องโหว่ที่ทำให้ User คนหนึ่งสามารถเข้าไปดูหรือแก้ไข Content ของ User คนอื่นได้ ผ่านการข้ามสิทธิ์หรือขาดการตรวจสอบ Authorization ในระดับ Endpoint
+
+ผมจงใจเขียนโค้ดที่มีช่องโหว่นี้ซ่อนไว้ใน PR แล้วปล่อยให้ Bot ตรวจสอบ
+
+---
+
+## ขั้นตอนการ Setup และ Deployment (อัปเดตสำหรับ Beta)
+
+เนื่องจากโปรเจกต์ยังเป็นช่วง Beta Document อาจจะมีจุดที่ไม่ตรงหรือตกหล่นไปบ้าง ผมสรุปขั้นตอนการ Setup ที่เวิร์กที่สุดมาให้แล้วครับ:
+
+### Deploy บน Vercel
+
+กด Deploy ผ่านลิงก์ในโปรเจกต์ GitHub ได้เลย แนะนำให้เลือก Provision ตัว Redis instance ไปด้วย (ใน Doc บอกว่าเป็น Optional แต่ระบบต้องใช้เพื่อทำ Workflow)
+
+### สร้าง GitHub App
+
+เพื่อใช้เชื่อมต่อการอ่านและเขียนข้อมูลใน Repository ของเรา
+
+**Permissions ที่จำเป็น:**
+
+- `Contents` — Read & Write
+- `Issues` — Read & Write
+- `Pull requests` — Read & Write
+- `Metadata` — Read-only
+
+**Subscribe Events:**
+
+- `Issue comment`
+- `Pull request review comment`
+
+**Webhook URL:** ตั้งค่าไปที่ `https://<domain-ของ-vercel-คุณ>/api/webhooks` พร้อมตั้งค่า Webhook Secret
+
+### ตั้งค่า Environment Variables
+
+นำค่าจาก GitHub App มาตั้งใน Vercel Project:
+
+- `ANTHROPIC_API_KEY`
+- `GITHUB_APP_ID`
+- `GITHUB_APP_INSTALLATION_ID`
+- `GITHUB_APP_PRIVATE_KEY`
+- `GITHUB_APP_WEBHOOK_SECRET`
+- `REDIS_URL` (optional แต่แนะนำ)
+
+*(หมายเหตุ: ในช่วงที่ผมทดสอบ ตัวแปรอย่าง `ANTHROPIC_API_KEY` หากยังไม่ใส่ ระบบก็ยังสามารถทำงานได้ เพราะข้างในมีการ Hardcode อ้างอิงผ่าน Vercel AI Gateway ไว้อยู่ แต่ในอนาคตเพื่อการใช้งานระยะยาวควรต้องเตรียม API Key ของตนเองครับ)*
+
+---
+
+## ทดสอบรัน OpenReview บน Pull Request จริง
+
+เมื่อติดตั้ง GitHub App ลงใน Repository แล้ว ผมได้เปิด PR ที่มีช่องโหว่ซ่อนไว้ และคอมเมนต์สั่งงาน Bot:
+
+```
+@openreview check for security vulnerabilities
+```
+
+ใช้เวลาประมวลผลประมาณ 1-2 นาที Bot ก็ส่งผลลัพธ์กลับมาใน PR ได้อย่างยอดเยี่ยม โดยตรวจพบ:
+
+- **Critical:** แจ้งเตือนเรื่องการ Hardcode ค่า JWT ลงไปในโค้ด
+- **High:** ตรวจพบปัญหา Missing Authorization บน Method `PUT` และ `DELETE` (ซึ่งก็คือ Broken Access Control ตามที่ผมจงใจวางไว้)
+
+นอกจากนี้ Bot ยังสามารถจัดทำ Summary Table สรุปความรุนแรงมาให้อ่านง่าย ๆ และที่น่าสนใจคือเรายังสามารถต่อยอดคุยกับระบบผ่านคอมเมนต์ได้ เช่น สั่ง `@openreview explain how the authentication flow works` หรือขอคำแนะนำในการ Refactor โค้ดสำหรับโมดูลต่อไปได้ด้วย
+
+อีกฟีเจอร์หนึ่งที่น่าสนใจคือระบบ Reaction ถ้าเราให้ 👍 หรือ ❤️ กับ Suggestion ที่ Bot แนะนำมา มันจะ Commit แก้ไขให้เลย แต่ถ้าให้ 👎 หรือ 😕 มันจะข้ามไป ทำให้เราควบคุม Flow ได้ง่าย
+
+---
+
+## วิเคราะห์ความคุ้มค่า (Cost Analysis)
+
+การรันทดสอบคำสั่งทั้งหมดในเดโมนี้ (ตรวจสอบโค้ด + แนะนำการ Refactor) รวมแล้วใช้ไปประมาณ 63,000 Tokens คิดเป็นค่าใช้จ่ายราว ๆ **$0.09 - $0.25 (ไม่ถึง 10 บาท)**
+
+หากมองในมุมมองการบริหารจัดการและ Engineering Cost ถ้าคุณต้องจ้าง Senior Engineer ในเรตต่างประเทศ (ประมาณ $80-$100 ต่อชั่วโมง) มานั่งไล่อ่านโค้ด Legacy ที่ไม่เคยเห็นมาก่อน เพื่อมองหาข้อผิดพลาด การใช้เวลาเป็นชั่วโมง ๆ ย่อมมีต้นทุนที่สูงมาก
+
+การนำเครื่องมืออย่าง OpenReview มาใช้งาน ถือว่า **คุ้มค่าเกินราคา** มันเข้ามาช่วยทำหน้าที่เป็น Second Pair of Eyes สกรีนโค้ดรอบแรก ลดภาระงาน Routine และป้องกัน Human Error เบื้องต้นได้
+
+แน่นอนว่าเราไม่จำเป็นต้องเชื่อ AI 100% เสมอไป ท้ายที่สุดคนตัดสินใจก็คือเรา แต่การมีผู้ช่วยเตือนจุดบกพร่องที่มองข้ามไป ย่อมสร้าง Productivity และลดความเสี่ยงให้กับโปรดักต์ในระยะยาวได้อย่างแน่นอนครับ
+
+---
+
+หวังว่าบทความนี้จะเปิดมุมมองให้ทุกคนเห็นถึงศักยภาพของการนำ AI Agent มาทำ Code Review ถ้าใครสนใจก็สามารถเข้าไปลองเล่นโปรเจกต์ OpenReview ได้ใน GitHub ของ Vercel โดยตรงเลยครับ
+
+---
+
+**Reference:**
+
+- [OpenReview — Vercel Labs (GitHub)](https://github.com/vercel-labs/openreview)
+- [วิดีโอสาธิต — TP Coder](https://www.youtube.com/watch?v=i6hitrMK-so)
