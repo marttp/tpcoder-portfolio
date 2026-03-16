@@ -1,0 +1,57 @@
+---
+title: "OpenReview POC — AI Code Review Bot"
+description: "A proof-of-concept testing Vercel's OpenReview, an open-source AI code review bot powered by Claude, against real security vulnerabilities including OWASP's #1 Broken Access Control."
+pubDate: "2026-03-15"
+tags: ["AI", "Code Review", "Security", "Vercel", "Open Source"]
+language: "en"
+heroImage: "/assets/images/blogs/open-review-poc/openreview-poc-hero-image.jpg"
+github: "https://github.com/vercel-labs/openreview"
+---
+
+## Overview
+
+This project is a hands-on proof-of-concept evaluating **Vercel's OpenReview** — an open-source, self-hosted AI code review bot powered by Claude Sonnet 4.6 via the Vercel AI SDK.
+
+The goal was to assess whether an AI agent can reliably serve as a second pair of eyes during code review, specifically for catching security vulnerabilities that humans might overlook.
+
+## What I Tested
+
+I deliberately planted **Broken Access Control** (OWASP #1) vulnerabilities in a Pull Request:
+
+- Hardcoded JWT secret values
+- Missing authorization checks on `PUT` and `DELETE` endpoints
+
+Then triggered the bot with `@openreview check for security vulnerabilities` and evaluated the results.
+
+## Results
+
+The bot successfully identified both issues within 1-2 minutes:
+
+| Severity | Finding |
+|----------|---------|
+| **Critical** | Hardcoded JWT secret in source code |
+| **High** | Missing authorization on PUT/DELETE methods (Broken Access Control) |
+
+It also generated a clean summary table and supported follow-up conversation — asking it to explain authentication flows or suggest refactoring approaches.
+
+## Tech Stack
+
+- **OpenReview** — Vercel's open-source AI review bot
+- **Claude Sonnet 4.6** — AI model via Vercel AI SDK
+- **Vercel Sandbox** — Isolated execution environment for the agent
+- **Vercel Workflow** — Durable, resumable workflow orchestration
+- **GitHub App** — Webhook integration for PR events
+
+## Key Findings
+
+- **Cost**: ~63,000 tokens per review session, approximately $0.09 - $0.25 per run
+- **Setup**: Requires Vercel deployment, GitHub App creation, and environment variable configuration (Redis recommended)
+- **Extensibility**: Supports custom review skills via `.agents/skills/` directory
+- **Interaction**: Reaction-based approval system (thumbs up to auto-commit fixes, thumbs down to skip)
+- **Status**: Beta — documentation has gaps but the core functionality works
+
+## Related Content
+
+- [Blog Post (EN)](/blog/openreview-vercel-ai-code-review-bot)
+- [Blog Post (TH)](/blog/openreview-vercel-ai-code-review-bot-th)
+- [Demo Video](https://www.youtube.com/watch?v=i6hitrMK-so)
