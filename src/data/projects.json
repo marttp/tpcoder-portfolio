@@ -115,5 +115,14 @@
     "language": "en",
     "mediumSlug": "just-another-reddit-ideas-discovery-agent-by-using-adk-agent-development-kit-7300eee03897",
     "github": "https://github.com/marttp/20250624-product-ideas-daily"
+  },
+  {
+    "title": "OpenReview POC — AI Code Review Bot",
+    "description": "A proof-of-concept testing Vercel's OpenReview, an open-source AI code review bot powered by Claude, against real security vulnerabilities including OWASP's #1 Broken Access Control.",
+    "tags": ["AI", "Code Review", "Security", "Vercel", "Open Source"],
+    "pubDate": "2026-03-15",
+    "language": "en",
+    "github": "https://github.com/marttp/20260315-demo-elysia-with-openreview",
+    "slug": "openreview-vercel-ai-code-review-bot"
   }
 ]
