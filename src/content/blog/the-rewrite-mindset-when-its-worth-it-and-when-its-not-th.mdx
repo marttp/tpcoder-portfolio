@@ -1,0 +1,344 @@
+---
+title: "Rewrite Mindset — เมื่อไหร่ที่ควร Rewrite และเมื่อไหร่ที่ไม่ควร"
+description: "แชร์ประสบการณ์เรื่อง rewrite จากงานจริง — ต้นทุนที่ซ่อนอยู่ ลูกค้าได้ value เท่าเดิม และ framework สำหรับตัดสินใจว่าควร rewrite จริงหรือแค่อยากทำ"
+pubDate: "2026-03-19"
+tags:
+  [
+    "Software Engineering",
+    "Backend",
+    "Career",
+    "Engineering Culture",
+    "Best Practices",
+  ]
+language: "th"
+heroImage: "/assets/images/blogs/rewrite/hero-image.png"
+translationSlug: "the-rewrite-mindset-when-its-worth-it-and-when-its-not"
+---
+
+import MermaidDiagram from "../../components/blog/MermaidDiagram.astro";
+
+ทุกคนที่เป็น engineer เคยรู้สึกแบบนี้ เปิด legacy codebase มา เลื่อนดูไม่กี่ไฟล์ ความคิดแรกที่ผุดขึ้นมาคือ **"Rewrite เถอะ"**
+
+ทำงานมาหลายปีทั้ง payment systems, growth platforms, enterprise banking — เจอ codebase ตั้งแต่สะอาดจนถึงโบราณมาก สิ่งที่เรียนรู้คือ rewrite ไม่ได้ผิดเสมอ แต่มันแพงกว่าที่คิดเกือบทุกครั้ง และ value ที่ลูกค้าได้ก็มักจะเท่าเดิม
+
+บทความนี้แชร์ว่าเมื่อไหร่ที่ rewrite make sense เมื่อไหร่ที่ไม่ และจะคิดเรื่องนี้ยังไงให้ honest กับตัวเอง
+
+---
+
+## ทำไมเราถึงอยาก Rewrite
+
+ก่อนจะถกว่าควรหรือไม่ ต้องเข้าใจก่อนว่าทำไมแรงกระตุ้นมันถึงแรงขนาดนี้ จากประสบการณ์ มันมักมาจาก:
+
+1. **Technical debt สะสม** — code มัน work แต่ทุกครั้งที่แก้อะไรเหมือนกู้ระเบิด ใช้เวลาอ่าน workarounds มากกว่าสร้าง feature
+2. **ตื่นเต้นกับ technology ใหม่** — framework หรือ language ใหม่แก้ปัญหาได้สะอาดกว่า ช่องว่างระหว่าง "สิ่งที่มี" กับ "สิ่งที่ทำได้" มันเห็นชัดจนทนไม่ไหว
+3. **คนเปลี่ยน** — engineer ใหม่เข้ามา อ่าน code ไม่เข้าใจ สรุปว่ามันพังตั้งแต่แก่น แทนที่จะคิดว่าแค่ไม่คุ้นเคย
+4. **Ego** — บางทีอยาก rewrite เพราะอยากสร้างอะไรที่เป็น _ของเรา_ code เดิมคนอื่นเขียน สร้างใหม่มันรู้สึกดีกว่า maintain
+
+ทุกข้อไม่ได้ผิด แต่ความรู้สึกไม่ใช่ business case
+
+---
+
+## สมการที่ซ่อนอยู่: ลงทุนเยอะ ลูกค้าได้เท่าเดิม
+
+ข้อนี้ใช้เวลาหลายปีกว่าจะยอมรับได้: **ในมุมลูกค้า rewrite ให้ value เท่าเดิม** ลูกค้าไม่สนว่า backend จะเป็น legacy Akka หรือ Spring Boot 3.2 กับ Kotlin coroutines เขาสนแค่ว่า feature ใช้ได้ไหม เร็วพอไหม เสถียรไหม
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    subgraph Before["Before Rewrite"]
+        A1["Legacy Codebase"] --> B1["Feature X works"]
+        B1 --> C1["Customer gets value"]
+    end
+    subgraph After["After Rewrite"]
+        A2["New Codebase"] --> B2["Feature X works"]
+        B2 --> C2["Customer gets\nsame value"]
+    end
+    subgraph Cost["What the Company Absorbs"]
+        D1["3-6 months\nengineering time"]
+        D2["Regression risk"]
+        D3["Features not built\nbecause of the rewrite"]
+        D4["Team switching\nfocus back and forth"]
+    end
+    style C1 fill:#4ecdc4,color:#fff
+    style C2 fill:#4ecdc4,color:#fff
+    style D1 fill:#ff6b6b,color:#fff
+    style D2 fill:#ff6b6b,color:#fff
+    style D3 fill:#ff6b6b,color:#fff
+    style D4 fill:#ff6b6b,color:#fff
+`}
+/>
+
+กล่อง สีเขียว — customer value — เหมือนกันทุกประการ กล่องสีแดง — สิ่งที่บริษัทต้องแบกรับ — ไม่เล็กเลย Rewrite คือการเอา engineering budget ไปใช้เพื่อไปถึง outcome เดิมแต่คนละทาง
+
+แต่ต้องยอมรับด้วยว่า: **customer value เท่าเดิมไม่ได้แปลว่า rewrite ไร้ประโยชน์** value ที่ได้มักอยู่ฝั่ง engineering — maintenance cost ลดลง, developer experience ดีขึ้น, ไม่ต้องเสียเวลา workaround ปัญหาที่ไม่ควรมี ต้นทุนพวกนี้บริษัทจ่ายทุก sprint และบางทีก็มีแค่ rewrite เท่านั้นที่หยุดมันได้
+
+คำถามที่ควรถามคือ: **"Maintenance cost กับ DX pain มันสูงพอที่จะ justify การ rewrite ไหม?"** ถ้าไม่มีคำตอบที่ชัดเจน ก็ยังไม่มี case ที่แข็งพอ
+
+---
+
+## Decision Framework
+
+สร้าง mental framework สำหรับเช็ค rewrite decisions มาเรื่อยๆ ไม่ได้สมบูรณ์แบบ แต่ช่วยเลี่ยง bad calls มาหลายครั้ง
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    Start["Considering a Rewrite?"] --> Q1{"Is the current system\nblocking business goals?"}
+    Q1 -->|"Yes"| Q2{"Can you fix the\nblocking issue without\na full rewrite?"}
+    Q1 -->|"No"| Q3{"Is the maintenance cost\nor DX pain too high?"}
+    Q2 -->|"Yes"| R1["Incremental fix.\nDon't rewrite."]
+    Q2 -->|"No"| Q4{"Do you have data\n(metrics, cost, incidents)\nto justify the rewrite?"}
+    Q3 -->|"Yes"| Q4
+    Q3 -->|"No"| R2["Accept it.\nFocus on features."]
+    Q4 -->|"Yes"| Q5{"Can you run old and new\nin parallel during migration?"}
+    Q4 -->|"No"| R3["Gather data first.\nMeasure before proposing."]
+    Q5 -->|"Yes"| R4["Rewrite piece by piece.\nMigrate gradually."]
+    Q5 -->|"No"| Q6{"Is the risk of\na big-bang cutover\nacceptable?"}
+    Q6 -->|"Yes"| R5["Rewrite, but plan\nhow to roll back."]
+    Q6 -->|"No"| R1
+    style Start fill:#6c5ce7,color:#fff
+    style R1 fill:#00b894,color:#fff
+    style R2 fill:#00b894,color:#fff
+    style R3 fill:#fdcb6e,color:#000
+    style R4 fill:#0984e3,color:#fff
+    style R5 fill:#e17055,color:#fff
+`}
+  size="large"
+/>
+
+สังเกตว่า:
+
+- **เริ่มจาก business ไม่ใช่ code** — คำถามแรกไม่ใช่ "code แย่ไหม?" แต่คือ "ระบบมันขวาง business goal อยู่ไหม?" code ที่ไม่สวยแต่ ship feature ได้และทำเงินได้ มีค่ามากกว่า code สวยที่ยังไม่มีอยู่จริง
+- **ต้องมี data ก่อน propose** — ถ้าวัดปัญหาไม่ได้ — incident กี่ครั้ง maintenance กี่ชั่วโมง workaround แพงแค่ไหน — ยังไม่พร้อม propose ตอนนี้แค่หงุดหงิด
+- **แก้ทีละส่วนเป็น default** — framework นี้ชี้ไปทาง gradual improvement เกือบทุกกรณี Full rewrite เป็นข้อยกเว้น ไม่ใช่กฎ
+
+---
+
+## ตอนที่ Rewrite สมเหตุสมผล — ตัวอย่างจริง
+
+แชร์เคสที่ rewrite เป็น right call เพราะเหตุผลเบื้องหลังมันสำคัญกว่าผลลัพธ์
+
+ตอนอยู่ PayPay ได้ rebuild ระบบ personalized asset delivery ระบบเดิมเป็น multi-tenant Akka-based solution ที่รับมาจาก Paytm สถานการณ์จริงเป็นแบบนี้:
+
+- **80% ของ codebase เป็น dead code** — ไม่ใช่ "น่าจะไม่ได้ใช้" แต่ยืนยันแล้วว่าตายจริง logic เฉพาะ Paytm ที่ไม่เกี่ยวกับ PayPay เลย แต่ยัง deploy และ maintain อยู่
+- **ไม่มีใครอยากแตะ** — codebase ใหญ่และพันกันมากจน engineer หลีกเลี่ยงการแก้ไข ถ้าไม่มีใครอยาก maintain ระบบนั้นกำลังตาย — แค่ยังไม่รู้ตัว
+- **Akka เปลี่ยน license** — Akka ย้ายจาก open source ไปเป็น Business Source License กลายเป็นแรงกดดันจากภายนอกที่ทำให้อยู่กับ stack เดิมเป็นความเสี่ยง — ทั้งในเชิง technical, legal และ financial
+- **Tech stack ไม่ตรงกับ ecosystem ของทีม** — PayPay ใช้ภาษาหลากหลายตาม workload — เลือกให้เหมาะ และ Akka มันไม่เหมาะ ไม่มีทีมอื่นในองค์กรใช้ framework นี้กับงานแบบนี้ ทุก onboarding, code review, incident ต้องใช้ context ที่มีแค่ใน service นี้ที่เดียว
+
+Rewrite เป็น Spring Boot 3.2 Kotlin ใช้ coroutines กับ async caching Performance ดีขึ้นประมาณ 10-20% — ไม่ได้มากมาย แต่ไม่ใช่ประเด็น สิ่งที่ได้จริงคือ: dead code 80% หายไป ทีม maintain ระบบด้วย stack ที่เข้ากับ ecosystem ของ PayPay ได้แล้ว แถม infrastructure cost ลดลง 648,720 เยนต่อเดือน
+
+**ทำไม rewrite นี้ justified:**
+
+1. Codebase unmaintainable — ไม่ใช่ในทฤษฎี แต่ในทางปฏิบัติ (ไม่มีใครยอมแตะ)
+2. License change จากภายนอกสร้างความเสี่ยงจริง
+3. Tech stack โดดเดี่ยวจากองค์กร
+4. Maintenance cost กับ DX cost วัดได้จริง (เวลาที่หายไปกับ dead code, onboarding ช้า, infrastructure เกินจำเป็น)
+5. แก้ทีละส่วนทำไม่ได้จริง (dead code พันกับ live code)
+
+สังเกตว่า "performance ดีขึ้น" ไม่ใช่เหตุผลหลัก performance gain มันน้อย สิ่งที่ทำให้ rewrite คุ้มคือ maintenance burden, license risk และ DX cost ที่ทีมจ่ายอยู่ทุก sprint
+
+---
+
+## ตอนที่ Rewrite ไม่สมเหตุสมผล — ค่อยๆ ทำทีละขั้น
+
+ตรงกันข้ามเลย ตอนจัดการ Spring Boot upgrade ที่ PayPay — จาก version 2.2 กับ JDK 8 ไป 3.3 กับ JDK 17 — สัญชาตญาณบอกว่า rewrite ใหม่หมดบน stack ใหม่ มันน่าจะสนุกกว่า clean start, modern patterns, ไม่มีของเก่า
+
+แต่จะเป็น wrong call service เดิมมัน stable ใช้งานจริงอยู่ ทีมเข้าใจมันดี สิ่งที่มันต้องการคือ upgrade ไม่ใช่ replacement
+
+เลยวาง multi-stage upgrade ใช้เวลา 3 เดือน:
+
+- JDK 8 ไป 17 ก่อน
+- Spring Boot 2.2 ไป 3.x หลัง JDK migration นิ่งแล้ว
+- Build system จาก Maven ไป Gradle แยก phase
+- เชื่อม PayPay's golden image เป็นขั้นสุดท้าย
+
+Service ไม่เคย offline ไม่มี regression แปลกๆ ทีม maintain context ได้ตลอด ผลลัพธ์สุดท้ายได้ modern stack เหมือนกัน — แต่ไม่ต้องเสี่ยง ไม่ต้อง downtime ไม่เสีย team knowledge
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    subgraph Rewrite["Full Rewrite Approach"]
+        direction TB
+        RW1["Stop feature work"] --> RW2["Build new service\nfrom scratch"]
+        RW2 --> RW3["Migrate data\nand traffic"]
+        RW3 --> RW4["Hope nothing\nbreaks"]
+    end
+    subgraph Incremental["Incremental Approach"]
+        direction TB
+        IN1["Upgrade JDK\n8 → 17"] --> IN2["Upgrade Spring Boot\n2.2 → 3.x"]
+        IN2 --> IN3["Migrate build\nMaven → Gradle"]
+        IN3 --> IN4["Integrate with\ngolden image"]
+    end
+    style RW4 fill:#ff6b6b,color:#fff
+    style IN4 fill:#00b894,color:#fff
+`}
+/>
+
+ปลายทางเดียวกัน ความเสี่ยงต่างกันมาก
+
+---
+
+## Rewrite ขนาดเล็ก — เปลี่ยน Technology หรือ Framework
+
+ไม่ใช่ทุก rewrite จะเป็นการ rebuild ระบบทั้งหมด บางทีแค่เปลี่ยน build tool, แทน library หรือ migrate API integration พวกนี้รู้สึกเล็ก — และนั่นแหละที่ทำให้มันอันตราย ต้นทุนที่คาดไว้ดูต่ำ ("แค่เปลี่ยน library") เลยข้ามการคิดอย่างรอบคอบที่ควรทำ
+
+ต้นทุนที่ซ่อนอยู่มันสะสมเงียบๆ: bug จาก migration ที่โผล่แค่ใน edge case, ทีมต้องเรียนรู้ tooling ใหม่, config drift ระหว่าง pattern เก่ากับใหม่ตอน transition, documentation ที่ outdated ไปครึ่งนึงข้ามคืน
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    subgraph Scale["The Rewrite Range"]
+        direction LR
+        S1["Library /\nSDK Swap"] --> S2["Build Tool\nMigration"] --> S3["Framework\nReplacement"] --> S4["Full System\nRewrite"]
+    end
+    subgraph Risk["Hidden Cost Scaling"]
+        direction LR
+        R1["Config drift,\nteam relearning"] --> R2["Build pipeline\nrework, CI changes"] --> R3["Architecture shift,\npattern retraining"] --> R4["Full context loss,\nregression risk"]
+    end
+    S1 -.-> R1
+    S2 -.-> R2
+    S3 -.-> R3
+    S4 -.-> R4
+    style S1 fill:#00b894,color:#fff
+    style S2 fill:#fdcb6e,color:#000
+    style S3 fill:#e17055,color:#fff
+    style S4 fill:#ff6b6b,color:#fff
+`}
+  size="large"
+/>
+
+เจอมาทั้งสองฝั่ง
+
+ตอนอยู่ Accenture ย้าย Kong API Gateway configuration จาก manual process เป็น automated Bash script ที่อ่านจาก JSON config ลดเวลาจากหลายชั่วโมงเหลือ 3 นาที ต้นทุนต่ำ value ชัดเจนทันที ทีมใช้ได้เลยไม่มี friction นี่คือ clean swap
+
+ตอนอยู่ PayPay สังเกตว่า FCM legacy API กำลังจะ deprecate เลยลงมือ migrate ไป Firebase Admin SDK ก่อนที่จะเป็นปัญหา ถ้าไม่ migrate ทัน push notification จะหยุดทำงานเลย ไม่มีใครบอกให้ทำ เราเห็นเอง raise เอง แล้วก็ drive migration เอง มีเขียนเรื่อง [แนวทาง migration ไว้ใน Medium](https://tpbabparn.medium.com/แนวทาง-migrate-legacy-fcm-apis-แล้วไปใช้-firebase-admin-sdk-หรือ-http-v1-ก่อนหัวจะไหม้-a39418fd0544) ด้วย
+
+แต่ก็เห็นอีกฝั่งเหมือนกัน engineer propose เปลี่ยน ORM ที่ใช้ได้ดีอยู่เพราะตัวใหม่ API สวยกว่า ทีมอยากเปลี่ยน testing framework กลาง project เพราะตัวใหม่ "รู้สึกดีกว่า" migrate build tool ในนามของ "modern best practice" แต่เสีย 2 sprints ได้ improvement นิดเดียว
+
+Decision framework ใช้ได้ทุก scale ก่อนเปลี่ยน technology ถามตัวเองว่า:
+
+- **ของเดิมมันบล็อคอะไรจริงๆ ไหม?** ไม่ใช่ "มันน่ารำคาญ" — บล็อคจริงๆ
+- **มีแรงกดดันจากภายนอกไหม?** deprecation, security vulnerability, vendor end-of-life
+- **พื้นที่ที่ต้อง migrate มีขนาดเท่าไหร่?** library ที่ใช้ใน 3 ไฟล์กับ 300 ไฟล์ไม่เหมือนกัน
+- **ทีมต้องเรียนรู้ใหม่ไหม?** ถ้าใช่ คิดต้นทุนนี้เข้าไปด้วย มันไม่เคยเป็นศูนย์
+
+ยิ่ง change ดูเล็กบนกระดาษ ยิ่งมีโอกาสที่ hidden costs จะถูกมองข้าม แผลเป็นส่วนใหญ่มาจากตรงนี้
+
+---
+
+## Motivation Check — ซื่อสัตย์กับตัวเอง
+
+ส่วนนี้ต้องใช้ความซื่อสัตย์กับตัวเองจริงๆ และคิดว่ามันสำคัญที่สุดในบทความนี้ ก่อน propose rewrite ลองเช็ค motivation ผ่าน filter นี้:
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    M["Why do I want\nto rewrite this?"] --> M1{"Is the current system\ncausing real problems\nfor users or the business?"}
+    M1 -->|"Yes"| M2["Valid motivation.\nProceed with data."]
+    M1 -->|"No"| M3{"Am I frustrated because\nthe code is hard to\nwork with?"}
+    M3 -->|"Yes"| M4{"Would targeted refactoring\nsolve my frustration?"}
+    M3 -->|"No"| M5{"Do I just want to\nbuild something new\nwith newer tech?"}
+    M4 -->|"Yes"| M6["Refactor the pain points.\nDon't rewrite."]
+    M4 -->|"No"| M7["Document the cost\nof maintenance.\nBuild the case."]
+    M5 -->|"Yes"| M8["That's a side project,\nnot a business decision."]
+    M5 -->|"No"| M9["Re-examine.\nWhat's actually driving this?"]
+    style M2 fill:#00b894,color:#fff
+    style M6 fill:#0984e3,color:#fff
+    style M7 fill:#fdcb6e,color:#000
+    style M8 fill:#e17055,color:#fff
+    style M9 fill:#a29bfe,color:#fff
+`}
+  size="large"
+/>
+
+กิ่งสุดท้าย — "แค่อยากสร้างอะไรใหม่ด้วย tech ใหม่" — อันนี้จับ engineer ได้เยอะ รวมถึงตัวเองด้วย อยากลอง technology ใหม่ไม่ผิดอะไร แต่ production codebase ไม่ใช่ที่สำหรับสนอง curiosity นั้น side project ต่างหากที่ทำหน้าที่นี้
+
+เคยจับตัวเองได้ว่าเอา personal interest มาห่อเป็น business case เพื่อให้ rewrite ดู justified "เราควร migrate ไป X เพราะมันเร็วกว่า" — ทั้งที่เหตุผลจริงคือ "อยากเรียน X แล้วนี่ดูเป็นข้ออ้างที่ดี" ยอมรับ gap ตรงนี้ได้คือส่วนหนึ่งของการโตขึ้นในฐานะ engineer
+
+---
+
+## ความจริงของปี 2026 — Tech ใหม่, AI Rewrites และคำว่า "Modern" มันแปลว่าอะไร
+
+ลองถอยมามองกว้างๆ: **ถ้าไม่มี legacy ก็ไม่มี "modern"** ทุก framework, ทุกภาษา, ทุก tool ใหม่ที่เห็นอยู่ตอนนี้ มันเกิดขึ้นเพราะมีคนมองของเก่าแล้วบอกว่า "มันเจ็บ ขอแก้หน่อย" Legacy คือครู ถ้าไม่มีมัน เราจะไม่รู้ด้วยซ้ำว่าต้องแก้ปัญหาอะไร
+
+เพราะฉะนั้นตอนเปิด legacy codebase แล้วอยาก rewrite — จำไว้ว่า tool ใหม่ที่อยากใช้มันเกิดจาก pain แบบเดียวกันนี้แหละ แล้ววันหนึ่ง สิ่งที่สร้างวันนี้ก็จะเป็น legacy ของคนอื่น นั่นไม่ใช่ความล้มเหลว มันคือวิธีที่ software ทำงาน
+
+### Tech ใหม่ส่วนใหญ่แก้ Engineering Pain — ไม่ใช่ Business Pain
+
+ลองดู programming languages กับ frameworks ที่ออกมาช่วงหลังๆ ส่วนใหญ่แก้ **engineering pain points**: DX ดีขึ้น build เร็วขึ้น syntax สะอาดขึ้น concurrency ง่ายขึ้น deploy ง่ายขึ้น พวกนี้เป็น improvement จริง แต่น้อยมากที่แก้ **business pain points** หรือ **security pain points** โดยตรง
+
+ถ้าระบบปัจจุบัน develop ช้าแต่ serve ลูกค้าได้ดีและผ่าน security requirements — framework ใหม่ไม่ได้เปลี่ยน business outcome มันเปลี่ยนแค่ความรู้สึกของทีมตอนทำงาน ซึ่งมันก็สำคัญ แต่เป็น value คนละแบบ ต้องชั่งน้ำหนักต่างกันตอนทำ case สำหรับ rewrite
+
+### AI Rewrite ได้เร็วขึ้น — แต่ใครรับ Penalty?
+
+ในยุคของ AI coding tools ใช่ — rewrite ทั้งระบบได้เร็วกว่าและมั่นใจกว่าเดิมมาก AI generate code ได้ไว cover edge case ที่อาจพลาด ผลลัพธ์ดูสะอาดและ modern
+
+แต่คำถามที่ไม่ค่อยมีใครถามคือ: **เชื่อ AI มากพอที่จะ rewrite production system ไหม ถ้าคนที่รับ penalty ตอนมันพังคือตัวเอง?**
+
+เพราะความจริงคือ AI generate code แต่เราเป็นเจ้าของผลลัพธ์ ตอนมีปัญหาบน production ตี 3 incident report ไม่ได้เขียนว่า "AI เขียนตรงนี้" มันเขียนชื่อเรา แล้วหลัง AI rewrite เสร็จจะเกิดอะไรขึ้น? นั่ง review code ที่ AI สร้าง เจอ pattern ที่ไม่ได้ขอ แก้ assumption ที่ AI ตั้งเองแต่ไม่ตรงกับระบบจริง ติด loop: rewrite ด้วย AI, review, แก้, review อีก
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["AI rewrites\nthe system"] --> B["You review\nthe output"]
+    B --> C["Find issues\nAI introduced"]
+    C --> D["Fix and\nreview again"]
+    D --> B
+    D --> E["Ship it?"]
+    E --> F{"Do you trust it\nenough to own\nthe result?"}
+    F -->|"Yes"| G["Ship — but you\nown every bug"]
+    F -->|"No"| B
+    style A fill:#6c5ce7,color:#fff
+    style G fill:#e17055,color:#fff
+`}
+/>
+
+AI เป็นเครื่องมือที่ทรงพลังสำหรับ rewrite แต่มันไม่ได้ลบต้นทุน — มันย้ายต้นทุนจากการเขียนไปเป็นการ review และ review code ที่ไม่ได้เขียนเอง สำหรับระบบที่ต้องรับผิดชอบ มันก็มี burden ของมัน ก่อนจะใช้ AI justify rewrite ถามตัวเองว่า: พร้อม own ทุกบรรทัดที่มันสร้างไหม?
+
+---
+
+## สำหรับตัวเอง ทีม และบริษัท
+
+การตัดสินใจ rewrite มันต่างกันขึ้นอยู่กับว่ามองจากมุมไหน:
+
+| มุมมอง | "Rewrite" หมายถึงอะไร | ความเสี่ยง |
+|---|---|---|
+| **สำหรับตัวเอง** | โอกาสสร้างอะไรสะอาด เรียน tech ใหม่ รู้สึกเป็นเจ้าของ | โฟกัสที่ความพอใจส่วนตัว ไม่ใช่ business value |
+| **สำหรับทีม** | ลงทุนร่วมกันเพื่อ DX ที่ดีขึ้น | ทีมเสีย speed หลายเดือนระหว่าง transition |
+| **สำหรับบริษัท** | เดิมพันว่าระบบใหม่จะลด cost ระยะยาวหรือเปิด capability ใหม่ | บริษัทจ่ายเงินจริงเพื่อ return ที่ไม่แน่นอน |
+
+Rewrite ที่ดีที่สุดคือตอนที่ทั้งสาม perspectives ตรงกัน:
+
+- Engineer ได้ทำ architecture ที่มีความหมาย
+- ทีมได้ระบบที่ maintain ง่ายขึ้น
+- บริษัทได้ cost reduction หรือ business capability ใหม่ที่วัดได้
+
+ถ้ามีแค่ฝั่งเดียวได้ประโยชน์ — โดยเฉพาะถ้าเป็นแค่ฝั่ง engineer — ก็น่าจะยังไม่ใช่ right call
+
+---
+
+## สิ่งที่อยากบอก Engineer รุ่นถัดไป
+
+เคย mentor junior engineers กับ new joiners มาพอสมควร รู้ว่า rewrite urge มันแรงที่สุดตอนเริ่มต้นอาชีพ เข้าทีมใหม่ เปิด legacy codebase สัญชาตญาณแรกคือทุบทิ้งแล้วสร้างใหม่ "ให้ถูกต้อง" รู้เพราะเคยเป็นแบบนั้นเหมือนกัน — แล้วก็มีแผลเป็นมาพิสูจน์ว่าตอนไหนที่คิดผิด
+
+นี่คือสิ่งที่แผลเป็นพวกนั้นสอน:
+
+**Legacy codebase ที่อยากแทน? มันผ่าน production incidents ที่ยังไม่เคยเจอ** มัน handle edge cases ที่ไม่ได้เขียนไว้ที่ไหนนอกจากใน code ทุก conditional แปลกๆ ทุก null check ที่ดูไม่มีประโยชน์ — มี production incident ที่คนนั่ง debug ตี 2 อยู่เบื้องหลัง ตอน rewrite บทเรียนพวกนี้จะหายไป แล้วจะต้องเจอมันใหม่เอง
+
+**Proposal จะถูกตัดสินด้วย business terms ไม่ใช่ engineering terms** ตอนเดินเข้าห้องแล้วบอกว่า "เราควร rewrite" engineering manager ได้ยิน timeline product manager ได้ยินว่า feature ไหนจะไม่ได้สร้าง finance ได้ยินเงินเดือนคูณเดือน ถ้าแปลงความหงุดหงิดเป็นตัวเลขไม่ได้ คำตอบก็จะเป็น "ยังไม่ใช่ตอนนี้"
+
+**Engineer ที่ชื่นชมที่สุดน่าจะไม่ใช่คนที่ rewrite ทุกอย่าง** แต่เป็นคนที่ทำงานกับ messy codebase ได้ หาปัญหาจริงเจอ แก้ตรงจุด แล้วไปต่อ วินัยแบบนั้นไม่ใช่การขาด ambition — มันคือสัญญาณของประสบการณ์ การรู้ว่าเมื่อไหร่ควรปล่อย code ไว้อย่างที่มันเป็นคือ skill ที่ต้องใช้เวลาหลายปีกว่าจะสร้างได้
+
+**แยกให้ออกระหว่าง "ระบบนี้ต้องเปลี่ยน" กับ "อยากเปลี่ยนระบบนี้"** จากข้างในมันรู้สึกเหมือนกัน แต่อันแรกมีหลักฐาน — incidents, onboarding ช้า, maintenance hours สูงขึ้น อันหลังมีแค่ความตื่นเต้น ทั้งสองอย่างจริง แต่ใส่ใน proposal ได้แค่อันเดียว
+
+อีกอย่าง: **ต้นทุนของ rewrite ไม่ใช่แค่เวลา engineering มันคือความเชื่อมั่นของทีม** ถ้า push rewrite แล้ว deliver ช้า เกิด regression ครั้งหน้าใครในทีม propose rewrite — แม้จะ justified — องค์กรจะจำได้ ใช้ความเชื่อมั่นนั้นให้คุ้ม
+
+---
+
+## สรุป
+
+- **สมการ customer value มันชัด** — rewrite มักให้ value เท่าเดิมกับลูกค้า แต่ต้นทุนสำหรับบริษัทสูงกว่ามาก ต้องมั่นใจว่าเหตุผลไม่ใช่แค่ engineering preference
+- **เริ่มจาก business case ไม่ใช่ code** — ถ้าระบบไม่ได้บล็อค business goal rewrite ก็น่าจะยังไม่เร่งด่วน — ต่อให้ code เจ็บปวดแค่ไหน
+- **ค่อยๆ ทำทีละขั้นปลอดภัยกว่าเกือบเสมอ** — staged migration รักษา team knowledge ไว้ เลี่ยง big-bang risk และมักไปถึงจุดหมายเดียวกับ full rewrite
+- **ซื่อสัตย์กับ motivation** — ช่องว่างระหว่าง "อยากเปลี่ยน" กับ "ต้องเปลี่ยน" คือจุดที่ rewrite decisions แย่ๆ เกิดขึ้น
+- **สาม perspectives ต้องตรงกัน** — rewrite ที่ดีที่สุดให้ประโยชน์กับ engineer, ทีม และบริษัทพร้อมกัน ถ้ามีแค่ฝั่งเดียวได้ ควรคิดใหม่
