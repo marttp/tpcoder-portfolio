@@ -124,6 +124,7 @@ At PayPay, I rebuilt the personalized asset delivery system. The legacy system w
 - **Nobody wanted to touch it.** The codebase was so massive and tangled that engineers avoided making changes. When no one wants to maintain a system, that system is already dying — you just have not noticed yet.
 - **Akka changed its license.** Akka moved from open source to the Business Source License. This was an outside pressure that made staying on the current stack a growing risk — not just technically, but legally and financially.
 - **The tech stack did not match the team's ecosystem.** PayPay uses different languages depending on the workload — you pick what fits. And Akka did not fit. It was a framework nobody else in the organization used for this kind of workload, which meant every onboarding, every code review, every incident required context that only existed in this one service.
+- **Could not align with company standard.** PayPay has a golden image — a standardized base infrastructure that every service should use. The legacy Akka system could not align with it, which meant deploying, monitoring, and operating it was different from every other service in the organization.
 
 The rewrite replaced it with a clean Spring Boot 3.2 Kotlin application using coroutines and async caching. Performance improved around 10-20% — not a dramatic jump, but that was never the point. The real wins were elsewhere: 80% dead code eliminated, the team could now maintain the system using a stack that fits PayPay's ecosystem, and monthly infrastructure savings of 648,720 yen.
 
@@ -141,40 +142,58 @@ Notice how "better performance" is not the main reason. The performance gain was
 
 ## When Rewriting Did Not Make Sense — The Step-by-Step Path
 
-In contrast, when I managed the Spring Boot upgrade at PayPay — from version 2.2 with JDK 8 to 3.3 with JDK 17 — the instinct was to rewrite the service from scratch on the new stack. It would have been more satisfying. A clean start, modern patterns, no legacy baggage.
+In contrast, when I managed the Spring Boot upgrade at PayPay's Push Notification ecosystem — from version 2.2 with JDK 8 to 3.3 with JDK 17 — it might seem like rewriting from scratch on the new stack would be better. Clean start, modern patterns, no legacy baggage. Right?
 
-But it would have been the wrong call. The existing service was stable, serving production traffic, and the team understood it well. What it needed was an upgrade, not a replacement.
+But it would have been the wrong call. The existing services were stable, serving production traffic, and the team understood them well. What they needed was an upgrade, not a replacement.
 
-So instead, I planned a multi-stage upgrade over 3 months:
+To see why a full rewrite was not realistic, look at the ecosystem that needed upgrading:
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    NC["Notification Center\n(upstream gateway)"] -->|"API"| PN
+    subgraph Services["Push Ecosystem"]
+        PR["Push Registry"]
+        PC["Push Config"]
+        PN["Push Notification"] -->|"Kafka"| PST["Push Splitter\nTransactional"]
+        PN -->|"Kafka"| PSM["Push Splitter\nMarketing"]
+        PST -->|"Kafka"| NDT["Notification Delivery\nTransactional\n(payment, activity,\ncredit card)"]
+        PSM -->|"Kafka"| NDM["Notification Delivery\nMarketing\n(burst ~50M push)"]
+        PI["Push Inbox\n(background & undelivered)"]
+    end
+    NDT --> APP["PayPay\nConsumer App"]
+    NDM --> APP
+    PR -.->|"read"| PST
+    PR -.->|"read"| PSM
+    PC -.->|"read"| PN
+    subgraph Analytics["Analytics Pipeline"]
+        SIG["Push Signal"] -->|"Kafka"| DL["Data Lake"]
+    end
+    APP -->|"push received"| SIG
+    style PN fill:#6c5ce7,color:#fff
+    style PST fill:#a29bfe,color:#fff
+    style PSM fill:#a29bfe,color:#fff
+    style NDT fill:#e17055,color:#fff
+    style NDM fill:#e17055,color:#fff
+    style APP fill:#00b894,color:#fff
+    style PR fill:#fdcb6e,color:#000
+    style PC fill:#fdcb6e,color:#000
+    style PI fill:#dfe6e9,color:#2d3436
+    style SIG fill:#74b9ff,color:#fff
+    style DL fill:#74b9ff,color:#fff
+    style NC fill:#636e72,color:#fff
+`}
+  size="large"
+/>
+
+Rewriting this entire ecosystem at once would take too long and carry too much risk. To keep the system running without interruption and maintain ownership throughout, I planned a multi-stage upgrade over 3 months:
 
 - JDK 8 to 17 first
 - Spring Boot 2.2 to 3.x after the JDK migration stabilized
 - Build system migration from Maven to Gradle in a separate phase
 - Integration with PayPay's golden image as the final step
 
-The service was never offline. There were no regression surprises. The team maintained full context throughout. And the end result was the same modern stack we would have gotten from a rewrite — without the risk, the downtime, or the lost team knowledge.
-
-<MermaidDiagram
-  chart={`
-flowchart LR
-    subgraph Rewrite["Full Rewrite Approach"]
-        direction TB
-        RW1["Stop feature work"] --> RW2["Build new service\nfrom scratch"]
-        RW2 --> RW3["Migrate data\nand traffic"]
-        RW3 --> RW4["Hope nothing\nbreaks"]
-    end
-    subgraph Incremental["Incremental Approach"]
-        direction TB
-        IN1["Upgrade JDK\n8 → 17"] --> IN2["Upgrade Spring Boot\n2.2 → 3.x"]
-        IN2 --> IN3["Migrate build\nMaven → Gradle"]
-        IN3 --> IN4["Integrate with\ngolden image"]
-    end
-    style RW4 fill:#ff6b6b,color:#fff
-    style IN4 fill:#00b894,color:#fff
-`}
-/>
-
-Same destination. Very different risk.
+The service was never offline. There were no regression surprises. The team maintained full context throughout. And the end result was the same modern stack we would have gotten from a rewrite — without the risk or the lost team knowledge. Though I will be honest — there were 2 brief downtime incidents during the process. Not perfect, but far better than a full rewrite would have been.
 
 ---
 
@@ -207,13 +226,9 @@ flowchart LR
   size="large"
 />
 
-I have been on both sides of this range.
+For example — at PayPay, I noticed the FCM legacy API was heading toward deprecation and took action to migrate it to Firebase Admin SDK before it became a problem. If we had not migrated in time, push notifications would have stopped working entirely. Nobody asked me to do it. I caught it, raised it, and drove the migration myself. I even [wrote about the migration approach on Medium](https://tpbabparn.medium.com/แนวทาง-migrate-legacy-fcm-apis-แล้วไปใช้-firebase-admin-sdk-หรือ-http-v1-ก่อนหัวจะไหม้-a39418fd0544) if you want to see the details.
 
-At Accenture, I migrated Kong API Gateway configuration from a manual process to an automated Bash script reading from JSON config files. That was a tooling replacement that cut hours of work down to 3 minutes. The cost was low, the value was immediate and measurable, and the team adopted it without friction. That is a clean swap.
-
-At PayPay, I noticed the FCM legacy API was heading toward deprecation and took action to migrate it to Firebase Admin SDK before it became a problem. That one was not optional — if we had not migrated in time, push notifications would have stopped working entirely. Nobody asked me to do it. I caught it, raised it, and drove the migration myself. I even [wrote about the migration approach on Medium](https://tpbabparn.medium.com/แนวทาง-migrate-legacy-fcm-apis-แล้วไปใช้-firebase-admin-sdk-หรือ-http-v1-ก่อนหัวจะไหม้-a39418fd0544) if you want to see the details.
-
-But I have also seen the other side. Engineers proposing to replace a working ORM because a newer one has a cleaner API. Teams wanting to swap testing frameworks mid-project because the new one "feels better." Build tool migrations that were justified as "modern best practice" but cost two sprints of speed for a small improvement.
+But I have also seen the other side. Engineers proposing to replace a working ORM because a newer one has a cleaner API. Teams wanting to swap testing frameworks mid-project because the new one "feels better." Build tool migrations justified as "modern best practice."
 
 The same decision framework applies at every scale. Before swapping a technology, ask:
 
@@ -251,9 +266,7 @@ flowchart TD
   size="large"
 />
 
-That last branch — "I want to build something new with newer tech" — is the one that catches a lot of engineers, including me. There is nothing wrong with wanting to explore new technology. But a production codebase is not the place to satisfy that curiosity. That is what side projects are for.
-
-I have caught myself dressing up personal interest as a business case to make it sound like a justified rewrite. "We should migrate to X because it is faster" — when the real reason was "I want to learn X and this seems like a good excuse." Being honest about that gap is part of growing as an engineer.
+That last branch — "I want to build something new with newer tech" — is the one that catches a lot of engineers, including me. There is nothing wrong with wanting to explore new technology. But a production codebase is not the place to satisfy that curiosity. That is what side projects are for. And side projects do not have to be work-related — sometimes you are just curious about how something works and want to try building it. That is enough.
 
 ---
 
