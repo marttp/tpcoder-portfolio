@@ -197,6 +197,18 @@ The service was never offline. There were no regression surprises. The team main
 
 ---
 
+## Another Simple Prevention — Deployment Strategy
+
+Whether you are doing a full rewrite or an incremental upgrade, the thing that reduces release risk the most is picking the right deployment strategy. Not just deploying and hoping for the best.
+
+**Blue-Green Deployment** — run the old and new environments in parallel. Deploy the new version to the green environment, then switch traffic over from blue. If something breaks, switch back immediately. No slow rollback, no downtime. During the Spring Boot upgrade across the Push Notification ecosystem, having this kind of strategy is what kept the damage to just 2 brief incidents instead of something much worse.
+
+**Feature Flag Release** — deploy new code to production but hide it behind a flag. Turn it on for internal users first. Then gradually roll out to real users — 1%, 10%, 50%. If something goes wrong, kill the flag. No deployment rollback needed. This works especially well for rewrites that change behavior, because you can test against real production traffic without impacting all users at once.
+
+Neither of these eliminates the risk of a rewrite. But they give you a kill switch — and having a kill switch makes it much easier to ship with confidence, because if you get it wrong, you can get back fast.
+
+---
+
 ## The Smaller Rewrite — Replacing a Technology or Framework
 
 Not every rewrite is a full system rebuild. Sometimes it is swapping a build tool, replacing a library, or migrating an API integration. These feel smaller — and that is exactly what makes them dangerous. The expected cost looks low ("it is just a library swap"), so engineers skip the same careful thinking they would apply to a full rewrite.
