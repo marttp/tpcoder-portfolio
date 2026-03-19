@@ -5,9 +5,11 @@ import Header from '../components/header/Header.astro';
 import Footer from '../components/Footer';
 import FormattedDate from '../components/FormattedDate.astro';
 
-type Props = CollectionEntry<'blog'>['data'];
+type Props = CollectionEntry<'blog'>['data'] & {
+  headings?: { depth: number; slug: string; text: string }[];
+};
 
-const { title, description, pubDate, updatedDate, heroImage, language, translationSlug } = Astro.props;
+const { title, description, pubDate, updatedDate, heroImage, language, translationSlug, headings } = Astro.props;
 
 const translationLabel = language === 'en' ? 'อ่านเป็นภาษาไทย' : 'Read in English';
 const translationFlag = language === 'en' ? '🇹🇭' : '🇺🇸';
@@ -104,6 +106,25 @@ const translationFlag = language === 'en' ? '🇹🇭' : '🇺🇸';
 
         <hr class="border-gray-200 dark:border-gray-700 mb-8" />
 
+        <!-- Table of Contents -->
+        {headings && headings.filter(h => h.depth <= 2).length > 0 && (
+          <nav class="mb-8 p-5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            <h2 class="text-lg font-semibold text-black dark:text-white mb-3">Table of Contents</h2>
+            <ul class="space-y-1.5">
+              {headings.filter(h => h.depth <= 2).map((heading) => (
+                <li>
+                  <a
+                    href={`#${heading.slug}`}
+                    class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary-dark dark:hover:text-primary-light transition-colors"
+                  >
+                    {heading.text}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
+
         <!-- Article Content with Prose Styling -->
         <div class="prose prose-lg max-w-none
           prose-headings:text-black dark:prose-headings:text-white
@@ -131,6 +152,8 @@ const translationFlag = language === 'en' ? '🇹🇭' : '🇺🇸';
           [&_pre_code]:bg-transparent [&_pre_code]:p-0
           dark:[&_pre_code]:bg-transparent
           prose-img:rounded-lg prose-img:shadow-md
+          prose-th:text-black dark:prose-th:text-white
+          prose-td:text-black dark:prose-td:text-gray-300
           prose-hr:border-gray-200 dark:prose-hr:border-gray-700
         ">
           <slot />
