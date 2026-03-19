@@ -107,15 +107,15 @@ const translationFlag = language === 'en' ? '🇹🇭' : '🇺🇸';
         <hr class="border-gray-200 dark:border-gray-700 mb-8" />
 
         <!-- Table of Contents -->
-        {headings && headings.filter(h => h.depth <= 2).length > 0 && (
+        {headings && headings.filter(h => h.depth <= 3).length > 0 && (
           <nav class="mb-8 p-5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
             <h2 class="text-lg font-semibold text-black dark:text-white mb-3">Table of Contents</h2>
             <ul class="space-y-1.5">
-              {headings.filter(h => h.depth <= 2).map((heading) => (
-                <li>
+              {headings.filter(h => h.depth <= 3).map((heading) => (
+                <li class={heading.depth === 3 ? 'pl-4' : ''}>
                   <a
                     href={`#${heading.slug}`}
-                    class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary-dark dark:hover:text-primary-light transition-colors"
+                    class={`text-sm transition-colors hover:text-primary-dark dark:hover:text-primary-light ${heading.depth === 2 ? 'text-gray-700 dark:text-gray-300 font-medium' : 'text-gray-500 dark:text-gray-400'}`}
                   >
                     {heading.text}
                   </a>
