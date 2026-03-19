@@ -324,11 +324,11 @@ Here is what those scars taught me:
 
 **That ugly, battle-tested codebase you want to replace? It survived production incidents you have not seen yet.** It handles edge cases that are not written down anywhere except in the code itself. Every weird conditional, every pointless-looking null check — there is a production incident behind it that someone debugged at 2 AM. When you rewrite, you lose those lessons. You will rediscover them the hard way.
 
-**Your proposal will be judged on business terms, not engineering terms.** When you walk into a room and say "we should rewrite this," the engineering manager hears a timeline. The product manager hears features that will not get built. The finance team hears salary cost multiplied by months. Come with data — maintenance hours, incident frequency, cost of workarounds — or you will not be taken seriously. And honestly, you should not be.
+**Your proposal will be judged on business terms, not engineering terms.** When you walk into a room and say "we should rewrite this," the engineering manager hears a timeline. The product manager hears features that will not get built. The finance team hears salary cost multiplied by months. If you cannot translate your frustration into numbers, expect the answer to be "not now."
 
 **The engineers you admire most are probably not the ones who rewrite everything.** They are the ones who can work through a messy codebase, find the real problem, fix it precisely, and move on. That discipline is not a lack of ambition — it is a sign of experience. Knowing when to leave code alone is a skill that takes years to build, and it is one of the most valuable skills you can have.
 
-**If you want to explore a new framework or language, build a side project.** Production systems that serve real users are not your playground. I have made this mistake myself — wrapping personal curiosity in business language to justify a rewrite. The moment I learned to separate "I want to learn X" from "the business needs X," my proposals started getting approved because they were truly justified.
+**Learn to tell the difference between "this system needs to change" and "I want to change this system."** They feel the same from the inside. But the first one has evidence — incidents, slow onboarding, rising maintenance hours. The second one has excitement. Both are real, but only one belongs in a proposal.
 
 One more thing: **the cost of a rewrite is not just engineering time. It is team trust.** If you push for a rewrite, deliver it late, and introduce regressions, the next time anyone on your team proposes a rewrite — even a justified one — the organization will remember. Spend that trust wisely.
 
@@ -339,5 +339,5 @@ One more thing: **the cost of a rewrite is not just engineering time. It is team
 - **The customer value math is harsh.** A rewrite often delivers the same value to users at a much higher cost to the company. Make sure the reason goes beyond engineering preference.
 - **Start with the business case, not the code.** If the system is not blocking business goals, the rewrite is probably not urgent — no matter how painful the code is.
 - **Step-by-step improvement is almost always the safer bet.** A staged migration keeps team knowledge, avoids big-bang risk, and often reaches the same destination as a full rewrite.
-- **Be honest about your motivation.** If you cannot separate "I want to learn new tech" from "the business needs this," take a step back. Side projects exist for a reason.
+- **Be honest about your motivation.** The gap between "I want to change this" and "this needs to change" is where most bad rewrite decisions live.
 - **Align all three perspectives.** The best rewrites benefit the engineer, the team, and the company at the same time. If only one side wins, reconsider.
