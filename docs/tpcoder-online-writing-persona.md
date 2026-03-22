@@ -163,6 +163,8 @@ Then follow these rules:
 5. **Thai version uses English tech terms** where they're more natural, same as blog articles.
 6. **No emojis in body text** — keep it clean. One link emoji at the end is acceptable but not required.
 7. ในภาษาไทย ห้ามใช้คำว่า "นี่เป็นสัญญาณชัดเจนครับ" หรือ pattern ใด ๆ ที่อ่านก็รู้ว่าเป็น AI เขียนขึ้นมา
+8. Banner keywords: Game changer, เปลี่ยนเกม, นี่เป็นสัญญาณชัดเจนครับ, มันชัดเจน, เอาแบบตรง ๆ ไม่อ้อมค้อม, เล่าให้ฟัง, ไม่ใช่แค่... แต่
+9. Reduce or not use "\_\_\_" in the post, though keyword looks interest, but not my writing style
 
 ---
 
