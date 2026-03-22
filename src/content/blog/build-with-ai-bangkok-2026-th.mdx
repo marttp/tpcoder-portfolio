@@ -1,0 +1,174 @@
+---
+title: "สรุปจากงาน Build with AI Bangkok 2026"
+description: "สิ่งที่ผมได้เรียนรู้จากงาน Build with AI Bangkok 2026 โดย GDG Bangkok ตั้งแต่ Vibe Coding, Observability ในยุค AI ไปจนถึง Hands-on Lab กับ MCP, ADK และ A2A"
+pubDate: "2026-03-22"
+tags:
+  [
+    "AI",
+    "Vibe Coding",
+    "MCP",
+    "ADK",
+    "A2A",
+    "Google",
+    "Observability",
+    "Event",
+    "Backend",
+  ]
+heroImage: "/assets/images/blogs/build-with-ai-bkk-2026/cover.jpg"
+language: "th"
+translationSlug: "build-with-ai-bangkok-2026"
+---
+
+วันนี้ (22 มีนาคม 2026) ผมได้มีโอกาสเข้าร่วมงาน Build with AI Bangkok 2026 ที่จัดโดย GDG Bangkok ที่ Club Siam Glowfish เลยแวะมาสรุปสิ่งที่ได้เรียนรู้จากแต่ละ session ไว้นิดหน่อยครับ
+
+![Build with AI Bangkok 2026](/assets/images/blogs/build-with-ai-bkk-2026/photo_2026-03-22%2015.56.05.jpeg)
+
+---
+
+## Vibe Coding - Zero to One
+
+Session แรกเปิดด้วยหัวข้อ Vibe Coding ซึ่งพูดถึงแนวคิดการสร้าง application ด้วย Natural Language เป็นหลัก แทนที่จะเขียน code ทีละบรรทัด
+
+แนวคิดหลักคือ ตอนนี้เป็นช่วงเวลาที่ดีที่สุดสำหรับการเริ่มสร้าง app ด้วย AI เพราะ tool ต่าง ๆ พร้อมมากขึ้น คนจำนวนมากกำลังใช้ vibe coding เพื่อ showcase ไอเดียและ creativity ของตัวเอง โดยเริ่มจากง่ายไปยาก
+
+โดย Google ได้วาง flow สำหรับ vibe coding ไว้เป็น 3 ขั้นตอนหลัก
+
+![Think → Build → Publish](/assets/images/blogs/build-with-ai-bkk-2026/Build%20with%20AI%20Bangkok%202026/CleanShot_2026-03-22_at_13.44.592x.jpg)
+
+1. **Think (The Intent)** — define ปัญหาหลักที่อยากแก้ให้ชัดก่อน จะเป็น productivity app หรือ retro game ก็ได้ แต่ต้องโฟกัสที่ intent ที่จะอธิบายให้ AI ฟัง
+2. **Build (The Vibe)** — ใช้ AI Studio สำหรับ instant prototype หรือ Antigravity สำหรับ agentic coding แค่ describe ไอเดีย แล้วให้ agent สร้าง logic และ UI ให้แบบ real-time
+3. **Publish (The Launch)** — deploy app ขึ้น Google Cloud ได้ทันที จาก local preview ไปเป็น public URL ที่แชร์ให้ทีมหรือใครก็ได้
+
+### เครื่องมือจาก Google ที่น่าสนใจ
+
+Session นี้แนะนำ 3 เครื่องมือหลักจาก Google สำหรับ vibe coding
+
+**AI Studio** — เป็น rapid prototyping tool ที่ทำงานคล้าย Lovable โดยมี live preview ในตัว สามารถสร้าง application ได้จาก single prompt และ preview ผลลัพธ์ได้เลยในbrowser รวมถึงดู responsive บนมือถือได้ด้วย
+
+![Google AI Studio - Build your ideas with Gemini](/assets/images/blogs/build-with-ai-bkk-2026/Build%20with%20AI%20Bangkok%202026/CleanShot_2026-03-22_at_13.53.362x.jpg)
+
+**Antigravity** — เป็น agentic IDE สำหรับ developer ที่ต้องการ control มากขึ้น สามารถ spawn multi-agent และใช้ tools ต่าง ๆ ได้ มี agentic browser ที่มี built-in Chrome ให้ agent โต้ตอบกับ component ภายใน app ได้โดยตรง และมี Files & Artifacts panel ที่แสดง file ทั้งหมดที่ agent สร้างขึ้นมา
+
+![Antigravity](/assets/images/blogs/build-with-ai-bkk-2026/antigravity.png)
+
+**Gemini CLI** — สำหรับคนที่ถนัดทำงานผ่าน terminal เป็น command-line interface ที่ใช้ Gemini model
+
+![Gemini CLI](/assets/images/blogs/build-with-ai-bkk-2026/gemini-cli.png)
+
+นอกจากนี้ยังมีการพูดถึง [Stitch](https://blog.google/innovation-and-ai/models-and-research/google-labs/stitch-ai-ui-design/) ซึ่งเป็น AI-native platform จาก Google Labs ที่ช่วยให้ทุกคนสร้าง high-fidelity UI ได้ เรียกว่าเป็นแนวคิด "vibe design" เลยก็ว่าได้
+
+### Anatomy of a Powerful Prompt
+
+![The anatomy of a Powerful Prompt](/assets/images/blogs/build-with-ai-bkk-2026/photo_2026-03-22%2016.03.15.jpeg)
+
+ส่วนที่ผมคิดว่าสำคัญที่สุดใน session นี้คือเรื่อง prompt engineering สำหรับ vibe coding โดย speaker ได้แบ่ง prompt ออกเป็นหลายระดับ
+
+- **Lazy prompt** — ไม่มี context ไม่มี definition ของ feature ผลลัพธ์ก็ออกมาไม่ค่อยตรง แถม token ก็ถูกใช้ไปเยอะมากโดยไม่จำเป็น
+- **Good prompt** — มี context พอสมควร เช่น "Help me build an app to track my food and water intake"
+- **Powerful prompt** — expand ออกเป็นหลาย layer ได้แก่ การกำหนด role, target audience, context, definition ของ feature ที่ต้องการ และ optional อย่าง visual reference
+
+ประเด็นที่ชัดเจนคือ AI ทำงานไม่ดีกับ lazy prompt และเมื่อเรามี context ที่ดี iteration จะเร็วขึ้นมาก ในขณะที่ prompt ที่ไม่มี context จะ consume token มากกว่าจำเป็น
+
+ผมคิดว่าเรื่องนี้สอดคล้องกับหลักการเขียน requirement spec หรือ technical design doc อยู่แล้ว ยิ่งเรา define scope ชัดเจนเท่าไหร่ ผลลัพธ์ก็ยิ่งตรงเป้ามากขึ้นเท่านั้น ไม่ว่าจะเป็นการสื่อสารกับคนหรือกับ AI
+
+---
+
+## Software Delivery in the AI Age (Datadog Session)
+
+Session นี้จาก Datadog เริ่มด้วยคำถามที่ฟังดูง่ายแต่คิดแล้วน่าสนใจ
+
+> ถ้าคุณเขียน code ได้เร็วขึ้น 10 เท่า แปลว่าคุณจะ deliver ได้เร็วขึ้น 10 เท่าไหม?
+
+คำตอบคือ ไม่จำเป็น เพราะ bottleneck ของ software delivery ไม่ได้อยู่แค่ที่การเขียน code แต่อยู่ที่ทั้ง pipeline ตั้งแต่ testing, deployment, monitoring ไปจนถึง incident response
+
+### AI เป็น Amplifier ไม่ใช่ Magic
+
+ประเด็นหลักที่ speaker เน้นคือ Agentic AI ทำหน้าที่เป็น amplifier
+
+- **องค์กรที่ทำได้ดีอยู่แล้ว** → AI จะช่วยให้ดียิ่งขึ้น
+- **องค์กรที่ process ยุ่งเหยิง** → AI จะ amplify ความยุ่งเหยิงนั้นให้หนักขึ้นไปอีก
+
+ผมว่าตรงนี้ตรงประเด็นมาก เพราะเห็นหลายทีมที่ adopt AI tooling แล้วคาดหวังว่าทุกอย่างจะดีขึ้นอัตโนมัติ แต่จริง ๆ แล้วถ้า foundation ไม่ดี ยิ่งเร็วก็ยิ่งพัง
+
+### ผลกระทบต่อ SDLC
+
+การ develop ที่เร็วขึ้นด้วย AI ส่งผลหลายอย่าง
+
+- Code changes เข้า production เร็วขึ้นและถี่ขึ้น
+- การหาต้นตอของปัญหายากขึ้น เพราะ code ที่ AI สร้างมาอาจไม่มีใครเข้าใจ context ทั้งหมด
+- Expectation จากองค์กรสูงขึ้น ถ้าใช้ AI แล้ว ทุกอย่างก็ต้องดีขึ้นสิ
+
+สิ่งที่ Datadog เสนอคือ ในยุค AI, **data คือ differentiated advantage** ที่แท้จริง และ observability คือสิ่งที่ทำให้เรามองเห็นได้ว่าเกิดอะไรขึ้นจริง ๆ
+
+### Observability Stack ที่น่าสนใจ
+
+![Datadog Unified Observability Platform](/assets/images/blogs/build-with-ai-bkk-2026/photo_2026-03-22%2016.03.23.jpeg)
+
+Datadog ได้โชว์ platform ของตัวเองในฐานะ unified observability platform ที่ครอบคลุมทั้ง stack ซึ่งมีหลาย component ที่น่าสนใจสำหรับยุค AI
+
+- **CI Visibility** — หา flaky tests และ slow jobs
+- **Test Optimization** — track test duration และ failure patterns
+- **Deployment Tracking** และ **Feature Flags**
+- **APM (Tracing)** — Application Performance Monitoring
+- **LLM Observability** — track performance ของ LLM โดยเฉพาะ
+- **Bits AI SRE** — investigate production issues แบบ end-to-end โดยใช้ hypothesis-driven approach
+- **GPU Monitoring** และ **Cloud Cost Management**
+
+![The Datadog Platform](/assets/images/blogs/build-with-ai-bkk-2026/photo_2026-03-22%2016.03.27.jpeg)
+
+ประโยคที่สรุปได้ดีที่สุดจาก session นี้คือ
+
+> AI Builds Apps. Observability Runs Them.
+
+ยิ่ง AI สร้าง code ได้เร็วและมากขึ้น ยิ่งต้องมี observability ที่ดีเพื่อให้เรามั่นใจได้ว่าสิ่งที่ deploy ไปนั้นทำงานได้จริง
+
+นอกจากนี้ Datadog ยังประกาศงาน **[Datadog Live Bangkok](https://events.datadoghq.com/events/datadog-live-bangkok-2026)** ที่จะจัดขึ้นวันศุกร์ที่ 27 มีนาคม 2026 เวลา 14:00–21:00 น. ณ Grand Center Point Prestige ราชดำริ ภายใต้ธีม "Observability in the AI Era" มี session จาก Datadog Field CTO และ customer success stories จากบริษัทไทยอย่าง Jitta, Channel One31, Conicle และ AutoX ใครสนใจเรื่อง observability ลองไปดูได้
+
+---
+
+## Lab: Getting Started with MCP, ADK and A2A
+
+Session นี้เป็น hands-on lab ที่ให้ผู้เข้าร่วมลองทำ [codelab](https://codelabs.developers.google.com/codelabs/currency-agent?hl=en#0) สร้าง currency conversion agent โดยใช้ 3 protocol/framework หลักของ Google
+
+![Codelab Architecture - MCP, ADK and A2A](/assets/images/blogs/build-with-ai-bkk-2026/codelab.png)
+
+### ทำความเข้าใจ 3 ตัวย่อ
+
+**MCP (Model Context Protocol)** — เป็น open protocol ที่กำหนดมาตรฐานการเชื่อมต่อระหว่าง AI model กับ tools ภายนอก คิดง่าย ๆ ว่าเป็นเส้นทาง Agent → Tools ที่ standardized และเป็น agent-agnostic หมายความว่าไม่ว่าจะใช้ agent framework ไหนก็เรียกใช้ MCP tools เดียวกันได้ ใน lab นี้สร้างด้วย FastMCP
+
+**ADK (Agent Development Kit)** — เป็น framework สำหรับ develop AI agent ที่ orchestrate การใช้ tools ต่าง ๆ ผ่าน LLM (ในที่นี้คือ Gemini) เป็นตัวกลางที่เอา MCP tools มาประกอบเข้าด้วยกันเป็น agent ที่ทำงานได้
+
+**A2A (Agent-to-Agent Protocol)** — เป็น open standard สำหรับการสื่อสารระหว่าง agent กับ agent คิดง่าย ๆ ว่า
+
+- MCP คือ Agent → Tools
+- A2A คือ Agent ↔ Agent
+
+### Agent Card
+
+**Agent Card** ซึ่งเปรียบได้กับนามบัตรของ agent หรือจะมองเป็น resume สำหรับสมัครงานก็ได้ มันบอกว่า agent ตัวนี้ทำอะไรได้บ้าง มี skill อะไร มี capability อะไร
+
+ใน [A2A Python SDK](https://github.com/google-a2a/a2a-python) มี Pydantic models สำหรับ [AgentSkill](https://github.com/google-a2a/a2a-python/blob/a1894aecb27486baa2d19ec965dbfcb9be6b215b/src/a2a/types.py#L84), [AgentCapabilities](https://github.com/google-a2a/a2a-python/blob/a1894aecb27486baa2d19ec965dbfcb9be6b215b/src/a2a/types.py#L827) และ [AgentCard](https://github.com/google-a2a/a2a-python/blob/a1894aecb27486baa2d19ec965dbfcb9be6b215b/src/a2a/types.py#L1394) ให้ใช้งานได้เลย
+
+### สิ่งที่ได้ลองทำใน Lab
+
+Lab นี้ให้สร้าง currency conversion agent ตั้งแต่ต้นจนจบ
+
+1. สร้าง MCP server ด้วย FastMCP ที่มี tool `get_exchange_rate` สำหรับดึงอัตราแลกเปลี่ยนจาก Frankfurter API
+2. Deploy MCP server ขึ้น Cloud Run
+3. สร้าง ADK agent ที่เชื่อมต่อกับ remote MCP server ผ่าน HTTP
+4. Expose agent เป็น A2A server ด้วย function `to_a2a()`
+5. ทดสอบด้วย A2A Client
+
+สิ่งที่น่าสนใจคือ flow ทั้งหมดแสดงให้เห็นว่า 3 protocol นี้ทำงานร่วมกันอย่างไร
+
+- MCP server ห่อหุ้ม tool capabilities เอาไว้
+- ADK orchestrate การเรียกใช้ tools ผ่าน LLM
+- A2A ทำให้ agent ตัวอื่นค้นพบและสื่อสารกับ agent ตัวนี้ได้แบบ standardized
+
+ผมมองว่า architecture แบบนี้คล้ายกับ microservices pattern มาก MCP server เหมือน individual service ที่ expose API, ADK เหมือน orchestration layer และ A2A เหมือน service discovery + inter-service communication protocol
+
+---
+
+{/* TODO: Session 4 - Best Practice to Design Agentic AI System in Google ADK */}
+
+{/* TODO: Session 5 - Dynamic UIs with GenUI and Gemini in Flutter */}
