@@ -1,0 +1,194 @@
+---
+title: "Agentic Commerce — What It Is and Why It Matters (Part 1)"
+description: "A practical look at agentic commerce — where AI agents buy, negotiate, and transact on behalf of humans. What the interaction models look like, the protocol layer underneath, and why this shift matters more than most people think."
+pubDate: "2026-03-29"
+tags:
+  [
+    "AI",
+    "Agentic Commerce",
+    "Software Engineering",
+    "E-Commerce",
+    "Future of Tech",
+  ]
+language: "en"
+heroImage: ""
+---
+
+import MermaidDiagram from "../../components/blog/MermaidDiagram.astro";
+
+Commerce has always followed the same basic flow: a human discovers a product, evaluates it, and clicks "buy." The interface changed — from physical stores to websites to mobile apps — but the human was always the one making the decision and executing the transaction.
+
+That assumption is starting to break.
+
+Agentic commerce is the shift from humans operating digital storefronts to AI agents operating on behalf of humans. Not chatbots that answer FAQs. Not recommendation engines that suggest products. Actual autonomous agents that research, compare, negotiate, and purchase — with minimal or no human involvement at the point of transaction.
+
+This is Part 1 of a series on agentic commerce. This post covers the fundamentals — what it is, how agents interact with commerce systems, the protocol layer that makes it possible, and why the way brands get discovered is about to change. Part 2 will look at this from a financial service engineering perspective, and Part 3 will cover what merchants and developers need to build.
+
+---
+
+## What Makes It "Agentic"
+
+The word gets overused, so let me be specific. An agentic commerce system has these properties:
+
+- **Autonomy** — the agent acts without step-by-step human instructions. You say "find me the best deal on noise-cancelling headphones under $300" and it handles the rest.
+- **Reasoning** — it does not just search and sort. It evaluates trade-offs, reads reviews semantically, cross-references return policies, checks delivery timelines.
+- **Tool use** — it interacts with external systems. Calls APIs, navigates websites, fills out forms, initiates payments.
+- **Multi-step execution** — it plans and executes across multiple services and sessions. Not a single query-response, but a workflow.
+
+This is different from a recommendation engine or a price comparison site. Those are tools humans use. An agentic system _is_ the buyer.
+
+---
+
+## Three Interaction Models
+
+Not all agent commerce looks the same. There are three primary models for how agents interact with the commerce ecosystem:
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    subgraph ATS["Agent to Site"]
+        U1["User"] --> A1["AI Agent"]
+        A1 -->|"API / Browser"| M1["Merchant Site"]
+    end
+    subgraph ATA["Agent to Agent"]
+        U2["User"] --> A2["Buyer Agent"]
+        A2 <-->|"Negotiate"| A3["Seller Agent"]
+    end
+    subgraph BAT["Brokered Agent"]
+        U3["User"] --> A4["AI Agent"]
+        A4 --> B1["Broker / Aggregator"]
+        B1 --> M2["Merchant A"]
+        B1 --> M3["Merchant B"]
+        B1 --> M4["Merchant C"]
+    end
+    style A1 fill:#6c5ce7,color:#fff
+    style A2 fill:#6c5ce7,color:#fff
+    style A3 fill:#e17055,color:#fff
+    style A4 fill:#6c5ce7,color:#fff
+    style B1 fill:#fdcb6e,color:#000
+`}
+  size="large"
+/>
+
+**Agent to Site** — the most straightforward model. Your AI agent goes to a merchant's website or API, browses the catalog, and executes a purchase. It is doing what you would do, just faster and without getting distracted. This works today with existing e-commerce infrastructure, especially for merchants with good APIs.
+
+**Agent to Agent** — pure machine-to-machine commerce. Your buyer agent negotiates directly with the seller's AI agent. No website involved. They exchange structured data — availability, pricing, terms — and reach an agreement. This is where dynamic pricing and real-time negotiation happen at a speed humans cannot match.
+
+**Brokered Agent to Site** — an intermediary agent or platform sits between the user's agent and multiple merchants. Think of it as an AI-powered aggregator that manages loyalty programs, compares across services, and optimizes across constraints. An agent that books your dinner by checking OpenTable, applying your dietary preferences, factoring in travel time from your calendar, and securing a reservation — that is brokered.
+
+Most real-world implementations in 2026 are Agent-to-Site. Agent-to-Agent is where the industry is heading, but it requires both sides to have agent infrastructure. Brokered models are emerging through platforms like OpenAI's integrations and Shopify's agent-ready APIs.
+
+---
+
+## The Protocol Layer
+
+For agents to operate across different platforms, they need shared languages. Three protocols are shaping this space:
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    subgraph Protocols["Protocol Stack"]
+        MCP["MCP\nModel Context Protocol"] -->|"feeds context to"| ACP["ACP\nAgentic Commerce Protocol"]
+        ACP -->|"executes via"| A2A["A2A\nAgent-to-Agent Protocol"]
+    end
+    subgraph Functions["What Each Does"]
+        F1["MCP: Share context —\nuser preferences, history,\nproduct data across models"]
+        F2["ACP: Handle transactions —\nquoting, negotiation,\npurchase, fulfillment"]
+        F3["A2A: Agent coordination —\nnegotiate terms, verify\navailability, execute contracts"]
+    end
+    MCP -.-> F1
+    ACP -.-> F2
+    A2A -.-> F3
+    style MCP fill:#6c5ce7,color:#fff
+    style ACP fill:#e17055,color:#fff
+    style A2A fill:#00b894,color:#fff
+`}
+  size="large"
+/>
+
+**MCP (Model Context Protocol)** — the context layer. MCP lets agents share user intent, preferences, and historical data across different AI models and tools. When your agent knows you prefer organic products, have a shellfish allergy, and always buy from sellers with free returns — that context flows through MCP. Without it, every agent interaction starts from zero.
+
+**ACP (Agentic Commerce Protocol)** — the transaction layer. Championed by OpenAI and Stripe, ACP governs how agents handle the actual commerce: machine-readable quotes, dynamic negotiation, purchasing, and fulfillment tracking. It also bakes in fraud detection and safety checks at every step. If MCP is the "understanding," ACP is the "doing."
+
+**A2A (Agent-to-Agent Protocol)** — the coordination layer. When a buyer agent and seller agent need to negotiate directly, A2A provides the shared language. It handles term negotiation, availability verification, and contract execution between autonomous systems. Think of it as the diplomatic protocol for machines doing business with each other.
+
+These are still early. No single standard has won yet, and there is fragmentation. But the direction is clear — commerce is getting a protocol stack, just like the internet got HTTP and TCP/IP.
+
+---
+
+## The Discovery Shift: SEO → AEO → GEO
+
+Here is something most people in e-commerce have not fully processed yet: **if the buyer is an AI agent, traditional SEO is almost irrelevant.**
+
+SEO is built around humans typing queries into search engines and clicking blue links. But when an agent is doing the buying, it does not click links. It parses data, evaluates structured information, and makes decisions based on what it can verify programmatically.
+
+This creates two new disciplines:
+
+**AEO (Answer Engine Optimization)** — instead of ranking on a search results page, your goal is to be the definitive answer that an AI retrieves. When an agent asks "best B2B packaging supplier with sub-3-day fulfillment," it does not browse ten pages. It extracts the most credible, machine-readable answer. If your data is not structured for that, you do not exist in the agent's world.
+
+**GEO (Generative Engine Optimization)** — influencing what LLMs and agents say about your brand. This means building content around E-E-A-T (Expertise, Experience, Authoritativeness, Trustworthiness), using semantic HTML, knowledge graphs, schema markup, and question-based content structures that reasoning models can verify and cite.
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    subgraph Old["Human-Driven Discovery"]
+        H1["Human searches"] --> H2["Clicks links"] --> H3["Browses pages"] --> H4["Decides to buy"]
+    end
+    subgraph New["Agent-Driven Discovery"]
+        A1["Agent receives intent"] --> A2["Parses structured data"] --> A3["Verifies across sources"] --> A4["Executes purchase"]
+    end
+    subgraph What["What Brands Need"]
+        W1["Structured data\n(Schema markup)"]
+        W2["Machine-readable\nAPIs"]
+        W3["E-E-A-T signals\nfor LLM trust"]
+        W4["/llms.txt\nat domain root"]
+    end
+    style H4 fill:#ff6b6b,color:#fff
+    style A4 fill:#00b894,color:#fff
+    style W1 fill:#6c5ce7,color:#fff
+    style W2 fill:#6c5ce7,color:#fff
+    style W3 fill:#6c5ce7,color:#fff
+    style W4 fill:#6c5ce7,color:#fff
+`}
+  size="large"
+/>
+
+The stat that stands out: 70% of marketing professionals recognized the impact of AEO on their strategy, but only 20% had started implementing it. That gap is a competitive opportunity for whoever moves first.
+
+By 2026, traditional search engine query volume is projected to drop 25% as AI agents and generative tools replace keyword-based search. Brands that are only optimized for Google are optimizing for a shrinking channel.
+
+---
+
+## The ASEAN Opportunity
+
+While agentic commerce is global, Southeast Asia is in a uniquely strong position to lead adoption:
+
+- **680 million digitally native consumers** across the region, driving more than half of global e-commerce activity
+- **Mobile-first infrastructure** — the region skipped desktop-era commerce and went straight to mobile, which means less legacy to untangle
+- **AI market growing at 49.6% CAGR** — projected to reach $35 billion by 2030
+- **46% of regional firms have scaled AI beyond pilot** in early 2026, versus 35% globally
+- **$50 billion+ in hyperscaler data center investments** from AWS, Google, and Microsoft
+
+The interesting structural advantage is what some call a "lighter legacy burden." Unlike Western markets built on decades of enterprise software, many ASEAN businesses can leapfrog directly into agent-ready, API-first architectures without having to migrate away from legacy systems first.
+
+For platforms like Shopee, Lazada, and GoTo — which dominate Southeast Asian e-commerce — this is both an opportunity and a threat. If consumers can buy through AI agents that bypass marketplace UIs entirely, the value of being a marketplace aggregator changes fundamentally. Merchants paying 20-30% in marketplace fees might find that optimizing their own sites for AI agents is a more profitable path.
+
+---
+
+## What Is Next
+
+This post covered the fundamentals — what agentic commerce is, how agents interact with commerce systems, the protocols making it possible, and why discovery is shifting.
+
+But there are hard questions this overview intentionally did not go deep on:
+
+- When agents handle payments, who is responsible when things go wrong?
+- How does fraud detection work when the buyer is a script?
+- What do credit card regulations, QR payment rules, and digital wallet frameworks mean for agent-initiated transactions?
+- What does the payment infrastructure actually need to look like?
+
+That is Part 2 — agentic commerce from a financial service software engineering perspective. Where the trust models, payment risks, and regulatory realities live.
+
+**Series:**
+- **Part 1: What It Is and Why It Matters** (this post)
+- Part 2: From a Financial Service Engineering Perspective (coming soon)
+- Part 3: For Merchants and Developers (coming soon)
