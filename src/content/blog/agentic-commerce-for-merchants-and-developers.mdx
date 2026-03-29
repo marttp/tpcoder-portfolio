@@ -278,37 +278,37 @@ These thresholds will vary by merchant, product category, and risk tolerance. Th
 Here is a practical checklist for merchants and developers. Not everything needs to happen at once, but this is the direction:
 
 ### Discovery
-- [ ] Deploy `/llms.txt` at your domain root with catalog, policy, and API pointers
-- [ ] Implement Schema.org structured data on all product pages
-- [ ] Ensure SSR for product pages — full data in HTML, not hidden behind JavaScript
-- [ ] Update `robots.txt` and WAF rules to allow verified AI crawlers
-- [ ] Register with major agent discovery platforms as they emerge
+- Deploy `/llms.txt` at your domain root with catalog, policy, and API pointers
+- Implement Schema.org structured data on all product pages
+- Ensure SSR for product pages — full data in HTML, not hidden behind JavaScript
+- Update `robots.txt` and WAF rules to allow verified AI crawlers
+- Register with major agent discovery platforms as they emerge
 
 ### API Infrastructure
-- [ ] Expose product catalog, cart, and checkout as clean REST or GraphQL APIs
-- [ ] Publish an OpenAPI spec with detailed, specific descriptions
-- [ ] Implement idempotency keys on all write endpoints (cart, checkout, payment)
-- [ ] Return consistent, well-documented error codes
-- [ ] Version your APIs — agents will break on unannounced changes
+- Expose product catalog, cart, and checkout as clean REST or GraphQL APIs
+- Publish an OpenAPI spec with detailed, specific descriptions
+- Implement idempotency keys on all write endpoints (cart, checkout, payment)
+- Return consistent, well-documented error codes
+- Version your APIs — agents will break on unannounced changes
 
 ### Traffic Management
-- [ ] Implement agent-specific rate limiting separate from human traffic
-- [ ] Set up edge routing to serve lightweight JSON to agent requests
-- [ ] Monitor agent traffic patterns as a distinct category in your analytics
-- [ ] Build graduated challenge thresholds for suspicious automated traffic
+- Implement agent-specific rate limiting separate from human traffic
+- Set up edge routing to serve lightweight JSON to agent requests
+- Monitor agent traffic patterns as a distinct category in your analytics
+- Build graduated challenge thresholds for suspicious automated traffic
 
 ### Payment and Security
-- [ ] Support mandate token validation at the checkout layer
-- [ ] Implement SPT-based payment for agent-initiated transactions
-- [ ] Define financial policy thresholds for auto-approve vs. human review
-- [ ] Build agent-specific fraud detection signals (velocity, mandate compliance, token lifecycle)
-- [ ] Ensure complete audit trails for every agent-initiated transaction
+- Support mandate token validation at the checkout layer
+- Implement SPT-based payment for agent-initiated transactions
+- Define financial policy thresholds for auto-approve vs. human review
+- Build agent-specific fraud detection signals (velocity, mandate compliance, token lifecycle)
+- Ensure complete audit trails for every agent-initiated transaction
 
 ### Governance
-- [ ] Publish clear terms of service for agent interactions with your platform
-- [ ] Define what agents are and are not allowed to do on your site
-- [ ] Implement kill switches to block specific agents or revoke access instantly
-- [ ] Monitor for prompt injection attempts through product data or content
+- Publish clear terms of service for agent interactions with your platform
+- Define what agents are and are not allowed to do on your site
+- Implement kill switches to block specific agents or revoke access instantly
+- Monitor for prompt injection attempts through product data or content
 
 ---
 
