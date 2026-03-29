@@ -1,0 +1,337 @@
+---
+title: "Agentic Commerce — For Merchants and Developers (Part 3)"
+description: "What merchants and developers need to build to survive in an agent-driven commerce world. API-first architecture, agent discovery, traffic management, and a practical checklist for making your platform agent-ready."
+pubDate: "2026-03-29"
+tags:
+  [
+    "AI",
+    "Agentic Commerce",
+    "Software Engineering",
+    "E-Commerce",
+    "Backend",
+    "Best Practices",
+  ]
+language: "en"
+heroImage: ""
+---
+
+import MermaidDiagram from "../../components/blog/MermaidDiagram.astro";
+
+[Part 1](/blog/agentic-commerce-what-it-is-and-why-it-matters) covered what agentic commerce is — the models, protocols, and discovery shift. [Part 2](/blog/agentic-commerce-from-a-financial-service-engineering-perspective) went into the payment trust framework, risks, and regulatory realities from a financial service engineering perspective.
+
+This part is the practical one. If you are a merchant or a developer building commerce platforms — what do you actually need to do to not become invisible in an agent-driven world?
+
+Because that is the real risk here. It is not that agents will attack your system or break your checkout flow. It is that agents will simply skip you because they cannot read your catalog, cannot call your API, or cannot parse your product data. In agentic commerce, **invisible is worse than broken.**
+
+---
+
+## The Problem With Most E-Commerce Today
+
+Most digital storefronts are built for human eyeballs. Hero banners, product carousels, "customers also bought" sections, promotional pop-ups. Every pixel is designed to guide a human through a funnel.
+
+An AI agent does not see any of that.
+
+An agent sees HTML, JavaScript, API responses, and structured data — or the lack of it. Most e-commerce sites are actively hostile to machine parsing without even knowing it:
+
+- Product data buried inside client-side JavaScript that never renders for crawlers
+- Pricing that only appears after executing 14 API calls behind authentication
+- Catalog structure that depends on visual hierarchy, not semantic markup
+- WAF rules that block anything that does not look like a browser
+
+If your storefront cannot be understood by a machine, you have already lost the agentic commerce game before it starts.
+
+---
+
+## Making Your Platform Agent-Discoverable
+
+The first problem to solve is discovery. Agents need to find you, understand what you sell, and trust that your data is accurate.
+
+### The `/llms.txt` File
+
+This is the new `robots.txt` for the AI era. A plain-text or Markdown file at your domain root that tells AI agents where to find your structured product catalog, policies, documentation, and API endpoints. Think of it as a table of contents for machines.
+
+```
+# llms.txt — example
+# Merchant: Acme Electronics
+# Last updated: 2026-03-29
+
+## Product Catalog
+- Full catalog API: /api/v2/products
+- Schema: /api/v2/schema/products.json
+- Categories: /api/v2/categories
+
+## Policies
+- Return policy: /policies/returns
+- Shipping: /policies/shipping
+- Price match guarantee: /policies/price-match
+
+## Documentation
+- API docs: /docs/api
+- OpenAPI spec: /docs/openapi.yaml
+```
+
+Without this, agents have to crawl your entire site and guess where the data lives. With it, they go straight to the source. This also eliminates pricing hallucinations — agents get your actual data instead of inferring from cached or third-party sources.
+
+### Server-Side Rendering (SSR)
+
+If your product pages rely on client-side JavaScript to render pricing, availability, and specifications — agents cannot see them. Many autonomous systems do not execute JavaScript. They fetch the HTML and parse what they get.
+
+SSR ensures that the full product data is in the HTML document served to any client, including AI crawlers. This is not new advice — it has been good practice for SEO for years — but for agentic commerce it moves from "nice to have" to "required."
+
+### Structured Data and Schema Markup
+
+Schema.org markup is how you make your product data machine-readable at the page level. Product names, prices, availability, reviews, specifications — all encoded in a format that agents can parse programmatically without scraping visual layouts.
+
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": "Wireless Noise-Cancelling Headphones",
+  "brand": "Acme Audio",
+  "offers": {
+    "@type": "Offer",
+    "price": "249.99",
+    "priceCurrency": "USD",
+    "availability": "https://schema.org/InStock",
+    "deliveryLeadTime": {
+      "@type": "QuantitativeValue",
+      "value": "2",
+      "unitCode": "DAY"
+    }
+  },
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.6",
+    "reviewCount": "1284"
+  }
+}
+```
+
+An agent parsing this knows exactly what the product is, how much it costs, whether it is in stock, and how fast it ships — without rendering a single pixel of your website.
+
+### Welcoming AI Crawlers
+
+Check your `robots.txt` and WAF configuration. Many sites block known AI crawlers (GPTBot, Google-Extended, Anthropic's Claude crawlers) by default. In the agentic commerce world, blocking these bots is blocking potential buyers.
+
+This does not mean opening everything. It means creating deliberate rules: allow verified AI crawlers access to product catalogs and pricing, while keeping admin panels and internal tooling protected. Be intentional about what agents can and cannot see.
+
+---
+
+## API-First Architecture
+
+Discovery gets agents to your door. APIs let them actually do business with you.
+
+### Why APIs Matter More Than UIs
+
+In an agent-driven world, your API is your storefront. The visual website becomes a secondary channel — still important for human shoppers, but not the primary interface for agent transactions.
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    subgraph Human["Human Shopping"]
+        H1["Browse UI"] --> H2["Add to cart"] --> H3["Checkout form"] --> H4["Pay"]
+    end
+    subgraph Agent["Agent Shopping"]
+        A1["Read /llms.txt"] --> A2["Query catalog API"] --> A3["POST /cart"] --> A4["POST /checkout\n(with mandate token)"]
+    end
+    subgraph Infra["What You Need"]
+        I1["Product API\n(read)"]
+        I2["Cart API\n(write)"]
+        I3["Checkout API\n(transact)"]
+        I4["OpenAPI spec\n(documentation)"]
+    end
+    style H4 fill:#a29bfe,color:#fff
+    style A4 fill:#00b894,color:#fff
+    style I1 fill:#6c5ce7,color:#fff
+    style I2 fill:#6c5ce7,color:#fff
+    style I3 fill:#6c5ce7,color:#fff
+    style I4 fill:#6c5ce7,color:#fff
+`}
+  size="large"
+/>
+
+The agent flow is four API calls. No rendering, no JavaScript, no visual assets. Fast, structured, verifiable.
+
+### OpenAPI Specification
+
+Your API needs documentation that agents can read. An `openapi.yaml` file that describes every endpoint, parameter, request body, and response format. But here is the part most people miss: **the `summary` and `description` fields in your OpenAPI spec are prompts for the AI.**
+
+```yaml
+# Bad — generic, agent has to guess
+paths:
+  /api/products:
+    get:
+      summary: "Get products"
+      description: "Returns products"
+
+# Good — specific, agent knows exactly what to expect
+paths:
+  /api/products:
+    get:
+      summary: "Search active products with filters"
+      description: "Returns a paginated list of active products.
+        Filter by category, price range, availability, and brand.
+        Sorted by relevance by default. Supports sort_by=price,
+        sort_by=rating, sort_by=newest."
+      parameters:
+        - name: category
+          description: "Product category slug (e.g., 'headphones',
+            'speakers'). See /api/categories for valid values."
+```
+
+The more specific your descriptions, the fewer failed API calls from agents. Treat your OpenAPI spec like a conversation with the buyer — because now it literally is.
+
+### Idempotent and Predictable Endpoints
+
+Agents retry. Network calls fail. Timeouts happen. If your checkout endpoint is not idempotent — meaning the same request can be safely sent multiple times without duplicate orders — you will generate phantom transactions. This is basic API design, but it becomes critical when the client is an autonomous system that retries aggressively on failure.
+
+Use idempotency keys. Return consistent error codes. Make your API behave the same way on the first call and the tenth.
+
+---
+
+## Managing Agent Traffic
+
+Agent traffic behaves differently from human traffic. A human browses at human speed — a few pages per minute, with pauses to read and think. An agent queries at machine speed — potentially hundreds of API calls per second, concentrated in bursts.
+
+### The Accidental DDoS Problem
+
+A legitimate buyer agent querying your product catalog across thousands of SKUs can generate traffic that looks identical to a DDoS attack. If your security infrastructure cannot distinguish between the two, you either block legitimate agent buyers or leave yourself exposed.
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    subgraph Traffic["Incoming Traffic"]
+        HT["Human Traffic\n~2-5 req/min\nBrowser headers\nMouse/scroll events"]
+        AT["Agent Traffic\n~100-500 req/sec\nAPI headers\nStructured queries"]
+        DT["DDoS Attack\n~1000+ req/sec\nSpoofed headers\nRandom patterns"]
+    end
+    subgraph Detection["How to Distinguish"]
+        D1["User-Agent headers\n+ agent verification"]
+        D2["Agent-specific\nrate limits"]
+        D3["Verified agent\nregistries"]
+    end
+    subgraph Response["Response Strategy"]
+        R1["Full HTML + assets\n(human experience)"]
+        R2["Lightweight JSON\n(agent-optimized)"]
+        R3["Block + challenge"]
+    end
+    HT --> D1 --> R1
+    AT --> D2 --> R2
+    DT --> D3 --> R3
+    style HT fill:#00b894,color:#fff
+    style AT fill:#6c5ce7,color:#fff
+    style DT fill:#ff6b6b,color:#fff
+    style R2 fill:#6c5ce7,color:#fff
+`}
+  size="large"
+/>
+
+### Agent-Specific Rate Limits
+
+Do not apply the same rate limits to agent traffic and human traffic. Create separate tiers:
+
+- **Verified agents** (authenticated with API keys or agent certificates) — higher rate limits, access to structured data endpoints
+- **Unverified crawlers** — standard rate limits, read-only access
+- **Suspicious traffic** — graduated challenge thresholds before blocking
+
+### Edge Computing for Agent Traffic
+
+Use your CDN to detect agent requests via `User-Agent` headers and route them to lightweight, data-only JSON endpoints instead of rendering full HTML pages with images, CSS, and JavaScript. This reduces server load dramatically and cuts the token processing cost for the querying agent by roughly 90%. Agents do not need your hero banner. They need your price and stock level.
+
+This is a win for both sides: your infrastructure handles more agent traffic at lower cost, and agents get faster responses with cleaner data.
+
+---
+
+## Checkout and Payment Integration
+
+This ties back to the trust framework from [Part 2](/blog/agentic-commerce-from-a-financial-service-engineering-perspective). Your checkout API needs to support agent-initiated transactions securely.
+
+### Mandate Token Validation
+
+When an agent initiates a checkout, it presents a mandate token — the cryptographic proof that a human authorized this purchase within specific boundaries. Your checkout system needs to validate:
+
+- Is this token from a trusted agent platform?
+- Is the transaction within the authorized spend limit?
+- Is this merchant in the allowed list?
+- Is the token still valid (not expired or revoked)?
+
+If any check fails, reject the transaction before it reaches the payment processor. Do not rely solely on the payment processor to catch mandate violations.
+
+### Shared Payment Tokens (SPTs)
+
+SPTs allow agents to initiate transactions using a buyer's vaulted credentials without the AI model ever seeing the raw financial data. The token is scoped — it works for a specific transaction type, within a specific amount range, for a specific time window. This is how you let agents pay without trusting them with the keys.
+
+### Financial Policy Boundaries
+
+Define clear monetary thresholds for automatic versus human-reviewed transactions:
+
+- Under $50? Auto-approve if mandate is valid.
+- $50–$500? Auto-approve with additional verification step.
+- Over $500? Flag for human review before processing.
+
+These thresholds will vary by merchant, product category, and risk tolerance. The point is to have them explicitly defined rather than discovered after an incident.
+
+---
+
+## The Agent-Ready Checklist
+
+Here is a practical checklist for merchants and developers. Not everything needs to happen at once, but this is the direction:
+
+### Discovery
+- [ ] Deploy `/llms.txt` at your domain root with catalog, policy, and API pointers
+- [ ] Implement Schema.org structured data on all product pages
+- [ ] Ensure SSR for product pages — full data in HTML, not hidden behind JavaScript
+- [ ] Update `robots.txt` and WAF rules to allow verified AI crawlers
+- [ ] Register with major agent discovery platforms as they emerge
+
+### API Infrastructure
+- [ ] Expose product catalog, cart, and checkout as clean REST or GraphQL APIs
+- [ ] Publish an OpenAPI spec with detailed, specific descriptions
+- [ ] Implement idempotency keys on all write endpoints (cart, checkout, payment)
+- [ ] Return consistent, well-documented error codes
+- [ ] Version your APIs — agents will break on unannounced changes
+
+### Traffic Management
+- [ ] Implement agent-specific rate limiting separate from human traffic
+- [ ] Set up edge routing to serve lightweight JSON to agent requests
+- [ ] Monitor agent traffic patterns as a distinct category in your analytics
+- [ ] Build graduated challenge thresholds for suspicious automated traffic
+
+### Payment and Security
+- [ ] Support mandate token validation at the checkout layer
+- [ ] Implement SPT-based payment for agent-initiated transactions
+- [ ] Define financial policy thresholds for auto-approve vs. human review
+- [ ] Build agent-specific fraud detection signals (velocity, mandate compliance, token lifecycle)
+- [ ] Ensure complete audit trails for every agent-initiated transaction
+
+### Governance
+- [ ] Publish clear terms of service for agent interactions with your platform
+- [ ] Define what agents are and are not allowed to do on your site
+- [ ] Implement kill switches to block specific agents or revoke access instantly
+- [ ] Monitor for prompt injection attempts through product data or content
+
+---
+
+## The Cost of Inaction
+
+The merchants who will suffer most in the agentic commerce shift are not the ones who get it wrong. They are the ones who do nothing.
+
+When AI agents become a meaningful channel for commerce — and the adoption curves suggest this is not a distant future — they will route transactions to the merchants they can work with. That means merchants with clean APIs, structured data, machine-readable catalogs, and agent-friendly infrastructure.
+
+Merchants without these things will not get rejected. They will get skipped. And being skipped by the primary buyer in the market is a slow, quiet way to lose revenue that does not show up in any dashboard until it is too late.
+
+The good news is that most of what agents need — clean APIs, structured data, good documentation, SSR — is just good engineering practice. You should be doing this anyway. Agentic commerce just raises the stakes.
+
+---
+
+## Series Wrap-Up
+
+This three-part series covered agentic commerce from three angles:
+
+- [**Part 1: What It Is and Why It Matters**](/blog/agentic-commerce-what-it-is-and-why-it-matters) — the fundamentals: interaction models, protocol layer, discovery shift, and the ASEAN opportunity
+- [**Part 2: From a Financial Service Engineering Perspective**](/blog/agentic-commerce-from-a-financial-service-engineering-perspective) — the hard problems: payment trust frameworks, risks (fraud, economic, technical, consumer), regulatory realities, and what payment infrastructure needs to change
+- **Part 3: For Merchants and Developers** (this post) — the practical guide: making your platform discoverable, API-first architecture, traffic management, checkout integration, and the agent-ready checklist
+
+Agentic commerce is not something that is coming "someday." The protocols are forming, the agents are being built, and consumer adoption is accelerating. The question is not whether to prepare — it is whether you prepare now while the competitive gap is still wide, or later when everyone else has already caught up.
+
+Build for machines. Serve humans. That is the new default.
