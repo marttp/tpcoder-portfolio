@@ -74,6 +74,42 @@ This framework sounds clean on paper. The reality is messier.
 
 ---
 
+## The Liability Problem — A 5th Participant Nobody Planned For
+
+Traditional card payments have four parties: cardholder, issuing bank, acquiring bank, and merchant. Everyone knows their role. Everyone knows who absorbs what risk. The rules have been refined over decades.
+
+Agentic commerce adds a fifth: the AI agent.
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    subgraph Traditional["Traditional 4-Party Model"]
+        direction LR
+        CH["Cardholder"] --> IB["Issuing Bank"]
+        IB <--> AB["Acquiring Bank"]
+        AB --> ME["Merchant"]
+    end
+    subgraph Agentic["Agentic 5-Party Model"]
+        direction LR
+        CH2["Cardholder"] --> AG["AI Agent\n(new participant)"]
+        AG --> IB2["Issuing Bank"]
+        IB2 <--> AB2["Acquiring Bank"]
+        AB2 --> ME2["Merchant\n(still liable)"]
+    end
+    style AG fill:#e17055,color:#fff
+    style ME2 fill:#ff6b6b,color:#fff
+`}
+  size="large"
+/>
+
+The agent sits between the cardholder and the rest of the chain. It makes decisions, initiates transactions, and negotiates terms. But here is the problem: **the merchant is still the Merchant of Record.** When something goes wrong — and it will — the merchant absorbs the risk. The chargeback lands on the merchant. The dispute resolution burden falls on the merchant. The compliance liability stays with the merchant.
+
+The agent made the decision, but the merchant pays the price. None of the current protocols fully solve this. AP2 mandates help prove that the user authorized the transaction, but "the user authorized the agent to buy headphones under $300" does not protect the merchant when the agent picks the wrong headphones and the user files a dispute.
+
+This is not a theoretical edge case. It is the default scenario for any agent transaction where the outcome does not match what the user had in mind. And existing payment infrastructure has no clean path for it because the rules were written for four parties, not five.
+
+---
+
 ## Risks That Most People Skip
 
 The research and marketing around agentic commerce tends to focus on the efficiency gains — faster transactions, better prices, less friction. The risks get a paragraph at best. From a payment engineering perspective, these are the ones that keep me up at night:
@@ -85,6 +121,8 @@ The research and marketing around agentic commerce tends to focus on the efficie
 **One compromised agent token is not one compromised transaction — it is thousands.** When a human's credit card is stolen, the damage is limited by how fast the human can type and how many sites they can visit. A compromised agent token can execute transactions at machine speed across hundreds of merchants simultaneously. The blast radius of a single security breach scales dramatically.
 
 **Prompt injection becomes a financial attack vector.** If a shopping agent can be manipulated through crafted product descriptions, malicious seller pages, or adversarial inputs to purchase something the user never intended — that is not just a UX bug. It is financial fraud. And the attack surface is every piece of content the agent reads during its decision-making process.
+
+**"Friendly fraud" gets a new meaning.** In traditional payments, friendly fraud is when a legitimate cardholder files a chargeback on a purchase they actually made. In agentic commerce, there is a new variant: the agent followed the mandate correctly, bought something within the rules, but the user looks at the result and says "that is not what I wanted." The transaction was technically valid. The mandate was not violated. But the user is unhappy and disputes it anyway. This is not malice — it is a gap between what the user meant and what the agent understood. And it will happen constantly, because natural language intent is ambiguous and mandates cannot capture every nuance of what a person actually wants.
 
 <MermaidDiagram
   chart={`
@@ -157,6 +195,8 @@ Here is a quick reality check on a few payment methods — not a deep dive, just
 
 **Digital wallets** are probably the most viable path for agent-initiated transactions today. Tokenization is already built in. The user has already consented through TOS and biometric/PIN setup. The agent can use a pre-authorized wallet token within defined spend limits. It is already abstracted from raw card rails, which gives it a more flexible regulatory surface. As long as the user accepts the terms of service that include agent delegation — and the wallet provider builds proper mandate and audit infrastructure — this is the path of least regulatory resistance.
 
+**Stablecoin settlement** is the wildcard. Protocols like x402 are exploring instant stablecoin payments as a settlement layer for machine-to-machine transactions. The idea: skip traditional payment rails entirely. Agent-to-agent commerce settles in stablecoins with programmable, cryptographically enforced rules — no card networks, no chargebacks, no human-assumed authorization flows. It sidesteps a lot of the regulatory friction above, but introduces its own set of questions around compliance, consumer protection, and cross-border regulation. Still early, but worth watching — especially for high-volume, low-value agent transactions where traditional payment processing fees eat into the economics.
+
 <MermaidDiagram
   chart={`
 flowchart TD
@@ -164,6 +204,7 @@ flowchart TD
         CC["Credit Card"] -->|"SCA requires human,\nchargeback rules assume human,\nnetwork rules assume human"| CC_R["High friction.\nRegulation not ready."]
         QR["QR Code Payment"] -->|"Assumes human scans,\nphysical interaction model,\nprotocol mismatch"| QR_R["Does not fit.\nWrong interaction model."]
         DW["Digital Wallet"] -->|"Tokenization built in,\nuser consent via TOS,\npre-authorized tokens"| DW_R["Most viable.\nLeast regulatory friction."]
+        SC["Stablecoin\nSettlement"] -->|"Skips card rails,\nprogrammable rules,\ninstant settlement"| SC_R["Wildcard.\nNew regulatory questions."]
     end
     style CC fill:#ff6b6b,color:#fff
     style CC_R fill:#ff6b6b,color:#fff
@@ -171,6 +212,8 @@ flowchart TD
     style QR_R fill:#fdcb6e,color:#000
     style DW fill:#00b894,color:#fff
     style DW_R fill:#00b894,color:#fff
+    style SC fill:#a29bfe,color:#fff
+    style SC_R fill:#a29bfe,color:#fff
 `}
   size="large"
 />
