@@ -1,0 +1,211 @@
+---
+title: "Agentic Commerce — From a Financial Service Engineering Perspective (Part 2)"
+description: "What happens when AI agents handle payments instead of humans? The trust framework, fraud challenges, real risks, and regulatory realities of agentic commerce — from someone who has built payment infrastructure."
+pubDate: "2026-03-29"
+tags:
+  [
+    "AI",
+    "Agentic Commerce",
+    "Software Engineering",
+    "Payment",
+    "FinTech",
+    "Security",
+  ]
+language: "en"
+heroImage: ""
+---
+
+import MermaidDiagram from "../../components/blog/MermaidDiagram.astro";
+
+In [Part 1](/blog/agentic-commerce-what-it-is-and-why-it-matters), I covered what agentic commerce is — the interaction models, protocol layer, and why discovery is shifting from SEO to AEO/GEO. That post was the overview.
+
+This post is where it gets real.
+
+Every payment system ever built assumes one thing: **a human is on the other side of the transaction.** A human clicks "buy." A human enters their card number. A human taps their phone on a terminal. A human approves with their fingerprint.
+
+When an AI agent is the one initiating the purchase, that assumption breaks. And with it, a lot of the trust infrastructure, fraud detection, and regulatory frameworks that the entire payment industry is built on.
+
+I have spent years building payment and notification systems at PayPay — one of Japan's largest mobile payment platforms. This post is about what agentic commerce looks like from inside the payment infrastructure. The trust models, the risks people skip over, and the regulatory realities that most "future of commerce" articles never mention.
+
+---
+
+## The Payment Trust Framework
+
+When a human pays for something, trust is established through a chain: you prove who you are (authentication), you confirm what you want to buy (authorization), and the system records what happened (accountability). It happens so fast you do not think about it — tap your phone, done.
+
+With an agent, every link in that chain needs to be rethought. The industry is converging on a three-layer trust framework:
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    subgraph Intent["Layer 1: Intent"]
+        I1["User defines boundaries"]
+        I2["Spend limits, categories,\ntime windows, merchant rules"]
+        I3["Signed mandate\n(cryptographic proof of consent)"]
+        I1 --> I2 --> I3
+    end
+    subgraph Execution["Layer 2: Execution"]
+        E1["Agent initiates transaction"]
+        E2["Tokenized credentials\n(no raw card/account data exposed)"]
+        E3["Payment processed\nwithin mandate boundaries"]
+        E1 --> E2 --> E3
+    end
+    subgraph Accountability["Layer 3: Accountability"]
+        A1["Immutable audit trail"]
+        A2["Who authorized, when,\nunder which policy"]
+        A3["Dispute resolution\nand compliance logging"]
+        A1 --> A2 --> A3
+    end
+    Intent --> Execution --> Accountability
+    style I3 fill:#6c5ce7,color:#fff
+    style E3 fill:#00b894,color:#fff
+    style A3 fill:#e17055,color:#fff
+`}
+  size="large"
+/>
+
+**Intent** — before the agent does anything, the user defines what it is allowed to do. Not a vague "go buy stuff" but a structured, signed mandate: maximum spend per transaction, allowed product categories, approved merchants, time windows. This is the user saying "I trust you to operate within these boundaries." The Agent Payments Protocol (AP2) — developed by Google with over 60 organizations including Mastercard, American Express, and PayPal — implements this through cryptographically signed "Intent Mandates" and "Cart Mandates" that create an unchangeable record of exactly what was authorized.
+
+**Execution** — the agent triggers the payment without ever seeing raw credentials. Tokenization is the key here. The agent works with payment tokens that represent the user's account, not the account itself. If the token is compromised, it can be revoked without affecting the underlying payment method. The agent operates within the boundaries set by the intent layer — if it tries to exceed the spend limit or buy from an unauthorized merchant, the transaction is rejected before it reaches the payment processor.
+
+**Accountability** — every agent transaction generates an audit trail. Not just "transaction completed" but the full chain: which user authorized it, which policy was active, what the agent's reasoning was, and what mandate it was operating under. When disputes happen — and they will — this trail is what determines liability. Without it, you are stuck in a "the AI did it" situation with no resolution path.
+
+This framework sounds clean on paper. The reality is messier.
+
+---
+
+## Risks That Most People Skip
+
+The research and marketing around agentic commerce tends to focus on the efficiency gains — faster transactions, better prices, less friction. The risks get a paragraph at best. From a payment engineering perspective, these are the ones that keep me up at night:
+
+### Fraud and Security
+
+**Traditional fraud detection is blind to agents.** Most fraud detection systems rely on behavioral signals: mouse movement patterns, keystroke dynamics, time spent on page, device fingerprinting, IP geolocation. When the buyer is a script running on a cloud server, every single one of these signals is either absent or meaningless. The entire fraud detection stack needs to be rebuilt around agent-specific signals — mandate verification, token provenance, behavioral patterns of the agent itself rather than the human behind it.
+
+**One compromised agent token is not one compromised transaction — it is thousands.** When a human's credit card is stolen, the damage is limited by how fast the human can type and how many sites they can visit. A compromised agent token can execute transactions at machine speed across hundreds of merchants simultaneously. The blast radius of a single security breach scales dramatically.
+
+**Prompt injection becomes a financial attack vector.** If a shopping agent can be manipulated through crafted product descriptions, malicious seller pages, or adversarial inputs to purchase something the user never intended — that is not just a UX bug. It is financial fraud. And the attack surface is every piece of content the agent reads during its decision-making process.
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    subgraph Traditional["Traditional Fraud Signals"]
+        T1["Mouse movement"]
+        T2["Keystroke dynamics"]
+        T3["Device fingerprint"]
+        T4["Session behavior"]
+    end
+    subgraph Agent["Agent Transaction"]
+        A1["No mouse"]
+        A2["No keyboard"]
+        A3["Cloud server"]
+        A4["API calls only"]
+    end
+    subgraph New["New Signals Needed"]
+        N1["Mandate verification"]
+        N2["Token provenance"]
+        N3["Agent behavior patterns"]
+        N4["Request velocity analysis"]
+    end
+    Traditional -->|"useless"| Agent
+    Agent -->|"requires"| New
+    style T1 fill:#ff6b6b,color:#fff
+    style T2 fill:#ff6b6b,color:#fff
+    style T3 fill:#ff6b6b,color:#fff
+    style T4 fill:#ff6b6b,color:#fff
+    style N1 fill:#00b894,color:#fff
+    style N2 fill:#00b894,color:#fff
+    style N3 fill:#00b894,color:#fff
+    style N4 fill:#00b894,color:#fff
+`}
+  size="large"
+/>
+
+### Economic Risks
+
+**Information asymmetry collapse.** This one is structural. Retail margins have always depended partly on what consumers do not know — the floor price, the competitor's offer, the optimal timing. AI agents eliminate that gap systematically. A buyer agent can scrape every competitor, run real-time price comparisons, and locate the absolute best deal in seconds. Businesses that depend on friction-based pricing — and many do without realizing it — will see their margins compress.
+
+**Flash crash dynamics in retail.** When seller pricing agents and buyer agents interact at machine speed, you get the same dynamics that stock markets have dealt with for years. Pricing agents reacting to each other's adjustments in milliseconds, creating feedback loops that can drive prices to irrational levels — either crashing to floor or spiking abnormally. The retail industry does not have circuit breakers for this yet.
+
+**Small businesses become invisible.** If your product catalog is not machine-readable, if you do not have APIs, if your structured data is not clean — AI agents literally cannot find you. The barrier to entry in agentic commerce is technical infrastructure, and that is an investment most small merchants cannot make easily.
+
+### Technical Risks
+
+**Agent negotiation deadlocks.** When two autonomous agents negotiate — buyer wants the lowest price, seller wants the highest margin — there is no guarantee they converge. Without proper timeout handling and fallback logic, agent-to-agent negotiations can loop indefinitely or fail silently. This is a distributed systems problem, not a commerce problem.
+
+**Hallucination-driven purchases.** An agent that "confidently" interprets a product description incorrectly, misreads a specification, or hallucinates a feature that does not exist — and then purchases based on that misunderstanding. The transaction is technically valid. The mandate was followed. But the user gets something they did not want. Who is responsible?
+
+**Observability gap.** Debugging why a human bought something is easy — you ask them. Debugging why an agent made a specific purchasing decision across 47 API calls, 12 data sources, and 3 negotiation rounds is a completely different problem. Without deep observability into agent reasoning chains, troubleshooting agent commerce is like debugging a distributed system with no logs.
+
+### Consumer Risks
+
+**Over-delegation.** Giving an agent too much financial autonomy with insufficient guardrails. "Buy my groceries every week" sounds simple until the agent decides to stock up on a sale item and spends three times the normal budget. Intent mandates help, but only if users set them thoughtfully — and most users will not.
+
+**Purchasing filter bubbles.** Agents optimize for the criteria they are given — usually price, ratings, and delivery speed. They do not account for the intangible reasons humans choose products: brand loyalty, supporting local businesses, aesthetic preference, trying something new. Over time, agent-driven purchasing could narrow consumer choice in ways that feel efficient but are actually limiting.
+
+---
+
+## The Regulatory Reality Check
+
+This is where most agentic commerce articles lose me. They talk about protocols and trust frameworks as if regulation does not exist. But every payment method has rules, and those rules were written for humans.
+
+Here is a quick reality check on a few payment methods — not a deep dive, just enough to know what the landscape looks like:
+
+**Credit cards** have the most friction. Card network rules from Visa and Mastercard fundamentally assume human authorization at the point of sale. Strong Customer Authentication (SCA) in the EU requires human interaction — biometrics, OTPs — by regulation. Chargeback rules are built around "the cardholder did not authorize this," and agent transactions blur that line significantly. Visa's Trusted Agent Protocol (TAP) and Mastercard's Agent Pay are early attempts to address this, but they are not production-standard regulation yet.
+
+**QR code payments** — systems like PromptPay in Thailand or PayPay QR in Japan — are designed around a human scanning a code at a physical or digital point of sale. The regulatory frameworks assume human-initiated payment flows. An agent cannot "scan" a QR code in the traditional sense. The protocol just does not fit the agent interaction model.
+
+**Digital wallets** are probably the most viable path for agent-initiated transactions today. Tokenization is already built in. The user has already consented through TOS and biometric/PIN setup. The agent can use a pre-authorized wallet token within defined spend limits. It is already abstracted from raw card rails, which gives it a more flexible regulatory surface. As long as the user accepts the terms of service that include agent delegation — and the wallet provider builds proper mandate and audit infrastructure — this is the path of least regulatory resistance.
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    subgraph Methods["Payment Method vs. Agent Readiness"]
+        CC["Credit Card"] -->|"SCA requires human,\nchargeback rules assume human,\nnetwork rules assume human"| CC_R["High friction.\nRegulation not ready."]
+        QR["QR Code Payment"] -->|"Assumes human scans,\nphysical interaction model,\nprotocol mismatch"| QR_R["Does not fit.\nWrong interaction model."]
+        DW["Digital Wallet"] -->|"Tokenization built in,\nuser consent via TOS,\npre-authorized tokens"| DW_R["Most viable.\nLeast regulatory friction."]
+    end
+    style CC fill:#ff6b6b,color:#fff
+    style CC_R fill:#ff6b6b,color:#fff
+    style QR fill:#fdcb6e,color:#000
+    style QR_R fill:#fdcb6e,color:#000
+    style DW fill:#00b894,color:#fff
+    style DW_R fill:#00b894,color:#fff
+`}
+  size="large"
+/>
+
+The regulatory landscape is not settled. It is fragmented across regions, payment methods, and use cases. The EU leans toward strict liability on AI deployers. Singapore's Model AI Governance Framework (MGF) for Agentic AI takes a more pragmatic, voluntary approach — assess risks upfront, ensure human accountability, implement technical controls, and promote end-user responsibility.
+
+The point is not to map every regulation. The point is: **if you are building agentic commerce and you are not thinking about payment regulation, you are building on sand.** The protocols and trust frameworks are necessary but not sufficient. The legal layer matters, and it is different for every payment method and every jurisdiction.
+
+---
+
+## What Payment Infrastructure Needs to Change
+
+Based on everything above, here is what I think needs to evolve in payment infrastructure to support agentic commerce:
+
+**Mandate-based authorization needs to become a standard.** Not just "user approved" but structured, cryptographically signed mandates that define exactly what an agent is allowed to do. Every payment processor should be able to validate a mandate before processing an agent-initiated transaction.
+
+**Fraud detection needs an agent-specific layer.** Behavioral biometrics are dead for agent transactions. The new signals are: mandate compliance, token provenance and lifecycle, transaction velocity relative to the mandate boundaries, agent identity verification, and cross-merchant pattern analysis.
+
+**Audit trails need to capture agent reasoning.** Not just "transaction happened at timestamp" but the full decision chain: what data the agent evaluated, which mandate it was operating under, what alternatives it considered, and why it chose this option. This is not just for compliance — it is for dispute resolution when things go wrong.
+
+**Rate limiting and agent traffic management need to be first-class concerns.** Agent traffic looks different from human traffic. It is faster, more concentrated, and can accidentally look like a DDoS attack. Payment processors and merchant APIs need to distinguish between legitimate agent traffic and attacks without blocking valid transactions.
+
+**Kill switches at every layer.** Users need to be able to revoke agent authorization instantly. Merchants need to be able to block suspicious agent activity in real time. Payment processors need circuit breakers for anomalous agent transaction patterns. The system needs to fail safe, not fail open.
+
+---
+
+## Closing Thoughts
+
+Agentic commerce is real and moving fast. The interaction models are clear, the protocols are forming, and the efficiency gains are genuine. But from a financial service engineering perspective, we are still in the early stages of solving the hard problems — trust, fraud, regulation, and accountability.
+
+The technology to let agents buy things exists today. The infrastructure to make it safe, compliant, and trustworthy at scale? That is what is being built right now. And the people building it need to understand not just the protocols but the payment regulations, the fraud landscape, and the economic dynamics underneath.
+
+If you have built payment systems, you know that the last 20% of the work — the edge cases, the compliance requirements, the "what happens when it goes wrong" scenarios — is where 80% of the real engineering lives. Agentic commerce is no different.
+
+**Series:**
+- [Part 1: What It Is and Why It Matters](/blog/agentic-commerce-what-it-is-and-why-it-matters)
+- **Part 2: From a Financial Service Engineering Perspective** (this post)
+- Part 3: For Merchants and Developers (coming soon)
