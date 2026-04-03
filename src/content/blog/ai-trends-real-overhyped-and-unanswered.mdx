@@ -34,6 +34,8 @@ The video uses the term "Ambient Business" to describe where this leads — a bu
 
 The "Ambient Business" concept looks something like this:
 
+<img src="/assets/images/blogs/ai-trends/ambient-business.png" alt="Ambient Business concept" style="max-width: 65%; margin: 0 auto; display: block;" />
+
 ```
 [ Agent monitors market ]             [ Agent fulfills orders ]
            ↘                              ↗
@@ -65,6 +67,8 @@ One trend that caught my attention is agentic commerce — AI agents that browse
 This is already happening in various forms. [Google Cloud has written about how retailers can prepare for this shift](https://cloud.google.com/transform/agentic-commerce-retailers-can-prepare-for-the-new-shopping-era-ai), recommending that merchants build agent-friendly storefronts with machine-readable catalogs and agent authentication flows. Stripe has released an [Agent Toolkit](https://github.com/stripe/agent-toolkit) that lets AI agents create payment links, manage customers, and process charges through their APIs. Microsoft's Copilot in Edge already does lightweight agentic shopping — comparing prices, finding deals, applying coupons automatically.
 
 The video also highlights the economic shift between traditional vertical SaaS and vertical AI:
+
+<img src="/assets/images/blogs/ai-trends/agentic-commerce.png" alt="Agentic Commerce and Vertical AI comparison" style="max-width: 65%; margin: 0 auto; display: block;" />
 
 ```
 [ Vertical SaaS ]                         [ Vertical AI ]
@@ -140,6 +144,8 @@ One concept from the video that I kept thinking about afterward is what it calls
 
 The video breaks this into three tiers, which I think is a useful mental model even if the boundaries are not always clean:
 
+<img src="/assets/images/blogs/ai-trends/scarcity-flip.png" alt="The Scarcity Flip conceptual illustration" style="max-width: 65%; margin: 0 auto; display: block;" />
+
 ```
 [ COMMODITIZED BY AI ]                    [ NOW SCARCE AND PREMIUM ]
 - Code                                    - Taste and creative judgment
@@ -171,6 +177,8 @@ The video dedicates a section to security risks in agentic systems. The threats 
 
 So I would not call security underrated. People are aware of it. The [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/) covers these risks systematically. Google has published their Secure AI Framework (SAIF) and built Model Armor as a concrete implementation. These topics come up at every AI-focused conference I have attended.
 
+<img src="/assets/images/blogs/ai-trends/agent-security.png" alt="AI Agent Security and Threat Vectors" style="max-width: 65%; margin: 0 auto; display: block;" />
+
 ```
 [ Prompt injection via web ]  [ Poisoned context windows ]  [ Malicious MCP servers ]
                         ↘                 ↓                 ↙
@@ -195,6 +203,39 @@ For production systems — especially anything involving financial transactions 
 - Human-in-the-loop checkpoints for high-stakes actions
 
 Conference talks mention these concepts. Production systems require implementing them. There is a significant gap between those two things, and if you have not prepared, it will damage your business. It is not a question of if, but when.
+
+---
+
+## If Any of This Happens — What Should You Learn?
+
+I do not know all of these in detail. I am a backend engineer, not an accountant or a lawyer. But after writing through all of these trends, one thing became clear — the skill set required to navigate this world goes well beyond writing code. And at minimum, you need to know enough to ask the right questions.
+
+Here is what I think is worth paying attention to.
+
+### Technical
+
+- API design — agents do not use UIs, they consume APIs. Clean, machine-readable interfaces are the entry point.
+- Security — prompt injection, output validation, permission boundaries. The [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/) is a solid starting point.
+- Observability — when an agent makes a decision, you cannot ask it why. You need logs that reconstruct the reasoning chain.
+
+### Business and Economics
+
+- Pricing models — per-seat, usage-based, outcome-based. Not as buzzwords, but understanding how each one affects your margin.
+- P&L (Profit and Loss) — a financial statement that shows revenue, costs, and whether the business is actually making money. The Vertical AI argument says AI competes against labor costs, not IT spend. If you cannot read a P&L, you cannot evaluate that claim.
+- Unit economics — outcome-based pricing sounds great until the cost of delivering the outcome exceeds the price.
+
+### Legal and Regulatory
+
+- Business registration — different jurisdictions have different requirements for company formation, minimum directors, and liability structures. The one-person company narrative skips this part.
+- Tax — VAT, withholding tax, multiple jurisdictions. Not glamorous, but it shuts down businesses when ignored.
+- Data privacy — GDPR, PDPA, and how they apply when agents process customer data autonomously.
+
+### Product and Strategy
+
+- Knowing what to automate vs. what stays human — the Scarcity Flip concept applies directly here.
+- Product thinking — "does anyone need another version of this?" matters more when building the first version costs almost nothing.
+
+I am not saying everyone needs to master all of these. But if you are building AI products or thinking about starting an AI-powered business, knowing enough about each area to recognize risks and collaborate with specialists is the difference between building a feature and building something that lasts.
 
 ---
 
