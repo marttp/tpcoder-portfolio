@@ -110,7 +110,7 @@ The questions pile up quickly:
 - What KPI defines success?
 - What happens when the client disputes the outcome?
 
-This is not just a product question. It is a billing infrastructure problem. Your backend needs to produce immutable, auditable logs of agent workflows that both parties trust.
+If we are talking about billing infrastructure, your backend needs to produce immutable, auditable logs of agent workflows that both parties trust.
 
 Here is my personal take on which model fits where:
 
@@ -126,7 +126,7 @@ The other reality nobody talks about: if your AI costs eat into your margin and 
 
 <img src="/assets/images/blogs/ai-trends/diminishing-returns-actual.png" alt="The Law of Diminishing Returns in AI context" style="max-width: 65%; margin: 0 auto; display: block;" />
 
-AI tools are cheap. Subscriptions are subsidized. Inference costs are being absorbed by companies burning cash to acquire users. ChatGPT Plus at $20/month, Claude Pro, GitHub Copilot — these prices do not reflect actual costs. We are in the productive returns phase where the gains are real and the bill is artificially low.
+AI tools are cheap right now. Subscriptions are subsidized. Inference costs are being absorbed by companies burning cash to acquire users. ChatGPT Plus at $20/month, Claude Pro, GitHub Copilot — these prices do not reflect actual costs. We are in the productive returns phase where the gains are real and the bill is artificially low.
 
 But the law of diminishing returns applies here. Once the market settles and providers need to be profitable, real costs will come in. Prices go up. The marginal value of each additional AI call stays flat or decreases while your bill keeps growing. And at some point, people will cancel — not because the tool is bad, but because the economics stopped making sense.
 
@@ -134,21 +134,17 @@ If you build your entire workflow or infrastructure assuming cheap AI, and then 
 
 ### Do You Even Need the Smartest Model?
 
-This is where most people miss the practical response to diminishing returns.
-
 Not every task needs the most capable model. If your agent fills forms, routes support tickets, or does structured data extraction, a smaller model can do 95% of the job at a fraction of the cost. You do not need a frontier model to parse a JSON payload or classify an email.
 
-But here is why people think they do: providers publish their own benchmarks. Benchmarks designed to highlight their model's strengths. You see "Model X scores 92% on our benchmark" and assume you need that model. But the benchmark may not reflect your actual use case at all. It creates artificial demand for the most expensive tier — and if you think about it, the pattern is not that different from how scams work. Create urgency around something you may not need, from a source you trust. The difference is it comes from well-known companies with brand credibility, so nobody questions it.
+But here is why people think they do: sometimes providers publish their own benchmarks. Benchmarks designed to highlight their model's strengths. You see "Model X scores 92% on our benchmark" and assume you need that model. But the benchmark may not reflect your actual use case at all. It creates artificial demand for the most expensive tier — and if you think about it, the pattern is not that different from how scams work. Create urgency around something you may not need, from a source you trust. The difference is it comes from well-known companies with brand credibility, so nobody questions it.
 
-And if you already have a gaming PC with a decent GPU, you can run models locally through tools like Ollama — Llama, Mistral, Phi, and others. No subscription. No API costs. No data leaving your machine.
+And if you already have a gaming PC with a decent GPU, you can run models locally through tools like Ollama or other inference methods — Llama, Mistral, Phi, and others. No subscription. No API costs. No data leaving your machine.
 
-The way to stay in the productive returns zone is not to negotiate better pricing with your AI provider. It is to right-size your model to the task:
+The way to stay in the productive returns zone is not to negotiate better pricing with your AI provider. It is to right-size your model to the task.
 
-- Frontier models (GPT-4o, Claude Opus, Gemini Pro) for complex reasoning, planning, and multi-step tasks
-- Mid-tier models (Claude Sonnet, GPT-4o mini, Gemini Flash) for everyday coding assistance and content generation
-- Local models for structured tasks, data processing, and anything where privacy matters more than capability
+The principle is the same as choosing the right database for the job — you do not use a distributed system for a single-table lookup. The same logic applies to AI: match the model to the task, and your costs stay manageable even when subsidies disappear.
 
-This is not a new idea. It is the same principle as choosing the right database for the job — you do not use a distributed system for a single-table lookup. The same logic applies to AI: match the model to the task, and your costs stay manageable even when subsidies disappear.
+It is similar to how we design systems to be synchronous or asynchronous. Do you need the result immediately, or can you wait? And if you can tolerate some lag, how much is acceptable?
 
 ---
 
