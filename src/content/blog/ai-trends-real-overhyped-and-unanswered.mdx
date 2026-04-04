@@ -14,6 +14,7 @@ tags:
     "Career",
   ]
 language: "en"
+translationSlug: "ai-trends-real-overhyped-and-unanswered"
 ---
 
 I recently watched [a video](https://youtu.be/lyqk7zxbCKs?si=AapsOH8CpT-_yCGu) that walks through a cluster of AI trends covering everything from autonomous agent economies to the death of per-seat SaaS pricing. It is dense, moves fast, and throws out a lot of bold claims.
@@ -24,17 +25,15 @@ If you are early in your career or just starting to pay attention to how AI is r
 
 ---
 
-## The World Is Moving Toward Agentic Systems
+## The World Is Trying to Move Toward Agentic Systems
 
-The video's core argument is that software is no longer just a tool humans operate — it is becoming something that operates on your behalf. Think about how we use a CRM today: a salesperson logs in, searches leads, updates statuses. Now imagine an agent that does all of that without the salesperson touching anything.
+Software is becoming something that operates on your behalf. Think about how we use a CRM today — a salesperson logs in, searches leads, updates statuses. Now imagine an agent that does all of that without the salesperson touching anything.
 
-The building blocks for this already exist — LLMs that can reason and plan, tool-use protocols like MCP and A2A, and orchestration frameworks like Google ADK. I have worked with some of these firsthand at the Build with AI Bangkok event earlier this year.
+The building blocks for this already exist — or at least they are visible. LLMs that can reason and plan, tool-use protocols like MCP and A2A, and orchestration frameworks ranging from low-level ones like Google ADK to higher-level platforms like Claude Cowork and OpenClaw. I have worked with some of these firsthand at the Build with AI Bangkok event earlier this year.
 
 The video uses the term "Ambient Business" to describe where this leads — a business where agents run most of the day-to-day operations and the founder checks in periodically rather than constantly. It also draws a timeline: we spent the last decade connecting services through APIs, and the next phase is connecting autonomous decision-makers through agent protocols.
 
 The "Ambient Business" concept looks something like this:
-
-<img src="/assets/images/blogs/ai-trends/ambient-business.png" alt="Ambient Business concept" style="max-width: 65%; margin: 0 auto; display: block;" />
 
 ```
 [ Agent monitors market ]             [ Agent fulfills orders ]
@@ -44,7 +43,7 @@ The "Ambient Business" concept looks something like this:
 [ Agent executes trades/purchases ]   [ Founder checks in once a week ]
 ```
 
-And the organizational structure follows the same pattern — agents spinning up sub-agents for specialized tasks, almost like a serverless function:
+And the organizational structure — agents spinning up sub-agents for specialized tasks, almost like a serverless function:
 
 ```
                             [ CEO Agent ]
@@ -56,7 +55,9 @@ And the organizational structure follows the same pattern — agents spinning up
 [ Sub: Lead Research ]    [ Sub: Code Review ]   [ Sub: Content Writer ]
 ```
 
-Where I think this framing is useful is in how you think about architecture. If your system is designed to be operated by humans through a UI, an agent cannot use it. If your system exposes clean APIs with structured data, an agent can. This is a practical architectural decision that backend engineers are making right now.
+Where I think this framing is useful is in how you think about architecture. If your system is designed to be operated by humans through a UI, an agent cannot use it. If your system exposes clean APIs with structured data, an agent can. This is a practical architectural decision that engineers need to think about going forward.
+
+<img src="/assets/images/blogs/ai-trends/ambient-business.png" alt="Ambient Business concept" style="max-width: 65%; margin: 0 auto; display: block;" />
 
 ---
 
@@ -68,41 +69,78 @@ This is already happening in various forms. [Google Cloud has written about how 
 
 The video also highlights the economic shift between traditional vertical SaaS and vertical AI:
 
-<img src="/assets/images/blogs/ai-trends/agentic-commerce.png" alt="Agentic Commerce and Vertical AI comparison" style="max-width: 65%; margin: 0 auto; display: block;" />
-
 ```
 [ Vertical SaaS ]                         [ Vertical AI ]
 - Captures fraction of IT spend           - Taps directly into labor P&L
 - Sells software licenses          vs     - Sells outcomes and results
 - Humans operate the tool                 - Agents DO the work
-- $10M-$100M outcomes                     - $100M-$1B+ outcomes
+- $10M-$100M outcomes                     - $100M-$1B+ outcomes (probably?)
 ```
 
 The pitch here is that traditional SaaS fights for a share of the IT budget, but AI agents that actually do the work compete against headcount — which is a much bigger line item on any company's P&L. I can see the logic, though the gap between "this could replace a person" and "this reliably replaces a person" is still wide in most verticals.
 
-But adoption is still low, and honestly, that is understandable. Most people still enjoy scrolling and discovering products themselves. Shopping is not purely transactional for many consumers — there is a browsing experience that agents skip entirely.
+But adoption is still low right now, and honestly, that is understandable. Most people still enjoy scrolling and discovering products themselves. Shopping is not purely transactional for many consumers — there is a browsing experience that agents skip entirely.
 
-The real opportunity for agentic commerce is probably not in replacing the casual shopper. It is in automating procurement workflows, B2B purchasing, and repetitive operational buying where nobody enjoys the process anyway.
+If that sounds abstract, think about it this way: your partner wants to go look at clothes. Just look. Just to say "that is nice" and not buy anything. That experience is the point. An agent cannot replicate that.
+
+The real opportunity for agentic commerce is probably not in replacing the casual shopper. It is in automating procurement workflows, B2B purchasing, and repetitive operational buying where nobody enjoys the process anyway — things like convenience store restocking or manufacturing material sourcing.
+
+<img src="/assets/images/blogs/ai-trends/agentic-commerce.png" alt="Agentic Commerce and Vertical AI comparison" style="max-width: 65%; margin: 0 auto; display: block;" />
 
 ---
 
 ## The Pricing Model Question Nobody Has Solved
 
-One of the video's stronger arguments is about pricing. If AI agents do the work instead of human employees, charging per seat stops making sense — there are no seats. The proposed replacement is outcome-based pricing, where you charge per resolved ticket, per qualified lead, per completed task.
+One of the video's stronger arguments is about pricing. If AI agents do the work instead of human employees, charging per seat might still work — but is it worth it? The proposed alternative is outcome-based pricing, where you charge per resolved ticket, per qualified lead, per completed task.
 
 I agree with the direction, but I think the implementation is far harder than people acknowledge.
 
-The fundamental question is: who decides what counts as a successful outcome? If you charge $1.50 per "resolved support ticket," who determines whether the ticket was truly resolved — your company, the client, or the end customer? What KPI defines success? What happens when the client disputes the outcome?
+The questions pile up quickly:
 
-This is not just a product question. It is a billing infrastructure problem. Your backend needs to produce immutable, auditable logs of agent workflows that both parties trust. That is a significant engineering investment.
+- Who decides what counts as a successful outcome?
+- If you charge $1.50 per "resolved support ticket," who determines whether the ticket was truly resolved — your company, the client, or the end customer?
+- What KPI defines success?
+- What happens when the client disputes the outcome?
 
-Here is how I think about which model fits where:
+This is not just a product question. It is a billing infrastructure problem. Your backend needs to produce immutable, auditable logs of agent workflows that both parties trust.
+
+Here is my personal take on which model fits where:
 
 - **Outcome-based** works when the result is clearly measurable and both parties agree on the definition upfront. "Lead booked a meeting" is measurable. "Customer felt satisfied" is not.
 - **Usage-based** makes sense for infrequent but specific tasks — you need it per time, you pay for what you use. API calls, document processing, one-off analysis.
-- **Subscription** still works for tools you use daily, multiple times a day, where usage-based pricing would end up costing more. If you measured your IDE usage per keystroke, the bill would be absurd.
+- **Subscription** still works for tools you use daily, multiple times a day, where usage-based pricing would end up costing more.
 
 The other reality nobody talks about: if your AI costs eat into your margin and the business is not profitable, nobody wants to run that business. Outcome-based pricing sounds great until the cost of delivering the outcome exceeds the price.
+
+---
+
+## The Diminishing Returns Problem
+
+There is a pattern happening right now that most people are not talking about.
+
+AI tools are cheap. Subscriptions are subsidized. Inference costs are being absorbed by companies burning cash to acquire users. ChatGPT Plus at $20/month, Claude Pro, GitHub Copilot — these prices do not reflect actual costs. We are in the productive returns phase where the gains are real and the bill is artificially low.
+
+But the law of diminishing returns applies here. Once the market settles and providers need to be profitable, real costs will come in. Prices go up. The marginal value of each additional AI call stays flat or decreases while your bill keeps growing. And at some point, people will cancel — not because the tool is bad, but because the economics stopped making sense.
+
+If you build your entire workflow or infrastructure assuming cheap AI, and then costs go up 3-5x, your unit economics break. This is the same trap as building on any subsidized platform. It works until the subsidy ends.
+
+### Do You Even Need the Smartest Model?
+
+This is where most people miss the practical response to diminishing returns.
+
+Not every task needs the most capable model. If your agent fills forms, routes support tickets, or does structured data extraction, a smaller model can do 95% of the job at a fraction of the cost. You do not need a frontier model to parse a JSON payload or classify an email.
+
+But here is why people think they do: providers publish their own benchmarks. Benchmarks designed to highlight their model's strengths. You see "Model X scores 92% on our benchmark" and assume you need that model. But the benchmark may not reflect your actual use case at all. It creates artificial demand for the most expensive tier — and if you think about it, the pattern is not that different from how scams work. Create urgency around something you may not need, from a source you trust. The difference is it comes from well-known companies with brand credibility, so nobody questions it.
+
+And if you already have a gaming PC with a decent GPU, you can run models locally through tools like Ollama — Llama, Mistral, Phi, and others. No subscription. No API costs. No data leaving your machine.
+
+The way to stay in the productive returns zone is not to negotiate better pricing with your AI provider. It is to right-size your model to the task:
+
+- Frontier models (GPT-4o, Claude Opus, Gemini Pro) for complex reasoning, planning, and multi-step tasks
+- Mid-tier models (Claude Sonnet, GPT-4o mini, Gemini Flash) for everyday coding assistance and content generation
+- Local models for structured tasks, data processing, and anything where privacy matters more than capability
+
+This is not a new idea. It is the same principle as choosing the right database for the job — you do not use a distributed system for a single-table lookup. The same logic applies to AI: match the model to the task, and your costs stay manageable even when subsidies disappear.
 
 ---
 
@@ -118,7 +156,7 @@ The video introduces the "Ghost Team Org Chart" — a single founder surrounded 
 [ AI Dev Agent ]       [ AI Research Agent ]    [ AI Finance Agent ]
 ```
 
-And the timeline compression that enables it:
+And the timeline compression that enables it (from the video):
 
 ```
 OLD (2020):
@@ -130,11 +168,11 @@ NEW (2026):
 
 Technically, this is increasingly possible. One person with the right tools can ship product, run marketing, and handle support using AI agents. I have seen people do impressive things as solo operators.
 
-But the video skips the boring parts that matter.
+But the video skips the boring parts that matter most — probably because it is made from a context where these problems are less visible.
 
 Tax filing. Accounting. Legal compliance. Business registration. Invoicing. Contract negotiation. Insurance. These vary wildly by country and many jurisdictions do not have regulatory frameworks designed for a one-person AI-powered company. In some countries, you need a minimum number of directors or employees to register certain business types.
 
-And the person running this has to be smart enough to cover 10+ domains of business knowledge — not just engineering, but finance, legal, marketing, sales, and operations. The "1-hour company" narrative works in a demo. In practice, the hardest parts of running a business have never been the code.
+And the person running this has to cover business knowledge beyond just engineering — finance, legal, marketing, sales, and operations. The "1-hour company" narrative works in a demo. In practice, the hardest parts of running a business have never been the code.
 
 ---
 
@@ -143,8 +181,6 @@ And the person running this has to be smart enough to cover 10+ domains of busin
 One concept from the video that I kept thinking about afterward is what it calls the "Scarcity Flip." The idea is straightforward: when AI can produce digital work cheaply and quickly, the things that become valuable are the things AI cannot easily do — human judgment, original taste, physical experiences.
 
 The video breaks this into three tiers, which I think is a useful mental model even if the boundaries are not always clean:
-
-<img src="/assets/images/blogs/ai-trends/scarcity-flip.png" alt="The Scarcity Flip conceptual illustration" style="max-width: 65%; margin: 0 auto; display: block;" />
 
 ```
 [ COMMODITIZED BY AI ]                    [ NOW SCARCE AND PREMIUM ]
@@ -161,23 +197,27 @@ The video breaks this into three tiers, which I think is a useful mental model e
 [ COMMODITY: Fully AI-generated (race to zero pricing)               ]
 ```
 
-I think this is directionally correct, and here is why.
+I think this direction makes sense.
 
-If AI can generate a landing page from a vague requirement, and ten different people with similar ideas produce nearly identical outputs, then that output is by definition a commodity. It is not differentiated. The market will price it accordingly.
+If AI can generate a landing page from a vague requirement, and ten different people with similar ideas produce nearly identical outputs, then that output is a commodity by definition. It is not differentiated. The market will price it accordingly.
 
 But think about it like an artist or a skilled craftsperson. Their work cannot be replicated because it carries context, intention, and accumulated expertise that a model trained on averages cannot reproduce. The same applies to software — a senior engineer who deeply understands a domain will make architectural decisions that no vibe-coding session will produce.
 
+You see memes online mocking AI all the time. Some of those people are just loud. Some of them are genuinely good at what they do. Let their work speak for itself.
+
 Products and businesses need to be created based on what people actually need, not just what is easy to generate. The question is not "can AI build this?" but "does anyone need another version of this?"
+
+<img src="/assets/images/blogs/ai-trends/scarcity-flip.png" alt="The Scarcity Flip conceptual illustration" style="max-width: 65%; margin: 0 auto; display: block;" />
 
 ---
 
 ## Security Is Not Underrated — It Is Undertreated
 
-The video dedicates a section to security risks in agentic systems. The threats it lists — prompt injection, poisoned context windows, malicious MCP servers, permission escalation — are all documented and well-known at this point.
-
-So I would not call security underrated. People are aware of it. The [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/) covers these risks systematically. Google has published their Secure AI Framework (SAIF) and built Model Armor as a concrete implementation. These topics come up at every AI-focused conference I have attended.
-
 <img src="/assets/images/blogs/ai-trends/agent-security.png" alt="AI Agent Security and Threat Vectors" style="max-width: 65%; margin: 0 auto; display: block;" />
+
+Security risks in agentic systems — prompt injection, poisoned context windows, malicious MCP servers, permission escalation — are frequently discussed. But because LLM-based systems are not deterministic, the real question is: how do you keep them under control?
+
+The [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/) covers these risks systematically. Google has published their Secure AI Framework (SAIF).
 
 ```
 [ Prompt injection via web ]  [ Poisoned context windows ]  [ Malicious MCP servers ]
@@ -187,7 +227,7 @@ So I would not call security underrated. People are aware of it. The [OWASP Top 
 [ Compromised training data ] [ Permission escalation ]     [ Agent-to-agent manipulation ]
 ```
 
-The problem is depth. What I see at conferences and in most discussions is surface-level coverage — "be careful with prompt injection" without diving into what that actually means for a production system with payment capabilities.
+The problem is depth. What I see at conferences and in most discussions is surface-level coverage — "be careful with prompt injection" without diving into what that actually means for a production system with payment capabilities, or any critical system where you would not want mistakes even if you were doing it by hand.
 
 Let me give you two concrete examples of why this matters.
 
@@ -197,25 +237,26 @@ Another example: some e-commerce support chats powered by LLMs can be tricked in
 
 For production systems — especially anything involving financial transactions — you need:
 
-- Input guardrails that validate and sanitize before the model processes anything (in Google ADK terms, `before_model_callback`)
+- Input guardrails that validate and sanitize before the model processes anything
 - Tool permission boundaries similar to IAM roles — the agent should only access what it absolutely needs
 - Deterministic audit logs that prove what the agent did and why
 - Human-in-the-loop checkpoints for high-stakes actions
+- Output guardrails that validate and sanitize before the model returns anything to the user
 
-Conference talks mention these concepts. Production systems require implementing them. There is a significant gap between those two things, and if you have not prepared, it will damage your business. It is not a question of if, but when.
+Conference talks mention these concepts. Production systems require implementing them. There is still a gap between those two things that needs to be filled, and if you have not prepared, sooner or later it will damage your business.
 
 ---
 
 ## If Any of This Happens — What Should You Learn?
 
-I do not know all of these in detail. I am a backend engineer, not an accountant or a lawyer. But after writing through all of these trends, one thing became clear — the skill set required to navigate this world goes well beyond writing code. And at minimum, you need to know enough to ask the right questions.
+I do not know all of these in detail. I am a backend engineer, not an accountant or a lawyer. But after writing through all of these trends, one thing became clear — the skill set required to navigate this world goes well beyond writing code. And at minimum, you need to know enough to ask the right questions — so that AI gives you useful answers instead of just telling you "You are absolutely right!"
 
 Here is what I think is worth paying attention to.
 
 ### Technical
 
-- API design — agents do not use UIs, they consume APIs. Clean, machine-readable interfaces are the entry point.
-- Security — prompt injection, output validation, permission boundaries. The [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/) is a solid starting point.
+- API design — agents do not use UIs, they consume APIs. Clean, machine-readable interfaces are the entry point. If this sounds abstract, start by looking at how OpenAPI or Swagger specs are written.
+- Security — prompt injection, output validation, permission boundaries. The [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/) is a solid starting point. Even the regular OWASP Top 10 helps with designing secure APIs.
 - Observability — when an agent makes a decision, you cannot ask it why. You need logs that reconstruct the reasoning chain.
 
 ### Business and Economics
@@ -226,14 +267,12 @@ Here is what I think is worth paying attention to.
 
 ### Legal and Regulatory
 
-- Business registration — different jurisdictions have different requirements for company formation, minimum directors, and liability structures. The one-person company narrative skips this part.
-- Tax — VAT, withholding tax, multiple jurisdictions. Not glamorous, but it shuts down businesses when ignored.
-- Data privacy — GDPR, PDPA, and how they apply when agents process customer data autonomously.
+Every country has different rules. Business registration, company formation, liability structures — they vary widely. Then comes tax: VAT, withholding tax, cross-border obligations. The one-person company narrative usually skips this part, but ignoring it shuts down businesses. And there is data privacy — GDPR, PDPA, and how they apply when agents process customer data autonomously.
 
 ### Product and Strategy
 
 - Knowing what to automate vs. what stays human — the Scarcity Flip concept applies directly here.
-- Product thinking — "does anyone need another version of this?" matters more when building the first version costs almost nothing.
+- Product thinking — matters more when building the first version costs almost nothing, or is free if you think you are good enough.
 
 I am not saying everyone needs to master all of these. But if you are building AI products or thinking about starting an AI-powered business, knowing enough about each area to recognize risks and collaborate with specialists is the difference between building a feature and building something that lasts.
 
@@ -241,10 +280,24 @@ I am not saying everyone needs to master all of these. But if you are building A
 
 ## Where This Leaves Us
 
-The trends are real. Agentic systems are being built. Commerce is being automated. Pricing models are shifting. Solo founders are shipping products that used to require teams.
+Agentic systems might be hyped, but some of them are making real money — and turning people with a problem and an idea for solving it into solo founders.
 
 But between the vision and the reality, there are hard engineering problems — billing infrastructure for outcome-based pricing, regulatory compliance for one-person companies, production-grade security for autonomous agents.
 
-These are the gaps where the actual technical leverage is right now. Not in building another AI wrapper, but in solving the infrastructure problems that make autonomous systems trustworthy enough for production.
+The opportunity right now is not in building another AI wrapper. It is in solving the infrastructure problems that make autonomous systems trustworthy enough for production — the plumbing that makes agents safe, auditable, and commercially viable.
 
-The asymmetric opportunity is not in the agents themselves. It is in the plumbing that makes agents safe, auditable, and commercially viable.
+---
+
+### Questions Worth Sitting With
+
+1. If an AI agent could do 90% of your current job tomorrow — which 10% would you want to keep? And is that 10% something the market actually pays for?
+
+   For me, it is the ability to explain things in a raw, honest way that helps people understand. No overselling, no hype. If the world works a certain way, say it. But that is not exactly the part that pays the bills.
+
+2. What is one skill outside your domain (legal, finance, design, operations) that you have been avoiding — and how would it change your leverage if you understood it just well enough?
+
+   For me, it is frontend and UX design — I have been avoiding it forever. But the world is pushing toward new UX paradigms beyond text-based agents. Why do all the demos only show hotel booking and food ordering? Where is the AI agent that does the dishes?
+
+3. When you look at the product or system you are building right now — are you solving a problem that gets harder as AI improves, or one that disappears?
+
+   Or maybe it turns into a problem where humans end up creating work just to fix AI's problems. That would be absurd.
