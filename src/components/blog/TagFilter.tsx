@@ -22,16 +22,16 @@ const TagFilter = (props: TagFilterProps): JSX.Element => {
     }) as EventListener);
   });
 
-  const baseClass = "px-4 py-2 rounded-lg font-medium transition-all cursor-pointer border";
+  const baseClass = "px-3 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer border";
   const activeClass = "bg-primary-light text-black border-primary-dark dark:bg-primary-dark dark:text-white dark:border-primary-light";
   const inactiveClass = "bg-transparent border-gray-300 text-gray-700 hover:border-gray-500 dark:border-gray-700 dark:text-gray-400 dark:hover:border-gray-500";
 
   return (
-    <div class="flex flex-wrap gap-2 mb-6">
+    <div class="flex flex-row flex-wrap gap-2 mb-6 md:flex-col md:sticky md:top-4">
       <button
         type="button"
         onClick={() => handleTagClick("all")}
-        class={`${baseClass} ${activeTag() === "all" ? activeClass : inactiveClass}`}
+        class={`${baseClass} text-left ${activeTag() === "all" ? activeClass : inactiveClass}`}
       >
         All
       </button>
@@ -40,7 +40,7 @@ const TagFilter = (props: TagFilterProps): JSX.Element => {
           <button
             type="button"
             onClick={() => handleTagClick(tag)}
-            class={`${baseClass} ${activeTag() === tag ? activeClass : inactiveClass}`}
+            class={`${baseClass} text-left ${activeTag() === tag ? activeClass : inactiveClass}`}
           >
             {tag}
           </button>
