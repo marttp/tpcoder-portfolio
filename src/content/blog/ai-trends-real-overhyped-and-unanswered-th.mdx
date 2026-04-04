@@ -111,7 +111,7 @@ Trend หนึ่งที่ผมสนใจคือ agentic commerce — A
 - KPI อะไรที่ define success?
 - แล้วถ้าลูกค้า dispute ผลลัพธ์ล่ะ?
 
-นี่ไม่ใช่แค่คำถามเรื่อง product แต่เป็นปัญหา billing infrastructure ฝั่ง backend ต้อง produce immutable, auditable logs ของ agent workflows ที่ทั้งสองฝ่ายเชื่อถือได้
+ถ้าคุยกันเรื่องปัญหา billing infrastructure ฝั่ง backend ต้อง produce immutable, auditable logs ของ agent workflows ที่ทั้งสองฝ่ายเชื่อถือได้
 
 อันนี้ใส่ความเห็นตัวเอง ผมคิดว่า model ไหนเหมาะกับอะไรประมาณนี้
 
@@ -268,6 +268,28 @@ Security risks ใน agentic systems เช่น prompt injection, poisoned co
 - Output guardrails ที่ validate และ sanitize ก่อนที่ model จะ output อะไร
 
 Conference talks พูดถึง concepts เหล่านี้ แต่ production systems ต้อง implement จริง ระหว่างสองอย่างนี้ ยังมีส่วนที่รู้สึกว่าน่าจะมีอะไรมาเติมเต็มอีกสักหน่อย และถ้าไม่ได้เตรียมตัว ไม่ช้าก็เร็ว มันจะสร้างความเสียหายให้ธุรกิจแน่นอน
+
+---
+
+## ถ้า AI ไม่ใช่แค่เครื่องมือ แต่เป็น First-Class Citizen ในธุรกิจ?
+
+ส่วนนี้ไม่ได้มาจากวิดีโอ แต่เป็นคำถามที่ผมคิดอยู่
+
+เรายังมอง AI agents ว่าเป็นเครื่องมือที่ support ธุรกิจ แต่ถ้าลองกลับด้าน — ถ้า AI agent ไม่ได้ support พนักงาน แต่ _เป็น_ พนักงาน? ไม่ใช่ tool ที่เราใช้ แต่เป็น first-class citizen ในองค์กรที่มี identity, permissions, budget และ KPIs เป็นของตัวเอง
+
+ในทาง technical มันเริ่มเกิดขึ้นแล้ว agents มี service accounts ของตัวเอง มี API keys ของตัวเอง มี rate limits ของตัวเอง มี auth identity และ spending authority ใน microservices architecture, AI agent ก็ดูเหมือน service อื่น ๆ — มี audit trail ของตัวเอง มี access boundaries ของตัวเอง มี cost center ของตัวเอง
+
+ก่อนหน้านี้เราพูดถึง Scarcity Flip — human-made คือ most premium, AI-assisted คือ tier กลาง แต่ถ้าลองมอง tier กลางนั้นใหม่? ถ้า "AI-assisted but human-led" หมายถึงการ treat AI เป็น first-class participant ที่มี responsibilities จริง ไม่ใช่แค่ tool ที่คนมาเช็คเป็นระยะ?
+
+ตรงนี้แหละที่มันพัง: เรื่อง responsibility
+
+ถ้า AI agent เป็นพนักงาน ใครรับผิดชอบเมื่อมันทำผิด? เราสามารถ predict และ evaluate ได้ว่า AI จะ perform ยังไง ใส่ guardrails ได้ monitor outputs ได้ แต่ process ไหนก็ผิดพลาดได้ — แล้วเมื่อมันผิด ใครตอบ?
+
+ไม่ใช่ AI provider แน่นอน เขาใส่ทุกอย่างเรื่อง responsibility ไว้ใน terms of service ไม่มี SLA ไหนที่บอกว่า "ถ้า model ของเราให้คำแนะนำทางการเงินผิดกับลูกค้าของคุณ เราจะรับผิดชอบค่าเสียหาย" provider ให้ capability มา สิ่งที่คุณทำกับมัน และสิ่งที่ผิดพลาด เป็นความรับผิดชอบของคุณทั้งหมด
+
+สุดท้ายก็ได้ "first-class citizen" ที่ไม่มี accountability มี permissions, budget และ decision-making ability แต่เมื่ออะไรพัง คน ๆ เดียวที่รับผลกระทบ 100% คือ founder ที่เป็นมนุษย์ การจ้างงานไม่ได้ทำงานแบบนี้ partnership ไม่ได้ทำงานแบบนี้ ยังไม่มี framework สำหรับเรื่องนี้
+
+คำถามนี้ยังไม่มีคำตอบจริง ๆ ไม่ใช่ hype ไม่ใช่เรื่องที่ถูกหักล้างแล้ว แค่เป็นคำถามที่ยังไม่มีใครตอบได้น่าพอใจ
 
 ---
 
