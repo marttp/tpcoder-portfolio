@@ -57,7 +57,11 @@ And the organizational structure — agents spinning up sub-agents for specializ
 
 Where I think this framing is useful is in how you think about architecture. If your system is designed to be operated by humans through a UI, an agent cannot use it. If your system exposes clean APIs with structured data, an agent can. This is a practical architectural decision that engineers need to think about going forward.
 
-<img src="/assets/images/blogs/ai-trends/ambient-business.png" alt="Ambient Business concept" style="max-width: 65%; margin: 0 auto; display: block;" />
+<img
+  src="/assets/images/blogs/ai-trends/ambient-business.png"
+  alt="Ambient Business concept"
+  style="max-width: 65%; margin: 0 auto; display: block;"
+/>
 
 ---
 
@@ -85,7 +89,11 @@ If that sounds abstract, think about it this way: your partner wants to go look 
 
 The real opportunity for agentic commerce is probably not in replacing the casual shopper. It is in automating procurement workflows, B2B purchasing, and repetitive operational buying where nobody enjoys the process anyway — things like convenience store restocking or manufacturing material sourcing.
 
-<img src="/assets/images/blogs/ai-trends/agentic-commerce.png" alt="Agentic Commerce and Vertical AI comparison" style="max-width: 65%; margin: 0 auto; display: block;" />
+<img
+  src="/assets/images/blogs/ai-trends/agentic-commerce.png"
+  alt="Agentic Commerce and Vertical AI comparison"
+  style="max-width: 65%; margin: 0 auto; display: block;"
+/>
 
 ---
 
@@ -116,7 +124,7 @@ The other reality nobody talks about: if your AI costs eat into your margin and 
 
 ## The Diminishing Returns Problem
 
-There is a pattern happening right now that most people are not talking about.
+![The Law of Diminishing Returns in AI context](/assets/images/blogs/ai-trends/diminishing-returns.png)
 
 AI tools are cheap. Subscriptions are subsidized. Inference costs are being absorbed by companies burning cash to acquire users. ChatGPT Plus at $20/month, Claude Pro, GitHub Copilot — these prices do not reflect actual costs. We are in the productive returns phase where the gains are real and the bill is artificially low.
 
@@ -207,13 +215,21 @@ You see memes online mocking AI all the time. Some of those people are just loud
 
 Products and businesses need to be created based on what people actually need, not just what is easy to generate. The question is not "can AI build this?" but "does anyone need another version of this?"
 
-<img src="/assets/images/blogs/ai-trends/scarcity-flip.png" alt="The Scarcity Flip conceptual illustration" style="max-width: 65%; margin: 0 auto; display: block;" />
+<img
+  src="/assets/images/blogs/ai-trends/scarcity-flip.png"
+  alt="The Scarcity Flip conceptual illustration"
+  style="max-width: 65%; margin: 0 auto; display: block;"
+/>
 
 ---
 
 ## Security Is Not Underrated — It Is Undertreated
 
-<img src="/assets/images/blogs/ai-trends/agent-security.png" alt="AI Agent Security and Threat Vectors" style="max-width: 65%; margin: 0 auto; display: block;" />
+<img
+  src="/assets/images/blogs/ai-trends/agent-security.png"
+  alt="AI Agent Security and Threat Vectors"
+  style="max-width: 65%; margin: 0 auto; display: block;"
+/>
 
 Security risks in agentic systems — prompt injection, poisoned context windows, malicious MCP servers, permission escalation — are frequently discussed. But because LLM-based systems are not deterministic, the real question is: how do you keep them under control?
 
@@ -251,7 +267,7 @@ Conference talks mention these concepts. Production systems require implementing
 
 This is not a trend from the video. This is a question I have been sitting with.
 
-We keep framing AI agents as tools that support business. But what if we flip it — what if the AI agent is not supporting the employee, but *is* the employee? Not a tool you use, but a first-class citizen in your organization with its own identity, permissions, budget, and KPIs.
+We keep framing AI agents as tools that support business. But what if we flip it — what if the AI agent is not supporting the employee, but _is_ the employee? Not a tool you use, but a first-class citizen in your organization with its own identity, permissions, budget, and KPIs.
 
 In the technical sense, this is already starting to happen. Agents get their own service accounts, their own API keys, their own rate limits. They have auth identities and spending authority. In a microservices architecture, an AI agent looks like any other service — it has its own audit trail, its own access boundaries, its own cost center.
 
