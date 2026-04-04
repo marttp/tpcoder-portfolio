@@ -125,7 +125,11 @@ Trend หนึ่งที่ผมสนใจคือ agentic commerce — A
 
 ## ปัญหา Diminishing Returns
 
-![The Law of Diminishing Returns in AI context](/assets/images/blogs/ai-trends/diminishing-returns.png)
+<img
+  src="/assets/images/blogs/ai-trends/diminishing-returns-actual.png"
+  alt="The Law of Diminishing Returns in AI context"
+  style="max-width: 65%; margin: 0 auto; display: block;"
+/>
 
 ตอนนี้ AI tools ราคาถูก subscriptions ถูก subsidize inference costs ถูกบริษัทแบกไว้เพื่อดึง users เข้ามา ChatGPT Plus เดือนละ $20, Claude Pro, GitHub Copilot — ราคาพวกนี้ไม่ได้สะท้อน cost จริง เราอยู่ในช่วง productive returns ที่ผลลัพธ์ดีจริงแต่บิลถูกเกินจริง
 
@@ -137,17 +141,15 @@ Trend หนึ่งที่ผมสนใจคือ agentic commerce — A
 
 ไม่ใช่ทุก task ที่ต้องใช้ model ที่เก่งที่สุด ถ้า agent แค่กรอกฟอร์ม, route support tickets หรือ extract structured data, model เล็กกว่าก็ทำได้ 95% ของงานในราคาที่ถูกกว่ามาก ไม่จำเป็นต้องใช้ frontier model เพื่อ parse JSON หรือ classify email
 
-แต่ทำไมคนถึงคิดว่าต้องใช้ model แพงสุด? เพราะ providers ออก benchmark ของตัวเอง benchmark ที่ถูกออกแบบมาเพื่อ highlight จุดแข็งของ model ตัวเอง เห็น "Model X ได้ 92% บน benchmark ของเรา" แล้วก็คิดว่าต้องใช้ตัวนั้น ทั้งที่ benchmark อาจไม่เกี่ยวกับ use case จริงของเราเลย มันสร้าง artificial demand ให้ tier แพงสุด — ถ้าลองคิดดูดี ๆ pattern นี้ไม่ต่างจากวิธีที่ scam ทำงานเท่าไหร่ สร้าง urgency กับสิ่งที่เราอาจไม่ต้องการ จาก source ที่เราเชื่อถือ แต่ต่างกันตรงที่มันมาจากบริษัทใหญ่ที่มี brand credibility เลยไม่มีใครตั้งคำถาม
+แต่ทำไมคนถึงคิดว่าต้องใช้ model แพงสุด? เพราะบางที providers ออก benchmark ของตัวเอง benchmark ที่ถูกออกแบบมาเพื่อ highlight จุดแข็งของ model ตัวเอง แล้วก็คิดว่าต้องใช้ตัวนั้น ทั้งที่ benchmark อาจไม่เกี่ยวกับ use case จริงของเราเลย มันสร้าง artificial demand ให้ tier แพงสุด — ถ้าลองคิดดูดี ๆ pattern นี้ไม่ต่างจากวิธีที่ scam ทำงานเท่าไหร่ สร้าง urgency กับสิ่งที่เราอาจไม่ต้องการ จาก source ที่เราเชื่อถือ แต่ต่างกันตรงที่มันมาจากบริษัทใหญ่ที่มี brand credibility เลยไม่มีใครตั้งคำถาม
 
-และถ้ามี gaming PC ที่มี GPU ดี ๆ อยู่แล้ว ก็ run model ได้เลยผ่าน Ollama — Llama, Mistral, Phi และตัวอื่น ๆ ไม่ต้อง subscription ไม่ต้องจ่ายค่า API ข้อมูลไม่ออกจากเครื่อง
+และถ้ามี gaming PC ที่มี GPU ดี ๆ อยู่แล้ว ก็ run model ได้เลยผ่าน Ollama หรือจะ Inference เองด้วยวิธีอื่น ๆ — Llama, Mistral, Phi และตัวอื่น ๆ ไม่ต้อง subscription ไม่ต้องจ่ายค่า API ข้อมูลไม่ออกจากเครื่อง
 
 วิธีอยู่ในโซน productive returns ไม่ใช่การไปต่อรองราคากับ AI provider แต่คือการเลือก model ให้เหมาะกับงาน
 
-- Frontier models (GPT-4o, Claude Opus, Gemini Pro) สำหรับ complex reasoning, planning และ multi-step tasks
-- Mid-tier models (Claude Sonnet, GPT-4o mini, Gemini Flash) สำหรับ coding assistance และ content generation ทั่วไป
-- Local models สำหรับ structured tasks, data processing และงานที่ privacy สำคัญกว่า capability
+หลักการเหมือนกับการเลือก database ให้เหมาะกับงาน — ไม่มีใครใช้ distributed system สำหรับ single-table lookup logic เดียวกันใช้กับ AI ได้: เลือก model ให้ตรงกับ task แล้ว costs ก็จัดการได้แม้ subsidies จะหมดไป
 
-หลักการนี้ไม่ใช่เรื่องใหม่ เหมือนกับการเลือก database ให้เหมาะกับงาน — ไม่มีใครใช้ distributed system สำหรับ single-table lookup logic เดียวกันใช้กับ AI ได้: เลือก model ให้ตรงกับ task แล้ว costs ก็จัดการได้แม้ subsidies จะหมดไป
+เหมือนกับที่เราออกแบบระบบให้เป็น synchronous หรือ asynchronous เราอยากได้เลย หรือว่ารอได้? แล้วถ้า lagging ได้ จะได้แค่ไหน?
 
 ---
 
