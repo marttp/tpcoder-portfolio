@@ -1,0 +1,323 @@
+---
+title: "Takeaways from The Pragmatic Summit 2026 (watched on YouTube)"
+description: "What I learned from watching The Pragmatic Summit 2026 recorded sessions on YouTube — a single-day summit by The Pragmatic Engineer for engineering leaders and practitioners"
+pubDate: "2026-04-05"
+tags: ["Conference", "Leadership"]
+heroImage: "/assets/images/blogs/the-pragmatic-summit-2026/hero.jpg"
+language: "en"
+translationSlug: "pragmatic-summit-2026"
+---
+
+## Introduction
+
+I watched The Pragmatic Summit 2026 as recorded sessions on YouTube. It's a single-day summit organised by Gergely Orosz from The Pragmatic Engineer, aimed at engineering leaders and practitioners. I found it useful for anyone in tech, so here's my summary of each session.
+
+- [The Pragmatic Summit 2026](https://www.pragmaticsummit.com/)
+- [YouTube Playlist](https://youtube.com/playlist?list=PLzwJJv8h-icjtYA5oHmc7g6qU1t4OqDqb)
+
+---
+
+## Welcome - The Pragmatic Summit
+
+The opening session by Gergely Orosz covered the story behind The Pragmatic Engineer — from newsletter to podcast to this summit.
+
+It started when he was an engineering manager at Uber during hyper-growth and couldn't find good resources for technical management. Things like Harvard Business Review were too generic. After publishers turned him down, he started writing on his own — which eventually became the Software Engineer's Guidebook.
+
+He originally planned to build a startup around internal developer platforms, but once he started a newsletter sharing open secrets of tech leadership, it gained traction right away with zero ads. From the newsletter he expanded to a podcast, and then to this summit — born from the need for in-person networking that newsletters and podcasts can't provide.
+
+Personally, I first discovered Gergely from this video: [Confessions from a Big Tech Hiring Manager: Tips for Software Engineering Interviews](https://youtu.be/vFOw_m5zNCs?si=X6eAZ8v_9092XfW4). One thing that stuck with me was: just prepare enough to pass the interview — you don't need to learn everything.
+
+I also own the Software Engineer's Guidebook — [I wrote a review on Medium before](https://medium.com/@tpbabparn/book-reviews-the-software-engineers-guidebook-d54b84f40703).
+
+---
+
+## Chip Huyen: Building when it feels like there's nothing left to build
+
+![Building when it feels like there's nothing left to build](/assets/images/blogs/the-pragmatic-summit-2026/Building%20when%20it%20feels%20like%20there's%20nothing%20left%20to%20build.jpg)
+
+Chip Huyen talked about a feeling many engineers share right now: AI makes it easy to build anything, but others can clone what you build just as easily. She shared how she released a side project that got 300,000 views in one week — and the next day someone emailed her saying they'd cloned the whole thing with Claude.
+
+The question is: if any software you can describe, AI can generate — then what should you build?
+
+Her advice is to look at the long tail of problems. Foundation models like OpenAI focus on generic problems for the majority. The opportunity for engineers is in niche problems that big tech doesn't care about. Think of it like this: don't compete with hedge funds in big markets — find a sweet spot that's big enough to be profitable but small enough that big tech won't bother.
+
+A great example is cultural nuance. In Vietnam, most people ride motorbikes, so they need voice bots instead of text. Or the "awkward silence" problem — US users expect a response in 80ms, but in Asia, 200-300ms is fine. If engineers don't understand these nuances, the UX breaks.
+
+Another interesting point: we keep stuffing AI into old workflows instead of redesigning them. Why do we still separate terminal and IDE when both take instructions? Or why do seniors still review AI-generated code line by line, when they should be mentoring juniors to write better prompts? And we need to build environments ready for agents — current websites and APIs are designed for humans, not for agent-to-agent interaction.
+
+I strongly agree about cultural nuance. Think about made-to-order street food in Thailand — no generic agent could ever understand each person's taste preferences. Some cultures might be similar to Japan with its focus on politeness, but Thai people are very freestyle. This kind of nuance isn't easy for AI to pick up.
+
+As for "nothing left to build" — I feel exactly the same as Chip. The main reason I haven't started my own company yet is that whatever I want to build, someone has already built it, and big tech covers the rest. But when I think about my dad's air conditioning repair business — there's no way big tech would jump into that. Even though Thailand already has platforms for hiring technicians, none of them are specifically built for AC repair.
+
+---
+
+## Nicole Forsgren: Leading high-performing engineering teams in the age of AI
+
+![Leading high-performing engineering teams in the age of AI](/assets/images/blogs/the-pragmatic-summit-2026/Leading%20high-performing%20engineering%20teams%20in%20the%20age%20of%20AI.jpg)
+
+Nicole Forsgren (author of Frictionless and the person behind DORA, SPACE, and DevEx metrics) talked about AI's impact on engineering velocity.
+
+The main point: AI speeds up code writing a lot (inner loop), but it actually makes the bottleneck worse in the outer loop — things like code review, security checks, and release management that still depend on humans. A new joiner can use AI to commit code on day one, but if they wait two weeks for database access or human review, all that speed from AI gets eaten by friction.
+
+DevEx was also interesting. Forsgren breaks it into three parts: Flow State, Cognitive Load, and Feedback Loops. The problem is that AI agents give feedback so fast that people end up rebuilding their mental model dozens of times per hour — which actually increases cognitive load. Humans can only do deep focus work for 3-4 hours a day. If AI keeps interrupting, the flow breaks.
+
+On productivity — if you ask "are we more productive?", you have to ask back: productive in what way? Number of PRs or lines of code means nothing if you're not shipping the right features.
+
+The SPACE framework (Satisfaction, Performance, Activity, Communication, Efficiency) helps you see the full picture. And if developers adopt an AI tool on their own, that's a good signal the tool actually works.
+
+Finally, engineering leaders need to clearly give permission for teams to experiment with AI without fear. And if you want agents to handle the outer loop, your systems need to be observable first — without good telemetry, agents can't self-correct.
+
+---
+
+## Leading Product Engineering Teams in an AI-native World
+
+![Product-minded engineers in an AI-native world](/assets/images/blogs/the-pragmatic-summit-2026/Product-minded%20engineers%20in%20an%20AI-native%20world.jpg)
+
+This panel discussed product-minded engineers in an era where AI can write code. The most valuable skill isn't how to build, but what to build and why.
+
+A product-minded engineer is someone who cares more about user impact than technical elegance. In startups, this kind of person is a force multiplier — they can define the problem, build it, deploy it, and test it with users. Even infra engineers can be product-minded, because an API or module is a product whose users are other developers.
+
+Taste is a skill you can train by exposing yourself to high-quality products across different domains. In interviews, a product engineer asks about user motivation first — not jumping straight to database schema.
+
+One interesting practice is Linear's Quality Wednesdays, where engineers find small defects to fix every week. Not major bugs, but polish — like a missing hover state or a rough animation. Stripe takes a different approach: engineers write developer flows to force themselves to use their own API from an external developer's perspective.
+
+In the AI era, workflows have changed a lot. Engineers run 3-4 AI agents on minor bugs while working on the main feature. Designers and PMs are starting to write PRs and ship UI tweaks to preview environments directly. The line between roles is slowly fading.
+
+In the end, for ICs, nothing replaces talking to customers directly.
+
+AI can summarise a call, but empathy has to come from experiencing it yourself.
+
+For leaders — give your team time to polish. You can't measure quality with short-term A/B tests, but if you don't prioritise it long-term, the product will decline.
+
+---
+
+## Simon Willison: Engineering practices that make coding agents work
+
+![Engineering practices that make coding agents work](/assets/images/blogs/the-pragmatic-summit-2026/Engineering%20practices%20that%20make%20coding%20agents%20work.jpg)
+
+Simon Willison (co-creator of Django) shared practical ways to use AI coding agents. He now writes more code on his phone than on his laptop, using agents to ship features in minutes.
+
+Trust has changed a lot. It went from AI suggesting code, to AI writing nearly all the code, to the point where no human writes it and no human reads it. The way to think about it: treat AI agents like another engineering team whose output you verify with tests, not by reading every line.
+
+Simon's approach is Red/Green TDD — make the agent write a failing test first, then build code to make it pass. This prevents AI from creating features that weren't asked for. He also has the agent boot the server and run curl requests to prove the API actually works — not just that tests pass.
+
+On code quality: if the agent gives you 2,000 lines of spaghetti code and you accept it, that's your choice. You can always prompt it to refactor. And if you set up a repo template with good CI/CD and quality tests, the agent will follow that standard.
+
+On security, Simon has a framework called the [Lethal Trifecta](https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/) for prompt injection. All three conditions must be met for it to be dangerous: access to private data, exposure to malicious instructions from outside, and a way to send data out. The fix is sandboxing — run agents in isolated containers to limit the blast radius.
+
+Finally, the barrier to learning new languages is gone. Simon shipped 3 projects in Go without ever being fluent. But a new problem is emerging: open source is under threat — libraries getting replaced by AI-generated components, and maintainers drowning in low-quality AI pull requests.
+
+Key takeaways:
+
+- TDD
+- Code quality is your choice — you can always ask for a refactor
+- If a repo has good quality, AI will match that quality, even with a basic model
+
+---
+
+## Uber: Leading engineering through an agentic shift
+
+![Leading engineering through an agentic shift](/assets/images/blogs/the-pragmatic-summit-2026/Leading%20engineering%20through%20an%20agentic%20shift.jpg)
+
+Uber's goal isn't to replace engineers with AI, but to make engineers work like "superhumans" — hand off toil (dead code cleanup, migration, library upgrades) to AI so people can focus on work that creates business value.
+
+The shift happened in two phases. Pair programming (2022-2023) used GitHub Copilot for sync auto-complete, giving a 10-15% velocity boost. Then came peer programming (now), where developers act as Tech Leads, sending tasks to AI agents asynchronously and reviewing later. Once they opened it up, 70% of tasks submitted were toil — because toil has clear start/end states, AI handles it well, and that builds a healthy trust loop.
+
+![uber-additional-img-1](/assets/images/blogs/the-pragmatic-summit-2026/uber-additional-img-1.jpg)
+
+### Uber's self-built infrastructure
+
+Uber didn't use off-the-shelf tools — they built their entire stack. It starts with a Model Gateway through [Michelangelo](https://www.uber.com/gb/en/blog/from-predictive-to-generative-ai/) (Uber's existing ML platform) for proxying to external models like OpenAI and Anthropic while keeping internal infrastructure secure.
+
+Then they built an MCP gateway and registry to safely expose internal tools (Jira, Slack, source code) to agents. AIFX serves as the central CLI for provisioning and managing agent clients across the organisation.
+
+The most important piece is Minions — a background agent platform that runs inside Uber's own CI pipeline, not on external vendor infrastructure. A developer just drops an error log through the web UI or Slack, and Minions checks out the monorepo, runs Claude, fixes the issue, and sends back a co-authored PR within minutes.
+
+![uber-additional-img-2](/assets/images/blogs/the-pragmatic-summit-2026/uber-additional-img-2.jpg)
+
+### Managing Code Sprawl
+
+![uber-additional-img-3](/assets/images/blogs/the-pragmatic-summit-2026/uber-additional-img-3.jpg)
+
+Agents create code faster than humans can review. Uber tackles this with several tools: Code Inbox routes PRs by ownership, time zone, and calendar while calculating a risk profile for each change. U-Review is an AI code reviewer that filters out nit comments and keeps only feedback that actually matters. Auto-Cover generates unit tests — roughly 5,000 merged tests per month at 3x the quality of a generic agent, with a Critic Engine checking that tests aren't just change detectors. Shepherd handles large-scale migrations like Java version upgrades, splitting them into hundreds of PRs and letting the agent manage the full lifecycle.
+
+![uber-additional-img-4](/assets/images/blogs/the-pragmatic-summit-2026/uber-additional-img-4.jpg)
+
+### Challenges beyond tech
+
+On the culture side, getting people in the organisation to adopt AI is slower than expected. Top-down orders don't work. What works is having engineers who already use it show their teammates how much faster they can ship.
+
+On ROI — developer satisfaction and code output went up a lot, but the CFO wants to see revenue impact, not just activity metrics. Uber is now measuring "Time to Launch" for new product experiments to prove financial ROI.
+
+As for cost, AI API spending went up 6x since 2024 and now needs CFO approval. Uber's approach: use expensive models for planning and cheaper models for execution.
+
+Another interesting point is the Loyalty Dilemma. The AI market changes every week, so Uber built an abstract architecture like Minions so they can swap models or replace internal tools with better SaaS options instantly without vendor lock-in.
+
+On the same topic, there's a separate write-up in the newsletter that I only found while writing this haha — [How Uber Uses AI for Development - The Pragmatic Engineer](https://newsletter.pragmaticengineer.com/p/how-uber-uses-ai-for-development)
+
+![uber-additional-img-5](/assets/images/blogs/the-pragmatic-summit-2026/uber-additional-img-5.jpg)
+
+---
+
+## Ramp: Lessons from Building a New AI Product
+
+![Lessons from Building a New AI Product](/assets/images/blogs/the-pragmatic-summit-2026/Lessons%20from%20Building%20a%20New%20AI%20Product.jpg)
+
+Ramp shared their experience building AI agents to automate corporate finance tasks. At first, Ramp built thousands of separate micro-agents, each team creating their own. Eventually they switched to a single agent (Omnihat) with 1,000 skills instead. The mindset shifted from software that tells you what to do, to a system that reacts, reasons, and acts on its own without waiting for humans.
+
+![ramp-1](/assets/images/blogs/the-pragmatic-summit-2026/ramp-1.jpg)
+
+A deep example is the Policy Agent that analyses receipt images and cross-references them with the company's expense policy to auto-approve or reject. The key learning: the model rarely fails at reasoning — it fails because it lacks context, like not knowing an employee's level or spending limit. Ground truth also matters. They initially used user behaviour as ground truth but found that users themselves often approve incorrectly. They ended up setting up cross-functional labelling sessions to build the dataset themselves.
+
+![ramp-2](/assets/images/blogs/the-pragmatic-summit-2026/ramp-2.jpg)
+
+On the infrastructure side, Ramp built an Applied AI Service as a proxy layer to standardise API calls and swap models with a single config change. They have a central Tool Catalog with hundreds of tools, and built Ramp Inspect — an internal coding agent (open-sourced as Open Inspect) that runs in a secure sandbox with access to a 150k+ test suite, integrated with DataDog, Slack, and Notion. Ramp Inspect now handles over 50% of PRs merged into production — and it's not just engineers using it. Product, design, and marketing teams use it to fix copy and simple logic too.
+
+![ramp-3](/assets/images/blogs/the-pragmatic-summit-2026/ramp-3.jpg)
+
+On culture, Ramp splits engineers into two types. Team A are people who face unclear problems head-on, understand the business, stay open to new tools, and care about user experience. Team B are people who argue about libraries, get stuck on small details, and start building before understanding the problem. AI has proved that writing code was never the hardest part. What truly matters is judgment, understanding the context, and getting a project through the messy middle.
+
+![ramp-4](/assets/images/blogs/the-pragmatic-summit-2026/ramp-4.jpg)
+
+---
+
+## Frameworks for reinventing software, again and again
+
+![Frameworks for reinventing software, again and again](/assets/images/blogs/the-pragmatic-summit-2026/Frameworks%20for%20reinventing%20software,%20again%20and%20again.jpg)
+
+This session was a conversation between two legends of software engineering, looking back at 25 years since the Agile Manifesto and forward at what AI is changing.
+
+**TDD has been proven right in the AI era** — what was a heated debate for 20 years has become a critical skill. When you have a "powerful genie" writing code for you, what you can't do without is the ability to verify it's doing the right thing — exactly what TDD practitioners have been training for all along.
+
+**AI is unlike any past shift** — whether OOP or the Internet, nothing has hit with this much scale and speed. The closest comparison is the birth of the microprocessor (Intel 4004), which turned computers from expensive, immovable boxes into something in every home and eventually everywhere. AI is creating the same **expansion of imagination**.
+
+**Skepticism must come with curiosity** — if you try AI, get bad results, and dismiss it immediately, you might miss something huge. You have to be "skeptical about your own skepticism." The key question is: _"What's the smallest experiment I can run to verify this?"_
+
+**The Agile Industrial Complex is happening again** — back in the day, Agile started as a set of good ideas, but it eventually turned into a business of selling certifications and consulting that didn't really help anyone. AI is entering the same cycle now. There are people selling tools and solutions with overblown claims everywhere — you need to tell apart what actually works from what's just hype.
+
+**Juniors will grow faster, but mid-level might get squeezed** — AI is an amplifier that makes fast learners even faster and strong performers even more productive. But the middle group who got into programming mainly for the paycheck may face pressure similar to the dot-com crash.
+
+**Don't go back to working alone (re-siloing)** — the strength of XP was making engineers talk more and truly work as a team through pair programming. But now there's this idea that one developer commanding 10 AI agents equals having a team. It really doesn't — talking to real people with different perspectives still matters. The approach that works better is two people pairing together, with AI agents as their assistants.
+
+**Craft isn't dead, it just moved up a layer** — the joy of perfecting a single function may be gone, but the new joy is understanding the whole domain. And the Venn diagram between Developer Experience and Agent Experience is **a perfect circle** — code that's good for humans is good for AI too.
+
+---
+
+## Lessons from building Vercel v0 and the d0 agent
+
+![Lessons from building Vercel v0 and the d0 agent](/assets/images/blogs/the-pragmatic-summit-2026/Lessons%20from%20building%20Vercel%20v0%20and%20the%20d0%20agent.jpg)
+
+Malte Ubl (CTO of Vercel) talked about AI tooling, both internal and external.
+
+First was D0, an internal data agent for Text-to-SQL that queries Snowflake. They originally built it as a complex tools-in-a-loop system — it worked but broke easily. They eventually deleted everything and rebuilt it by simply extracting business semantics for every Snowflake column into plain-English YAML. Now D0 is just a few lines of code with only two tools (Bash and SQL execute), letting the LLM reason from the YAML context on its own.
+
+On v0 — it was built for frontend developers, but backend engineers picked it up first because they needed UI but had enough technical depth to fix model mistakes. A key breakthrough was telling the model to use Tailwind CSS instead of generating separate HTML and CSS. With styling inline as classes, the model could reason much better. Once models like Claude 3.5 Sonnet arrived, v0 moved from UI prototyping to full-stack app generation.
+
+On deployment, Vercel uses an Optimistic Locking approach — any engineer can ship without waiting for approval. They just broadcast their intent to Legal and Security teams, who have the power to act if something goes wrong, rather than being gatekeepers who approve everything upfront. To support this velocity, Vercel splits state across 20 independent regions, deploying in waves. If something breaks, it only breaks in one region and can be rolled back quickly.
+
+The final thought: AI-generated code is free to create but still costs to maintain. We're entering an era where software will be created at massive scale, but the maintenance burden follows. Engineering leaders need to prepare agents for software lifecycle management — not just creation.
+
+---
+
+## Building world-class engineering teams in the age of AI
+
+![Building world-class engineering teams in the age of AI](/assets/images/blogs/the-pragmatic-summit-2026/Building%20world-class%20engineering%20teams%20in%20the%20age%20of%20AI.jpg)
+
+A panel between Rajeev (CTO, Atlassian) and Thomas Dohmke (CEO, GitHub) about building AI-native teams.
+
+Rajeev shared that Atlassian has teams writing no code themselves for greenfield projects. But Thomas pointed out that processes like HR or month-end close still can't be fully automated. The skill to train is forcing yourself not to read code line by line, but instead express intent and let the agent handle it. One thing not many people talk about is the language barrier — once you switch to English prompts, teams who aren't native English speakers face extra friction.
+
+As implementation approaches zero cost, the bottleneck shifts left to planning and specs, and shift right to CI/CD, deployment, and incidents. Atlassian built an agent called [Rovo Dev](https://www.atlassian.com/software/rovo-dev) (using Anthropic models) that has an edge because of their Teamwork Graph — it knows who works with whom and what the latest Jira tickets are. Roles are also merging: PMs are becoming product engineers who prototype in Replit, designers are becoming design engineers.
+
+For engineering leaders — CTOs can write code again because agents reduce the friction of setting up environments. The manager-to-engineer ratio will shift from 1:5-8 to 1:30-50 as AI handles admin work. The traditional Junior to Senior to Staff to Manager path is fading. People who stay hands-on and master agent orchestration will have the advantage.
+
+On the numbers side, Atlassian saw PRs per engineer increase by 89%, cycle time drop by 42%, and agents catching 51% of security vulnerabilities. But a new problem is token cost as variable OPEX — highly productive engineers may burn through many dollars in tokens. Leaders need to find ways to fund this without capping velocity.
+
+---
+
+## OpenAI: How AI is reshaping the craft of building software
+
+![How AI is reshaping the craft of building software](/assets/images/blogs/the-pragmatic-summit-2026/How%20AI%20is%20reshaping%20the%20craft%20of%20building%20software.jpg)
+
+Vijaye and Tibo from OpenAI talked about how much their internal workflow has changed. In just 6 months, AI tooling evolved from tool to IDE extension to agent to teammate — to the point where engineers name their own agents.
+
+OpenAI deploys Codex Box, letting engineers reserve a server instance, send a complex prompt, close their laptop, go to a meeting, and come back to a finished feature. Top engineers burn hundreds of billions of tokens per week. Job candidates now ask "how much compute will I get to build products?" — a question that used to come only from researchers.
+
+Instead of writing design docs and debating for days, they now have agents build multiple implementations at once, test all of them, and pick the best one. The bottleneck has moved from writing code to code review, and will likely move next to CI/CD. The Codex team also lets agents run QA loops overnight to find regressions without anyone asking. And in meetings, if a question isn't answered by existing dashboards, they fire off a Codex thread to query data and get the answer before the meeting ends.
+
+Tibo manages 33 direct reports in a flat org. New hires use Codex to understand the codebase from day one. OpenAI hires a lot of interns and new grads because they don't have old habits to unlearn — they adopt agentic workflows instantly. One new grad became the most productive person on their team within 6 months. But foundations like architecture and product intuition are still things AI can't replace.
+
+On cost, Vijaye suggests not thinking of it as API cost but as the salary of a teammate working 24/7 — which is very cheap compared to a person. As for predictions in 6-24 months: expect multi-agent networks working together, codebases so large that people stop reading code and instead work through constraints, input/output, and guardrails. And there will be a "Chief of Staff" agent that manages all sub-agents instead of juggling a hundred agents yourself.
+
+---
+
+## Data vs Hype: How Orgs Actually Win with AI
+
+![Data vs Hype: How Orgs Actually Win with AI](/assets/images/blogs/the-pragmatic-summit-2026/Data%20vs%20Hype:%20How%20Orgs%20Actually%20Win%20with%20AI.jpg)
+
+The Space Race was used as an analogy — going to the moon wasn't about living there, but about bringing back technology like barcodes and space blankets for use on Earth. Similarly, extreme AI experiments like autonomous multi-agent swarms will give us practical tools to use in organisations.
+
+### Q1 2026 numbers
+
+![data-vs-hype-1](/assets/images/blogs/the-pragmatic-summit-2026/data-vs-hype-1.jpg)
+
+- 92.6% of developers use an AI coding assistant at least monthly, 75% weekly
+- Time savings have plateaued at ~4 hours per week (~10% productivity gain) — unchanged for 3 quarters
+- AI-written code merged into production with almost no human edits is at 26.9%; daily users exceed 30%
+- AI cuts onboarding time (measured by Time to 10th PR) in half, and those who onboard faster maintain higher productivity throughout their first 2 years
+
+![data-vs-hype-2](/assets/images/blogs/the-pragmatic-summit-2026/data-vs-hype-2.jpg)
+
+### AI amplifies what's already there
+
+The key point: AI doesn't fix broken systems — it amplifies what already exists. Data shows some companies reduced incidents by 50%, while others saw incidents double because AI helped them ship buggy code faster. If your organisation is broken, AI just helps it break faster.
+
+An MIT study found that using AI only at the individual coding level hits a very low productivity ceiling. You need to apply it to organisational workflows to see real change. Among advanced companies, 80% of developers use agentic workflows weekly, and 50% use them daily.
+
+![data-vs-hype-3](/assets/images/blogs/the-pragmatic-summit-2026/data-vs-hype-3.jpg)
+
+### Case Study
+
+- **Cisco** has 18,000 engineers using Codex daily, cutting code review time by 50%
+- **JP Morgan Chase** built a multi-agent framework (MAFA) where multiple agents annotate, rank, and validate data, with a consensus algorithm for resolving conflicts between agents
+- **Haven Headache & Migraine Center** (healthcare startup) used agentic workflows to build a patient portal, trained a HIPAA-compliant model on symptom logs, achieved 3x customer satisfaction with measurable clinical outcomes
+
+![data-vs-hype-4](/assets/images/blogs/the-pragmatic-summit-2026/data-vs-hype-4.jpg)
+
+### What you need to do to win
+
+- **Set goals and measure your progress** — stop the spray-and-pray approach. Don't just hand out licenses and hope for ROI. Point AI at specific problems and measure by adoption, impact, and cost.
+- **DevEx matters more than ever** — DevEx is a prerequisite for AI. If you want budget to fix tech debt, rebrand it as "Agent Experience" — because agents need the same things humans do: fast CI/CD, good documentation, clean architecture. No matter how fast your AI is, it can't skip past bad meeting culture, flaky deployment pipelines, or poor tooling.
+
+![data-vs-hype-5](/assets/images/blogs/the-pragmatic-summit-2026/data-vs-hype-5.jpg)
+
+- **Treat AI as an organisational problem**
+- **Experiment by solving real customer problems** — focus on customer pain points, not aimless AI experimentation
+
+Recommended frameworks: DORA AI Capabilities Model and Thoughtworks FOREST Framework for auditing organisational readiness.
+
+![data-vs-hype-6](/assets/images/blogs/the-pragmatic-summit-2026/data-vs-hype-6.jpg)
+
+---
+
+## Closing - The Pragmatic Summit
+
+Thomas Dohmke (former CEO of GitHub) came back to talk about his new startup called [Entire](https://entire.io/home). Their first product is Checkpoints — an open-source CLI that captures prompts and intent, then ties them to Git commits. This lets you see the history of what prompt created which code.
+
+The point is: we now think in human language, not code. Keeping prompt history matters for resolving merge conflicts and onboarding new people in the future. Thomas believes GitHub's paradigm as a file browser since 2008 no longer fits. We need a platform that reviews intent, not syntax.
+
+Gergely closed the event by encouraging everyone to go home with a "personal board of directors" — a trusted group of people from different companies to help each other navigate this change.
+
+---
+
+## My takeaways
+
+- The bottleneck now is review, testing, deployment, and organisational friction. Almost every session agreed: writing code is no longer the bottleneck.
+
+- AI amplifies, it doesn't fix. If your organisation is already good, AI makes it better. If it's broken, AI helps it break faster. Good DevEx is a prerequisite, not a nice-to-have, for the AI era.
+
+- TDD is a safety net for verifying AI output.
+
+- Every session pointed in the same direction: judgment, context, and product sense matter more than the ability to write code.
+
+- Watch out for cost — AI API spending going up, token budgets becoming variable OPEX. This isn't just a tech issue, it's a money issue. If you can't pay for it, game over haha.
