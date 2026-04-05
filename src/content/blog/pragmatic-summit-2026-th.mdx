@@ -158,3 +158,23 @@ Agent สร้าง code เร็วกว่าที่คนจะ review 
 ![uber-additional-img-5](/assets/images/blogs/the-pragmatic-summit-2026/uber-additional-img-5.jpg)
 
 ---
+
+## Ramp: Lessons from Building a New AI Product
+
+![Lessons from Building a New AI Product](/assets/images/blogs/the-pragmatic-summit-2026/Lessons%20from%20Building%20a%20New%20AI%20Product.jpg)
+
+Ramp เล่าประสบการณ์สร้าง AI agent สำหรับ automate งาน corporate finance ตอนแรก Ramp สร้าง micro-agent แยกกันเป็นพัน ๆ ตัว แต่ละทีมสร้างเอง สุดท้ายก็ pivot มาเป็น agent ตัวเดียว (Omnihat) ที่มี 1,000 skills แทน แนวคิดเปลี่ยนจาก software ที่บอกว่าต้องทำอะไร เป็นระบบที่ react, reason และ act เองโดยไม่ต้องรอคน
+
+![ramp-1](/assets/images/blogs/the-pragmatic-summit-2026/ramp-1.jpg)
+
+ตัวอย่างที่ลงลึกคือ Policy Agent ที่วิเคราะห์รูป receipt แล้ว cross-reference กับ expense policy ของบริษัทเพื่อ approve/reject อัตโนมัติ สิ่งที่เรียนรู้คือ model ไม่ค่อยพลาดเรื่อง reasoning แต่พลาดเพราะขาด context เช่น ไม่รู้ว่าพนักงานคนนี้ระดับไหน limit เท่าไหร่ และเรื่อง ground truth ก็สำคัญ ตอนแรกใช้ user behavior เป็น ground truth แต่พบว่า user เองก็ approve ผิดบ่อย สุดท้ายต้องตั้ง cross-functional labeling session ขึ้นมาสร้าง dataset เอง
+
+![ramp-2](/assets/images/blogs/the-pragmatic-summit-2026/ramp-2.jpg)
+
+ฝั่ง infrastructure Ramp สร้าง Applied AI Service เป็น proxy layer สำหรับ standardize API call และ swap model ได้ด้วย config บรรทัดเดียว มี Tool Catalog กลางหลายร้อย tool และสร้าง Ramp Inspect ซึ่งเป็น internal coding agent (open-sourced เป็น Open Inspect) ที่รันใน secure sandbox มี access ถึง test suite 150k+ ตัว และ integrate กับ DataDog, Slack, Notion ตอนนี้ Ramp Inspect รับผิดชอบ PR ที่ merge เข้า production มากกว่า 50% และไม่ใช่แค่ engineer ใช้ แต่ทีม product, design, marketing ก็ใช้แก้ copy และ logic ง่าย ๆ ได้
+
+![ramp-3](/assets/images/blogs/the-pragmatic-summit-2026/ramp-3.jpg)
+
+เรื่อง culture Ramp แบ่ง engineer เป็น 2 แบบ Team A คือคนที่กล้าเผชิญปัญหาที่ยังไม่ชัดเจน เข้าใจธุรกิจ เปิดรับ tool ใหม่ และใส่ใจประสบการณ์ผู้ใช้ ส่วน Team B คือคนที่ชอบเถียงเรื่อง library จุกจิกรายละเอียดเล็ก ๆ แล้วลงมือสร้างก่อนเข้าใจปัญหา AI พิสูจน์แล้วว่าการเขียน code ไม่เคยเป็นส่วนยากที่สุด สิ่งที่มีค่าจริง ๆ คือวิจารณญาณ ความเข้าใจบริบท และการพาโปรเจกต์ฝ่าช่วงกลางที่วุ่นวายไปให้ได้
+
+---
