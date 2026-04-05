@@ -114,3 +114,27 @@ Key takeaways:
 - ถ้า repo มีคุณภาพดี AI จะให้ output คุณภาพดีตาม แม้จะเป็น model ธรรมดา
 
 ---
+
+## Uber: Leading engineering through an agentic shift
+
+![Leading engineering through an agentic shift](/assets/images/blogs/the-pragmatic-summit-2026/Leading%20engineering%20through%20an%20agentic%20shift.jpg)
+
+Uber เล่าเรื่องการเปลี่ยนจาก pair programming (AI auto-complete แบบ sync ที่ให้ velocity เพิ่ม 10-15%) ไปเป็น peer programming ที่ developer ทำตัวเป็น Tech Lead ให้ AI agent โดยส่งงานแบบ async แล้วกลับมา review ทีหลัง พอเปิดให้ใช้ 70% ของงานที่ส่งมาคือ toil เช่น dead code cleanup, migration, library upgrade เพราะงานพวกนี้มี start/end state ชัดเจน AI ทำได้แม่นยำ
+
+![uber-additional-img-1](/assets/images/blogs/the-pragmatic-summit-2026/uber-additional-img-1.jpg)
+
+Uber สร้าง infrastructure เอง เช่น Model Gateway ผ่าน [Michelangelo](https://www.uber.com/gb/en/blog/from-predictive-to-generative-ai/), MCP gateway สำหรับเปิด internal tools ให้ agent เข้าถึง และ Minions ซึ่งเป็น background agent platform ที่รันใน CI pipeline ของ Uber เอง developer แค่วาง error log ผ่าน web UI หรือ Slack แล้ว Minions จะ checkout monorepo, รัน Claude, แก้ไข แล้วส่ง PR กลับมา
+
+![uber-additional-img-2](/assets/images/blogs/the-pragmatic-summit-2026/uber-additional-img-2.jpg)
+
+เรื่อง code review ที่เป็น bottleneck Uber สร้าง Code Inbox ที่ route PR ตาม ownership, time zone และ calendar พร้อมคำนวณ risk profile ของแต่ละ change มี U-Review เป็น AI review ที่กรอง nit comment ออกเหลือแค่ feedback ที่มีค่า และ Auto-Cover ที่ generate unit test ได้ ~5,000 merged tests ต่อเดือน มี Critic Engine คอยตรวจว่า test ไม่ใช่แค่ change detector นอกจากนี้ยังมี Shepherd สำหรับจัดการ migration ขนาดใหญ่ เช่น upgrade Java version โดยแตก PR เป็นร้อย ๆ ตัวแล้วให้ agent จัดการ lifecycle ทั้งหมด
+
+ฝั่ง culture การให้คนในองค์กรเปลี่ยนมาใช้ AI ช้ากว่าที่คิด สั่งจากข้างบนไม่ work สิ่งที่ได้ผลคือให้ engineer ที่ใช้แล้วมาโชว์ให้เพื่อนร่วมทีมเห็นเองว่า ship งานได้เร็วขึ้นแค่ไหน
+
+เรื่อง ROI developer satisfaction และ code output สูงขึ้นมาก แต่ CFO ต้องการเห็น revenue impact ไม่ใช่แค่ activity metrics Uber กำลังวัด "Time to Launch" สำหรับ product experiment ใหม่เพื่อพิสูจน์ financial ROI ส่วน cost AI API ขึ้น 6x ตั้งแต่ 2024 ต้องขอ CFO approve แล้ว Uber แก้โดยใช้ model แพงสำหรับ plan และ model ถูกสำหรับ execute
+
+สิ่งที่น่าสนใจอีกอย่างคือ Loyalty Dilemma ตลาด AI เปลี่ยนทุกสัปดาห์ Uber จึงสร้าง architecture แบบ abstract อย่าง Minions เพื่อ swap model หรือแทน internal tool ด้วย SaaS ที่ดีกว่าได้ทันทีโดยไม่ผูกติด vendor
+
+ในเรื่องเดียวกันนี้ มีเขียนแยกใน Newsletter นะ ผมก็พึ่งตอนมาเขียนนี่แหละ 😂 [How Uber Uses AI for Development - The Pragmatic Engineer](https://newsletter.pragmaticengineer.com/p/how-uber-uses-ai-for-development)
+
+---
