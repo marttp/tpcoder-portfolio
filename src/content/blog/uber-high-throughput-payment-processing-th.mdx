@@ -1,0 +1,131 @@
+---
+title: "สรุป Uber: High Throughput Payment Account Processing"
+description: "สรุปจากบทความของ Uber เรื่องการออกแบบระบบ payment ให้รองรับ transaction ปริมาณมหาศาลต่อ account ด้วย batching architecture"
+pubDate: "2026-04-06"
+tags: ["Software Engineering", "System Design"]
+heroImage: "/assets/images/blogs/uber-eng-blog/account-batch-system-1.jpg"
+language: "th"
+---
+
+## Introduction
+
+บทความนี้สรุปจาก [Building High Throughput Payment Account Processing](https://www.uber.com/us/en/blog/high-throughput-processing/) ของ Uber เป็นเรื่อง system design ที่ผมอ่านแล้วชอบมาก เพราะเป็นปัญหาที่ดูธรรมดาแต่พอเจอ scale มันซับซ้อนขึ้นทันที
+
+---
+
+## Hot-Key Phenomenon
+
+ระบบ payment ของ Uber ชื่อ Gulfstream มีปัญหาที่เรียกว่า hot-key phenomenon คือบาง account มี transaction สูงผิดปกติ เช่น Big marketplace operator และ บริษัท fleet หรือลูกค้าองค์กรที่รัน subsidy campaign
+
+ระบบเดิมทำงานแบบ sequential คือรับ request มาแล้วทำทีละตัว ซึ่ง latency ของแต่ละ operation แบ่งได้ประมาณนี้:
+
+- อ่าน account state: 30-70ms
+- เช็ค processing history: 30-70ms
+- อัพเดท account: 60-160ms
+- เขียน audit log: 12-70ms
+- **รวม: 130-370ms ต่อ operation**
+
+ทำให้ระบบรองรับได้แค่ 3-4 operation ต่อวินาทีต่อ account แต่ความต้องการอยู่ที่มากกว่า 30 operation ต่อวินาที ผลคือ marketplace bulk adjustment ใช้เวลา 21-24 ชั่วโมง และ fleet operator บาง transaction ใช้เวลาเกิน 1 วัน
+
+---
+
+## ทำไมเลือก Batching
+
+ทีม Uber สังเกตว่าเวลาส่วนใหญ่เสียไปกับ data store round trip ไม่ได้อยู่ที่การคำนวณ แทนที่จะ optimize แต่ละ operation ก็เลือก amortize latency ด้วยการรวมหลาย operation เข้าด้วยกันแล้วประมวลผลทีเดียว
+
+ก่อนจะถึง batching ทีมพิจารณาทางเลือกอื่นแล้ว:
+
+- **Kafka-style batching** — เพิ่ม delay ฝั่ง client 1-2 วินาที ไม่ยอมรับได้
+- **Stream processing + global ordering** — ซับซ้อนเกินไป
+- **Shard user account** — ทำให้ balance tracking ยุ่งยากมาก
+- **Geographic co-location** — ดีขึ้นแค่ 2-3 เท่า แต่ต้องการ 10 เท่า
+
+สุดท้ายเลือก batching window 250ms เพื่อให้อยู่ภายใน soft latency limit 1 วินาทีสำหรับ real-time operation อย่างการ hold บัตรเครดิต
+
+---
+
+## Architecture แบบ 3 Services
+
+![account-batch-system-1](/assets/images/blogs/uber-eng-blog/account-batch-system-1.jpg)
+
+### 1. Batch Creator Service
+
+รับ operation ที่เข้ามาแล้วจัดกลุ่มตาม account เป็น batch ภายใน time window ใช้ Redis เป็นตัว coordinate เพราะ latency ต่ำระดับ sub-millisecond
+
+### 2. Batch Process Service
+
+หัวใจของระบบ ทำงานข้าม zone เพื่อ fault tolerance หลักการคือ อ่าน account state ครั้งเดียว apply ทุก operation ใน memory แล้วเขียนกลับทีเดียว จากเดิมที่ต้อง read/write ทุก operation ก็เหลือแค่ 1 read + 1 write ต่อ batch
+
+### 3. Batch Post-Processing Service
+
+แยกออกจาก main path เพื่อจัดการ audit log แบบ async ทำให้ไม่กระทบ latency ของ processing หลัก และยังรองรับ SOX compliance ด้วย immutable audit trail
+
+Infrastructure หลักที่รองรับคือ Redis cluster สำหรับ coordination, task queue และ results caching, User Account Store เป็น source of truth ของ balance และ transaction database สำหรับ immutable audit trail
+
+---
+
+## End-to-End Flow
+
+![account-batch-system-2](/assets/images/blogs/uber-eng-blog/account-batch-system-2.jpg)
+
+**Client Layer** — operation เข้ามาจาก 2 ทางหลักคือ Transaction Processor (financial transaction) และ Authorization Hold Service (hold บัตรเครดิต) ทั้งสองต้องการ real-time processing
+
+**Batch Creator Service** — เป็น entry point ของระบบ ทำงาน 4 ขั้นตอน:
+1. รับ operation ผ่าน RPC call จาก client
+2. จัดกลุ่มตาม user account เป็น batch ภายใน window 250ms โดยใช้ Redis coordinate
+3. ส่ง batch task เข้า global Redis task queue ให้ processor มารับ
+4. พอประมวลผลเสร็จ ดึงผลลัพธ์จาก Redis results cache ส่งกลับ client
+
+**Redis Cluster** — เป็น coordination layer กลางของระบบ มี 3 data structure หลัก:
+- Batch coordination — จัดการ entity-to-batch mapping และ batch metadata ด้วย atomic Lua script
+- Task queue — เก็บรายการ task ที่รอ processor มารับ
+- Results cache — เก็บผลลัพธ์ให้ client มาดึงกลับ
+
+**Batch Process Service** — หัวใจของระบบ ขั้นตอนคือ:
+1. แย่ง task จาก queue (processor หลาย zone แข่งกัน claim)
+2. อ่าน account state จาก User Account Store ครั้งเดียว
+3. Apply ทุก operation ใน batch ลงใน memory
+4. ส่ง tentative audit log ให้ Post-Processing เก็บไว้ก่อน
+5. เขียน account state กลับด้วย optimistic locking เพื่อรับประกัน consistency
+6. สั่ง Post-Processing บันทึก audit log ถาวร
+
+**User Account Store** — source of truth ของ balance ระบบออกแบบให้ลด interaction ให้เหลือ 1 read + 1 write ต่อ batch ไม่ว่า batch จะใหญ่แค่ไหน
+
+**Batch Post-Processing Service** — แยกออกจาก main path ทำงาน async:
+1. เก็บ tentative audit log ระหว่างรอ processing
+2. ดึงข้อมูลสำหรับสร้าง audit log
+3. เขียน UACs (User Account Changelogs) ลง Transaction DB
+4. Publish audit event ไปยัง downstream system
+5. อัพเดท status ว่า audit เสร็จแล้ว ป้องกันทำซ้ำ
+
+**Transaction DB** — เก็บ immutable audit trail (UACs) สำหรับ SOX compliance แยกจาก main processing path เพื่อไม่ให้กระทบ performance
+
+เรื่อง failure — ถ้า Redis data loss เกิดขึ้น ผลกระทบจำกัดแค่ operation เดียว ระบบจะ retry เฉพาะ operation ที่หาย ไม่ได้ fail ทั้ง batch
+
+---
+
+## Consistency และ Double-Entry Accounting
+
+ระบบ payment ของ Uber ยึดหลัก double-entry accounting คือเงินไหลระหว่าง account โดยไม่มีการสร้างหรือทำลาย ทุก transaction ต้อง balance เสมอ
+
+ทุกการเปลี่ยนแปลงจะถูกบันทึกเป็น UACs (User Account Changelogs) ซึ่งเป็น immutable audit trail สำหรับ SOX compliance ส่วนนี้ถูกแยกไว้ใน Post-Processing เพื่อไม่ให้กระทบ latency ของ main flow
+
+---
+
+## ผลลัพธ์
+
+- throughput เพิ่มจาก 3-4 เป็น **มากกว่า 30 operation ต่อวินาทีต่อ account**
+- effective latency ต่อ operation ในแต่ละ batch อยู่ที่ **8-20ms** (จากเดิม 130-370ms)
+- batch processing time รวมอยู่ที่ **400-650ms**
+
+---
+
+## สิ่งที่ผมได้จากบทความนี้
+
+- ปัญหา hot-key ไม่ใช่เรื่องแปลก ระบบ payment หลายที่น่าจะเจอ แต่สิ่งที่ต่างคือ Uber เลือกแก้ด้วย architecture ใหม่แทนที่จะ scale hardware อย่างเดียว
+
+- การที่ทีมลิสต์ทางเลือกที่ไม่เลือกและบอกเหตุผลชัดเจน เป็นสิ่งที่ดีมากในแง่ engineering decision ทำให้คนอ่านเข้าใจว่าทำไมถึงมาทาง batching
+
+- หลักคิดง่าย ๆ คือ ถ้า bottleneck อยู่ที่ I/O ไม่ใช่ computation ก็ลดจำนวน I/O ด้วยการรวม operation เข้าด้วยกัน ฟังดูพื้นฐานแต่พอ implement จะยากกว่าที่คิด
+
+- เรื่อง compliance เป็นสิ่งที่หลายคนมองข้าม แต่ระบบ payment ต้องมี audit trail ครบ SOX compliance ความเร็วอย่างเดียวไม่พอ
