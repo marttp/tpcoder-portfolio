@@ -144,6 +144,10 @@ To write in the TP Coder style:
 
 11. No "Give more, learn more. Be better each day." in the article
 12. No "Be kind and be inspired." in the article
+13. ในภาษาไทย ห้ามใช้คำว่า "นี่เป็นสัญญาณชัดเจนครับ" หรือ pattern ใด ๆ ที่อ่านก็รู้ว่าเป็น AI เขียนขึ้นมา
+14. Banner keywords: Game changer, เปลี่ยนเกม, นี่เป็นสัญญาณชัดเจนครับ, มันชัดเจน, เอาแบบตรง ๆ ไม่อ้อมค้อม, เล่าให้ฟัง, ไม่ใช่แค่... แต่
+15. ห้ามใช้ "จริง" ไม่ว่ากรณีไหน ๆ
+16. Reduce or not use "\_\_\_" in the post, though keyword looks interest, but not my writing style
 
 ---
 
