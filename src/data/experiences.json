@@ -3,6 +3,7 @@
     {
       "company": "Coda",
       "country": "Thailand 🇹🇭",
+      "website": "https://www.coda.co/",
       "position": "Software Engineer",
       "startDate": "2025-12",
       "endDate": "Present",
@@ -23,6 +24,7 @@
     {
       "company": "PayPay Card Corporation (Secondment)",
       "country": "Japan 🇯🇵",
+      "website": "https://www.paypay-card.co.jp/",
       "position": "Backend Engineer (Payment Processing)",
       "startDate": "2025-04",
       "endDate": "2025-11",
@@ -38,6 +40,7 @@
     {
       "company": "PayPay Corporation",
       "country": "Japan 🇯🇵",
+      "website": "https://about.paypay.ne.jp/en/",
       "position": "Backend Engineer (Growth Platform)",
       "startDate": "2022-09",
       "endDate": "2025-11",
@@ -62,6 +65,7 @@
     {
       "company": "Accenture",
       "country": "Thailand 🇹🇭",
+      "website": "https://www.accenture.com/",
       "position": "Application Development Senior Analyst",
       "startDate": "2021-01",
       "endDate": "2022-07",
@@ -79,6 +83,7 @@
     {
       "company": "Aware Technology Solutions",
       "country": "Thailand 🇹🇭",
+      "website": "https://www.aware.co.th/",
       "position": "Software Engineer",
       "startDate": "2019-05",
       "endDate": "2020-12",

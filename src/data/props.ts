@@ -67,6 +67,7 @@ export type ActivitiesData = {
 export type ProfessionalExperience = {
   company: string;
   country: string;
+  website?: string;
   position: string;
   startDate: string;
   endDate: string | 'Present';
