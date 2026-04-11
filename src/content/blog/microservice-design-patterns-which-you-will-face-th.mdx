@@ -26,27 +26,27 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 
 หลักการคือ แต่ละ service มี database ของตัวเอง ไม่ share database กับ service อื่น ข้อมูลของ service ไหนก็เข้าถึงได้ผ่าน API ของ service นั้นเท่านั้น
 
-ลองนึกถึงระบบ e-commerce ที่มี Product Service, Order Service, และ Inventory Service
+ลองนึกถึงระบบ streaming platform ที่มี User Service, Content Service, และ Recommendation Service
 
 <MermaidDiagram chart={`
 flowchart TB
     Client[Client App]
-    Client --> PS[Product Service]
-    Client --> OS[Order Service]
-    Client --> IS[Inventory Service]
-    PS --> DB1[(Product DB\nMongoDB)]
-    OS --> DB2[(Order DB\nPostgreSQL)]
-    IS --> DB3[(Inventory DB\nRedis)]
+    Client --> US[User Service]
+    Client --> CS[Content Service]
+    Client --> RS[Recommendation Service]
+    US --> DB1[(User DB\nPostgreSQL)]
+    CS --> DB2[(Content DB\nMongoDB)]
+    RS --> DB3[(Recommendation DB\nRedis)]
 `} />
 
-Product Service เก็บ catalog data เป็น JSON objects ใน MongoDB เพราะ read-heavy, Order Service ใช้ PostgreSQL เพราะต้องการ relational structure สำหรับ order line items และ payment references, ส่วน Inventory Service ใช้ Redis เพราะต้องการ read/write ที่เร็วมากสำหรับ stock count
+User Service ใช้ PostgreSQL เพราะต้องการ relational structure สำหรับ subscription plans และ billing, Content Service เก็บ metadata ของหนัง/ซีรีส์เป็น JSON objects ใน MongoDB เพราะ schema ยืดหยุ่น, ส่วน Recommendation Service ใช้ Redis เพราะต้อง read/write ที่เร็วมากสำหรับ personalized feed
 
 แนวคิดนี้เรียกว่า **Polyglot Persistence** คือเลือก database ให้เหมาะกับ workload ของแต่ละ service
 
 ข้อดีที่เห็นได้ชัด:
 - แต่ละ service scale database ได้อิสระ
-- schema change ใน Order DB ไม่กระทบ Product Service
-- ถ้า Inventory DB ล่ม ระบบ Order ยังรับ request ได้ (แค่เช็ค stock ไม่ได้ชั่วคราว)
+- schema change ใน Content DB ไม่กระทบ User Service
+- ถ้า Recommendation DB ล่ม user ยังดูหนังได้ (แค่ไม่เห็น personalized feed ชั่วคราว)
 
 ---
 
@@ -66,7 +66,7 @@ flowchart LR
     QRY --> RDB
 `} />
 
-ตัวอย่าง: ระบบ search ของ e-commerce — เวลา seller อัปเดตข้อมูลสินค้า (write) ข้อมูลจะถูกเขียนลง PostgreSQL ก่อน จากนั้น sync ไปยัง Elasticsearch ผ่าน event เวลา buyer ค้นหาสินค้า (read) ก็ query จาก Elasticsearch ที่ optimize สำหรับ full-text search โดยเฉพาะ
+ตัวอย่าง: ระบบ search ของ job board — เวลา recruiter โพสต์ตำแหน่งงาน (write) ข้อมูลจะถูกเขียนลง PostgreSQL ก่อน จากนั้น sync ไปยัง Elasticsearch ผ่าน event เวลา candidate ค้นหาตำแหน่งงาน (read) ก็ query จาก Elasticsearch ที่ optimize สำหรับ full-text search โดยเฉพาะ
 
 สิ่งที่ต้องยอมรับกับ pattern นี้คือ **eventual consistency** — ข้อมูลใน read database จะไม่ up-to-date ทันที ต้องรอ sync ซึ่งอาจใช้เวลาไม่กี่วินาทีถึงไม่กี่นาที ขึ้นอยู่กับ workload
 
@@ -215,13 +215,13 @@ flowchart TB
     C1 --> GW[API Gateway]
     C2 --> GW
     C3 --> GW
-    GW --> S1[Catalog Service]
-    GW --> S2[Cart Service]
+    GW --> S1[User Service]
+    GW --> S2[Booking Service]
     GW --> S3[Payment Service]
-    GW --> S4[Shipping Service]
+    GW --> S4[Notification Service]
 `} />
 
-ตัวอย่าง: ระบบ e-commerce — client ทุกตัว (web, mobile, 3rd party) เรียกผ่าน API Gateway ตัวเดียว ซึ่งจัดการ authn/authz ให้ก่อนจะ forward request ไปยัง service ปลายทาง
+ตัวอย่าง: ระบบ healthcare booking — client ทุกตัว (web, mobile, 3rd party) เรียกผ่าน API Gateway ตัวเดียว ซึ่งจัดการ authn/authz ให้ก่อนจะ forward request ไปยัง service ปลายทาง
 
 สิ่งที่ต้องระวัง:
 - ถ้า API Gateway มีแค่ node เดียว มันจะกลายเป็น single point of failure
@@ -277,16 +277,13 @@ flowchart LR
 
 ในระบบ distributed failure เป็นเรื่องปกติ service ล่ม, network timeout, downstream ตอบช้า สิ่งที่ต่างกันระหว่างระบบที่ดีกับระบบที่พังลามคือ **วิธีรับมือกับ failure**
 
-ถ้าใครอยากเห็นภาพว่า Resilience patterns มีอะไรบ้าง ลองดู module ของ **resilience4j** ซึ่งเป็น fault tolerance library สำหรับ Java/Kotlin จะเห็นว่ามันครอบคลุมหลาย patterns ในหมวดนี้เลย:
+Resilience patterns ที่ใช้กันบ่อยมีหลายตัว:
 
-- **resilience4j-circuitbreaker**: Circuit breaking
-- **resilience4j-ratelimiter**: Rate limiting
-- **resilience4j-bulkhead**: Bulkheading
-- **resilience4j-retry**: Automatic retrying (sync and async)
-- **resilience4j-cache**: Result caching
-- **resilience4j-timelimiter**: Timeout handling
-
-บทความนี้ผมจะโฟกัสที่ 3 ตัวที่ใช้บ่อยที่สุด
+- **Circuit Breaker**
+- **Rate Limit**
+- **Retry**
+- **Timeout**
+- **Bulkhead**
 
 ### 8.1 Circuit Breaker
 
@@ -317,17 +314,17 @@ stateDiagram-v2
 
 <MermaidDiagram chart={`
 sequenceDiagram
-    participant A as Order Service
-    participant B as Inventory Service
+    participant A as Booking Service
+    participant B as Notification Service
 
-    A->>B: Check Stock
+    A->>B: Send Confirmation
     B--xA: 503 Service Unavailable
     Note over A: Wait 500ms (attempt 1)
-    A->>B: Check Stock (retry 1)
+    A->>B: Send Confirmation (retry 1)
     B--xA: 503 Service Unavailable
     Note over A: Wait 1s (attempt 2)
-    A->>B: Check Stock (retry 2)
-    B-->>A: 200 OK - In Stock
+    A->>B: Send Confirmation (retry 2)
+    B-->>A: 200 OK - Sent
 `} />
 
 หลักการสำคัญ:
@@ -348,33 +345,64 @@ flowchart LR
     C1[Client A] --> RL[Rate Limiter\n100 req/s per client]
     C2[Client B] --> RL
     C3[Client C] --> RL
-    RL -->|allowed| SVC[Order Service]
+    RL -->|allowed| SVC[Booking Service]
     RL -->|exceeded| ERR[429 Too Many\nRequests]
 `} />
 
-ตัวอย่าง: Public API ของระบบ e-commerce เปิดให้ 3rd party เรียกดูข้อมูลสินค้า — กำหนดไว้ที่ 100 requests/วินาที ต่อ API key ถ้าเกินก็ตอบ HTTP 429 Too Many Requests กลับไป
+ตัวอย่าง: Public API ของระบบ logistics เปิดให้ partner เรียก tracking API — กำหนดไว้ที่ 100 requests/วินาที ต่อ API key ถ้าเกินก็ตอบ HTTP 429 Too Many Requests กลับไป
 
 Rate Limiting ทำได้หลายระดับ:
 - **API Gateway level**: กำหนด global rate limit ก่อนที่ request จะเข้าถึง service (เหมาะสำหรับป้องกัน abuse)
 - **Service level**: แต่ละ service กำหนด rate limit ของตัวเอง (เหมาะสำหรับ protect resource-intensive operations)
 - **Per-client level**: rate limit แยกตาม API key, user ID, หรือ IP
 
+### 8.4 Timeout
+
+Timeout กำหนดเวลาสูงสุดที่ service จะรอ response จาก downstream ถ้าเกินเวลาที่กำหนดก็ตัด request ทิ้งทันที ไม่ปล่อยให้ thread ค้างรอไปเรื่อย ๆ
+
+ตัวอย่าง: Booking Service เรียก External Calendar API เพื่อเช็คตารางว่าง — กำหนด timeout ไว้ 3 วินาที ถ้า Calendar API ตอบช้ากว่านั้นก็ตัดทิ้งแล้ว fallback ไปใช้ cached schedule แทน
+
+Timeout ที่ดีต้องตั้งให้เหมาะสมกับแต่ละ downstream ไม่ใช่ใช้ค่าเดียวกันหมด service ที่ทำ heavy computation อาจต้องการ timeout ที่นานกว่า service ที่แค่ดึงข้อมูล
+
+### 8.5 Bulkhead
+
+Bulkhead ยืมแนวคิดมาจากผนังกั้นน้ำในเรือ — ถ้าเรือรั่วที่ห้องหนึ่ง น้ำจะท่วมแค่ห้องนั้น ไม่ลามไปห้องอื่น
+
+ในระบบ Microservices Bulkhead แบ่ง resource (เช่น thread pool, connection pool) ออกเป็นส่วน ๆ แยกตาม downstream service ถ้า downstream ตัวหนึ่งช้าหรือล่ม ก็กิน resource แค่ส่วนที่แบ่งไว้ให้ ไม่กระทบ downstream ตัวอื่น
+
+<MermaidDiagram chart={`
+flowchart TB
+    SVC[Service A]
+    SVC --> P1[Thread Pool 1\n10 threads]
+    SVC --> P2[Thread Pool 2\n10 threads]
+    SVC --> P3[Thread Pool 3\n10 threads]
+    P1 --> D1[Service B]
+    P2 --> D2[Service C]
+    P3 --> D3[Service D]
+`} />
+
+ตัวอย่าง: Notification Service เรียก SMS Provider, Email Provider, และ Push Notification Provider — แต่ละ provider ใช้ thread pool แยกกัน ถ้า SMS Provider ช้า ก็กิน thread แค่ pool ของตัวเอง Email กับ Push ยังทำงานปกติ
+
 ### Resilience Patterns ทำงานร่วมกัน
 
-ทั้ง 3 patterns นี้ควรใช้ร่วมกัน ไม่ใช่เลือกแค่ตัวใดตัวหนึ่ง
+patterns เหล่านี้ควรใช้ร่วมกัน ไม่ใช่เลือกแค่ตัวใดตัวหนึ่ง
 
 <MermaidDiagram chart={`
 flowchart LR
     REQ[Incoming\nRequest] --> RL[Rate Limiter]
-    RL --> CB[Circuit Breaker]
+    RL --> BH[Bulkhead]
+    BH --> TM[Timeout]
+    TM --> CB[Circuit Breaker]
     CB --> RT[Retry]
     RT --> SVC[Downstream\nService]
 `} />
 
 ลำดับการทำงานที่แนะนำ:
 1. **Rate Limiter** กรอง request ที่เกิน quota ออกก่อน
-2. **Circuit Breaker** เช็คว่า downstream ยังปกติหรือ circuit open อยู่
-3. **Retry** ถ้า request fail ด้วย transient error ก็ลองใหม่ตาม strategy ที่ตั้งไว้
+2. **Bulkhead** จำกัด resource ที่แต่ละ downstream ใช้ได้
+3. **Timeout** กำหนดเวลาสูงสุดที่จะรอ response
+4. **Circuit Breaker** เช็คว่า downstream ยังปกติหรือ circuit open อยู่
+5. **Retry** ถ้า request fail ด้วย transient error ก็ลองใหม่ตาม strategy ที่ตั้งไว้
 
 ---
 
@@ -442,19 +470,19 @@ sequenceDiagram
     participant Cache as Cache (Redis)
     participant DB as Database
 
-    App->>Cache: GET product:123
+    App->>Cache: GET flight:BKK-NRT-20260501
     alt Cache Hit
         Cache-->>App: Return cached data
     else Cache Miss
         Cache-->>App: null
-        App->>DB: SELECT * FROM products WHERE id=123
-        DB-->>App: Product data
-        App->>Cache: SET product:123 (with TTL)
+        App->>DB: Query flight schedule
+        DB-->>App: Flight data
+        App->>Cache: SET flight:BKK-NRT-20260501 (with TTL)
         App-->>App: Return data
     end
 `} />
 
-ตัวอย่าง: Product Detail Page — user เปิดดูรายละเอียดสินค้า application เช็ค Redis ก่อน ถ้ามีก็ return ทันที ถ้าไม่มีก็ query จาก database แล้วเก็บลง Redis พร้อมตั้ง TTL (Time-To-Live) ไว้ เช่น 5 นาที
+ตัวอย่าง: Flight Search Page — user ค้นหาเที่ยวบิน BKK-NRT application เช็ค Redis ก่อน ถ้ามีก็ return ทันที ถ้าไม่มีก็ query จาก database แล้วเก็บลง Redis พร้อมตั้ง TTL (Time-To-Live) ไว้ เช่น 5 นาที
 
 **ข้อดี**: เก็บ cache เฉพาะข้อมูลที่ถูกเรียกใช้ ไม่เปลือง memory กับข้อมูลที่ไม่มีใครใช้
 
@@ -470,12 +498,12 @@ sequenceDiagram
     participant Cache as Cache Layer
     participant DB as Database
 
-    App->>Cache: GET product:123
+    App->>Cache: GET user:456
     alt Cache Hit
         Cache-->>App: Return cached data
     else Cache Miss
         Cache->>DB: Fetch from DB
-        DB-->>Cache: Product data
+        DB-->>Cache: User profile data
         Cache->>Cache: Store in cache
         Cache-->>App: Return data
     end
@@ -497,14 +525,14 @@ sequenceDiagram
     participant Cache as Cache Layer
     participant DB as Database
 
-    App->>Cache: Write product:123
+    App->>Cache: Write seat:A12-status
     Cache->>DB: Write to DB (sync)
     DB-->>Cache: Write confirmed
     Cache-->>App: Write confirmed
     Note over Cache,DB: Cache and DB<br/>always in sync
 `} />
 
-ตัวอย่าง: ระบบ Inventory ที่ต้องการ stock count ที่ถูกต้องเสมอ — เมื่ออัปเดต stock ข้อมูลจะถูกเขียนทั้ง cache และ database พร้อมกัน ทำให้ทุก read ที่มาจาก cache ได้ข้อมูลที่ตรงกับ database
+ตัวอย่าง: ระบบ Seat Reservation ของสายการบินที่ต้องการสถานะที่นั่งที่ถูกต้องเสมอ — เมื่ออัปเดตสถานะที่นั่ง ข้อมูลจะถูกเขียนทั้ง cache และ database พร้อมกัน ทำให้ทุก read ที่มาจาก cache ได้ข้อมูลที่ตรงกับ database
 
 **ข้อดี**: ไม่มีปัญหา stale data เพราะ cache กับ database sync กันตลอด
 
@@ -535,7 +563,7 @@ sequenceDiagram
 | BFF | Frontend data aggregation |
 | API Gateway | Single entry point & cross-cutting concerns |
 | Strangler | Monolith-to-microservices migration |
-| Resilience Patterns | Fault tolerance & cascading failure prevention |
+| Resilience (Circuit Breaker, Rate Limit, Retry, Timeout, Bulkhead) | Fault tolerance & cascading failure prevention |
 | Externalized Configuration | Config management at scale |
 | CDCT | API contract & integration safety |
 | Caching Patterns | Performance optimization & database load reduction |
