@@ -16,9 +16,13 @@ language: "th"
 
 import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 
+## Overview
+
 เวลาเราออกแบบระบบที่ใช้ Microservices architecture สิ่งที่ผมสังเกตเห็นคือ ปัญหาหลาย ๆ อย่างมันวนกลับมาซ้ำ ไม่ว่าจะเป็นเรื่อง data consistency ระหว่าง service, การจัดการ distributed transaction, หรือแม้แต่เรื่องที่ดูง่ายอย่างการ config ค่าต่าง ๆ ให้ service ที่ scale ออกไป 100 instances
 
 บทความนี้ผมรวบรวม design patterns ที่ใช้กันบ่อยใน Microservices architecture โดยแต่ละ pattern จะมีตัวอย่างจากระบบที่เราน่าจะคุ้นเคยกัน เพื่อให้เห็นภาพชัดขึ้นว่ามันแก้ปัญหาอะไร และใช้ตอนไหน
+
+บทความนี้ไม่ได้ครอบคลุมเรื่อง communication patterns อย่าง synchronous (REST, gRPC) และ asynchronous (message queue, event streaming) เพราะเป็นหัวข้อที่ใหญ่พอจะแยกเป็นบทความต่างหากได้
 
 ---
 
