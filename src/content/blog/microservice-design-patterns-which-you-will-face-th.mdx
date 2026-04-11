@@ -88,7 +88,14 @@ flowchart LR
     E4 -->|Materialized View| CV["Current Balance\n5,000"]
 `} />
 
-ตัวอย่าง: ระบบ Shopping Cart — แทนที่จะเก็บแค่ item list ปัจจุบันของ cart เราเก็บทุก action ที่ user ทำ: "added item A", "changed quantity of item A to 3", "removed item B", "applied coupon X" ทั้งหมดนี้เรียงตามเวลา
+ตัวอย่าง: ระบบ Shopping Cart — แทนที่จะเก็บแค่ item list ปัจจุบันของ cart เราเก็บทุก action ที่ user ทำ:
+
+1. added item A
+2. changed quantity of item A to 3
+3. removed item B
+4. applied coupon X
+
+ทั้งหมดนี้เรียงตามเวลา
 
 ข้อดีคือ:
 - ถ้ามีปัญหา สามารถ replay events เพื่อสร้าง state ใหม่ได้
@@ -123,15 +130,19 @@ sequenceDiagram
     alt Credit OK
         CS->>MB: Credit Reserved Event
         MB->>OS: (subscribe)
-        OS->>OS: Update Order → Confirmed
+        OS->>OS: Update Order to Confirmed
     else Credit Not Enough
         CS->>MB: Credit Limit Exceeded Event
         MB->>OS: (subscribe)
-        OS->>OS: Update Order → Cancelled
+        OS->>OS: Update Order to Cancelled
     end
 `} />
 
-ตัวอย่าง: ระบบ Order ของ food delivery app — เมื่อ user สั่งอาหาร Order Service สร้าง order แล้ว publish event, Payment Service รับ event ไปตัดเงิน, Restaurant Service รับ event ไป confirm กับร้าน ถ้า payment fail ก็ publish event กลับมาให้ Order Service cancel order
+ตัวอย่างที่เห็นในระบบที่ใช้ Kafka เป็น message broker:
+
+**E-Commerce Order Flow** — เมื่อ user สั่งซื้อสินค้า Order Service publish `OrderCreated` event ไปยัง Kafka topic จากนั้น Payment Service consume event นี้แล้วตัดเงิน เมื่อสำเร็จก็ emit `PaymentCompleted` ต่อไปยัง Inventory Service เพื่อ reserve stock แล้ว emit `InventoryReserved` ให้ Shipping Service จัดส่ง ถ้า payment fail ก็ emit `PaymentFailed` กลับมาให้ Order Service cancel order และ Inventory Service ปล่อย stock ที่จองไว้ ไม่มี central coordinator แต่ละ service react ต่อ event และ publish event ของตัวเอง
+
+**Banking Fund Transfer** — Transfer Service emit `TransferInitiated` ไปยัง Kafka จากนั้น Debit Service ตัดเงินจากบัญชีต้นทางแล้ว emit `AccountDebited` ต่อให้ Credit Service เติมเงินเข้าบัญชีปลายทางแล้ว emit `AccountCredited` สุดท้าย Notification Service ส่งแจ้งเตือน ถ้า credit fail ก็ emit `CreditFailed` กลับมาให้ Debit Service ทำ compensating reversal
 
 **ข้อดี**: ง่าย เหมาะกับระบบที่มี service ไม่มาก
 
@@ -153,9 +164,15 @@ sequenceDiagram
     PS-->>OC: Payment Reserved
     OC->>RS: Confirm with Restaurant
     RS-->>OC: Restaurant Confirmed
-    OC->>OS: Update Order → Confirmed
-    Note over OC: If any step fails,\norchestrator triggers\ncompensating transactions
+    OC->>OS: Update Order to Confirmed
+    Note over OC: If any step fails,<br/>orchestrator triggers<br/>compensating transactions
 `} />
+
+ตัวอย่างที่เห็นในระบบที่ใช้ workflow engine อย่าง Temporal หรือ Cadence:
+
+**Uber Trip Lifecycle (Cadence)** — Uber สร้าง Cadence ขึ้นมาเพื่อ orchestrate workflow ที่ซับซ้อน ตัวอย่างคือ trip saga: orchestrator workflow ควบคุมลำดับตั้งแต่จอง driver, authorize payment, track การเดินทาง, จบ trip, charge rider, จ่ายเงินให้ driver ถ้าขั้นตอนไหน fail (เช่น payment authorization ไม่ผ่าน) orchestrator จะ trigger compensating actions เช่น cancel driver assignment และปล่อย hold on funds โดย Cadence จัดการ retries, timeouts, และ state persistence ให้อัตโนมัติ
+
+**Doordash Order Fulfillment (Cadence/Temporal)** — Doordash ใช้ Cadence (และประเมิน Temporal) เพื่อ orchestrate order workflow ตั้งแต่ validate order, charge customer, แจ้ง restaurant, assign Dasher (driver), track pickup และ delivery, จนถึง payout ถ้า restaurant cancel orchestrator จะรัน compensations ทั้ง refund customer, ปล่อย Dasher, และอัปเดต order status workflow engine จะ maintain durable state ทำให้ saga survive ได้แม้ process crash โดยไม่สูญเสีย progress
 
 **ข้อดี**: flow ชัดเจน ดูแลง่าย เหมาะกับระบบที่มีหลาย service เกี่ยวข้อง
 
@@ -219,19 +236,19 @@ flowchart TB
 
 <MermaidDiagram chart={`
 flowchart LR
-    subgraph Phase 1
+    subgraph P1[Phase 1]
         direction TB
         P1GW[API Gateway] --> P1M[Monolith\n100% traffic]
     end
 
-    subgraph Phase 2
+    subgraph P2[Phase 2]
         direction TB
         P2GW[API Gateway]
         P2GW -->|user module| P2MS[User Service]
         P2GW -->|other| P2M[Monolith]
     end
 
-    subgraph Phase 3
+    subgraph P3[Phase 3]
         direction TB
         P3GW[API Gateway]
         P3GW --> P3S1[User Service]
@@ -239,8 +256,8 @@ flowchart LR
         P3GW --> P3S3[Product Service]
     end
 
-    Phase 1 -->|migrate\nuser module| Phase 2
-    Phase 2 -->|migrate\nremaining| Phase 3
+    P1 -->|migrate user module| P2
+    P2 -->|migrate remaining| P3
 `} />
 
 ตัวอย่าง: สมมติมี Monolith ที่รวม User Management, Order Processing, Product Catalog ไว้ด้วยกัน เราเริ่มจากแยก User Management ออกมาเป็น Microservice ก่อน ใช้ API Gateway route traffic ของ user-related requests ไปที่ service ใหม่ ส่วนที่เหลือยังไปที่ Monolith เดิม
@@ -310,7 +327,7 @@ sequenceDiagram
     B--xA: 503 Service Unavailable
     Note over A: Wait 1s (attempt 2)
     A->>B: Check Stock (retry 2)
-    B-->>A: 200 OK — In Stock
+    B-->>A: 200 OK - In Stock
 `} />
 
 หลักการสำคัญ:
@@ -393,11 +410,11 @@ flowchart LR
 CDCT แก้ปัญหานี้โดยให้ consumer เป็นคนเขียน "contract" ระบุว่าตัวเองคาดหวัง request/response format แบบไหน แล้ว provider เอา contract นี้ไปรันเป็น test
 
 <MermaidDiagram chart={`
-flowchart TB
+flowchart LR
     CON[Consumer Team] -->|writes| CT[Contract\nJSON/Pact file]
     CT -->|shared with| PRO[Provider Team]
-    PRO -->|runs contract\nas test suite| TEST[Provider Tests]
-    TEST -->|pass/fail| RESULT[Integration\nVerified]
+    PRO -->|runs as test suite| TEST[Provider Tests]
+    TEST -->|pass/fail| RESULT[Integration Verified]
 `} />
 
 ตัวอย่าง: Mobile App (consumer) เรียก User Profile API (provider) — Mobile team เขียน contract ว่า "ผมคาดหวังว่า GET /users/123 จะ return JSON ที่มี field: name (string), email (string), avatar_url (string)" ถ้า Provider team จะเปลี่ยน field name เป็น full_name contract test จะ fail ก่อนที่จะ deploy ขึ้น production
@@ -484,7 +501,7 @@ sequenceDiagram
     Cache->>DB: Write to DB (sync)
     DB-->>Cache: Write confirmed
     Cache-->>App: Write confirmed
-    Note over Cache,DB: Cache and DB\nalways in sync
+    Note over Cache,DB: Cache and DB<br/>always in sync
 `} />
 
 ตัวอย่าง: ระบบ Inventory ที่ต้องการ stock count ที่ถูกต้องเสมอ — เมื่ออัปเดต stock ข้อมูลจะถูกเขียนทั้ง cache และ database พร้อมกัน ทำให้ทุก read ที่มาจาก cache ได้ข้อมูลที่ตรงกับ database
