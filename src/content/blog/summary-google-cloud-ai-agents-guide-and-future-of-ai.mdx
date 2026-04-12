@@ -101,36 +101,124 @@ Together, MCP and A2A create a composable agent ecosystem — an ADK agent can c
 
 ### Data Architecture and Memory
 
-The guide breaks data into three categories:
+This section was one of the most practical parts of the guide. It breaks data into three categories based on how agents use it — and the distinctions matter a lot when you're building agents that go beyond Q&A into taking actions with real consequences.
 
-| Data Type | Purpose | Google Cloud Service |
-|-----------|---------|---------------------|
-| **Long-term knowledge** | Persistent knowledge base for RAG | Vertex AI Search, AlloyDB, Cloud SQL (pgvector), BigQuery |
-| **Working memory** | Session state, conversation context | Memorystore (Redis), Firestore |
-| **Transactional memory** | Business-critical data with ACID | Cloud SQL, Spanner, AlloyDB |
+| Data Type | Purpose | Google Cloud Service | Real-World Example |
+|-----------|---------|---------------------|-------------------|
+| **Long-term knowledge** | Persistent knowledge base for RAG | Vertex AI Search, AlloyDB, Cloud SQL (pgvector), BigQuery | A customer support agent retrieves product documentation, past incident reports, and troubleshooting guides to answer tickets |
+| **Working memory** | Session state, conversation context | Memorystore (Redis), Firestore | A shopping assistant remembers what items a user has been browsing during a session, their size preferences, and what they've already rejected |
+| **Transactional memory** | Business-critical data with ACID | Cloud SQL, Spanner, AlloyDB | A booking agent places a hotel reservation — this needs to be durable, consistent, and never lost even if the agent session crashes |
 
-One concept new to me: **Vertex AI Memory Bank** and memory distillation. Instead of keeping raw conversation history (which grows linearly), the system distills conversations into structured memory entries — key facts, user preferences, learned patterns. Two approaches: automated distillation (system extracts info) and agent-directed distillation (agent explicitly decides what to remember).
+The distinction between working memory and transactional memory matters more than it might seem. Working memory is ephemeral — lose it and the conversation restarts. Transactional memory is durable — lose it and you've lost an order, a payment, or a booking. If you're building a startup where agents take actions (not just answer questions), the transactional layer is where reliability is make-or-break.
+
+Think of it this way: a food delivery startup building an ordering agent needs all three. Long-term knowledge stores the restaurant menus, allergen info, and delivery zone data. Working memory tracks the current conversation — "the user wants Thai food, no peanuts, delivery to Shibuya." Transactional memory is where the confirmed order lives — that record needs ACID guarantees because it triggers payment processing, restaurant notifications, and driver dispatch.
+
+One concept new to me: **Vertex AI Memory Bank** and memory distillation. Instead of keeping raw conversation history (which grows linearly and gets expensive), the system distills conversations into structured memory entries — key facts, user preferences, learned patterns. Two approaches: automated distillation (system extracts info) and agent-directed distillation (agent explicitly decides what to remember). For a startup, this means your agent can "learn" that a returning customer always orders extra spicy and prefers contactless delivery — without storing every past conversation verbatim.
 
 ### Grounding: RAG Evolution
 
-The guide covers an evolution: **RAG** (retrieve from vector DB, inject into prompt) → **GraphRAG** (extend with knowledge graphs for relationship-heavy domains) → **Agentic RAG** (the agent decides when, what, and from where to retrieve, reformulating queries as needed). Plus **Google Search grounding** for real-time web information and **Google Maps grounding** for location queries.
+Grounding is about giving agents access to accurate, up-to-date information so they don't hallucinate. The guide covers an evolution across three approaches, each building on the last.
 
-### AgentOps: 4-Layer Evaluation
+**RAG (Retrieval-Augmented Generation)** is the baseline. The pipeline from the guide:
 
-The production readiness section introduces a structured evaluation framework:
+<MermaidDiagram chart={`
+flowchart LR
+    A[Source] --> B[Parsing & Enriching]
+    B --> C[Transformation\ne.g. Chunking]
+    C --> D[Embedding & Indexing]
+    D --> E[(Vector DB)]
+    E --> F[Retrieval]
+    F --> G[Ranking]
+    G --> H[Serving]
+    H --> I[LLM API]
+`} size="medium" />
 
-| Layer | What It Evaluates | How |
-|-------|-------------------|-----|
-| **Layer 1** | Individual components | Unit tests on tools, prompts, model responses |
-| **Layer 2** | Trajectory | Did the agent take the right steps? (procedural correctness) |
-| **Layer 3** | Outcome | Is the final result correct? (semantic correctness) |
-| **Layer 4** | System-level | Production monitoring, anomaly detection, cost tracking |
+Data goes in through parsing, chunking, and embedding into a vector database. At query time, the user's question is embedded, the vector DB finds semantically similar content, results are ranked, and the most relevant chunks are served to the LLM as context.
 
-The **Agent Starter Pack** bundles production infrastructure: Terraform IaC, Cloud Build CI/CD, Cloud Trace + OpenTelemetry observability, BigQuery analytics, and Vertex AI evaluation.
+<img src="/assets/images/blogs/summary-google-cloud-ai-ebooks/rag-pipeline.jpg" alt="Vertex AI RAG Engine pipeline — ingest documents through parsing, transformation, embedding into Vector DB, then query retrieval through preparing, retrieval, ranking, and serving back to LLM API" class="rounded-lg shadow-md my-6" />
+
+*Vertex AI RAG Engine pipeline and vector database use case — from the Startup Technical Guide (p.18)*
+
+The guide uses a shoe company as an example: product descriptions, warranty info, and FAQs are embedded and stored. When a customer asks about "shoes good for people with wide feet," the vector database understands that's semantically related to "extra wide," "comfortable for wide feet," and returns relevant results — something a traditional `LIKE '%good for people with wide feet%'` SQL query would miss entirely. The difference between keyword matching and meaning-based search is the core value of RAG.
+
+On Google Cloud, this maps to Vertex AI RAG Engine for the pipeline and Vertex AI Vector Search for storage and retrieval. The guide also recommends a **retrieve-and-re-rank** approach: first retrieve a larger-than-needed set of candidate documents (high recall), then pass them through a re-ranking service that filters out irrelevant or semantically opposite results (high precision).
+
+**GraphRAG** extends RAG with knowledge graphs. Instead of just matching similar phrases, the agent understands how concepts relate to each other. The guide's example: a medical AI assistant that needs to know "symptoms → causes → treatments" — not just retrieve related snippets, but traverse relationships between entities.
+
+<img src="/assets/images/blogs/summary-google-cloud-ai-ebooks/graphrag-architecture.jpg" alt="GraphRAG architecture — data ingestion subsystem with Cloud Storage, Pub/Sub, Cloud Run file processor generating embeddings and knowledge graph in Cloud Spanner, and serving subsystem with ADK agent through Vertex AI Agent Engine" class="rounded-lg shadow-md my-6" />
+
+*GraphRAG architecture on Google Cloud — from the Startup Technical Guide (p.19)*
+
+The architecture from the PDF shows two subsystems:
+- *Data ingestion*: files land in Cloud Storage → Pub/Sub queues them → Cloud Run processes them → generates both embeddings and a knowledge graph → stored in Cloud Spanner
+- *Serving*: ADK agent queries through Vertex AI Agent Engine, using both the Embedding API and Gemini API to traverse the graph and generate responses
+
+This is where BioCorteX's drug discovery use case fits. Connecting research papers, molecular structures, and clinical trial data through relationship graphs lets the agent answer questions like "what drugs interact with compound X given patient condition Y" — questions that require traversing relationships, not just finding similar documents.
+
+**Agentic RAG** is the most advanced approach. The agent becomes an active participant in retrieval rather than a passive recipient. Following the ReAct pattern, the agent can analyze a complex query, formulate a multi-step plan, and execute multiple tool calls in sequence to find the best information.
+
+The guide's example: a customer asks "Are the SolarFlare runners in stock?" The agent (1) uses semantic search via `product_lookup` to identify the specific shoe model even if the customer describes it vaguely, then (2) triggers `check_inventory` via function calling to get real-time stock data — returning "Yes, we have 82 pairs available right now." This combines retrieval (knowing what information is relevant) with actions (performing real-time operations).
+
+<img src="/assets/images/blogs/summary-google-cloud-ai-ebooks/agentic-rag-example.jpg" alt="Agentic RAG example — user asks about SolarFlare runners, agent uses product_lookup function with vector database and check_inventory with inventory system to return real-time stock count" class="rounded-lg shadow-md my-6" />
+
+*Agentic RAG real-time inventory check and retrieve-and-re-rank workflow — from the Startup Technical Guide (p.21)*
+
+The guide also covers other grounding methods beyond RAG: **Google Search grounding** (connect to real-time web knowledge), **Google Maps grounding** (location-aware responses), and **grounding with Elasticsearch** (use existing search indexes with Gemini).
+
+### AgentOps: Production Readiness
+
+The guide frames AgentOps as the adaptation of DevOps, MLOps, and DataOps principles for AI agents. The opening line of this section stuck with me: moving beyond superficial "vibe-testing" requires a rigorous engineering approach. If you've ever shipped a microservice to production, you know the gap between "it works on my machine" and "it runs reliably at scale." Agent systems have the same gap, but with an extra dimension: non-determinism.
+
+The guide introduces a **4-layer evaluation framework**:
+
+| Layer | What It Evaluates | Traditional Equivalent |
+|-------|-------------------|----------------------|
+| **Layer 1: Component** | Individual tools, prompts, model responses | Unit tests — does each function work with valid, invalid, and edge-case inputs? Same as testing a REST endpoint handler or a data parser. |
+| **Layer 2: Trajectory** | Did the agent take the right steps? (procedural correctness) | Integration tests — did the request flow through the right services in the right order? In agent terms: did the ReAct loop follow a logical Reason → Act → Observe sequence? |
+| **Layer 3: Outcome** | Is the final result correct? (semantic correctness) | End-to-end tests — is the API response correct? For agents: is the answer factually accurate, grounded, and helpful? |
+| **Layer 4: System-level** | Production behavior at scale | Production monitoring — latency percentiles, error rates, resource usage. For agents: tool failure rates, ReAct cycle counts per task, token usage, cost per interaction. |
+
+What makes this layered approach valuable is that each layer catches different failure modes. Layer 1 catches broken tools. Layer 2 catches agents that arrive at the right answer through wrong reasoning (which will fail on harder cases). Layer 3 catches hallucination and factual errors. Layer 4 catches production drift, cost spikes, and latency degradation.
+
+If you've worked with observability in traditional backend systems, the parallel is direct. Layer 4 maps to what you'd set up with Prometheus/Grafana or Datadog for a microservice — but instead of tracking HTTP status codes and p99 latency, you're tracking tool call success rates, number of ReAct cycles per task, and token consumption. ADK integrates with Cloud Trace and OpenTelemetry natively, so each Reason, Act, and Observe step in the ReAct loop becomes a trace span you can inspect — similar to how distributed tracing works across microservices with Jaeger or Zipkin.
+
+The guide emphasizes that any change to the agent's code, tools, or prompts should trigger automated evaluation against a predefined dataset. This is the CI/CD equivalent of running your test suite on every commit, but adapted for non-deterministic systems. The five-step workflow from the PDF:
+
+1. **Bootstrap** with Agent Starter Pack (generates Terraform, Cloud Build configs, evaluation datasets)
+2. **Develop** with ADK (write agent logic, tools, instructions)
+3. **Commit and automate** (Cloud Build CI/CD pipeline triggers automatically)
+4. **Evaluate continuously** (pipeline builds the agent, runs quantitative evaluation against test set)
+5. **Deploy confidently** (only validated versions reach production)
+
+The **Agent Starter Pack** bundles this into a production-ready template:
+
+| Component | Tool | Purpose |
+|-----------|------|---------|
+| Infrastructure as Code | Terraform | Provision Cloud Run, IAM, networking |
+| CI/CD | Cloud Build | Automated build, test, evaluate, deploy |
+| Observability | Cloud Trace + OpenTelemetry | Distributed tracing of agent decisions |
+| Logging | Cloud Logging | Centralized log management |
+| Analytics | BigQuery | Store and analyze agent interaction data |
+| Monitoring dashboards | Looker Studio | Visualize agent performance trends |
+| Evaluation | Vertex AI Evaluation | LLM-as-judge scoring, human-in-the-loop feedback |
+
+You can bootstrap a new project with a single command: `uvx agent-starter-pack create my-agent -a adk@gemini-fullstack`.
 
 <img src="/assets/images/blogs/summary-google-cloud-ai-ebooks/agent-starter-pack-architecture.png" alt="Agent Starter Pack - High level architecture covering evaluation, LLMs, orchestration, deployment, observability, and CI/CD" class="rounded-lg shadow-md my-6" />
 
 *Source: [Google Cloud Platform — Agent Starter Pack](https://github.com/GoogleCloudPlatform/agent-starter-pack)*
+
+The responsible AI section also covers security through Google's SAIF framework. The approach mirrors defense-in-depth from traditional security engineering: secure infrastructure (Terraform provisions hardened environments with specific IAM roles), input guardrails (validate prompts for injection attacks), output guardrails (filter agent responses for harmful content), and auditing (every agent thought and tool call is traced and logged to BigQuery for compliance reviews).
+
+### Google's Pre-built Agent Products
+
+Beyond building your own, Google offers ready-to-use agents:
+
+- **Gemini Code Assist** — AI coding assistant integrated into IDEs. Goes beyond code completion into code transformation, test generation, and code review. Handles full repository context for large-scale refactoring.
+- **Gemini Cloud Assist** — Helps with Google Cloud operations — architecture design, troubleshooting, and optimizing cloud resources. Useful for reducing the learning curve when working with unfamiliar GCP services.
+- **Google Agentspace** — Enterprise platform for governing and orchestrating an agent workforce. Includes an Agent Gallery (catalog for publishing/discovering internal agents), no-code Agent Designer, and NotebookLM Plus. Connects to 100+ enterprise data sources (Workspace, Confluence, Jira, Salesforce, ServiceNow, SharePoint, etc.).
+- **Firebase Studio** — Full-stack development workspace with an App Prototyping Agent that generates complete applications from natural language descriptions.
+- **Gemini CLI** — Open-source terminal agent with free Gemini access for developers who prefer working in the terminal.
 
 ### Customer Stories
 
@@ -144,15 +232,13 @@ Insights from 20+ contributors including Amin Vahdat (Google), Harrison Chase (L
 
 ### Infrastructure Evolution
 
-Amin Vahdat outlines five shifts: (1) **application-specific computation** — TPUs deliver ~10x efficiency over general-purpose hardware, (2) **networking specialization** — bandwidth and latency between compute nodes matter as much as compute itself, (3) **the memory wall** — memory bandwidth is the limiting factor for many AI workloads, (4) **compute packing** — power and cooling constraints drive data center design, (5) **liquid cooling** as standard for AI hardware.
-
-The takeaway for startups: plan for a future where compute is cheaper, not build around today's cost constraints.
+Amin Vahdat outlines five shifts: application-specific computation (TPUs at ~10x efficiency), networking specialization, the memory wall, compute packing under power constraints, and liquid cooling as standard. The takeaway: plan for cheaper compute, not today's cost constraints.
 
 ### Key Themes
 
-**Models improving faster than expected** — Douwe Kiela frames a "multi-LLM future" where different models excel at different tasks. Things that require complex prompt engineering today may work with simple prompts tomorrow.
+**Models improving faster than expected** — Douwe Kiela frames a "multi-LLM future" where different models excel at different tasks.
 
-**Agents as the next paradigm** — Harrison Chase identifies five areas: UX paradigms (beyond chat interfaces), human-in-the-loop patterns (a spectrum, not binary), vertical-specific agents, context learning (agents that improve from experience), and low-level frameworks. His closing: "Agents hold the key... but success depends on our guidance."
+**Agents as the next paradigm** — Harrison Chase identifies five areas: UX beyond chat, human-in-the-loop as a spectrum, vertical-specific agents, context learning, and low-level frameworks. His closing: "Agents hold the key... but success depends on our guidance."
 
 **Application layer captures value** — As models commoditize, domain expertise, data access, and UX become the differentiators.
 
