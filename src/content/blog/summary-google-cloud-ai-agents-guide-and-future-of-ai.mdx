@@ -1,0 +1,195 @@
+---
+title: "Summary after reading 'Startup Technical Guide: AI Agents' & 'Future of AI' from Google Cloud"
+description: "A comprehensive summary of two Google Cloud E-books — the Startup Technical Guide for building AI agents on Google Cloud (covering models, tools, orchestration, ADK, MCP, A2A, memory, grounding, and AgentOps), and Future of AI: Perspectives for Startups 2025 (featuring insights from 20+ industry leaders on infrastructure evolution, founder advice, and where AI is heading)."
+pubDate: "2026-04-12"
+tags:
+  [
+    "AI",
+    "AI Agents",
+    "Google Cloud",
+    "Startup",
+    "Infrastructure",
+  ]
+heroImage: "/assets/images/blogs/summary-google-cloud-ai-ebooks/hero-image.jpg"
+language: "en"
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+> **Note (April 2026):** These E-books reference the Gemini 2.5 family as the primary model. Since publication, Google has released [Gemini 3.1 Pro](https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-3-1-pro/) (February 2026) and [Gemma 4](https://gemilab.net/en/articles/gemini-updates/gemma-4-complete-guide-2026) (April 2026). The architectural concepts, protocols (MCP, A2A), and engineering practices covered in the guides remain relevant — the model layer has just gotten better.
+
+## Why These Two E-books
+
+I came across two E-books from Google Cloud — one is a technical guide for building AI agents, and the other is a collection of perspectives from 20+ industry leaders on where AI is heading. I read both back-to-back because they complement each other: one tells you **how** to build AI agents, the other tells you **why** and **where** the industry is moving.
+
+Original sources:
+
+- [Startup Technical Guide: AI Agents](https://cloud.google.com/resources/content/building-ai-agents?hl=en)
+- [Future of AI: Perspectives for Startups 2025](https://cloud.google.com/resources/content/future-of-ai-report?hl=en)
+
+---
+
+## Part 1: Startup Technical Guide — AI Agents
+
+The guide opens with Sundar Pichai noting that ADK hit over 1 million downloads in its first 4 months. Google frames the agent ecosystem around three entry points: **build your own** (using Gemini models, ADK, Vertex AI), **use pre-built agents** (Gemini Code Assist, Gemini Cloud Assist, Google Agentspace), or **bring partner agents** via open protocols.
+
+### Core Components of an AI Agent
+
+<MermaidDiagram chart={`
+flowchart TD
+    A[AI Agent] --> B[Model]
+    A --> C[Tools]
+    A --> D[Orchestration]
+    A --> E[Runtime]
+    B --> B1[Gemini 2.5 Family]
+    B --> B2[Model Garden - 200+ models]
+    C --> C1[Extensions]
+    C --> C2[Function Calling]
+    C --> C3[Data Connectors]
+    D --> D1[ReAct Pattern]
+    D --> D2[Chain of Thought]
+    E --> E1[Vertex AI Agent Engine]
+    E --> E2[Cloud Run]
+    E --> E3[GKE]
+`} />
+
+**Models** — Gemini 2.5 family as the primary choice, plus Model Garden with 200+ open and third-party models. The guidance: start with prompt engineering before investing in fine-tuning.
+
+**Tools** — The guide treats tool design as an API contract — the function signature, docstring, and return schema matter because the model uses them to decide when and how to call each tool. Three categories: extensions (pre-built integrations), function calling (model invokes your APIs), and data connectors (enterprise data sources like Confluence, Jira, SharePoint).
+
+**Orchestration** — The **ReAct (Reasoning + Acting) pattern** is the core: the model reasons about what to do, takes an action, observes the result, and repeats.
+
+**Runtime** — Vertex AI Agent Engine (managed), Cloud Run (serverless), or GKE (full control for complex multi-agent systems).
+
+### ADK: Agent Development Kit
+
+The guide goes deep on agent types in Google's ADK:
+
+<MermaidDiagram chart={`
+flowchart TD
+    A[ADK Agent Types] --> B[LlmAgent]
+    A --> C[Workflow Agents]
+    A --> D[CustomAgent]
+    B --> B1["Non-deterministic\n(Model decides next step)"]
+    C --> C1[SequentialAgent]
+    C --> C2[ParallelAgent]
+    C --> C3[LoopAgent]
+    D --> D1["BaseAgent subclass\n(Full control)"]
+`} />
+
+**LlmAgent** is non-deterministic — the model decides the execution path. **Workflow Agents** provide deterministic patterns: SequentialAgent (fixed order), ParallelAgent (concurrent tasks), LoopAgent (repeat until condition met). **CustomAgent** subclasses `BaseAgent` for full control.
+
+The recommended pattern: combine these types. Use a SequentialAgent as the outer orchestrator chaining LlmAgents for reasoning-heavy steps and workflow agents for structured steps. ADK agents deploy as FastAPI web services, containerized on Cloud Run, Vertex AI Agent Engine, or GKE.
+
+### MCP and A2A Protocols
+
+Two protocols for interoperability stood out to me.
+
+**MCP (Model Context Protocol)** works in two directions — consume external tools (connect to any MCP-compatible server) and expose your tools as MCP endpoints. The analogy: MCP is to agents what USB-C is to devices.
+
+<img src="/assets/images/blogs/summary-google-cloud-ai-ebooks/mcp-protocol-diagram.png" alt="MCP Protocol - ADK agent connecting to multiple MCP toolsets" class="rounded-lg shadow-md my-6" />
+
+*Source: [Google Developers Blog — Developer's Guide to AI Agent Protocols](https://developers.googleblog.com/en/developers-guide-to-ai-agent-protocols/)*
+
+**A2A (Agent-to-Agent)** enables cross-vendor agent communication. Each agent publishes an "agent card" (JSON descriptor of capabilities), communication happens through task objects, and it's modality agnostic — agents can exchange text, files, or streamed responses.
+
+<img src="/assets/images/blogs/summary-google-cloud-ai-ebooks/a2a-protocol-diagram.png" alt="A2A Protocol - Agent discovery via agent card and task delegation" class="rounded-lg shadow-md my-6" />
+
+*Source: [Google Developers Blog — Developer's Guide to AI Agent Protocols](https://developers.googleblog.com/en/developers-guide-to-ai-agent-protocols/)*
+
+Together, MCP and A2A create a composable agent ecosystem — an ADK agent can consume tools via MCP, delegate subtasks via A2A, and expose its own capabilities back to the network.
+
+### Data Architecture and Memory
+
+The guide breaks data into three categories:
+
+| Data Type | Purpose | Google Cloud Service |
+|-----------|---------|---------------------|
+| **Long-term knowledge** | Persistent knowledge base for RAG | Vertex AI Search, AlloyDB, Cloud SQL (pgvector), BigQuery |
+| **Working memory** | Session state, conversation context | Memorystore (Redis), Firestore |
+| **Transactional memory** | Business-critical data with ACID | Cloud SQL, Spanner, AlloyDB |
+
+One concept new to me: **Vertex AI Memory Bank** and memory distillation. Instead of keeping raw conversation history (which grows linearly), the system distills conversations into structured memory entries — key facts, user preferences, learned patterns. Two approaches: automated distillation (system extracts info) and agent-directed distillation (agent explicitly decides what to remember).
+
+### Grounding: RAG Evolution
+
+The guide covers an evolution: **RAG** (retrieve from vector DB, inject into prompt) → **GraphRAG** (extend with knowledge graphs for relationship-heavy domains) → **Agentic RAG** (the agent decides when, what, and from where to retrieve, reformulating queries as needed). Plus **Google Search grounding** for real-time web information and **Google Maps grounding** for location queries.
+
+### AgentOps: 4-Layer Evaluation
+
+The production readiness section introduces a structured evaluation framework:
+
+| Layer | What It Evaluates | How |
+|-------|-------------------|-----|
+| **Layer 1** | Individual components | Unit tests on tools, prompts, model responses |
+| **Layer 2** | Trajectory | Did the agent take the right steps? (procedural correctness) |
+| **Layer 3** | Outcome | Is the final result correct? (semantic correctness) |
+| **Layer 4** | System-level | Production monitoring, anomaly detection, cost tracking |
+
+The **Agent Starter Pack** bundles production infrastructure: Terraform IaC, Cloud Build CI/CD, Cloud Trace + OpenTelemetry observability, BigQuery analytics, and Vertex AI evaluation.
+
+<img src="/assets/images/blogs/summary-google-cloud-ai-ebooks/agent-starter-pack-architecture.png" alt="Agent Starter Pack - High level architecture covering evaluation, LLMs, orchestration, deployment, observability, and CI/CD" class="rounded-lg shadow-md my-6" />
+
+*Source: [Google Cloud Platform — Agent Starter Pack](https://github.com/GoogleCloudPlatform/agent-starter-pack)*
+
+### Customer Stories
+
+Three case studies: **BioCorteX** uses GraphRAG + A2A for drug discovery (multiple specialized agents collaborate on molecular and clinical data). **Box** uses A2A for content management workflows. **Zoom** integrates with Google Agentspace for meeting scheduling.
+
+---
+
+## Part 2: Future of AI — Perspectives for Startups 2025
+
+Insights from 20+ contributors including Amin Vahdat (Google), Harrison Chase (LangChain), Elad Gil, Jennifer Li (a16z), Arvind Jain (Glean), Douwe Kiela (Contextual AI), Edo Liberty (Pinecone), Jerry Chen (Greylock), Mayada Gonimah (Thread AI), and others.
+
+### Infrastructure Evolution
+
+Amin Vahdat outlines five shifts: (1) **application-specific computation** — TPUs deliver ~10x efficiency over general-purpose hardware, (2) **networking specialization** — bandwidth and latency between compute nodes matter as much as compute itself, (3) **the memory wall** — memory bandwidth is the limiting factor for many AI workloads, (4) **compute packing** — power and cooling constraints drive data center design, (5) **liquid cooling** as standard for AI hardware.
+
+The takeaway for startups: plan for a future where compute is cheaper, not build around today's cost constraints.
+
+### Key Themes
+
+**Models improving faster than expected** — Douwe Kiela frames a "multi-LLM future" where different models excel at different tasks. Things that require complex prompt engineering today may work with simple prompts tomorrow.
+
+**Agents as the next paradigm** — Harrison Chase identifies five areas: UX paradigms (beyond chat interfaces), human-in-the-loop patterns (a spectrum, not binary), vertical-specific agents, context learning (agents that improve from experience), and low-level frameworks. His closing: "Agents hold the key... but success depends on our guidance."
+
+**Application layer captures value** — As models commoditize, domain expertise, data access, and UX become the differentiators.
+
+### Advice for Founders
+
+The recurring recommendations across contributors:
+
+- **Move fast and ship** — over-planning is a bigger risk than under-planning
+- **Focus on niche problems** — vertical AI (legal, healthcare, logistics) beats general-purpose
+- **Value-based pricing** — price on value delivered, not inference cost
+- **Prioritize evaluations** — if you can't measure it, you can't improve it
+- **AI for revenue, not just cost reduction** — new revenue streams matter more than cost cutting
+- **Build model-agnostic** — the ability to swap models is a strategic advantage
+- **Human-in-the-loop** — knowing when to escalate to a human is a feature, not a limitation
+- **Stickiness over demos** — workflow integration that becomes embedded beats impressive one-off demos
+
+Mayada Gonimah's perspective resonated with me: building AI agent systems requires the same fundamentals as building distributed systems — managing state, handling failures, ensuring consistency, dealing with concurrent operations. The tooling differs, but the engineering discipline is the same.
+
+---
+
+## What I Took Away
+
+1. **The agent paradigm is not hype** — Google's technical guide covers ADK agent types, deployment patterns, memory distillation, 4-layer evaluation frameworks. This is engineering, not marketing.
+
+2. **Data architecture matters more than model choice** — long-term knowledge, working memory, transactional memory, memory distillation. The data layer is where most production agent systems struggle.
+
+3. **Evaluation is the underinvested layer** — Both E-books emphasize it. The technical guide has a structured 4-layer framework. Multiple founders independently said "prioritize evaluations."
+
+4. **Interoperability is a strategic bet** — MCP, A2A, multi-model support. Building for flexibility now saves painful migrations later.
+
+5. **Distributed systems skills transfer** — For backend engineers, the shift toward agents means managing state across interactions, handling tool integrations, building evaluation pipelines, and operating multi-agent systems. The skills are the same.
+
+---
+
+## Sources
+
+- [Startup Technical Guide: AI Agents — Google Cloud](https://cloud.google.com/resources/content/building-ai-agents?hl=en)
+- [Future of AI: Perspectives for Startups 2025 — Google Cloud](https://cloud.google.com/resources/content/future-of-ai-report?hl=en)
+- [Developer's Guide to AI Agent Protocols — Google Developers Blog](https://developers.googleblog.com/en/developers-guide-to-ai-agent-protocols/)
+- [Agent Starter Pack — Google Cloud Platform GitHub](https://github.com/GoogleCloudPlatform/agent-starter-pack)
