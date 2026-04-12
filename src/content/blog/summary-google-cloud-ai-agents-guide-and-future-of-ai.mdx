@@ -136,11 +136,25 @@ flowchart LR
 
 Data goes in through parsing, chunking, and embedding into a vector database. At query time, the user's question is embedded, the vector DB finds semantically similar content, results are ranked, and the most relevant chunks are served to the LLM as context.
 
-<img src="/assets/images/blogs/summary-google-cloud-ai-ebooks/rag-pipeline.jpg" alt="Vertex AI RAG Engine pipeline — ingest documents through parsing, transformation, embedding into Vector DB, then query retrieval through preparing, retrieval, ranking, and serving back to LLM API" class="rounded-lg shadow-md my-6" />
-
-*Vertex AI RAG Engine pipeline and vector database use case — from the Startup Technical Guide (p.18)*
-
 The guide uses a shoe company as an example: product descriptions, warranty info, and FAQs are embedded and stored. When a customer asks about "shoes good for people with wide feet," the vector database understands that's semantically related to "extra wide," "comfortable for wide feet," and returns relevant results — something a traditional `LIKE '%good for people with wide feet%'` SQL query would miss entirely. The difference between keyword matching and meaning-based search is the core value of RAG.
+
+<MermaidDiagram chart={`
+flowchart TB
+    subgraph VectorDB["Vector Database Use Case"]
+        direction LR
+        Q["🔍 User Query:\n'shoes good for people\nwith wide feet'"]
+        Q --> VDB[(Vector DB\nSemantic Search)]
+        VDB --> R1["extra wide"]
+        VDB --> R2["comfortable for wide feet"]
+        VDB --> R3["wide fit, extra wide"]
+    end
+
+    subgraph Traditional["Traditional SQL"]
+        direction LR
+        TQ["LIKE '%good for people\nwith wide feet%'"]
+        TQ --> TR["❌ No results"]
+    end
+`} size="medium" />
 
 On Google Cloud, this maps to Vertex AI RAG Engine for the pipeline and Vertex AI Vector Search for storage and retrieval. The guide also recommends a **retrieve-and-re-rank** approach: first retrieve a larger-than-needed set of candidate documents (high recall), then pass them through a re-ranking service that filters out irrelevant or semantically opposite results (high precision).
 
@@ -160,9 +174,23 @@ This is where BioCorteX's drug discovery use case fits. Connecting research pape
 
 The guide's example: a customer asks "Are the SolarFlare runners in stock?" The agent (1) uses semantic search via `product_lookup` to identify the specific shoe model even if the customer describes it vaguely, then (2) triggers `check_inventory` via function calling to get real-time stock data — returning "Yes, we have 82 pairs available right now." This combines retrieval (knowing what information is relevant) with actions (performing real-time operations).
 
-<img src="/assets/images/blogs/summary-google-cloud-ai-ebooks/agentic-rag-example.jpg" alt="Agentic RAG example — user asks about SolarFlare runners, agent uses product_lookup function with vector database and check_inventory with inventory system to return real-time stock count" class="rounded-lg shadow-md my-6" />
-
-*Agentic RAG real-time inventory check and retrieve-and-re-rank workflow — from the Startup Technical Guide (p.21)*
+<MermaidDiagram chart={`
+flowchart LR
+    User["👤 User:\n'Are the new SolarFlare\nrunners in stock?'"]
+    User --> F1
+    subgraph Functions
+        F1["product_lookup"]
+        F2["check_inventory"]
+    end
+    subgraph Tools
+        T1["Vector database"]
+        T2["Inventory system"]
+    end
+    F1 --> T1
+    F2 --> T2
+    Tools --> Agent
+    Agent["🤖 Agent:\n'Yes! The SolarFlare runners\nare in stock. We have 82 pairs\navailable right now.'"]
+`} size="medium" />
 
 The guide also covers other grounding methods beyond RAG: **Google Search grounding** (connect to real-time web knowledge), **Google Maps grounding** (location-aware responses), and **grounding with Elasticsearch** (use existing search indexes with Gemini).
 
