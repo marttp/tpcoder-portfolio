@@ -1,0 +1,304 @@
+---
+title: "Secure Coding Guidelines for Java Developer"
+description: "A walkthrough of secure coding practices for Java covering the full SDLC — from design to deployment. Includes real-world vulnerability case studies (Log4Shell, OGNL injection, Text4Shell, XZ Utils backdoor), code examples for input validation, SQL injection prevention, deserialization filtering, and practical takeaways for backend engineers."
+pubDate: "2026-04-12"
+tags:
+  [
+    "Java",
+    "Security",
+    "Backend",
+    "Secure Coding",
+    "Software Engineering",
+  ]
+heroImage: ""
+language: "en"
+---
+
+import SecurityCaseStudyTabs from '../../components/blog/SecurityCaseStudyTabs.astro';
+
+## Overview
+
+Security vulnerabilities are expensive. The cost goes beyond engineering hours to patch — there's the intermediate response (incident management, migration, detection), and the reputation damage that follows. The earlier we catch vulnerabilities in the SDLC, the cheaper they are to fix.
+
+In this post, I'll walk through the types of vulnerabilities we see in Java applications, where they come from, how to address them at each phase of the SDLC, and real-world cases that show why these practices matter.
+
+---
+
+## What is a Vulnerability?
+
+A vulnerability is a flaw or weakness in a system that could be exploited to violate its security policy. They can come from multiple sources:
+
+- **Design/Architecture** — faulty assumptions, missing security mechanisms
+- **Implementation** — insecure programming practices
+- **Integration/Test** — configuration errors, vulnerable third-party code
+- **Deployment/Release** — missing patches, exposed endpoints
+
+The cost of a vulnerability goes beyond the fix itself:
+
+1. **Remediation** — time and resources to fix, rebuild, and release
+2. **Intermediate response** — mitigation, detection, incident response
+3. **Reputation damage** — PR fallout, legal liability, loss of customer trust
+
+---
+
+## Secure Coding Across the SDLC
+
+Security shouldn't be an afterthought bolted on at the end. Each phase of the SDLC has its own set of practices:
+
+### Design/Architecture
+- Security training for the team
+- Threat modeling — systematically identify what can go wrong
+- Misuse cases — think about how an attacker would use the system, not just the happy path
+
+### Implementation
+- Manual code review with security focus
+- Static analysis tools (SpotBugs, SonarQube, Semgrep)
+- Follow secure coding guidelines
+
+### Integration/Test
+- Dependency checkers (OWASP Dependency-Check, Snyk)
+- Static analysis on the full codebase
+- Runtime testing and negative testing — test what the system should reject, not just what it should accept
+
+### Deployment/Release
+- Vulnerability scanning
+- Runtime monitoring (e.g., WAFs)
+- Dependency patching
+- Vulnerability remediation processes
+
+---
+
+## Oracle's Secure Coding Guidelines for Java SE
+
+Oracle maintains a set of [Secure Coding Guidelines for Java SE](https://www.oracle.com/java/technologies/javase/seccodeguide.html) that covers both general and Java-specific practices. It's a living reference that gets updated as new problems surface and new security features land (like JEP 486 to permanently disable the Security Manager).
+
+Here are the key areas worth highlighting:
+
+### 1. Input Validation
+
+Never trust input from external sources. Validate type, length, range, and format. Prefer allowlists over denylists.
+
+```java
+// Bad — denylist approach, easy to bypass
+public boolean isValidUsername(String input) {
+    // Attacker can always find characters not in the denylist
+    String[] blocked = {"<", ">", ";", "'"};
+    for (String c : blocked) {
+        if (input.contains(c)) return false;
+    }
+    return true;
+}
+
+// Good — allowlist approach, only permit known safe patterns
+public boolean isValidUsername(String input) {
+    // Only allow alphanumeric and underscore, 3-20 chars
+    return input != null && input.matches("^[a-zA-Z0-9_]{3,20}$");
+}
+```
+
+Also normalize data before validation — attackers can use Unicode normalization tricks or path traversal to bypass checks:
+
+```java
+// Normalize path before validation to prevent traversal
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+public Path resolveSafePath(String userInput, Path baseDir) {
+    Path resolved = baseDir.resolve(userInput).normalize();
+
+    // Verify the resolved path is still within the base directory
+    if (!resolved.startsWith(baseDir)) {
+        throw new SecurityException("Path traversal detected: " + userInput);
+    }
+    return resolved;
+}
+```
+
+### 2. Injection and Inclusion
+
+This is the category behind most high-profile vulnerabilities. The core problem: treating untrusted data as executable instructions.
+
+**SQL Injection:**
+
+```java
+// Bad — string concatenation, vulnerable to SQL injection
+public User findUser(String username) {
+    String query = "SELECT * FROM users WHERE name = '" + username + "'";
+    // Attacker input: ' OR '1'='1 → returns all users
+    return jdbcTemplate.queryForObject(query, userRowMapper);
+}
+
+// Good — parameterized query, input is treated as data, not code
+public User findUser(String username) {
+    String query = "SELECT * FROM users WHERE name = ?";
+    return jdbcTemplate.queryForObject(query, userRowMapper, username);
+}
+```
+
+**OS Command Injection:**
+
+```java
+// Bad — passing user input directly to shell
+public void convertFile(String filename) {
+    // Attacker input: "file.txt; rm -rf /" → executes destructive command
+    Runtime.getRuntime().exec("convert " + filename);
+}
+
+// Good — use ProcessBuilder with argument list, no shell interpretation
+public void convertFile(String filename) {
+    ProcessBuilder pb = new ProcessBuilder("convert", filename);
+    pb.start();
+}
+```
+
+**XML External Entity (XXE) Prevention:**
+
+```java
+// Disable external entities to prevent XXE attacks
+import javax.xml.parsers.DocumentBuilderFactory;
+
+DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+// Disable external entities and DTDs entirely
+factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+```
+
+### 3. Serialization and Deserialization
+
+Java's native serialization has been a recurring source of critical vulnerabilities. The guideline is straightforward: **avoid Java serialization where possible**. Use JSON, Protocol Buffers, or other safe formats instead.
+
+If you must use serialization, use `ObjectInputFilter` (introduced via JEP 290) to restrict what classes can be deserialized:
+
+```java
+import java.io.ObjectInputFilter;
+import java.io.ObjectInputStream;
+import java.io.ByteArrayInputStream;
+
+public Object deserializeSafely(byte[] data) throws Exception {
+    ByteArrayInputStream bis = new ByteArrayInputStream(data);
+    ObjectInputStream ois = new ObjectInputStream(bis);
+
+    // Only allow specific classes to be deserialized
+    ObjectInputFilter filter = ObjectInputFilter.Config.createFilter(
+        "com.myapp.dto.*;!*"  // Allow only classes in com.myapp.dto, reject everything else
+    );
+    ois.setObjectInputFilter(filter);
+
+    return ois.readObject();
+}
+```
+
+The `!*` at the end is important — it means "reject everything not explicitly allowed." Without it, any class could still be deserialized.
+
+### 4. Mutability and Defensive Copies
+
+Don't expose internal mutable state. Return defensive copies to prevent callers from modifying your object's internals:
+
+```java
+// Bad — exposes internal mutable list
+public class UserRoles {
+    private final List<String> roles;
+
+    public UserRoles(List<String> roles) {
+        this.roles = roles;  // Caller can still modify the original list
+    }
+
+    public List<String> getRoles() {
+        return roles;  // Caller can modify internals via this reference
+    }
+}
+
+// Good — defensive copies on input and output
+public class UserRoles {
+    private final List<String> roles;
+
+    public UserRoles(List<String> roles) {
+        this.roles = List.copyOf(roles);  // Immutable copy on construction
+    }
+
+    public List<String> getRoles() {
+        return Collections.unmodifiableList(roles);  // Unmodifiable view on access
+    }
+}
+```
+
+### 5. Accessibility and Extensibility
+
+Limit the attack surface by minimizing what's accessible:
+
+```java
+// Prefer final classes to prevent malicious subclassing
+public final class SecurityConfig {
+    // Mark fields private, methods private where possible
+    private final String secretKey;
+
+    // Package-private constructor — only accessible within the same package
+    SecurityConfig(String secretKey) {
+        this.secretKey = secretKey;
+    }
+}
+```
+
+### 6. JEP 486: Security Manager Removal
+
+The Security Manager has been deprecated for removal (JEP 486, finalized in JDK 24). The guidelines now recommend:
+- Do not rely on `SecurityManager` for sandboxing
+- Use OS-level isolation (containers, process-level sandboxing) instead
+- Refactor code that uses `AccessController.doPrivileged`
+
+---
+
+## OWASP Top 10 (2025)
+
+The [OWASP Top 10](https://owasp.org/Top10/2025/) is a standard reference for the most critical web application security risks. The 2025 version has notable changes from 2021 — Supply Chain is now its own category, Security Misconfiguration moved up to #2, and there's a new entry for Mishandling of Exceptional Conditions.
+
+Here's a summary and how each one relates to Java:
+
+| # | Category | Java Context |
+|---|----------|-------------|
+| **A01** Broken Access Control | Missing or misconfigured `@PreAuthorize` / Spring Security rules, IDOR vulnerabilities |
+| **A02** Security Misconfiguration | Exposed Spring Actuator endpoints, verbose error pages, default Tomcat settings |
+| **A03** Software Supply Chain Failures | Log4Shell (Log4j), compromised Maven/Gradle dependencies, unsigned artifacts, XZ Utils-style attacks |
+| **A04** Cryptographic Failures | Using deprecated `MD5` / `SHA-1`, hardcoded keys, weak `javax.crypto` usage |
+| **A05** Injection | Raw JDBC queries without `PreparedStatement`, unsafe JPQL, OGNL/SpEL evaluation on user input |
+| **A06** Insecure Design | No threat modeling, missing rate limiting in controllers, no input validation strategy |
+| **A07** Authentication Failures | Weak `HttpSession` handling, missing brute-force protection, improper JWT validation |
+| **A08** Software or Data Integrity Failures | Java `ObjectInputStream` deserialization attacks, unsigned updates, CI/CD pipeline compromise |
+| **A09** Security Logging and Alerting Failures | Missing security event logging via SLF4J/Logback, no alerting on suspicious activity |
+| **A10** Mishandling of Exceptional Conditions | Leaking stack traces to clients, catching generic `Exception`, unchecked error paths exposing sensitive data |
+
+A03 (Software Supply Chain Failures) and A08 (Software or Data Integrity Failures) are especially critical in the Java ecosystem due to its heavy dependency tree and the history of deserialization vulnerabilities. Tools like OWASP Dependency-Check and Snyk help catch these early.
+
+If you look at the case studies below, you'll see that most of them map directly to A03, A05, and A08.
+
+---
+
+## Real-World Vulnerability Case Studies
+
+These cases illustrate why secure coding guidelines exist. Each one maps directly back to a guideline violation. Click through each tab to see the details:
+
+<SecurityCaseStudyTabs />
+
+---
+
+## Common Pattern Across All Cases
+
+Most of these vulnerabilities share a root cause: **untrusted input treated as executable instructions**. Whether it's JNDI lookups in log messages, OGNL expressions in HTTP parameters, string interpolation with script prefixes, or deserialized Java objects — the pattern is the same.
+
+The fix is also consistent:
+1. **Validate input** — allowlist, not denylist
+2. **Separate data from code** — parameterized queries, safe APIs, avoid expression evaluation on user input
+3. **Filter deserialization** — use `ObjectInputFilter` or avoid Java serialization entirely
+4. **Manage dependencies** — audit, patch, verify integrity
+5. **Monitor in production** — WAFs, vulnerability scanning, anomaly detection
+
+---
+
+## Takeaways
+
+1. Apply secure coding practices to eliminate and minimize the impact of vulnerabilities
+2. Consider security throughout the SDLC — not just at the implementation phase
+3. Follow the [Secure Coding Guidelines for Java SE](https://www.oracle.com/java/technologies/javase/seccodeguide.html) as a living reference
+4. Keep dependencies updated and audit them regularly
+5. The cost of prevention is always lower than the cost of remediation
