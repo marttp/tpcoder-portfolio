@@ -1,0 +1,284 @@
+---
+title: "[Book Review] Communication Patterns — by Jacqui Read (O'Reilly)"
+description: "My takeaways from reading Communication Patterns by Jacqui Read — a book that covers visual communication, written and verbal techniques, knowledge management, documentation as code, and remote communication patterns for software architects and engineers."
+pubDate: "2026-04-13"
+tags:
+  [
+    "Book Review",
+    "Communication",
+    "Software Architecture",
+    "Documentation",
+    "Remote Work",
+  ]
+language: "en"
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+## Why I Picked Up This Book
+
+As a software engineer who has worked across teams in different countries and time zones, I have always felt that communication is one of those skills that everyone assumes they already have — until something goes wrong. A diagram that nobody understands. A meeting that could have been an email. A remote colleague left out of a decision.
+
+When I found *Communication Patterns* by Jacqui Read (O'Reilly, 2023), the title itself caught my attention. The word "patterns" immediately reminded me of design patterns in software, and the book delivers on that promise: it treats communication as something you can study, practice, and improve systematically — with patterns (good practices) and antipatterns (things to avoid).
+
+The book is organized into four parts across 15 chapters, plus an appendix on ADR templates. It uses a running example of a fictional company called "Polyglot Media" throughout all chapters, which keeps the examples consistent and grounded.
+
+---
+
+## Part I — Visual Communication
+
+### Chapter 1: The Essentials
+
+The book opens with a pattern that should be obvious but is often neglected: **Know Your Audience**. Before you create any diagram, document, or presentation, ask yourself who will consume it. A C-level executive and a backend developer need entirely different levels of detail from the same system diagram.
+
+There is also an emphasis on starting with the **big picture first** — giving context before diving into details. This is something I see go wrong all the time in architecture reviews: someone jumps straight into a component-level diagram without first explaining how that component fits into the overall system.
+
+The chapter introduces the concept of **patterns** and **antipatterns** as the core structure of the book. Patterns are recommended practices, and antipatterns are common mistakes. One antipattern that resonated with me is **Mixing Levels of Abstraction** — for example, showing a high-level system overview and individual database tables in the same diagram. The reader has to mentally jump between zoom levels, which makes the diagram harder to process.
+
+### Chapter 2: Clarify the Clutter
+
+This chapter focuses on reducing noise in diagrams. The antipattern **Boxes in Boxes** describes the common habit of nesting containers inside containers, which looks organized but often creates more confusion than clarity. Another one, **Relationship Spiderweb**, is about diagrams where lines cross in every direction — we have all seen (and probably created) those.
+
+On the patterns side, **Appropriate Labels** reminds us that every element in a diagram should have a clear, descriptive label — not just "Service A" or "Module X." And **Clear Relationships** focuses on making the connections between elements unambiguous. Each line should have direction, and ideally a label explaining what the relationship represents.
+
+The author also introduces a helpful concept: **Match Diagram Flow** to your audience's reading direction. For left-to-right readers, a flow diagram should generally go left to right or top to bottom. Going against this expectation forces the reader to work harder to understand the flow.
+
+### Chapter 3: Accessibility
+
+This was a chapter I did not expect in a software architecture book, and I appreciated it. The author argues that accessibility in communication is about ensuring your audience — all of them — can understand your message.
+
+The antipattern **Relying on Color to Communicate** is a good example. Around 4.5% of the population has some form of color blindness. If your diagram uses red vs. green to distinguish between healthy and unhealthy services, some of your audience will not be able to tell the difference. The book recommends using patterns, shapes, or text labels alongside color — never color alone.
+
+There is also coverage of **contrast ratios** (following WCAG guidelines), providing alt text for images in digital documents, and considering different mediums — a diagram that looks great on your 32-inch monitor might be unreadable when projected on a screen in a conference room or viewed on a phone.
+
+### Chapter 4: Narrative
+
+Chapter 4 explores the idea that diagrams tell a story. The antipattern **Using Icons to Convey Meaning** warns against relying on small icons (like a cloud icon for "cloud services" or a lock for "security") without text explanations. Icons are ambiguous — they can mean different things to different people. The safe approach is to always pair icons with text.
+
+The pattern **Match Diagram Flow** appears here again in the context of narrative flow. Your diagrams should guide the reader through a sequence, with a clear starting point, progression, and endpoint. Random placement of elements forces the reader to reconstruct the story themselves.
+
+### Chapter 5: Notation
+
+This chapter covers formal notation systems, with a focus on UML, C4 model, and ArchiMate. The antipattern **Using UML for UML's Sake** was satisfying to read. I have seen many teams adopt UML because "it is the standard" without considering whether their audience understands UML notation. If your stakeholders are product managers or business analysts, a complex UML sequence diagram might communicate less than a simple hand-drawn flow.
+
+The **C4 model** (Context, Container, Component, Code — by Simon Brown) gets extensive coverage as a practical alternative. I found the book's treatment of C4 compelling: it provides just enough structure without drowning you in notation rules. The four zoom levels map naturally to how we think about systems.
+
+<MermaidDiagram chart={`
+flowchart TB
+    subgraph C4["C4 Model — Four Zoom Levels"]
+        direction TB
+        L1["Level 1: System Context\n(How your system fits in the world)"]
+        L2["Level 2: Container\n(Applications, databases, etc.)"]
+        L3["Level 3: Component\n(Major building blocks inside a container)"]
+        L4["Level 4: Code\n(Class-level detail — use sparingly)"]
+        L1 --> L2 --> L3 --> L4
+    end
+    style C4 fill:#f0f0ff,stroke:#6666cc
+    style L1 fill:#e8e8ff,stroke:#6666cc
+    style L2 fill:#d8d8ff,stroke:#6666cc
+    style L3 fill:#c8c8ff,stroke:#6666cc
+    style L4 fill:#b8b8ff,stroke:#6666cc
+`} />
+
+The antipattern **Mixing Behavior and Structure** warns against combining structural diagrams (what things are) with behavioral diagrams (how things interact) in the same view. Keep them separate to avoid overloading the reader.
+
+### Chapter 6: Composition
+
+Composition is about how you arrange elements in your diagrams. The antipattern **Going Against Expectations** explains what happens when you break common conventions — for example, placing a database icon at the top of a diagram and user-facing components at the bottom. People have built-in expectations about spatial arrangement, and violating those expectations increases cognitive load.
+
+Another antipattern, **Illegible Diagrams**, sounds like it should be obvious, but the author makes a compelling case that many diagrams in the wild fail basic readability tests — too-small text, overlapping elements, poor contrast. If you have to squint, the diagram has failed.
+
+The chapter also covers **Misleading Composition** — diagrams where the visual arrangement implies relationships or hierarchies that do not exist. For example, placing two boxes close together can imply they are related when they might not be.
+
+The pattern **Create Visual Balance** suggests distributing elements evenly across the available space, using alignment and grouping to create a clean visual structure.
+
+---
+
+## Part II — Multimodal Communication
+
+### Chapter 7: Written Communication
+
+This chapter connects visual communication with written communication. The antipattern **Acronym Hell** hits close to home — I have seen internal documents where every other word is an acronym, and newcomers need a glossary just to read the first paragraph.
+
+The pattern **Balance Text** advocates for pairing diagrams with just enough text to provide context without overwhelming the reader. A diagram without any text leaves the reader guessing at meaning. Too much text turns the diagram into decoration.
+
+**Simple Language** is another pattern I appreciated. Use short sentences. Use strong verbs. Avoid jargon when simpler words exist. This does not mean dumbing things down — it means being precise and accessible at the same time.
+
+The book introduces **Structured Writing** using the Minto Pyramid Principle: lead with the key message first, then provide supporting arguments, then data. This is the opposite of how many engineers naturally write (building up to a conclusion), but the key-message-first approach is far more effective for busy readers.
+
+### Chapter 8: Verbal Communication
+
+Chapter 8 moves into spoken communication — presentations, meetings, and conversations. The book covers the **rhetoric triangle** (ethos, pathos, logos) from Aristotle: establishing credibility (ethos), connecting emotionally (pathos), and using logic and evidence (logos). All three are needed for effective persuasion.
+
+The section on **argumentation** stood out. When proposing a technical decision (say, migrating to a new database), you need more than technical merit — you need to frame it in terms your audience cares about. For a CTO, that might be cost and risk. For the engineering team, that might be developer experience and operational burden.
+
+Architecture Decision Records (ADRs) get significant attention as a tool for documenting and communicating decisions. The book recommends ADRs as a way to capture not just *what* was decided but *why* — the context, constraints, options considered, and trade-offs accepted. This creates a decision trail that is invaluable for future team members.
+
+<MermaidDiagram chart={`
+flowchart TB
+    subgraph ADR["ADR Structure"]
+        direction TB
+        T["Title: Statement of Decision"]
+        S["Status: Draft / Decided / Superseded"]
+        C["Context: Why the decision is needed"]
+        EC["Evaluation Criteria"]
+        O["Options: Scored against criteria"]
+        D["Decision: What was chosen and why"]
+        I["Implications: Consequences"]
+        T --> S --> C --> EC --> O --> D --> I
+    end
+    style ADR fill:#f0fff0,stroke:#66cc66
+    style T fill:#e0ffe0,stroke:#66cc66
+    style S fill:#e0ffe0,stroke:#66cc66
+    style C fill:#e0ffe0,stroke:#66cc66
+    style EC fill:#e0ffe0,stroke:#66cc66
+    style O fill:#e0ffe0,stroke:#66cc66
+    style D fill:#e0ffe0,stroke:#66cc66
+    style I fill:#e0ffe0,stroke:#66cc66
+`} />
+
+### Chapter 9: Rhetoric
+
+This chapter goes deeper into persuasion techniques. It covers **cognitive biases** that affect decision-making — confirmation bias, sunk cost fallacy, groupthink, and others. Being aware of these biases in yourself and your audience can improve how you communicate technical proposals.
+
+The concept of **acceptance prophecy** is introduced: if you go into a meeting expecting your idea to be rejected, your body language and tone will reflect that expectation, making rejection more likely. Conversely, communicating with confidence (while remaining open to feedback) increases the chance of a positive outcome.
+
+The chapter also covers handling different meeting dynamics — how to manage disagreement, how to facilitate discussions where not everyone speaks up, and how to ensure decisions are reached rather than deferred. These are practical skills that many technical people never explicitly learn.
+
+---
+
+## Part III — Knowledge Management
+
+### Chapter 10: Knowledge Management
+
+Part III shifts from creating communications to managing knowledge as an organizational asset. This chapter covers how to capture, store, and share knowledge effectively across teams and organizations.
+
+The book distinguishes between **tacit knowledge** (things people know but have not written down) and **explicit knowledge** (documented information). A significant challenge for any organization is converting tacit knowledge into explicit knowledge — especially before key people leave the team.
+
+Knowledge graphs, wikis, and other knowledge management systems are discussed as tools to make information discoverable. The author emphasizes that knowledge management is not a one-time project but an ongoing practice: information needs to be kept up to date, and outdated information can be worse than no information at all.
+
+### Chapter 11: Architecture Knowledge Management
+
+Chapter 11 applies knowledge management specifically to software architecture. This is where ADRs (introduced in Chapter 8) get a deeper treatment. The book covers the full lifecycle of an ADR — from draft to decided to superseded — and how ADRs form a decision trail that helps teams understand why the system looks the way it does.
+
+**Architecture characteristics** (sometimes called non-functional requirements or quality attributes) get detailed coverage. The book uses a worksheet approach to define and prioritize these characteristics, which I found practical. Instead of vaguely saying "the system should be scalable," you define what scalability means for your specific context, how to measure it, and its priority relative to other characteristics.
+
+The concept of a **just-in-time architecture** is introduced — creating architecture documentation and decisions only when needed, rather than trying to document everything upfront. This aligns well with Agile practices and avoids creating documents that become outdated before anyone reads them.
+
+### Chapter 12: Effective Practices
+
+This chapter ties together practical approaches for managing knowledge effectively. **Documentation as Code** is a key pattern — treating documentation the same way you treat code: version controlled, reviewed, tested, and automatically deployed.
+
+<MermaidDiagram chart={`
+flowchart LR
+    subgraph DAC["Documentation as Code"]
+        direction LR
+        A["Authoring"] --> C["Conversion"] --> P["Publishing"]
+        A1["Writing"] --> A
+        A2["Reviewing"] --> A
+        A3["Verification"] --> A
+        C1["HTML / DocBook / ..."] --> C
+        P1["Build"] --> P
+        P2["Deploy"] --> P
+    end
+    style DAC fill:#fff0f0,stroke:#cc6666
+    style A fill:#ffe0e0,stroke:#cc6666
+    style C fill:#ffe0e0,stroke:#cc6666
+    style P fill:#ffe0e0,stroke:#cc6666
+`} size="medium" />
+
+The book recommends using text-based diagram tools like Mermaid or PlantUML so that diagrams can be version controlled alongside documentation. This resonates with my own experience — I have recently converted image-based diagrams to Mermaid in my own blog posts for this very reason.
+
+**Automatically Generated Documentation** is covered with a balanced perspective. Auto-generated API docs (Swagger, Doxygen, etc.) are useful for code-level documentation, but they cannot tell you *why* something was designed a certain way. You still need human-written documentation for context and business reasoning.
+
+The chapter also touches on AI-generated documentation — noting that while AI tools can help, the output needs careful review since AI can "confidently produce convincing outputs that are completely wrong."
+
+---
+
+## Part IV — Communicating Remotely
+
+### Chapter 13: Remote Time
+
+Part IV addresses communication in distributed teams. Chapter 13 is entirely about time — time zones, working patterns, and energy management.
+
+The advice on **time zones** is deeply practical. Always specify which time zone you mean. When communicating across multiple time zones, use the *recipient's* time zone rather than your own (or use a common reference like UTC). The book covers daylight saving time complexities, noting that different countries switch at different dates, and some regions within the same country may or may not observe DST at all.
+
+**Respect Working Patterns** is a section I wish every manager would read. It covers communicating availability, defending part-time hours, planning for holidays (which vary by country and region), and recognizing that colleagues have personal commitments that affect their schedules.
+
+The section on **Energy and Productivity** covers circadian rhythms and their impact on communication. Schedule high-energy activities (brainstorming, decision-making) during peak hours, and low-energy tasks (reading emails, status updates) during low-energy periods. Control notifications rather than letting them control you. Block focus time on your calendar.
+
+### Chapter 14: Remote Principles
+
+This chapter explores the principles behind effective remote communication. The key insight is that remote meetings drain more energy than in-person ones — Stanford research on "Zoom fatigue" explains why: close-up eye contact is intense and unnatural, seeing yourself constantly is fatiguing, video calls restrict mobility, and cognitive load is much higher when you cannot passively read body language.
+
+The section on **synchronous versus asynchronous** communication is one of the most useful parts of the book. The author provides clear guidelines for when to use each:
+
+- **Synchronous** (meetings, calls): Best for building rapport, generating ideas, and making final decisions.
+- **Asynchronous** (email, documents, wikis): Best for reporting progress, gathering feedback, and disseminating information.
+
+<MermaidDiagram chart={`
+flowchart TB
+    subgraph COMM["When to Use Sync vs Async"]
+        direction TB
+        subgraph SYNC["Synchronous"]
+            S1["Build rapport / team-building"]
+            S2["Generate ideas / brainstorm"]
+            S3["Make final decisions"]
+            S4["Resolve urgent issues"]
+        end
+        subgraph ASYNC["Asynchronous"]
+            A1["Report progress / status updates"]
+            A2["Gather feedback on documents"]
+            A3["Disseminate information"]
+            A4["Work across distant time zones"]
+        end
+    end
+    style SYNC fill:#e8f4e8,stroke:#66aa66
+    style ASYNC fill:#e8e8f4,stroke:#6666aa
+`} />
+
+The concept of an **asynchronous sandwich** is memorable: wrap synchronous events with asynchronous communication before and after. Before a meeting, share context and pre-work asynchronously. After the meeting, document decisions and action items asynchronously. The synchronous meeting itself is the filling.
+
+**Remote-First vs. Remote-Friendly** is an important distinction. Remote-first organizations optimize processes and decisions for remote work — all employees are on an equal footing regardless of location. Remote-friendly organizations allow remote work but are fundamentally office-centric, which often leaves remote workers at a disadvantage. The book argues that remote-first benefits everyone, including those who work from an office.
+
+### Chapter 15: Remote Channels
+
+The final chapter covers the practical channels of remote communication. **Symmetrical Email** is a pattern for structuring email communication: set expectations about urgency in the subject line, clearly state who needs to respond and by when, and establish shared standards for email usage.
+
+The subject line techniques are practical. For example:
+- `[URGENT, response required by 1 p.m. CET today]` for urgent requests
+- `[FYI]` for informational messages that require no response
+- `[Response required - Libby]` when only a specific person needs to act
+
+The section on **Online Presentations** covers adapting presentation techniques for remote audiences. Key recommendations: use more slides with less content per slide (to maintain pace and attention), use presenter mode so your face is visible alongside slides, plan breaks every 45-60 minutes, and focus on the challenge or pain point you are addressing rather than starting with an agenda slide.
+
+**Remote Tools and Governance** covers the practical reality of managing the proliferation of software tools in distributed organizations. The concept of **shadow IT** — software that the company does not know about or control — is a security and compliance risk that grows with remote work. The book recommends creating an application portfolio, auditing tools regularly, and using the **strangler fig pattern** for tool migration (gradually replacing old tools with new ones).
+
+The book also introduces the concept of a **technology radar** (inspired by Thoughtworks) for communicating which tools are adopted, being trialed, being assessed, or on hold within the organization.
+
+---
+
+## My Overall Impression
+
+**Rating: 4/5**
+
+What I liked:
+- The pattern/antipattern structure makes the content immediately actionable. You can identify problems in your own communication practices and look up the corresponding pattern for improvement.
+- The running "Polyglot Media" example keeps the content grounded and consistent across all chapters.
+- The book covers communication at multiple levels — from individual diagram design to organizational knowledge management to distributed team practices.
+- The accessibility chapter is something I had not seen in other software architecture books, and it made me reconsider how I use color in my own diagrams.
+- The ADR coverage is the best I have read — practical, structured, and tied to a clear workflow.
+
+What could be better:
+- Part IV (Communicating Remotely) is thorough but covers some ground that feels more like general remote work advice than communication-specific patterns. Some sections on time zones and holidays, while useful, could have been more concise.
+- The book leans heavily toward software architects and technical leads as the primary audience. Individual contributors might find some chapters (like Knowledge Management and Tool Governance) less directly applicable to their day-to-day work.
+
+## Who Should Read This
+
+This book is most useful for **software architects**, **tech leads**, and **engineering managers** — anyone who spends a significant portion of their time communicating technical ideas to different audiences. If you regularly create architecture diagrams, write technical documents, run meetings, or work in distributed teams, you will find actionable techniques here.
+
+Even if you consider yourself a good communicator, the pattern/antipattern format helps you name and recognize things you might be doing unconsciously — both the good habits and the bad ones.
+
+---
+
+*Communication Patterns* by Jacqui Read is published by O'Reilly Media (2023).
