@@ -136,25 +136,11 @@ flowchart LR
 
 Data เข้าผ่าน parsing, chunking, และ embedding เข้า vector database เวลา query ก็แปลงคำถามของ user เป็น embedding แล้ว vector DB หา content ที่คล้ายกัน rank ผลลัพธ์ แล้วส่ง chunks ที่เกี่ยวข้องที่สุดเข้า LLM เป็น context
 
+<img src="/assets/images/blogs/summary-google-cloud-ai-ebooks/rag-pipeline.jpg" alt="Vertex AI RAG Engine pipeline" class="rounded-lg shadow-md my-6" />
+
+*Vertex AI RAG Engine pipeline และ vector database use case — จาก Startup Technical Guide (p.18)*
+
 Guide ยกตัวอย่างบริษัทรองเท้า: product descriptions, warranty info และ FAQs ถูก embedded และเก็บไว้ เมื่อลูกค้าถามเรื่อง "รองเท้าสำหรับคนเท้ากว้าง" vector database เข้าใจว่า semantically เกี่ยวข้องกับ "extra wide" "comfortable for wide feet" แล้วส่งผลลัพธ์ที่เกี่ยวข้อง — ซึ่ง traditional `LIKE '%good for people with wide feet%'` SQL query จะหาไม่เจอเลย ความแตกต่างระหว่าง keyword matching กับ meaning-based search คือ core value ของ RAG
-
-<MermaidDiagram chart={`
-flowchart TB
-    subgraph VectorDB["Vector Database Use Case"]
-        direction LR
-        Q["🔍 User Query:\n'รองเท้าสำหรับคนเท้ากว้าง'"]
-        Q --> VDB[(Vector DB\nSemantic Search)]
-        VDB --> R1["extra wide"]
-        VDB --> R2["comfortable for wide feet"]
-        VDB --> R3["wide fit, extra wide"]
-    end
-
-    subgraph Traditional["Traditional SQL"]
-        direction LR
-        TQ["LIKE '%good for people\nwith wide feet%'"]
-        TQ --> TR["❌ No results"]
-    end
-`} size="medium" />
 
 บน Google Cloud นี้ map กับ Vertex AI RAG Engine สำหรับ pipeline และ Vertex AI Vector Search สำหรับ storage กับ retrieval ครับ Guide ยังแนะนำ **retrieve-and-re-rank** approach: ดึง candidate documents มาเยอะกว่าที่ต้องการก่อน (high recall) แล้วส่งผ่าน re-ranking service ที่กรอง irrelevant หรือ semantically opposite results ออก (high precision)
 
@@ -174,23 +160,9 @@ Architecture จาก PDF แสดง 2 subsystems:
 
 ตัวอย่างจาก guide: ลูกค้าถาม "SolarFlare runners มีของไหม?" Agent (1) ใช้ semantic search ผ่าน `product_lookup` เพื่อระบุรุ่นรองเท้าแม้ลูกค้าอธิบายคลุมเครือ แล้ว (2) trigger `check_inventory` ผ่าน function calling เพื่อดึง real-time stock data — ตอบว่า "ใช่ครับ มี 82 คู่" การผสม retrieval (รู้ว่าข้อมูลอะไรเกี่ยวข้อง) กับ actions (ดำเนินการ real-time) ทำให้ agent มีประโยชน์ขึ้นมาก
 
-<MermaidDiagram chart={`
-flowchart LR
-    User["👤 User:\n'SolarFlare runners\nมีของไหม?'"]
-    User --> F1
-    subgraph Functions
-        F1["product_lookup"]
-        F2["check_inventory"]
-    end
-    subgraph Tools
-        T1["Vector database"]
-        T2["Inventory system"]
-    end
-    F1 --> T1
-    F2 --> T2
-    Tools --> Agent
-    Agent["🤖 Agent:\n'ใช่ครับ SolarFlare runners\nมีของ เหลือ 82 คู่\nพร้อมส่งเลยครับ'"]
-`} size="medium" />
+<img src="/assets/images/blogs/summary-google-cloud-ai-ebooks/agentic-rag-example.jpg" alt="Agentic RAG example" class="rounded-lg shadow-md my-6" />
+
+*Agentic RAG real-time inventory check — จาก Startup Technical Guide (p.21)*
 
 Guide ยังครอบคลุม grounding methods อื่นนอกจาก RAG: **Google Search grounding** (เชื่อมกับ real-time web knowledge), **Google Maps grounding** (location-aware responses), และ **grounding with Elasticsearch** (ใช้ existing search indexes กับ Gemini)
 
