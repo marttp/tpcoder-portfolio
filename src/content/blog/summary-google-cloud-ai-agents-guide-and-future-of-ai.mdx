@@ -101,15 +101,19 @@ Together, MCP and A2A create a composable agent ecosystem — an ADK agent can c
 
 ### Data Architecture and Memory
 
-The guide breaks data into three categories:
+This section was one of the most practical parts of the guide. It breaks data into three categories based on how agents use it — and the distinctions matter a lot when you're building agents that go beyond Q&A into taking actions with real consequences.
 
-| Data Type | Purpose | Google Cloud Service |
-|-----------|---------|---------------------|
-| **Long-term knowledge** | Persistent knowledge base for RAG | Vertex AI Search, AlloyDB, Cloud SQL (pgvector), BigQuery |
-| **Working memory** | Session state, conversation context | Memorystore (Redis), Firestore |
-| **Transactional memory** | Business-critical data with ACID | Cloud SQL, Spanner, AlloyDB |
+| Data Type | Purpose | Google Cloud Service | Real-World Example |
+|-----------|---------|---------------------|-------------------|
+| **Long-term knowledge** | Persistent knowledge base for RAG | Vertex AI Search, AlloyDB, Cloud SQL (pgvector), BigQuery | A customer support agent retrieves product documentation, past incident reports, and troubleshooting guides to answer tickets |
+| **Working memory** | Session state, conversation context | Memorystore (Redis), Firestore | A shopping assistant remembers what items a user has been browsing during a session, their size preferences, and what they've already rejected |
+| **Transactional memory** | Business-critical data with ACID | Cloud SQL, Spanner, AlloyDB | A booking agent places a hotel reservation — this needs to be durable, consistent, and never lost even if the agent session crashes |
 
-One concept new to me: **Vertex AI Memory Bank** and memory distillation. Instead of keeping raw conversation history (which grows linearly), the system distills conversations into structured memory entries — key facts, user preferences, learned patterns. Two approaches: automated distillation (system extracts info) and agent-directed distillation (agent explicitly decides what to remember).
+The distinction between working memory and transactional memory matters more than it might seem. Working memory is ephemeral — lose it and the conversation restarts. Transactional memory is durable — lose it and you've lost an order, a payment, or a booking. If you're building a startup where agents take actions (not just answer questions), the transactional layer is where reliability is make-or-break.
+
+Think of it this way: a food delivery startup building an ordering agent needs all three. Long-term knowledge stores the restaurant menus, allergen info, and delivery zone data. Working memory tracks the current conversation — "the user wants Thai food, no peanuts, delivery to Shibuya." Transactional memory is where the confirmed order lives — that record needs ACID guarantees because it triggers payment processing, restaurant notifications, and driver dispatch.
+
+One concept new to me: **Vertex AI Memory Bank** and memory distillation. Instead of keeping raw conversation history (which grows linearly and gets expensive), the system distills conversations into structured memory entries — key facts, user preferences, learned patterns. Two approaches: automated distillation (system extracts info) and agent-directed distillation (agent explicitly decides what to remember). For a startup, this means your agent can "learn" that a returning customer always orders extra spicy and prefers contactless delivery — without storing every past conversation verbatim.
 
 ### Grounding: RAG Evolution
 
@@ -132,6 +136,16 @@ The **Agent Starter Pack** bundles production infrastructure: Terraform IaC, Clo
 
 *Source: [Google Cloud Platform — Agent Starter Pack](https://github.com/GoogleCloudPlatform/agent-starter-pack)*
 
+### Google's Pre-built Agent Products
+
+Beyond building your own, Google offers ready-to-use agents:
+
+- **Gemini Code Assist** — AI coding assistant integrated into IDEs. Goes beyond code completion into code transformation, test generation, and code review. Handles full repository context for large-scale refactoring.
+- **Gemini Cloud Assist** — Helps with Google Cloud operations — architecture design, troubleshooting, and optimizing cloud resources. Useful for reducing the learning curve when working with unfamiliar GCP services.
+- **Google Agentspace** — Enterprise platform for governing and orchestrating an agent workforce. Includes an Agent Gallery (catalog for publishing/discovering internal agents), no-code Agent Designer, and NotebookLM Plus. Connects to 100+ enterprise data sources (Workspace, Confluence, Jira, Salesforce, ServiceNow, SharePoint, etc.).
+- **Firebase Studio** — Full-stack development workspace with an App Prototyping Agent that generates complete applications from natural language descriptions.
+- **Gemini CLI** — Open-source terminal agent with free Gemini access for developers who prefer working in the terminal.
+
 ### Customer Stories
 
 Three case studies: **BioCorteX** uses GraphRAG + A2A for drug discovery (multiple specialized agents collaborate on molecular and clinical data). **Box** uses A2A for content management workflows. **Zoom** integrates with Google Agentspace for meeting scheduling.
@@ -144,15 +158,13 @@ Insights from 20+ contributors including Amin Vahdat (Google), Harrison Chase (L
 
 ### Infrastructure Evolution
 
-Amin Vahdat outlines five shifts: (1) **application-specific computation** — TPUs deliver ~10x efficiency over general-purpose hardware, (2) **networking specialization** — bandwidth and latency between compute nodes matter as much as compute itself, (3) **the memory wall** — memory bandwidth is the limiting factor for many AI workloads, (4) **compute packing** — power and cooling constraints drive data center design, (5) **liquid cooling** as standard for AI hardware.
-
-The takeaway for startups: plan for a future where compute is cheaper, not build around today's cost constraints.
+Amin Vahdat outlines five shifts: application-specific computation (TPUs at ~10x efficiency), networking specialization, the memory wall, compute packing under power constraints, and liquid cooling as standard. The takeaway: plan for cheaper compute, not today's cost constraints.
 
 ### Key Themes
 
-**Models improving faster than expected** — Douwe Kiela frames a "multi-LLM future" where different models excel at different tasks. Things that require complex prompt engineering today may work with simple prompts tomorrow.
+**Models improving faster than expected** — Douwe Kiela frames a "multi-LLM future" where different models excel at different tasks.
 
-**Agents as the next paradigm** — Harrison Chase identifies five areas: UX paradigms (beyond chat interfaces), human-in-the-loop patterns (a spectrum, not binary), vertical-specific agents, context learning (agents that improve from experience), and low-level frameworks. His closing: "Agents hold the key... but success depends on our guidance."
+**Agents as the next paradigm** — Harrison Chase identifies five areas: UX beyond chat, human-in-the-loop as a spectrum, vertical-specific agents, context learning, and low-level frameworks. His closing: "Agents hold the key... but success depends on our guidance."
 
 **Application layer captures value** — As models commoditize, domain expertise, data access, and UX become the differentiators.
 
