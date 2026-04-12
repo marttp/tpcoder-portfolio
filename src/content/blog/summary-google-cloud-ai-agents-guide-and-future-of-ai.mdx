@@ -1,0 +1,228 @@
+---
+title: "Summary after reading 'Startup Technical Guide: AI Agents' & 'Future of AI' from Google Cloud"
+description: "A comprehensive summary of two Google Cloud E-books — the Startup Technical Guide for building AI agents on Google Cloud (covering models, tools, orchestration, data architecture, grounding, and AgentOps), and Future of AI: Perspectives for Startups 2025 (featuring insights from 20+ industry leaders on where AI is heading and what founders should do about it)."
+pubDate: "2026-04-12"
+tags:
+  [
+    "AI",
+    "AI Agents",
+    "Google Cloud",
+    "Startup",
+    "Infrastructure",
+  ]
+heroImage: ""
+language: "en"
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+## Why These Two E-books
+
+I came across two E-books from Google Cloud that caught my attention — one is a technical guide for building AI agents on Google Cloud, and the other is a collection of perspectives from industry leaders on where AI is heading in 2025 and beyond. I decided to read both back-to-back because they complement each other well: one tells you **how** to build AI agents, and the other tells you **why** and **where** the industry is moving.
+
+Here are the original sources if you want to read them directly:
+
+- [Startup Technical Guide: AI Agents](https://cloud.google.com/resources/content/building-ai-agents?hl=en)
+- [Future of AI: Perspectives for Startups 2025](https://cloud.google.com/resources/content/future-of-ai-report?hl=en)
+
+What follows is my summary of both, organized by the topics I found most useful.
+
+---
+
+## Part 1: Startup Technical Guide — AI Agents
+
+This E-book is essentially Google Cloud's blueprint for building AI agents. It covers the full stack — from choosing models to deploying agents in production.
+
+### Three Ways to Get Started
+
+Google Cloud frames the agent ecosystem around three entry points:
+
+1. **Build your own agents** — using Google's models, tools, and infrastructure
+2. **Use Google Cloud's pre-built agents** — Gemini Code Assist, Gemini Cloud Assist, Google Agentspace
+3. **Bring partner agents** — third-party agents that integrate with Google Cloud
+
+What stood out to me is the emphasis on **interoperability**. The guide highlights two protocols:
+
+- **MCP (Model Context Protocol)** — standardizes how agents connect to external tools and data sources
+- **A2A (Agent-to-Agent)** — enables communication between agents from different vendors or frameworks
+
+These protocols matter because in practice, you rarely build one agent in isolation. You build a system of agents that need to talk to each other and to external services.
+
+### Core Components of an AI Agent
+
+The guide breaks down an AI agent into four core components:
+
+<MermaidDiagram chart={`
+flowchart TD
+    A[AI Agent] --> B[Model]
+    A --> C[Tools]
+    A --> D[Orchestration]
+    A --> E[Runtime]
+    B --> B1[Model Selection]
+    B --> B2[Model Tuning]
+    C --> C1[Extensions]
+    C --> C2[Function Calling]
+    C --> C3[Data Connectors]
+    D --> D1[ReAct Pattern]
+    D --> D2[Chain of Thought]
+    E --> E1[Vertex AI Agent Engine]
+    E --> E2[Cloud Run]
+    E --> E3[GKE]
+`} />
+
+**Models** — The foundation. Google positions the Gemini 2.5 family as the primary choice, with guidance on when to use different model sizes and when fine-tuning is necessary vs. prompt engineering alone.
+
+**Tools** — How agents interact with the outside world. This includes extensions (pre-built integrations), function calling (letting the model invoke your APIs), and data connectors (connecting to enterprise data sources).
+
+**Orchestration** — The decision-making logic that determines what the agent does next. The guide emphasizes the **ReAct (Reasoning + Acting) pattern**, where the model reasons about what to do, takes an action, observes the result, and repeats. This is the pattern behind most useful agent implementations I've seen.
+
+**Runtime** — Where the agent actually runs. The options map to different trade-offs:
+- **Vertex AI Agent Engine** — managed, lowest operational overhead
+- **Cloud Run** — serverless, good for event-driven agents
+- **GKE** — most control, best for complex multi-agent systems
+
+### Data Architecture for Agents
+
+This section was one of the most practical parts of the guide. It breaks data into three categories based on how agents use it:
+
+| Data Type | Purpose | Google Cloud Service |
+|-----------|---------|---------------------|
+| **Long-term knowledge** | Persistent knowledge base for RAG | Vertex AI Search, AlloyDB, Cloud SQL (pgvector) |
+| **Working memory** | Session state, conversation context | Memorystore (Redis), Firestore |
+| **Transactional memory** | Business-critical data with ACID guarantees | Cloud SQL, Spanner, AlloyDB |
+
+The distinction between working memory and transactional memory is worth highlighting. Working memory is ephemeral — it holds conversation context and intermediate results. Transactional memory is durable — it's where you store the actual business outcomes of agent actions (orders placed, records updated, etc.).
+
+If you're building agents that do more than just answer questions — agents that take actions with real consequences — getting the transactional layer right is critical.
+
+### Grounding: RAG and Beyond
+
+Grounding is about giving agents access to accurate, up-to-date information so they don't hallucinate. The guide covers several approaches:
+
+- **RAG (Retrieval-Augmented Generation)** — the baseline. Retrieve relevant documents from a vector database, inject them into the prompt as context.
+- **GraphRAG** — extends RAG with knowledge graphs. Useful when relationships between entities matter (e.g., "which products are compatible with which configurations").
+- **Agentic RAG** — the agent decides when and what to retrieve, rather than following a fixed retrieval pipeline. The agent can reformulate queries, decide which data sources to consult, and iterate on retrieval until it has enough context.
+- **Vector databases** — the storage layer for embeddings. The guide mentions AlloyDB and Cloud SQL with pgvector as options, alongside Vertex AI Vector Search for managed solutions.
+
+Agentic RAG is the direction things are heading. Instead of a static "retrieve then generate" pipeline, the agent actively manages its own information gathering. This is more flexible but also harder to debug and evaluate.
+
+### Google's Pre-built Agent Products
+
+The guide covers three products that Google offers as ready-to-use agents:
+
+- **Google Agentspace** — enterprise search and knowledge management agent. Connects to internal data sources (Google Workspace, Confluence, Jira, etc.) and provides a unified search interface with AI-generated answers.
+- **Gemini Code Assist** — AI coding assistant integrated into IDEs. Goes beyond code completion into code transformation, test generation, and code review.
+- **Gemini Cloud Assist** — helps with Google Cloud operations. Can assist with architecture design, troubleshooting, and optimizing cloud resources.
+
+### ADK (Agent Development Kit)
+
+Google's ADK is the framework for building custom agents. The guide positions it as the primary development tool, with support for:
+- Multi-agent orchestration
+- Tool integration (function calling, extensions)
+- Memory management
+- Evaluation and testing
+
+### AgentOps: Production Readiness
+
+The last section of the technical guide covers what happens after you build the agent — how to run it in production. This includes:
+
+- **Evaluation** — measuring agent quality (accuracy, task completion rate, latency)
+- **Monitoring** — tracking agent behavior, detecting anomalies
+- **Observability** — tracing agent decisions across multi-step workflows
+- **Cost management** — model inference costs, API call costs, infrastructure costs
+
+The guide emphasizes that evaluation is not optional. Without systematic evaluation, you're deploying something you can't measure or improve. This resonates with what I've heard from multiple practitioners — the evaluation layer is often the most underinvested part of agent systems.
+
+---
+
+## Part 2: Future of AI — Perspectives for Startups 2025
+
+This E-book takes a different angle. Instead of a technical how-to, it's a collection of insights from 20+ industry leaders — engineers, investors, and founders — on where AI is heading and what it means for startups.
+
+### Who Contributed
+
+The perspectives come from people like:
+- **Amin Vahdat** — VP/GM of ML, Systems, and Cloud AI at Google
+- **Harrison Chase** — CEO of LangChain
+- **Elad Gil** — investor and author of "High Growth Handbook"
+- **Jennifer Li** — Partner at a16z
+- and many others across Google, venture capital, and AI startups
+
+The diversity of viewpoints is what makes this E-book worth reading. You get the infrastructure perspective (Google), the framework/tooling perspective (LangChain), the investment perspective (a16z, Elad Gil), and the founder perspective all in one place.
+
+### Key Predictions
+
+Several themes kept appearing across different contributors:
+
+**1. Model quality is improving faster than most people expect**
+
+The consensus is that foundation models will continue to get better at reasoning, following instructions, and handling complex tasks. What this means in practice: things that require complex prompt engineering today may work with simple prompts tomorrow. The gap between "state of the art" and "good enough for production" is narrowing.
+
+**2. Computation costs are dropping significantly**
+
+This is the enabler for broader AI adoption. As inference costs drop, use cases that were economically unviable become viable. Multiple contributors pointed out that startups should plan for a future where compute is cheaper, not build around today's cost constraints.
+
+**3. Agents are the next major application paradigm**
+
+This aligns with the first E-book. The shift from "AI as a tool you query" to "AI as an agent that takes actions" is the defining transition. Several contributors specifically called out multi-agent systems as the direction enterprise AI is heading.
+
+**4. The application layer is where the value will concentrate**
+
+As models become commoditized, the value shifts to whoever can build the best applications on top of them. Domain expertise, data access, and user experience become the differentiators — not the model itself.
+
+### Advice for Founders
+
+This was the most actionable section. Here are the recurring recommendations:
+
+**Move fast and ship** — The AI landscape is changing so rapidly that over-planning is a bigger risk than under-planning. Several contributors emphasized that speed of iteration matters more than getting the architecture right on day one.
+
+**Focus on niche problems first** — Rather than building a general-purpose AI product, find a specific domain where AI can deliver 10x value. Vertical AI products (AI for legal, AI for healthcare, AI for logistics) have a clearer path to revenue than horizontal platforms.
+
+**Prioritize evaluations** — This came up repeatedly. If you can't measure how well your AI system is performing, you can't improve it. Build evaluation pipelines early — don't wait until you're already in production.
+
+**Use value-based pricing** — Price based on the value your AI delivers, not on the cost of compute. If your AI agent saves a company 40 hours of manual work per week, price it based on that value, not on your inference costs.
+
+**Don't over-invest in fine-tuning early** — Start with the best available foundation model and prompt engineering. Fine-tuning is expensive and creates maintenance overhead. Only invest in it when you've validated that the product-market fit is there and you need the performance edge.
+
+**Build for interoperability** — Don't lock yourself into one model provider. The model landscape is changing fast, and the ability to swap models (or use multiple models for different tasks) is a strategic advantage.
+
+### Infrastructure Evolution
+
+Amin Vahdat's section on infrastructure was particularly interesting for someone with a backend engineering background. The key trends:
+
+**Application-specific computation** — General-purpose CPUs are no longer enough. The future is specialized hardware (TPUs, custom ASICs) designed for specific AI workloads. Google's TPU strategy is a bet on this direction.
+
+**Networking becomes a bottleneck** — As model sizes grow and distributed training/inference becomes the norm, network bandwidth and latency between compute nodes matter as much as the compute itself. Networking specialization (higher bandwidth, lower latency interconnects) is a critical infrastructure investment.
+
+**The memory wall** — Memory bandwidth is becoming the limiting factor for many AI workloads. Models need to move data in and out of memory faster than current architectures allow. This is driving innovations in memory technology and system architecture.
+
+**Compute packing and efficiency** — Data centers are running into power and cooling constraints. Liquid cooling is becoming standard for AI workloads. How efficiently you can pack compute into a given power envelope determines your cost structure.
+
+These infrastructure trends might seem abstract, but they have concrete implications for startups. If you're building on cloud infrastructure, the cost and performance improvements driven by these trends will directly affect your margins and what's economically feasible.
+
+---
+
+## What I Took Away
+
+Reading both E-books together, a few things stand out:
+
+1. **The agent paradigm is not hype** — Google is investing heavily in the infrastructure, tooling, and ecosystem for AI agents. The technical guide is detailed and practical, not hand-wavy. This is real engineering, not marketing.
+
+2. **Data architecture matters more than model choice** — The technical guide spends significant time on data architecture (long-term knowledge, working memory, transactional memory). In my experience, the data layer is where most production agent systems struggle — not the model itself.
+
+3. **Evaluation is the underinvested layer** — Both E-books emphasize evaluation. The technical guide covers it as part of AgentOps, and the founders' perspectives keep coming back to "prioritize evaluations." If there's one takeaway for anyone building agents, this is it.
+
+4. **Interoperability is a strategic bet** — MCP and A2A protocols, multi-model support, avoiding vendor lock-in — the theme of interoperability runs through both E-books. Building for flexibility now saves you from painful migrations later.
+
+5. **The cost curve favors action** — Compute costs are dropping. Model quality is improving. The founders' advice to "move fast and ship" is grounded in the reality that waiting means building on more expensive, less capable infrastructure.
+
+For backend engineers specifically, the shift toward agents means more infrastructure complexity — managing state across agent interactions, handling tool integrations, building evaluation pipelines, and operating multi-agent systems. The skills that make you good at building distributed systems translate directly to building agent systems.
+
+---
+
+## Sources
+
+If you want to read the full E-books:
+
+- [Startup Technical Guide: AI Agents — Google Cloud](https://cloud.google.com/resources/content/building-ai-agents?hl=en)
+- [Future of AI: Perspectives for Startups 2025 — Google Cloud](https://cloud.google.com/resources/content/future-of-ai-report?hl=en)
