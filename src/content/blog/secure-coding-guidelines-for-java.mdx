@@ -249,26 +249,28 @@ The Security Manager has been deprecated for removal (JEP 486, finalized in JDK 
 
 ---
 
-## OWASP Top 10 (2021)
+## OWASP Top 10 (2025)
 
-The [OWASP Top 10](https://owasp.org/www-project-top-ten/) is a standard reference for the most critical web application security risks. Here's a brief summary and how each one relates to Java:
+The [OWASP Top 10](https://owasp.org/Top10/2025/) is a standard reference for the most critical web application security risks. The 2025 version has notable changes from 2021 — Supply Chain is now its own category, Security Misconfiguration moved up to #2, and there's a new entry for Mishandling of Exceptional Conditions.
+
+Here's a summary and how each one relates to Java:
 
 | # | Category | Java Context |
 |---|----------|-------------|
 | **A01** Broken Access Control | Missing or misconfigured `@PreAuthorize` / Spring Security rules, IDOR vulnerabilities |
-| **A02** Cryptographic Failures | Using deprecated `MD5` / `SHA-1`, hardcoded keys, weak `javax.crypto` usage |
-| **A03** Injection | Raw JDBC queries without `PreparedStatement`, unsafe JPQL, OGNL/SpEL evaluation on user input |
-| **A04** Insecure Design | No threat modeling, missing rate limiting in controllers, no input validation strategy |
-| **A05** Security Misconfiguration | Exposed Spring Actuator endpoints, verbose error pages, default Tomcat settings |
-| **A06** Vulnerable & Outdated Components | Log4Shell (Log4j), outdated Spring/Jackson/Commons dependencies in Maven/Gradle |
-| **A07** Identification & Authentication Failures | Weak `HttpSession` handling, missing brute-force protection, improper JWT validation |
-| **A08** Software & Data Integrity Failures | Java `ObjectInputStream` deserialization attacks, compromised Maven dependencies, unsigned artifacts |
-| **A09** Security Logging & Monitoring Failures | Missing security event logging via SLF4J/Logback, no alerting on suspicious activity |
-| **A10** Server-Side Request Forgery (SSRF) | Unsafe `URL` / `HttpURLConnection` usage, unvalidated redirect targets |
+| **A02** Security Misconfiguration | Exposed Spring Actuator endpoints, verbose error pages, default Tomcat settings |
+| **A03** Software Supply Chain Failures | Log4Shell (Log4j), compromised Maven/Gradle dependencies, unsigned artifacts, XZ Utils-style attacks |
+| **A04** Cryptographic Failures | Using deprecated `MD5` / `SHA-1`, hardcoded keys, weak `javax.crypto` usage |
+| **A05** Injection | Raw JDBC queries without `PreparedStatement`, unsafe JPQL, OGNL/SpEL evaluation on user input |
+| **A06** Insecure Design | No threat modeling, missing rate limiting in controllers, no input validation strategy |
+| **A07** Authentication Failures | Weak `HttpSession` handling, missing brute-force protection, improper JWT validation |
+| **A08** Software or Data Integrity Failures | Java `ObjectInputStream` deserialization attacks, unsigned updates, CI/CD pipeline compromise |
+| **A09** Security Logging and Alerting Failures | Missing security event logging via SLF4J/Logback, no alerting on suspicious activity |
+| **A10** Mishandling of Exceptional Conditions | Leaking stack traces to clients, catching generic `Exception`, unchecked error paths exposing sensitive data |
 
-A06 (Vulnerable & Outdated Components) and A08 (Software & Data Integrity Failures) are especially critical in the Java ecosystem due to its heavy dependency tree and the history of deserialization vulnerabilities. Tools like OWASP Dependency-Check and Snyk help catch these early.
+A03 (Software Supply Chain Failures) and A08 (Software or Data Integrity Failures) are especially critical in the Java ecosystem due to its heavy dependency tree and the history of deserialization vulnerabilities. Tools like OWASP Dependency-Check and Snyk help catch these early.
 
-If you look at the case studies below, you'll see that most of them map directly to A03, A06, and A08.
+If you look at the case studies below, you'll see that most of them map directly to A03, A05, and A08.
 
 ---
 
