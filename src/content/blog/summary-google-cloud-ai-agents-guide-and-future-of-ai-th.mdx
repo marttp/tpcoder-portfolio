@@ -1,0 +1,284 @@
+---
+title: "สรุปหลังอ่าน 'Startup Technical Guide: AI Agents' และ 'Future of AI' จาก Google Cloud"
+description: "สรุป E-book 2 เล่มจาก Google Cloud — คู่มือเทคนิคสำหรับสร้าง AI agents บน Google Cloud (ครอบคลุม models, tools, orchestration, ADK, MCP, A2A, memory, grounding, AgentOps) และ Future of AI: Perspectives for Startups 2025 (มุมมองจาก 20+ industry leaders เรื่อง infrastructure, คำแนะนำสำหรับ founders, และทิศทาง AI)"
+pubDate: "2026-04-12"
+tags:
+  [
+    "AI",
+    "AI Agents",
+    "Google Cloud",
+    "Startup",
+    "Infrastructure",
+  ]
+heroImage: "/assets/images/blogs/summary-google-cloud-ai-ebooks/hero-image.jpg"
+language: "th"
+translationSlug: "summary-google-cloud-ai-agents-guide-and-future-of-ai"
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+> **หมายเหตุ (เมษายน 2026):** E-book ทั้ง 2 เล่มนี้อ้างอิง Gemini 2.5 family เป็นหลัก แต่หลังจากตีพิมพ์ Google ได้ปล่อย [Gemini 3.1 Pro](https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-3-1-pro/) (กุมภาพันธ์ 2026) และ [Gemma 4](https://gemilab.net/en/articles/gemini-updates/gemma-4-complete-guide-2026) (เมษายน 2026) ออกมาแล้ว แนวคิดด้าน architecture, protocols (MCP, A2A), และ engineering practices ที่ครอบคลุมใน guide ยังคงใช้ได้ครับ — แค่ model layer ดีขึ้นกว่าเดิม
+
+## ทำไมถึงเลือกอ่าน 2 เล่มนี้
+
+ผมเจอ E-book 2 เล่มจาก Google Cloud — เล่มแรกเป็น technical guide สำหรับสร้าง AI agents บน Google Cloud และเล่มที่สองเป็น collection ของ perspectives จาก industry leaders กว่า 20 คนว่า AI กำลังมุ่งหน้าไปทางไหน ผมตัดสินใจอ่านทั้งสองเล่มต่อกัน เพราะมันเสริมกันได้ดี: เล่มหนึ่งบอกว่า**สร้าง AI agents ยังไง** อีกเล่มบอกว่า**ทำไมถึงควรสร้าง** และ**อุตสาหกรรมกำลังเคลื่อนไปทางไหน**
+
+แหล่งข้อมูลต้นฉบับ:
+
+- [Startup Technical Guide: AI Agents](https://cloud.google.com/resources/content/building-ai-agents?hl=en)
+- [Future of AI: Perspectives for Startups 2025](https://cloud.google.com/resources/content/future-of-ai-report?hl=en)
+
+---
+
+## Part 1: Startup Technical Guide — AI Agents
+
+Guide เล่มนี้เปิดด้วย Sundar Pichai ที่กล่าวว่า ADK มียอดดาวน์โหลดกว่า 1 ล้านครั้งใน 4 เดือนแรก Google วาง agent ecosystem ไว้ 3 ทาง: **สร้างเอง** (ใช้ Gemini models, ADK, Vertex AI), **ใช้ pre-built agents** (Gemini Code Assist, Gemini Cloud Assist, Google Agentspace), หรือ **นำ partner agents เข้ามา** ผ่าน open protocols
+
+### Core Components ของ AI Agent
+
+<MermaidDiagram chart={`
+flowchart TD
+    A[AI Agent] --> B[Model]
+    A --> C[Tools]
+    A --> D[Orchestration]
+    A --> E[Runtime]
+    B --> B1[Gemini 2.5 Family]
+    B --> B2[Model Garden - 200+ models]
+    C --> C1[Extensions]
+    C --> C2[Function Calling]
+    C --> C3[Data Connectors]
+    D --> D1[ReAct Pattern]
+    D --> D2[Chain of Thought]
+    E --> E1[Vertex AI Agent Engine]
+    E --> E2[Cloud Run]
+    E --> E3[GKE]
+`} />
+
+**Models** — Gemini 2.5 family เป็นตัวเลือกหลัก รวมถึง Model Garden ที่มี open และ third-party models กว่า 200 ตัว คำแนะนำคือ: เริ่มจาก prompt engineering ก่อน แล้วค่อยลงทุนกับ fine-tuning
+
+**Tools** — Guide มองว่า tool design คือ API contract — function signature, docstring, และ return schema ล้วนมีความสำคัญ เพราะ model ใช้ข้อมูลเหล่านี้ในการตัดสินใจว่าจะเรียก tool ไหนและเรียกยังไง แบ่งเป็น 3 ประเภท: extensions (pre-built integrations), function calling (model เรียก APIs ของเรา), และ data connectors (enterprise data sources อย่าง Confluence, Jira, SharePoint)
+
+**Orchestration** — แกนหลักคือ **ReAct (Reasoning + Acting) pattern**: model คิดวิเคราะห์ว่าจะทำอะไร ลงมือทำ สังเกตผลลัพธ์ แล้ววนซ้ำ
+
+**Runtime** — Vertex AI Agent Engine (managed), Cloud Run (serverless), หรือ GKE (ควบคุมได้เต็มที่สำหรับ multi-agent systems ที่ซับซ้อน)
+
+### ADK: Agent Development Kit
+
+Guide ลงลึกเรื่อง agent types ใน ADK ของ Google:
+
+<MermaidDiagram chart={`
+flowchart TD
+    A[ADK Agent Types] --> B[LlmAgent]
+    A --> C[Workflow Agents]
+    A --> D[CustomAgent]
+    B --> B1["Non-deterministic\n(Model ตัดสินใจ step ถัดไป)"]
+    C --> C1[SequentialAgent]
+    C --> C2[ParallelAgent]
+    C --> C3[LoopAgent]
+    D --> D1["BaseAgent subclass\n(ควบคุมเต็มที่)"]
+`} />
+
+**LlmAgent** เป็น non-deterministic — model เป็นคนตัดสินใจ execution path เอง **Workflow Agents** ให้ deterministic patterns: SequentialAgent (ทำตามลำดับ), ParallelAgent (ทำงานพร้อมกัน), LoopAgent (วนซ้ำจนเงื่อนไขตรง) **CustomAgent** subclass จาก `BaseAgent` สำหรับกรณีที่ต้องควบคุมเต็มที่
+
+Pattern ที่แนะนำคือ: ผสม agent types เข้าด้วยกัน ใช้ SequentialAgent เป็น outer orchestrator ที่เชื่อม LlmAgent สำหรับ step ที่ต้องใช้ reasoning กับ workflow agents สำหรับ step ที่มีโครงสร้างชัดเจน ADK agents deploy เป็น FastAPI web services, containerized บน Cloud Run, Vertex AI Agent Engine หรือ GKE
+
+### MCP และ A2A Protocols
+
+สอง protocols ด้าน interoperability ที่น่าสนใจครับ
+
+**MCP (Model Context Protocol)** ทำงานสองทิศทาง — consume external tools (เชื่อมต่อกับ MCP-compatible server ใดก็ได้) และ expose tools ของเราเป็น MCP endpoints ถ้าจะเปรียบเทียบ: MCP คือสิ่งที่ USB-C เป็นให้กับอุปกรณ์ต่างๆ — universal connector ที่ลดงาน custom integration
+
+<img src="/assets/images/blogs/summary-google-cloud-ai-ebooks/mcp-protocol-diagram.png" alt="MCP Protocol - ADK agent เชื่อมต่อกับหลาย MCP toolsets" class="rounded-lg shadow-md my-6" />
+
+*Source: [Google Developers Blog — Developer's Guide to AI Agent Protocols](https://developers.googleblog.com/en/developers-guide-to-ai-agent-protocols/)*
+
+**A2A (Agent-to-Agent)** ทำให้ agents จากคนละ vendor สื่อสารกันได้ agent แต่ละตัวเผยแพร่ "agent card" (JSON descriptor ของ capabilities) การสื่อสารเกิดผ่าน task objects และเป็น modality agnostic — agents แลกเปลี่ยนได้ทั้ง text, files และ streamed responses
+
+<img src="/assets/images/blogs/summary-google-cloud-ai-ebooks/a2a-protocol-diagram.png" alt="A2A Protocol - Agent discovery ผ่าน agent card และ task delegation" class="rounded-lg shadow-md my-6" />
+
+*Source: [Google Developers Blog — Developer's Guide to AI Agent Protocols](https://developers.googleblog.com/en/developers-guide-to-ai-agent-protocols/)*
+
+เมื่อรวม MCP และ A2A เข้าด้วยกัน จะได้ composable agent ecosystem — ADK agent สามารถ consume tools ผ่าน MCP, delegate subtasks ผ่าน A2A, และ expose capabilities ของตัวเองกลับเข้า network ได้
+
+### Data Architecture และ Memory
+
+ส่วนนี้เป็นส่วนที่ practical มากในเล่มนี้ครับ แบ่ง data ออกเป็น 3 ประเภทตามวิธีที่ agents ใช้งาน — ซึ่งความแตกต่างนี้สำคัญมากถ้าเรากำลังสร้าง agents ที่ทำมากกว่าแค่ตอบคำถาม
+
+| ประเภท Data | วัตถุประสงค์ | Google Cloud Service | ตัวอย่าง |
+|-----------|---------|---------------------|-------------------|
+| **Long-term knowledge** | Knowledge base สำหรับ RAG | Vertex AI Search, AlloyDB, Cloud SQL (pgvector), BigQuery | Customer support agent ดึง product docs, incident reports มาตอบ tickets |
+| **Working memory** | Session state, conversation context | Memorystore (Redis), Firestore | Shopping assistant จำว่า user กำลังดูสินค้าอะไร ชอบ size ไหน ปฏิเสธอะไรไปแล้ว |
+| **Transactional memory** | Business-critical data ที่ต้อง ACID | Cloud SQL, Spanner, AlloyDB | Booking agent จองโรงแรม — ข้อมูลนี้ต้อง durable, consistent ไม่หายแม้ session crash |
+
+ความแตกต่างระหว่าง working memory กับ transactional memory สำคัญกว่าที่มองผ่านๆ ครับ Working memory เป็น ephemeral — หายไปแค่เริ่มบทสนทนาใหม่ Transactional memory ต้อง durable — หายไปคือเสียออเดอร์ เสียการจ่ายเงิน เสียการจอง ถ้าสร้าง startup ที่ agents ต้องลงมือทำอะไร transactional layer คือจุดที่ reliability เป็นเรื่องเป็นตาย
+
+ลองนึกภาพ food delivery startup ที่สร้าง ordering agent — ต้องใช้ทั้ง 3 ประเภท Long-term knowledge เก็บเมนูร้านอาหาร ข้อมูล allergen และ delivery zone Working memory ติดตามบทสนทนาปัจจุบัน — "user อยากกินอาหารไทย ไม่ใส่ถั่ว ส่ง Shibuya" Transactional memory คือที่ที่ order ที่ confirm แล้วอยู่ — record นี้ต้อง ACID เพราะ trigger payment processing, แจ้งร้านอาหาร, dispatch คนขับ
+
+concept ที่ใหม่สำหรับผม: **Vertex AI Memory Bank** และ memory distillation แทนที่จะเก็บ raw conversation history ทั้งหมด (ซึ่ง grow linearly และแพงขึ้นเรื่อยๆ) ระบบ distill conversations เป็น structured memory entries — key facts, user preferences, learned patterns มี 2 approaches: automated distillation (ระบบ extract info เอง) และ agent-directed distillation (agent ตัดสินใจเองว่าจะจำอะไร) สำหรับ startup หมายความว่า agent สามารถ "เรียนรู้" ว่าลูกค้าประจำสั่งเผ็ดเสมอ ชอบ contactless delivery — โดยไม่ต้องเก็บทุกบทสนทนาที่เคยคุยกัน
+
+### Grounding: RAG Evolution
+
+Grounding คือการให้ agents เข้าถึงข้อมูลที่ถูกต้องและเป็นปัจจุบัน เพื่อไม่ให้เกิด hallucination ครับ Guide ครอบคลุม evolution ของ 3 approaches ที่ต่อยอดจากกัน
+
+**RAG (Retrieval-Augmented Generation)** เป็นพื้นฐาน pipeline จาก guide:
+
+<MermaidDiagram chart={`
+flowchart LR
+    A[Source] --> B[Parsing & Enriching]
+    B --> C[Transformation\ne.g. Chunking]
+    C --> D[Embedding & Indexing]
+    D --> E[(Vector DB)]
+    E --> F[Retrieval]
+    F --> G[Ranking]
+    G --> H[Serving]
+    H --> I[LLM API]
+`} size="medium" />
+
+Data เข้าผ่าน parsing, chunking, และ embedding เข้า vector database เวลา query ก็แปลงคำถามของ user เป็น embedding แล้ว vector DB หา content ที่คล้ายกัน rank ผลลัพธ์ แล้วส่ง chunks ที่เกี่ยวข้องที่สุดเข้า LLM เป็น context
+
+<img src="/assets/images/blogs/summary-google-cloud-ai-ebooks/rag-pipeline.jpg" alt="Vertex AI RAG Engine pipeline" class="rounded-lg shadow-md my-6" />
+
+*Vertex AI RAG Engine pipeline และ vector database use case — จาก Startup Technical Guide (p.18)*
+
+Guide ยกตัวอย่างบริษัทรองเท้า: product descriptions, warranty info และ FAQs ถูก embedded และเก็บไว้ เมื่อลูกค้าถามเรื่อง "รองเท้าสำหรับคนเท้ากว้าง" vector database เข้าใจว่า semantically เกี่ยวข้องกับ "extra wide" "comfortable for wide feet" แล้วส่งผลลัพธ์ที่เกี่ยวข้อง — ซึ่ง traditional `LIKE '%good for people with wide feet%'` SQL query จะหาไม่เจอเลย ความแตกต่างระหว่าง keyword matching กับ meaning-based search คือ core value ของ RAG
+
+บน Google Cloud นี้ map กับ Vertex AI RAG Engine สำหรับ pipeline และ Vertex AI Vector Search สำหรับ storage กับ retrieval ครับ Guide ยังแนะนำ **retrieve-and-re-rank** approach: ดึง candidate documents มาเยอะกว่าที่ต้องการก่อน (high recall) แล้วส่งผ่าน re-ranking service ที่กรอง irrelevant หรือ semantically opposite results ออก (high precision)
+
+**GraphRAG** ขยาย RAG ด้วย knowledge graphs แทนที่จะแค่ match similar phrases agent จะเข้าใจว่า concepts เกี่ยวข้องกันยังไง ตัวอย่างจาก guide: medical AI assistant ที่ต้องรู้ "symptoms → causes → treatments" — ไม่ใช่แค่ดึง snippets ที่คล้ายกัน แต่ต้อง traverse relationships ระหว่าง entities
+
+<img src="/assets/images/blogs/summary-google-cloud-ai-ebooks/graphrag-architecture.jpg" alt="GraphRAG architecture" class="rounded-lg shadow-md my-6" />
+
+*GraphRAG architecture บน Google Cloud — จาก Startup Technical Guide (p.19)*
+
+Architecture จาก PDF แสดง 2 subsystems:
+- *Data ingestion*: files เข้า Cloud Storage → Pub/Sub queue → Cloud Run process → สร้างทั้ง embeddings และ knowledge graph → เก็บใน Cloud Spanner
+- *Serving*: ADK agent query ผ่าน Vertex AI Agent Engine ใช้ทั้ง Embedding API และ Gemini API เพื่อ traverse graph และสร้าง responses
+
+ตรงนี้คือจุดที่ use case drug discovery ของ BioCorteX เข้ามาครับ การเชื่อม research papers, molecular structures, และ clinical trial data ผ่าน relationship graphs ทำให้ agent ตอบคำถามอย่าง "ยาตัวไหน interact กับ compound X เมื่อผู้ป่วยมีภาวะ Y" ได้ — คำถามที่ต้อง traverse relationships ไม่ใช่แค่หา documents ที่คล้ายกัน
+
+**Agentic RAG** เป็น approach ที่ก้าวหน้าที่สุด Agent กลายเป็นผู้มีส่วนร่วมในการ retrieve ข้อมูลอย่างแข็งขัน ไม่ใช่แค่รอรับ data ตาม ReAct pattern, agent วิเคราะห์ complex query ได้ วาง multi-step plan และ execute multiple tool calls ตามลำดับเพื่อหาข้อมูลที่ดีที่สุด
+
+ตัวอย่างจาก guide: ลูกค้าถาม "SolarFlare runners มีของไหม?" Agent (1) ใช้ semantic search ผ่าน `product_lookup` เพื่อระบุรุ่นรองเท้าแม้ลูกค้าอธิบายคลุมเครือ แล้ว (2) trigger `check_inventory` ผ่าน function calling เพื่อดึง real-time stock data — ตอบว่า "ใช่ครับ มี 82 คู่" การผสม retrieval (รู้ว่าข้อมูลอะไรเกี่ยวข้อง) กับ actions (ดำเนินการ real-time) ทำให้ agent มีประโยชน์ขึ้นมาก
+
+<img src="/assets/images/blogs/summary-google-cloud-ai-ebooks/agentic-rag-example.jpg" alt="Agentic RAG example" class="rounded-lg shadow-md my-6" />
+
+*Agentic RAG real-time inventory check — จาก Startup Technical Guide (p.21)*
+
+Guide ยังครอบคลุม grounding methods อื่นนอกจาก RAG: **Google Search grounding** (เชื่อมกับ real-time web knowledge), **Google Maps grounding** (location-aware responses), และ **grounding with Elasticsearch** (ใช้ existing search indexes กับ Gemini)
+
+### AgentOps: Production Readiness
+
+Guide วาง AgentOps เป็นการนำหลักการ DevOps, MLOps, และ DataOps มาปรับใช้กับ AI agents ประโยคเปิดของ section นี้ที่ติดอยู่ในหัวผม: การก้าวข้าม "vibe-testing" ผิวเผินต้องอาศัย rigorous engineering approach ถ้าเคย ship microservice ขึ้น production น่าจะเข้าใจช่องว่างระหว่าง "มันทำงานบนเครื่องผม" กับ "มันรันได้อย่าง reliable ที่ scale" Agent systems มีช่องว่างเดียวกัน แต่เพิ่ม dimension ของ non-determinism เข้ามา
+
+Guide นำเสนอ **4-layer evaluation framework**:
+
+| Layer | ประเมินอะไร | เทียบกับ Traditional Backend |
+|-------|-------------------|----------------------|
+| **Layer 1: Component** | Tools, prompts, model responses แต่ละตัว | Unit tests — function ทำงานกับ valid, invalid, edge-case inputs ได้ไหม? เหมือนทดสอบ REST endpoint handler หรือ data parser |
+| **Layer 2: Trajectory** | Agent เดินตามขั้นตอนถูกไหม? (procedural correctness) | Integration tests — request ผ่าน services ถูกตัวตามลำดับไหม? ในบริบท agent: ReAct loop ตาม Reason → Act → Observe sequence ที่สมเหตุสมผลไหม? |
+| **Layer 3: Outcome** | ผลลัพธ์สุดท้ายถูกไหม? (semantic correctness) | End-to-end tests — API response ถูกต้องไหม? สำหรับ agents: คำตอบ factually accurate, grounded, และ helpful ไหม? |
+| **Layer 4: System-level** | พฤติกรรมใน production ที่ scale | Production monitoring — latency percentiles, error rates, resource usage สำหรับ agents: tool failure rates, ReAct cycle counts, token usage, cost per interaction |
+
+สิ่งที่ทำให้ layered approach นี้มีค่าคือแต่ละ layer จับ failure modes ที่ต่างกัน Layer 1 จับ broken tools, Layer 2 จับ agents ที่ได้คำตอบถูกแต่ด้วย reasoning ที่ผิด (ซึ่งจะพังกับ cases ที่ยากกว่า), Layer 3 จับ hallucination และ factual errors, Layer 4 จับ production drift, cost spikes และ latency degradation
+
+ถ้าเคยทำ observability ใน traditional backend systems parallel ตรงนี้ชัดเจน Layer 4 เทียบได้กับสิ่งที่ setup ด้วย Prometheus/Grafana หรือ Datadog สำหรับ microservice — แต่แทนที่จะ track HTTP status codes กับ p99 latency เรา track tool call success rates, จำนวน ReAct cycles ต่อ task, และ token consumption ADK integrate กับ Cloud Trace และ OpenTelemetry ได้ native ทำให้ Reason, Act, Observe แต่ละ step ใน ReAct loop กลายเป็น trace span ที่ inspect ได้ — คล้ายกับที่ distributed tracing ทำงานข้าม microservices ด้วย Jaeger หรือ Zipkin
+
+Five-step workflow จาก PDF:
+
+1. **Bootstrap** ด้วย Agent Starter Pack (สร้าง Terraform, Cloud Build configs, evaluation datasets)
+2. **Develop** ด้วย ADK (เขียน agent logic, tools, instructions)
+3. **Commit and automate** (Cloud Build CI/CD pipeline trigger อัตโนมัติ)
+4. **Evaluate continuously** (pipeline build agent แล้วรัน quantitative evaluation กับ test set)
+5. **Deploy confidently** (เฉพาะ validated versions เท่านั้นที่ถึง production)
+
+**Agent Starter Pack** รวมทุกอย่างเป็น production-ready template:
+
+| Component | Tool | วัตถุประสงค์ |
+|-----------|------|---------|
+| Infrastructure as Code | Terraform | Provision Cloud Run, IAM, networking |
+| CI/CD | Cloud Build | Automated build, test, evaluate, deploy |
+| Observability | Cloud Trace + OpenTelemetry | Distributed tracing ของ agent decisions |
+| Logging | Cloud Logging | Centralized log management |
+| Analytics | BigQuery | เก็บและวิเคราะห์ agent interaction data |
+| Monitoring dashboards | Looker Studio | Visualize agent performance trends |
+| Evaluation | Vertex AI Evaluation | LLM-as-judge scoring, human-in-the-loop feedback |
+
+Bootstrap project ใหม่ได้ด้วยคำสั่งเดียว: `uvx agent-starter-pack create my-agent -a adk@gemini-fullstack`
+
+<img src="/assets/images/blogs/summary-google-cloud-ai-ebooks/agent-starter-pack-architecture.png" alt="Agent Starter Pack architecture" class="rounded-lg shadow-md my-6" />
+
+*Source: [Google Cloud Platform — Agent Starter Pack](https://github.com/GoogleCloudPlatform/agent-starter-pack)*
+
+ส่วน responsible AI ครอบคลุม security ผ่าน Google's SAIF framework ด้วย แนวทางตรงนี้ mirror defense-in-depth จาก traditional security engineering: secure infrastructure (Terraform provision hardened environments ด้วย specific IAM roles), input guardrails (validate prompts สำหรับ injection attacks), output guardrails (filter agent responses สำหรับ harmful content), และ auditing (ทุก thought และ tool call ของ agent ถูก trace และ log เข้า BigQuery สำหรับ compliance reviews)
+
+### Google's Pre-built Agent Products
+
+นอกจากสร้างเอง Google มี ready-to-use agents ให้:
+
+- **Gemini Code Assist** — AI coding assistant ที่ integrate กับ IDEs ทำได้มากกว่า code completion ไปถึง code transformation, test generation, และ code review รองรับ full repository context สำหรับ large-scale refactoring
+- **Gemini Cloud Assist** — ช่วยงาน Google Cloud operations ตั้งแต่ architecture design, troubleshooting ไปจนถึง optimizing cloud resources ลด learning curve เวลาทำงานกับ GCP services ที่ไม่คุ้นเคย
+- **Google Agentspace** — Enterprise platform สำหรับ govern และ orchestrate agent workforce มี Agent Gallery (catalog สำหรับ publish/discover internal agents), no-code Agent Designer, และ NotebookLM Plus เชื่อมต่อกับ 100+ enterprise data sources (Workspace, Confluence, Jira, Salesforce, ServiceNow, SharePoint ฯลฯ)
+- **Firebase Studio** — Full-stack development workspace พร้อม App Prototyping Agent ที่สร้าง applications จาก natural language descriptions
+- **Gemini CLI** — Open-source terminal agent ที่ให้ free Gemini access สำหรับ developer ที่ชอบทำงานใน terminal
+
+### Customer Stories
+
+3 case studies: **BioCorteX** ใช้ GraphRAG + A2A สำหรับ drug discovery — Gemini-powered agents หลายตัวร่วมมือกัน navigate 44 billion-connection knowledge graph เพื่อตรวจสอบ biological plausibility, clinical relevance, และ commercial importance สิ่งที่เคยใช้เวลาหลายปีเหลือแค่หลายวัน **Box** สร้าง A2A-enabled agent ด้วย ADK และ Gemini เชื่อมกับ Box Intelligent Content Cloud ให้ users ถามคำถามซับซ้อนเป็นภาษาธรรมชาติแล้วได้คำตอบจากเอกสารทันที เร่ง compliance checks, contract management, และ loan approvals **Zoom** integrate กับ Google Agentspace ให้ A2A-enabled agents สามารถ schedule Zoom Meetings จาก Gmail context, อัพเดต Google Calendar, และแจ้ง participants ได้อัตโนมัติ
+
+---
+
+## Part 2: Future of AI — Perspectives for Startups 2025
+
+มุมมองจากผู้เชี่ยวชาญกว่า 20 คน ได้แก่ Amin Vahdat (Google), Harrison Chase (LangChain), Elad Gil, Jennifer Li (a16z), Arvind Jain (Glean), Douwe Kiela (Contextual AI), Edo Liberty (Pinecone), Jerry Chen (Greylock), Mayada Gonimah (Thread AI) และคนอื่นๆ
+
+### Infrastructure Evolution
+
+Amin Vahdat เสนอ 5 shifts: (1) **application-specific computation** — TPUs ให้ efficiency สูงกว่า ~10x เทียบกับ general-purpose hardware, (2) **networking specialization** — bandwidth และ latency ระหว่าง compute nodes สำคัญพอๆ กับ compute เอง, (3) **memory wall** — memory bandwidth กลายเป็น limiting factor, (4) **compute packing** ภายใต้ power และ cooling constraints, (5) **liquid cooling** เป็นมาตรฐานสำหรับ AI hardware
+
+Takeaway สำหรับ startups: วางแผนสำหรับอนาคตที่ compute ถูกลง อย่ายึดติดกับ cost constraints ของวันนี้
+
+### Key Themes
+
+**Models ดีขึ้นเร็วกว่าที่คาด** — Douwe Kiela วาง "multi-LLM future" ที่ models ต่างๆ เก่งคนละด้าน สิ่งที่ต้องใช้ complex prompt engineering วันนี้ อาจทำงานกับ simple prompts ในวันพรุ่งนี้
+
+**Agents คือ paradigm ถัดไป** — Harrison Chase ระบุ 5 ด้าน: UX ที่ก้าวข้าม chat interfaces, human-in-the-loop เป็น spectrum ไม่ใช่ binary, vertical-specific agents, context learning (agents ที่เรียนรู้จากประสบการณ์), และ low-level frameworks ที่ต้อง robust ขึ้น ปิดท้ายด้วย: "Agents hold the key... but success depends on our guidance."
+
+**Application layer เป็นที่รวมตัวของ value** — เมื่อ models กลายเป็น commodity ความเชี่ยวชาญเฉพาะทาง, data access, และ UX จะกลายเป็น differentiators
+
+### คำแนะนำสำหรับ Founders
+
+คำแนะนำที่เกิดซ้ำจากหลายๆ contributors:
+
+- **Move fast and ship** — over-planning เป็นความเสี่ยงที่ใหญ่กว่า under-planning
+- **โฟกัสปัญหาเฉพาะทาง** — vertical AI (legal, healthcare, logistics) ชนะ general-purpose
+- **Value-based pricing** — ตั้งราคาตาม value ที่ส่งมอบ ไม่ใช่ inference cost
+- **ให้ความสำคัญกับ evaluations** — ถ้าวัดไม่ได้ ก็ปรับปรุงไม่ได้
+- **AI สำหรับ revenue ไม่ใช่แค่ลด cost** — สร้าง revenue streams ใหม่สำคัญกว่าตัดค่าใช้จ่าย
+- **Build model-agnostic** — ความสามารถในการเปลี่ยน models คือ strategic advantage
+- **Human-in-the-loop** — การรู้ว่าเมื่อไหร่ควร escalate ให้คนคือ feature ไม่ใช่ข้อจำกัด
+- **Stickiness มากกว่า demos** — workflow integration ที่ฝังตัวเข้าไปชนะ impressive demos ที่ไม่ติดอยู่
+
+มุมมองของ Mayada Gonimah ที่ resonate กับผมคือ: การสร้าง AI agent systems ต้องใช้ fundamentals เดียวกับ distributed systems — managing state, handling failures, ensuring consistency, dealing with concurrent operations tooling ต่างกัน แต่ engineering discipline เดียวกันครับ
+
+---
+
+## สิ่งที่ผมได้จากการอ่าน
+
+1. **Agent paradigm ไม่ใช่แค่ hype** — Technical guide ของ Google ครอบคลุม ADK agent types, deployment patterns, memory distillation, 4-layer evaluation frameworks นี่คือ engineering ไม่ใช่ marketing
+
+2. **Data architecture สำคัญกว่า model choice** — long-term knowledge, working memory, transactional memory, memory distillation Data layer คือจุดที่ production agent systems ส่วนมากสะดุด
+
+3. **Evaluation เป็น layer ที่ลงทุนน้อยเกินไป** — ทั้ง 2 เล่มเน้น Technical guide มี structured 4-layer framework หลาย founders พูดตรงกันว่า "ให้ความสำคัญกับ evaluations"
+
+4. **Interoperability เป็น strategic bet** — MCP, A2A, multi-model support การสร้างให้มี flexibility ตอนนี้ช่วยหลีกเลี่ยง painful migrations ในอนาคต
+
+5. **Distributed systems skills ถ่ายโอนได้** — สำหรับ backend engineers การเปลี่ยนมาทำ agents หมายถึงการจัดการ state ข้าม interactions, handle tool integrations, สร้าง evaluation pipelines, และ operate multi-agent systems ทักษะเหมือนกันครับ
+
+---
+
+## Sources
+
+- [Startup Technical Guide: AI Agents — Google Cloud](https://cloud.google.com/resources/content/building-ai-agents?hl=en)
+- [Future of AI: Perspectives for Startups 2025 — Google Cloud](https://cloud.google.com/resources/content/future-of-ai-report?hl=en)
+- [Developer's Guide to AI Agent Protocols — Google Developers Blog](https://developers.googleblog.com/en/developers-guide-to-ai-agent-protocols/)
+- [Agent Starter Pack — Google Cloud Platform GitHub](https://github.com/GoogleCloudPlatform/agent-starter-pack)
