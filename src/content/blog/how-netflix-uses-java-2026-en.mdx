@@ -68,7 +68,7 @@ The video bits come from that hardware, not from the cloud. But the control plan
 
 Paul sums up the language choice in one line: **Java is the best trade-off between runtime performance, developer productivity, and maintainability.**
 
-It is faster than Python for typical backend work. It is more productive than C++ or Rust once you factor in ecosystem, tooling, hiring, and long-term code health. It is boring in the good way — the kind of boring that lets thousands of services be maintained by thousands of engineers without constant surprises.
+Runtime performance is solid for typical backend work, and developer productivity stays high once you factor in ecosystem, tooling, hiring, and long-term code health. It is boring in the good way — the kind of boring that lets thousands of services be maintained by thousands of engineers without constant surprises.
 
 ![its-all-java](/assets/images/blogs/netflix-java-2026/its-all-java.jpg)
 
@@ -90,19 +90,29 @@ On testing, Paul highlights `@SpringBootTest` paired with targeted slice annotat
 
 ## Version migrations at 4,000-app scale
 
-![dgs-graphql-grpc-rest](/assets/images/blogs/netflix-java-2026/dgs-graphql-grpc-rest.jpg)
-
 One part of the talk I enjoyed most was the honest look at upgrade pain. When Spring Boot moved from 2 to 3, the whole ecosystem had to shift from `javax` to `jakarta`. This created a chicken-and-egg problem: apps could not upgrade until their libraries upgraded, and libraries could not upgrade without breaking apps that had not moved yet.
 
 Netflix's solution was a **custom Gradle transform** that manipulates bytecode at dependency resolution time, combined with **OpenRewrite** and **Gradle Lint**. The transform essentially rewrote `javax` references to `jakarta` on the fly, so libraries could move at their own pace without blocking consumers.
 
 ![spring-boot-upgrade-claude](/assets/images/blogs/netflix-java-2026/spring-boot-upgrade-claude.jpg)
 
-For the Spring Boot 3 to 4 upgrade, they took a very different approach: **Claude Code running headless as a batch job**. The LLM runs sequential upgrade prompts on each repository, with **checkpointing** so platform engineers can inspect failures and resume from a known-good state.
-
-In the Q&A, someone asked why Netflix chose an LLM over deterministic OpenRewrite AST rules. Paul's answer was straightforward: LLMs are cheaper to author and more resilient to weird corner cases. OpenRewrite is great when your migration rules are clean and uniform, but real codebases have edge cases that would take forever to encode as AST patterns. The LLM just handles them.
+For the Spring Boot 3 to 4 upgrade, they took a very different approach: **Claude Code running headless as a batch job**. The LLM runs sequential upgrade prompts on each repository, with **checkpointing** so platform engineers can inspect failures and resume from a known-good state. The interesting trade-off here is that Netflix consciously picked an LLM over deterministic OpenRewrite AST rules — LLMs are cheaper to author and more resilient to weird corner cases that would take forever to encode as AST patterns.
 
 The philosophy underneath all of this is: **rip off the band-aid early**. Delaying framework upgrades creates technical debt that eventually blocks you from adopting new libraries like Spring AI. Keeping velocity means not letting the version gap grow.
+
+---
+
+## Protocol standards: GraphQL, gRPC, and REST is dead
+
+![dgs-graphql-grpc-rest](/assets/images/blogs/netflix-java-2026/dgs-graphql-grpc-rest.jpg)
+
+Paul devotes a short section to clarifying which protocol Netflix uses where, and the slide is delightfully blunt — REST gets a tombstone.
+
+- **GraphQL** is used at the client edge for flexible, client-driven data fetching. The DGS framework is the implementation. Think in terms of _data_, not methods.
+- **gRPC** is used strictly for server-to-server backend communication where latency and method execution matter more than schema flexibility. Think in terms of _methods_, not data.
+- **REST** is effectively deprecated for new primary development at Netflix.
+
+I find the REST decision interesting. REST is not bad — it is just that once you have a federated GraphQL edge for clients and gRPC for service-to-service, the niche where REST is the right tool shrinks to almost nothing. New services skip REST entirely.
 
 ---
 
@@ -130,13 +140,13 @@ Netflix's workaround is a **custom ThreadFactory** injected into the concurrency
 
 ---
 
-## Reactive programming: no comeback
+## Newer Java is replacing the role reactive used to play
 
-This did not get a dedicated slide in the 2026 talk, but it is worth noting because it is the quiet confirmation of a bigger decision from last year. In the 2025 edition, Netflix had essentially declared **RxJava and WebFlux a failed experiment** — powerful in theory, but the debugging complexity and cognitive overhead were not worth it at their scale. The stated plan was that **virtual threads plus structured concurrency** would replace the reactive style entirely.
+This did not get a dedicated slide in the 2026 talk, but it is worth pulling out because it ties the virtual threads story to a larger trend in the Java world. In the 2025 edition, Netflix had talked about **RxJava and WebFlux as an experiment that did not work out for them** — powerful in theory, but the debugging complexity and cognitive overhead were not worth it at their scale. The stated direction was that **virtual threads plus structured concurrency** would take over the role reactive was filling.
 
-A year later, that position has solidified. Netflix has **standardized on WebMVC**, and there is no sign of reactive making a comeback. Virtual threads give them the concurrency benefits that pushed teams toward reactive in the first place, without the stack traces that make you want to quit your job.
+A year later, that direction looks right at least within the Netflix context. They have **standardized on WebMVC**, and the imperative model with virtual threads gives them the concurrency benefits that originally pushed teams toward reactive — without the stack traces that make you want to quit your job.
 
-I find this reassuring as someone who has also wrestled with WebFlux debugging. It is easy to feel like reactive is the "serious" backend choice, but the biggest Java shop in the world looked at it and said: the imperative model with virtual threads is good enough, and good enough is better than clever.
+I want to be careful not to over-generalize this. Reactive is not dead everywhere — there are still systems where backpressure semantics and stream composition are exactly what you need, and WebFlux is the right answer for them. But the broader pattern is real: a lot of teams reached for reactive because Java did not have a good concurrency model, and newer JDK versions are finally closing that gap. If your reason for picking reactive was "I need to handle a lot of concurrent IO without blocking platform threads," virtual threads now give you that without the cognitive tax. Worth re-examining the assumption next time you start a new service.
 
 ---
 
@@ -174,8 +184,8 @@ A few things stuck with me after the video ended:
 
 - **Virtual threads are ready, but mind the plumbing.** Context propagation is the thing that bites you. If tracing and security context rely on ThreadLocal, roll out carefully and watch for blank spans before you celebrate.
 
-- **Reactive is not coming back.** Netflix spent years on WebFlux and RxJava, called it a failed experiment in 2025, and 2026 confirms the decision. If your team keeps reaching for reactive because it feels more "serious," it might be time to question that assumption.
+- **Newer Java is replacing the role reactive used to play.** Virtual threads plus structured concurrency now cover most of the use cases that originally drove teams to WebFlux/RxJava. Reactive is still right in some places, but if your reason for picking it was "I need non-blocking concurrency on the JVM," that reason has weakened a lot.
 
 - **Agentic workflows belong in Java services.** Keeping the application loop deterministic and only calling the LLM for specific nodes feels much more operable than handing everything to an agent. And with Spring AI and LangChain4j, you no longer have to leave the JVM to do it.
 
-If you work on backend systems, this talk is worth the hour. It is honest about the trade-offs, grounded in real production numbers, and points at where Java platform teams are heading in the Gen AI era — which, as it turns out, still runs on a JVM.
+**My action item from this talk:** I want to do a hands-on exploration of building an agentic workflow in Java (Spring AI, LangChain4j, or ADK Java) instead of Python. The JVM will use more memory than a Python equivalent, but for a long-running production service the throughput and latency should technically be better. This is on my list for an upcoming side project.
