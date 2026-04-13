@@ -76,6 +76,7 @@ export type ProfessionalExperience = {
 
 export type EducationExperience = {
   school: string;
+  website?: string;
   degree: string;
   fieldOfStudy: string;
   images: string[];

@@ -2,10 +2,40 @@
 import Layout from "../layouts/BaseLayout.astro";
 import SectionTitle from "../components/SectionTitle";
 import experiences from "../data/experiences.json";
-import { ProfessionalExperience } from "../data/props";
+import { ProfessionalExperience, EducationExperience } from "../data/props";
 
 const professionalExperiences: ProfessionalExperience[] =
   experiences.professional;
+const educations: EducationExperience[] = experiences.education;
+
+function formatDate(dateStr: string): string {
+  if (dateStr === "Present") return "Present";
+  const [year, month] = dateStr.split("-");
+  const months = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  ];
+  return `${months[parseInt(month) - 1]} ${year}`;
+}
+
+function calcDuration(start: string, end: string): string {
+  const startDate = new Date(
+    parseInt(start.split("-")[0]),
+    parseInt(start.split("-")[1]) - 1,
+  );
+  const endDate =
+    end === "Present"
+      ? new Date()
+      : new Date(parseInt(end.split("-")[0]), parseInt(end.split("-")[1]) - 1);
+  let months =
+    (endDate.getFullYear() - startDate.getFullYear()) * 12 +
+    (endDate.getMonth() - startDate.getMonth());
+  const years = Math.floor(months / 12);
+  months = months % 12;
+  if (years > 0 && months > 0) return `${years} yr ${months} mo`;
+  if (years > 0) return `${years} yr`;
+  return `${months} mo`;
+}
 ---
 
 <Layout
@@ -14,58 +44,218 @@ const professionalExperiences: ProfessionalExperience[] =
 >
   <section>
     <SectionTitle title="Professional Experiences" />
-    <div class="resume-download mb-8 p-6 border border-gray-300 dark:border-primary-light rounded-lg">
-      <h3 class="text-xl font-bold mb-2">Complete Resume</h3>
-      <p class="mb-4">
-        Get access to my detailed professional resume with comprehensive information about my skills,
-        projects, and achievements. Perfect for recruiters or anyone interested in my full work history.
-      </p>
-      <div class="flex items-center">
+
+    <div
+      class="resume-download mb-10 p-5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
+    >
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h3 class="text-lg font-bold mb-1">Complete Resume</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            Detailed resume with comprehensive skills, projects, and achievements.
+          </p>
+        </div>
         <a
           href="https://buymeacoffee.com/tpbabparn/e/405561"
-          class="inline-flex items-center px-4 py-2 bg-primary-light text-black hover:bg-primary-dark hover:text-white dark:text-white font-medium rounded-lg transition-colors"
+          class="inline-flex items-center px-5 py-2.5 bg-primary-light text-black hover:bg-primary-dark hover:text-white dark:text-white font-medium rounded-lg transition-colors text-sm whitespace-nowrap"
           target="_blank"
           rel="noopener noreferrer"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
-          Download Resume ($10)
+          Download Resume
         </a>
-        <span class="ml-4 text-sm text-gray-600 dark:text-gray-300">Secure payment via Buy Me A Coffee</span>
       </div>
     </div>
-    <ul class="list-none">
-      {
-        professionalExperiences.map((exp, index) => (
-          <li class="mb-8 rounded overflow-hidden border border-gray-300 dark:border-primary-light p-4 md:p-8">
-            <h3 class="text-xl font-bold">{exp.position}</h3>
-            <h4 class="text-lg font-bold">
-              {exp.website ? (
-                <a href={exp.website} target="_blank" rel="noopener noreferrer" class="hover:underline hover:text-primary-light transition-colors">
-                  {exp.company}
-                </a>
-              ) : (
-                exp.company
-              )} - {exp.country}
-            </h4>
-            <p class="text-gray-700">
-              {exp.startDate} - {exp.endDate}
-            </p>
-            <ul class="list-none pl-4 md:pl-8 mt-2 md:px-8">
-              {exp.highlights.map((highlight, index) => (
-                <>
-                  <li class="flex items-start">
-                    <span class="mr-2">🟢</span>
-                    {highlight}
-                  </li>
-                  <br />
-                </>
-              ))}
-            </ul>
-          </li>
-        ))
-      }
-    </ul>
+
+    <div class="relative">
+      <div class="absolute left-[7px] md:left-1/2 md:-translate-x-px top-0 bottom-0 w-0.5 bg-gray-300 dark:bg-gray-600"></div>
+
+      <ul class="list-none">
+        {
+          professionalExperiences.map((exp, index) => {
+            const isLeft = index % 2 === 0;
+            const isPresent = exp.endDate === "Present";
+            return (
+              <li
+                class:list={[
+                  "relative mb-10 md:mb-14 md:flex md:items-start",
+                  isLeft ? "md:flex-row" : "md:flex-row-reverse",
+                ]}
+              >
+                <div
+                  class:list={[
+                    "hidden md:block md:w-1/2",
+                    isLeft ? "md:pr-12 md:text-right" : "md:pl-12 md:text-left",
+                  ]}
+                >
+                  <div class="flex flex-col gap-1">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-primary-light dark:text-primary-light">
+                      {exp.position}
+                    </span>
+                    {exp.website ? (
+                      <a
+                        href={exp.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-lg font-bold hover:text-primary-light transition-colors inline-flex items-center gap-1"
+                      >
+                        {exp.company}
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                      </a>
+                    ) : (
+                      <span class="text-lg font-bold">{exp.company}</span>
+                    )}
+                    <span class="text-sm text-gray-500 dark:text-gray-400">{exp.country}</span>
+                  </div>
+                </div>
+
+                <div class="absolute left-0 md:left-1/2 md:-translate-x-1/2 z-10 flex items-center justify-center">
+                  <div
+                    class:list={[
+                      "w-[15px] h-[15px] rounded-full border-[3px] border-primary-light dark:border-primary-light",
+                      isPresent
+                        ? "bg-primary-light dark:bg-primary-light shadow-[0_0_0_4px_rgba(14,220,170,0.2)] dark:shadow-[0_0_0_4px_rgba(14,220,170,0.3)]"
+                        : "bg-white dark:bg-gray-900",
+                    ]}
+                  />
+                </div>
+
+                <div
+                  class:list={[
+                    "ml-8 md:ml-0 md:w-1/2",
+                    isLeft ? "md:pl-12" : "md:pr-12",
+                  ]}
+                >
+                  <div
+                    class:list={[
+                      "rounded-xl border border-gray-300 dark:border-gray-600 p-5 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm hover:border-primary-light dark:hover:border-primary-light transition-colors",
+                      isPresent && "ring-1 ring-primary-light/30 dark:ring-primary-light/20",
+                    ]}
+                  >
+                    <div class="md:hidden mb-3">
+                      <span class="text-xs font-semibold uppercase tracking-wider text-primary-light dark:text-primary-light">
+                        {exp.position}
+                      </span>
+                      {exp.website ? (
+                        <a
+                          href={exp.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="block text-lg font-bold hover:text-primary-light transition-colors mt-0.5"
+                        >
+                          {exp.company}
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 inline ml-1" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                          </svg>
+                        </a>
+                      ) : (
+                        <span class="block text-lg font-bold mt-0.5">{exp.company}</span>
+                      )}
+                      <span class="text-sm text-gray-500 dark:text-gray-400">{exp.country}</span>
+                    </div>
+
+                    <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-3">
+                      <span>{formatDate(exp.startDate)} - {formatDate(exp.endDate)}</span>
+                      <span class="text-gray-300 dark:text-gray-600">|</span>
+                      <span class="font-medium text-gray-600 dark:text-gray-300">{calcDuration(exp.startDate, exp.endDate)}</span>
+                      {isPresent && (
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary-light/20 text-primary-dark dark:text-primary-light dark:bg-primary-light/10">
+                          Current
+                        </span>
+                      )}
+                    </div>
+
+                    <ul class="list-none space-y-2">
+                      {exp.highlights.map((highlight) => (
+                        <li class="flex items-start text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+                          <svg class="w-4 h-4 mt-0.5 mr-2 flex-shrink-0 text-primary-light dark:text-primary-light" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4" />
+                          </svg>
+                          <span>{highlight}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </li>
+            );
+          })
+        }
+        {
+          educations.map((edu) => (
+            <li class="relative mb-10 md:mb-14 md:flex md:items-start md:flex-row-reverse">
+              <div class="hidden md:block md:w-1/2 md:pl-12 md:text-left">
+                <div class="flex flex-col gap-1">
+                  <span class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Education</span>
+                  <span class="text-lg font-bold">{edu.degree} in {edu.fieldOfStudy}</span>
+                  {edu.website ? (
+                    <a
+                      href={edu.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-sm text-primary-light dark:text-primary-light hover:text-primary-dark dark:hover:text-white transition-colors inline-flex items-center gap-1"
+                    >
+                      {edu.school}
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                      </svg>
+                    </a>
+                  ) : (
+                    <span class="text-sm text-primary-light dark:text-primary-light">{edu.school}</span>
+                  )}
+                </div>
+              </div>
+
+              <div class="absolute left-0 md:left-1/2 md:-translate-x-1/2 z-10 flex items-center justify-center">
+                <div class="w-[15px] h-[15px] rounded-full border-[3px] border-gray-400 dark:border-gray-500 bg-white dark:bg-gray-900" />
+              </div>
+
+              <div class="ml-8 md:ml-0 md:w-1/2 md:pr-12">
+                <div class="rounded-xl border border-gray-300 dark:border-gray-600 p-5 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
+                  <div class="md:hidden mb-3">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Education</span>
+                    <span class="block text-lg font-bold mt-0.5">{edu.degree} in {edu.fieldOfStudy}</span>
+                    {edu.website ? (
+                      <a
+                        href={edu.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-sm text-primary-light dark:text-primary-light hover:text-primary-dark dark:hover:text-white transition-colors inline-flex items-center gap-1"
+                      >
+                        {edu.school}
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                      </a>
+                    ) : (
+                      <span class="text-sm text-primary-light dark:text-primary-light">{edu.school}</span>
+                    )}
+                  </div>
+
+                  <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-3">
+                    <span>{formatDate(edu.startDate)} - {formatDate(edu.endDate)}</span>
+                    <span class="text-gray-300 dark:text-gray-600">|</span>
+                    <span class="font-medium text-gray-600 dark:text-gray-300">{calcDuration(edu.startDate, edu.endDate)}</span>
+                  </div>
+
+                  <div class="flex flex-wrap gap-2">
+                    {edu.courses.map((course) => (
+                      <span class="px-3 py-1 text-xs font-medium rounded-full bg-primary-light/10 text-primary-dark dark:text-primary-light dark:bg-primary-light/10 border border-primary-light/20 dark:border-primary-light/20">
+                        {course}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+
   </section>
 </Layout>
