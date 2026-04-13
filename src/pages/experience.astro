@@ -96,7 +96,7 @@ function calcDuration(start: string, end: string): string {
                       isLeft ? "md:items-end" : "md:items-start",
                     ]}
                   >
-                    <span class="text-xs font-semibold uppercase tracking-wider text-primary-light dark:text-primary-light">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-primary-dark dark:text-primary-light">
                       {exp.position}
                     </span>
                     {exp.website ? (
@@ -104,7 +104,7 @@ function calcDuration(start: string, end: string): string {
                         href={exp.website}
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="text-lg font-bold hover:text-primary-light transition-colors inline-flex items-center gap-1"
+                        class="text-lg font-bold hover:text-primary-dark dark:hover:text-primary-light transition-colors inline-flex items-center gap-1"
                       >
                         {exp.company}
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -142,7 +142,7 @@ function calcDuration(start: string, end: string): string {
                     ]}
                   >
                     <div class="md:hidden mb-3">
-                      <span class="text-xs font-semibold uppercase tracking-wider text-primary-light dark:text-primary-light">
+                      <span class="text-xs font-semibold uppercase tracking-wider text-primary-dark dark:text-primary-light">
                         {exp.position}
                       </span>
                       {exp.website ? (
@@ -150,7 +150,7 @@ function calcDuration(start: string, end: string): string {
                           href={exp.website}
                           target="_blank"
                           rel="noopener noreferrer"
-                          class="block text-lg font-bold hover:text-primary-light transition-colors mt-0.5"
+                          class="block text-lg font-bold hover:text-primary-dark dark:hover:text-primary-light transition-colors mt-0.5"
                         >
                           {exp.company}
                           <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 inline ml-1" viewBox="0 0 20 20" fill="currentColor">
@@ -202,7 +202,7 @@ function calcDuration(start: string, end: string): string {
                       href={edu.website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      class="text-sm text-primary-light dark:text-primary-light hover:text-primary-dark dark:hover:text-white transition-colors inline-flex items-center gap-1"
+                      class="text-sm text-primary-dark dark:text-primary-light hover:text-primary-dark dark:hover:text-white transition-colors inline-flex items-center gap-1"
                     >
                       {edu.school}
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -210,7 +210,7 @@ function calcDuration(start: string, end: string): string {
                       </svg>
                     </a>
                   ) : (
-                    <span class="text-sm text-primary-light dark:text-primary-light">{edu.school}</span>
+                    <span class="text-sm text-primary-dark dark:text-primary-light">{edu.school}</span>
                   )}
                 </div>
               </div>
@@ -229,7 +229,7 @@ function calcDuration(start: string, end: string): string {
                         href={edu.website}
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="text-sm text-primary-light dark:text-primary-light hover:text-primary-dark dark:hover:text-white transition-colors inline-flex items-center gap-1"
+                        class="text-sm text-primary-dark dark:text-primary-light hover:text-primary-dark dark:hover:text-white transition-colors inline-flex items-center gap-1"
                       >
                         {edu.school}
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -237,7 +237,7 @@ function calcDuration(start: string, end: string): string {
                         </svg>
                       </a>
                     ) : (
-                      <span class="text-sm text-primary-light dark:text-primary-light">{edu.school}</span>
+                      <span class="text-sm text-primary-dark dark:text-primary-light">{edu.school}</span>
                     )}
                   </div>
 
