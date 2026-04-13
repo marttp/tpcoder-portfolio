@@ -23,7 +23,7 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 
 ในฐานะ software engineer ที่เคยทำงานข้ามทีมหลายประเทศและ time zone ผมรู้สึกมาตลอดว่า communication เป็นทักษะที่ทุกคนคิดว่าตัวเองมีอยู่แล้ว จนกว่าจะมีอะไรพัง diagram ที่ไม่มีใครเข้าใจ meeting ที่ส่งเป็น email ก็ได้ หรือเพื่อนร่วมงาน remote ที่ถูกตัดออกจากการตัดสินใจ
 
-ตอนเจอ *Communication Patterns* โดย Jacqui Read (O'Reilly, 2023) ชื่อเล่มดึงดูดความสนใจทันที คำว่า "patterns" ทำให้นึกถึง design patterns ในซอฟต์แวร์ และหนังสือเล่มนี้ก็ deliver ตามชื่อครับ มัน treat communication เหมือนเป็นสิ่งที่ศึกษา ฝึกฝน และปรับปรุงได้อย่างเป็นระบบ ผ่าน patterns (แนวปฏิบัติที่ดี) และ antipatterns (สิ่งที่ควรเลี่ยง)
+ตอนเจอ *Communication Patterns* โดย Jacqui Read (O'Reilly, 2023) ชื่อเล่มดึงดูดความสนใจทันที คำว่า patterns ทำให้นึกถึง design patterns ในซอฟต์แวร์ และหนังสือเล่มนี้ก็ deliver ตามชื่อครับ มัน treat communication เหมือนเป็นสิ่งที่ศึกษา ฝึกฝน และปรับปรุงได้อย่างเป็นระบบ ผ่าน patterns (แนวปฏิบัติที่ดี) และ antipatterns (สิ่งที่ควรเลี่ยง)
 
 หนังสือแบ่งเป็น 4 parts รวม 15 chapters พร้อม appendix เรื่อง ADR templates ตลอดทั้งเล่มใช้ running example ของบริษัทสมมติชื่อ Polyglot Media ทำให้ตัวอย่างมีความต่อเนื่องและเห็นภาพตลอด
 
@@ -43,7 +43,7 @@ Chapter นี้แนะนำแนวคิด patterns และ antipatter
 
 Chapter นี้โฟกัสที่การลด noise ใน diagram Antipattern Boxes in Boxes อธิบายนิสัยที่ชอบซ้อน container ใน container ดูเป็นระเบียบแต่มักสร้างความสับสนมากกว่า อีกตัวคือ Relationship Spiderweb — diagram ที่เส้นตัดกันไปมาทุกทิศ ทุกคนน่าจะเคยเห็น (และน่าจะเคยสร้าง) มาแล้ว
 
-ฝั่ง patterns มี Appropriate Labels ที่เตือนว่าทุก element ใน diagram ควรมี label ที่ชัดเจนและสื่อความหมาย ไม่ใช่แค่ "Service A" หรือ "Module X" และ Clear Relationships ที่โฟกัสให้ connection ระหว่าง element ชัดเจน เส้นทุกเส้นควรมีทิศทางและ label อธิบายว่า relationship นั้นคืออะไร
+ฝั่ง patterns มี Appropriate Labels ที่เตือนว่าทุก element ใน diagram ควรมี label ที่ชัดเจนและสื่อความหมาย ไม่ใช่แค่ Service A หรือ Module X และ Clear Relationships ที่โฟกัสให้ connection ระหว่าง element ชัดเจน เส้นทุกเส้นควรมีทิศทางและ label อธิบายว่า relationship นั้นคืออะไร
 
 ผู้เขียนยังแนะนำแนวคิด Match Diagram Flow ให้ตรงกับทิศทางการอ่านของ audience สำหรับคนอ่านซ้ายไปขวา flow diagram ควรไปจากซ้ายไปขวาหรือบนลงล่าง ถ้าสวนทางคนอ่านต้องออกแรงมากขึ้น
 
@@ -57,11 +57,11 @@ Antipattern Relying on Color to Communicate เป็นตัวอย่าง
 
 ### Chapter 4: Narrative
 
-Chapter 4 สำรวจแนวคิดว่า diagram เล่าเรื่องได้ Antipattern Using Icons to Convey Meaning เตือนว่าอย่าพึ่งพา icon เล็ก ๆ (เช่น icon cloud สำหรับ "cloud services" หรือแม่กุญแจสำหรับ "security") โดยไม่มีข้อความอธิบาย icon มีความกำกวม อาจหมายถึงคนละอย่างสำหรับคนละคน แนวทางที่ปลอดภัยคือจับคู่ icon กับ text เสมอ
+Chapter 4 สำรวจแนวคิดว่า diagram เล่าเรื่องได้ Antipattern Using Icons to Convey Meaning เตือนว่าอย่าพึ่งพา icon เล็ก ๆ (เช่น icon cloud สำหรับ cloud services หรือแม่กุญแจสำหรับ security) โดยไม่มีข้อความอธิบาย icon มีความกำกวม อาจหมายถึงคนละอย่างสำหรับคนละคน แนวทางที่ปลอดภัยคือจับคู่ icon กับ text เสมอ
 
 ### Chapter 5: Notation
 
-Chapter นี้ครอบคลุม notation systems ที่เป็นทางการ โดยโฟกัสที่ UML, C4 model, และ ArchiMate Antipattern Using UML for UML's Sake อ่านแล้วสะใจครับ ผมเคยเห็นหลายทีม adopt UML เพราะ "มันเป็น standard" โดยไม่พิจารณาว่า audience เข้าใจ UML notation หรือเปล่า ถ้า stakeholders เป็น product managers หรือ business analysts UML sequence diagram ที่ซับซ้อนอาจสื่อสารได้น้อยกว่า flow ง่าย ๆ ที่วาดมือ
+Chapter นี้ครอบคลุม notation systems ที่เป็นทางการ โดยโฟกัสที่ UML, C4 model, และ ArchiMate Antipattern Using UML for UML's Sake อ่านแล้วสะใจครับ ผมเคยเห็นหลายทีม adopt UML เพราะมันเป็น standard โดยไม่พิจารณาว่า audience เข้าใจ UML notation หรือเปล่า ถ้า stakeholders เป็น product managers หรือ business analysts UML sequence diagram ที่ซับซ้อนอาจสื่อสารได้น้อยกว่า flow ง่าย ๆ ที่วาดมือ
 
 [C4 model](https://c4model.com/) (Context, Container, Component, Code — โดย Simon Brown) ได้รับการ cover อย่างละเอียด ผมพบว่าหนังสือนำเสนอ C4 ได้น่าสนใจ ให้โครงสร้างพอเหมาะโดยไม่จมอยู่กับกฎ notation สี่ zoom levels map ได้ตรงกับวิธีที่เราคิดเรื่องระบบ
 
@@ -185,7 +185,7 @@ Knowledge graphs, wikis, และ knowledge management systems อื่น ๆ
 
 Chapter 11 ประยุกต์ knowledge management กับ software architecture โดยเฉพาะ ADRs (ที่แนะนำใน Chapter 8) ได้รับการ treat ลึกขึ้น หนังสือครอบคลุม lifecycle เต็มของ ADR ตั้งแต่ draft ถึง decided ถึง superseded และว่า ADRs สร้าง decision trail ที่ช่วยให้ทีมเข้าใจว่าทำไมระบบถึงออกมาเป็นแบบที่เห็น
 
-Architecture characteristics (บางทีเรียก non-functional requirements หรือ quality attributes) ได้รับการ cover อย่างละเอียด หนังสือใช้ worksheet approach สำหรับ define และ prioritize characteristics ซึ่งผมว่าใช้ได้ดี แทนที่จะพูดลอย ๆ ว่า "ระบบควร scale ได้" คุณ define ว่า scalability หมายถึงอะไรใน context ของคุณ วัดยังไง และ priority เทียบกับ characteristics อื่นเป็นยังไง
+Architecture characteristics (บางทีเรียก non-functional requirements หรือ quality attributes) ได้รับการ cover อย่างละเอียด หนังสือใช้ worksheet approach สำหรับ define และ prioritize characteristics ซึ่งผมว่าใช้ได้ดี แทนที่จะพูดลอย ๆ ว่าระบบควร scale ได้ คุณ define ว่า scalability หมายถึงอะไรใน context ของคุณ วัดยังไง และ priority เทียบกับ characteristics อื่นเป็นยังไง
 
 แนวคิด just-in-time architecture ก็น่าสนใจ คือสร้าง architecture documentation และ decisions เฉพาะเมื่อจำเป็น แทนที่จะ document ทุกอย่างล่วงหน้า สอดคล้องกับ Agile practices และเลี่ยงการสร้าง documents ที่ล้าสมัยก่อนที่จะมีใครอ่าน
 
@@ -215,7 +215,7 @@ flowchart LR
 
 Automatically Generated Documentation ถูก cover ด้วยมุมมองที่สมดุล Auto-generated API docs (Swagger, Doxygen ฯลฯ) มีประโยชน์สำหรับ code-level documentation แต่บอกไม่ได้ว่า *ทำไม* ถึง design แบบนั้น ยังต้องการ human-written documentation สำหรับ context และ business reasoning อยู่ดี
 
-Chapter นี้ยังพูดถึง AI-generated documentation โดยย้ำว่าแม้ AI tools จะช่วยได้ แต่ output ต้อง review อย่างระมัดระวัง เพราะ AI สามารถ "confidently produce convincing outputs that are completely wrong"
+Chapter นี้ยังพูดถึง AI-generated documentation โดยย้ำว่าแม้ AI tools จะช่วยได้ แต่ output ต้อง review อย่างระมัดระวัง เพราะ AI สามารถ produce output ที่ดูน่าเชื่อถือแต่ผิดทั้งหมดได้อย่างมั่นใจ
 
 ---
 
@@ -233,7 +233,7 @@ Part IV เข้าสู่เรื่อง communication ใน distributed
 
 ### Chapter 14: Remote Principles
 
-Chapter นี้สำรวจ principles เบื้องหลัง remote communication ที่มีประสิทธิภาพ insight สำคัญคือ remote meetings ใช้พลังงานมากกว่า in-person งานวิจัยจาก Stanford เรื่อง "Zoom fatigue" อธิบายเหตุผลไว้ดี: eye contact ระยะใกล้ intense และไม่เป็นธรรมชาติ การเห็นตัวเองตลอดเวลาทำให้เหนื่อย video calls จำกัดการเคลื่อนไหว และ cognitive load สูงกว่ามากเมื่อไม่สามารถอ่าน body language แบบ passive ได้
+Chapter นี้สำรวจ principles เบื้องหลัง remote communication ที่มีประสิทธิภาพ insight สำคัญคือ remote meetings ใช้พลังงานมากกว่า in-person งานวิจัยจาก Stanford เรื่อง Zoom fatigue อธิบายเหตุผลไว้ดี: eye contact ระยะใกล้ intense และไม่เป็นธรรมชาติ การเห็นตัวเองตลอดเวลาทำให้เหนื่อย video calls จำกัดการเคลื่อนไหว และ cognitive load สูงกว่ามากเมื่อไม่สามารถอ่าน body language แบบ passive ได้
 
 ส่วน synchronous versus asynchronous communication เป็นหนึ่งในส่วนที่มีประโยชน์ที่สุดของเล่มนี้ ผู้เขียนให้ guidelines ชัดเจนว่าควรใช้เมื่อไหร่:
 
