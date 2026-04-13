@@ -137,7 +137,7 @@ function calcDuration(start: string, end: string): string {
                 >
                   <div
                     class:list={[
-                      "rounded-xl border border-gray-300 dark:border-gray-600 p-5 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm hover:border-primary-light dark:hover:border-primary-light transition-colors",
+                      "rounded-xl border border-gray-300 dark:border-gray-600 p-5 bg-white/90 dark:bg-gray-800/50 backdrop-blur-sm hover:border-primary-light dark:hover:border-primary-light transition-colors",
                       isPresent && "ring-1 ring-primary-light/30 dark:ring-primary-light/20",
                     ]}
                   >
@@ -176,7 +176,7 @@ function calcDuration(start: string, end: string): string {
 
                     <ul class="list-none space-y-2">
                       {exp.highlights.map((highlight) => (
-                        <li class="flex items-start text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+                        <li class="flex items-start text-sm leading-relaxed text-gray-900 dark:text-gray-300">
                           <svg class="w-4 h-4 mt-0.5 mr-2 flex-shrink-0 text-primary-light dark:text-primary-light" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4" />
                           </svg>
@@ -220,7 +220,7 @@ function calcDuration(start: string, end: string): string {
               </div>
 
               <div class="ml-8 md:ml-0 md:w-1/2 md:pr-12">
-                <div class="rounded-xl border border-gray-300 dark:border-gray-600 p-5 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
+                <div class="rounded-xl border border-gray-300 dark:border-gray-600 p-5 bg-white/90 dark:bg-gray-800/50 backdrop-blur-sm">
                   <div class="md:hidden mb-3">
                     <span class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Education</span>
                     <span class="block text-lg font-bold mt-0.5">{edu.degree} in {edu.fieldOfStudy}</span>
