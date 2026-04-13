@@ -1,0 +1,308 @@
+---
+title: "[Book Review] Communication Patterns — by Jacqui Read (O'Reilly)"
+description: "สรุปสิ่งที่ได้จากการอ่าน Communication Patterns โดย Jacqui Read — ครอบคลุม visual communication, เทคนิคการเขียนและการพูด, knowledge management, documentation as code, และ remote communication patterns สำหรับ software architects และ engineers"
+pubDate: "2026-04-13"
+tags:
+  [
+    "Book Review",
+    "Communication",
+    "Software Architecture",
+    "Documentation",
+    "Remote Work",
+  ]
+heroImage: "/assets/images/blogs/books-cover/communication-patterns.jpg"
+language: "th"
+translationSlug: "book-review-communication-patterns"
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+![Communication Patterns — A Guide for Developers and Architects by Jacqui Read](/assets/images/blogs/books-cover/communication-patterns.jpg)
+
+## ทำไมถึงหยิบเล่มนี้มาอ่าน
+
+ในฐานะ software engineer ที่เคยทำงานข้ามทีมหลายประเทศและ time zone ผมรู้สึกมาตลอดว่า communication เป็นทักษะที่ทุกคนคิดว่าตัวเองมีอยู่แล้ว จนกว่าจะมีอะไรพัง diagram ที่ไม่มีใครเข้าใจ meeting ที่ส่งเป็น email ก็ได้ หรือเพื่อนร่วมงาน remote ที่ถูกตัดออกจากการตัดสินใจ
+
+ตอนเจอ *Communication Patterns* โดย Jacqui Read (O'Reilly, 2023) ชื่อเล่มดึงดูดความสนใจทันที คำว่า patterns ทำให้นึกถึง design patterns ในซอฟต์แวร์ และหนังสือเล่มนี้ก็ deliver ตามชื่อครับ มัน treat communication เหมือนเป็นสิ่งที่ศึกษา ฝึกฝน และปรับปรุงได้อย่างเป็นระบบ ผ่าน patterns (แนวปฏิบัติที่ดี) และ antipatterns (สิ่งที่ควรเลี่ยง)
+
+หนังสือแบ่งเป็น 4 parts รวม 15 chapters พร้อม appendix เรื่อง ADR templates ตลอดทั้งเล่มใช้ running example ของบริษัทสมมติชื่อ Polyglot Media ทำให้ตัวอย่างมีความต่อเนื่องและเห็นภาพตลอด
+
+---
+
+## Part I — Visual Communication
+
+### Chapter 1: The Essentials
+
+หนังสือเปิดด้วย pattern ที่ควรจะชัดเจนอยู่แล้วแต่มักถูกละเลย: Know Your Audience ก่อนจะสร้าง diagram, document, หรือ presentation ถามตัวเองก่อนว่าใครจะเป็นคนอ่าน ผู้บริหารระดับ C-level กับ backend developer ต้องการ detail ที่ต่างกันโดยสิ้นเชิงจาก system diagram เดียวกัน
+
+อีกจุดที่เน้นคือเริ่มจาก big picture first ให้ context ก่อนแล้วค่อยลง detail ตรงนี้ผมเห็นพลาดบ่อยมากใน architecture review มีคนกระโดดเข้า component-level diagram โดยไม่อธิบายก่อนว่า component นั้นอยู่ตรงไหนของระบบ
+
+Chapter นี้แนะนำแนวคิด patterns และ antipatterns เป็นโครงสร้างหลักของหนังสือ Antipattern ที่โดนใจคือ Mixing Levels of Abstraction เช่น การแสดง system overview ระดับสูงกับ database tables แต่ละตัวใน diagram เดียวกัน คนอ่านต้องกระโดดสลับ zoom level ซึ่งทำให้ diagram ยากขึ้น
+
+### Chapter 2: Clarify the Clutter
+
+Chapter นี้โฟกัสที่การลด noise ใน diagram Antipattern Boxes in Boxes อธิบายนิสัยที่ชอบซ้อน container ใน container ดูเป็นระเบียบแต่มักสร้างความสับสนมากกว่า อีกตัวคือ Relationship Spiderweb — diagram ที่เส้นตัดกันไปมาทุกทิศ ทุกคนน่าจะเคยเห็น (และน่าจะเคยสร้าง) มาแล้ว
+
+ฝั่ง patterns มี Appropriate Labels ที่เตือนว่าทุก element ใน diagram ควรมี label ที่ชัดเจนและสื่อความหมาย ไม่ใช่แค่ Service A หรือ Module X และ Clear Relationships ที่โฟกัสให้ connection ระหว่าง element ชัดเจน เส้นทุกเส้นควรมีทิศทางและ label อธิบายว่า relationship นั้นคืออะไร
+
+ผู้เขียนยังแนะนำแนวคิด Match Diagram Flow ให้ตรงกับทิศทางการอ่านของ audience สำหรับคนอ่านซ้ายไปขวา flow diagram ควรไปจากซ้ายไปขวาหรือบนลงล่าง ถ้าสวนทางคนอ่านต้องออกแรงมากขึ้น
+
+### Chapter 3: Accessibility
+
+Chapter นี้ผมไม่ได้คาดหวังว่าจะเจอในหนังสือ software architecture แต่รู้สึกชอบ ผู้เขียน argue ว่า accessibility ใน communication คือการทำให้ audience ทุกคนเข้าใจ message ได้
+
+Antipattern Relying on Color to Communicate เป็นตัวอย่างที่ดี ประชากรประมาณ 4.5% มี color blindness ในรูปแบบใดรูปแบบหนึ่ง ถ้า diagram ใช้สีแดง vs สีเขียวแยก healthy กับ unhealthy services audience บางส่วนจะแยกไม่ออก หนังสือแนะนำให้ใช้ patterns, shapes, หรือ text labels ควบคู่กับสี ห้ามใช้สีอย่างเดียว
+
+ยังมีเนื้อหาเรื่อง contrast ratios (ตาม WCAG guidelines) การใส่ alt text สำหรับรูปใน digital documents และการคำนึงถึง mediums ที่ต่างกัน diagram ที่ดูดีบนจอ 32 นิ้วอาจอ่านไม่ออกเลยตอน project ขึ้นจอในห้องประชุมหรือดูบนมือถือ
+
+### Chapter 4: Narrative
+
+Chapter 4 สำรวจแนวคิดว่า diagram เล่าเรื่องได้ Antipattern Using Icons to Convey Meaning เตือนว่าอย่าพึ่งพา icon เล็ก ๆ (เช่น icon cloud สำหรับ cloud services หรือแม่กุญแจสำหรับ security) โดยไม่มีข้อความอธิบาย icon มีความกำกวม อาจหมายถึงคนละอย่างสำหรับคนละคน แนวทางที่ปลอดภัยคือจับคู่ icon กับ text เสมอ
+
+### Chapter 5: Notation
+
+Chapter นี้ครอบคลุม notation systems ที่เป็นทางการ โดยโฟกัสที่ UML, C4 model, และ ArchiMate Antipattern Using UML for UML's Sake อ่านแล้วสะใจครับ ผมเคยเห็นหลายทีม adopt UML เพราะมันเป็น standard โดยไม่พิจารณาว่า audience เข้าใจ UML notation หรือเปล่า ถ้า stakeholders เป็น product managers หรือ business analysts UML sequence diagram ที่ซับซ้อนอาจสื่อสารได้น้อยกว่า flow ง่าย ๆ ที่วาดมือ
+
+[C4 model](https://c4model.com/) (Context, Container, Component, Code — โดย Simon Brown) ได้รับการ cover อย่างละเอียด ผมพบว่าหนังสือนำเสนอ C4 ได้น่าสนใจ ให้โครงสร้างพอเหมาะโดยไม่จมอยู่กับกฎ notation สี่ zoom levels map ได้ตรงกับวิธีที่เราคิดเรื่องระบบ
+
+<MermaidDiagram chart={`
+flowchart TB
+    subgraph C4["C4 Model — Four Zoom Levels"]
+        direction TB
+        L1["Level 1: System Context\n(How your system fits in the world)"]
+        L2["Level 2: Container\n(Applications, databases, etc.)"]
+        L3["Level 3: Component\n(Major building blocks inside a container)"]
+        L4["Level 4: Code\n(Class-level detail — use sparingly)"]
+        L1 --> L2 --> L3 --> L4
+    end
+    style C4 fill:#f0f0ff,stroke:#6666cc
+    style L1 fill:#e8e8ff,stroke:#6666cc
+    style L2 fill:#d8d8ff,stroke:#6666cc
+    style L3 fill:#c8c8ff,stroke:#6666cc
+    style L4 fill:#b8b8ff,stroke:#6666cc
+`} />
+
+Antipattern Mixing Behavior and Structure เตือนว่าอย่ารวม structural diagrams (สิ่งที่มี) กับ behavioral diagrams (สิ่งที่ interact กัน) ใน view เดียวกัน แยกกันไว้เพื่อไม่ให้คนอ่านรับข้อมูลหนักเกินไป
+
+### Chapter 6: Composition
+
+Composition เกี่ยวกับการจัดวาง element ใน diagram Antipattern Going Against Expectations อธิบายว่าเกิดอะไรขึ้นเมื่อฝืน convention ทั่วไป เช่น วาง database icon ไว้ด้านบนของ diagram แล้วเอา user-facing components ไว้ด้านล่าง คนมีความคาดหวังเรื่อง spatial arrangement อยู่แล้ว ฝืนความคาดหวังเหล่านี้ก็เพิ่ม cognitive load
+
+Antipattern Illegible Diagrams ฟังดูเหมือนจะชัดอยู่แล้ว แต่ผู้เขียนชี้ให้เห็นว่า diagram หลายอันในโลกความเป็นจริงไม่ผ่าน basic readability ด้วยซ้ำ ตัวอักษรเล็กเกินไป element ทับกัน contrast ไม่ดี ถ้าต้องหรี่ตาอ่าน แปลว่า diagram นั้นล้มเหลวแล้ว
+
+Chapter นี้ยังครอบคลุม Misleading Composition — diagram ที่การจัดวางบ่งบอก relationship หรือ hierarchy ที่ไม่ได้มี เช่น วาง 2 กล่องไว้ใกล้กัน คนอาจตีความว่ามันเกี่ยวข้องกันทั้งที่อาจไม่ได้เกี่ยว
+
+Pattern Create Visual Balance แนะนำให้กระจาย elements อย่างสม่ำเสมอทั่วพื้นที่ ใช้ alignment และ grouping สร้างโครงสร้างที่ดูเป็นระเบียบ
+
+---
+
+## Part II — Multimodal Communication
+
+### Chapter 7: Written Communication
+
+Chapter นี้เชื่อม visual communication กับ written communication Antipattern Acronym Hell โดนผมเต็ม ๆ เคยเห็น internal documents ที่แทบทุกคำเป็น acronym คนใหม่ต้องมี glossary ถึงจะอ่านย่อหน้าแรกได้
+
+Pattern Balance Text สนับสนุนการจับคู่ diagram กับ text ในปริมาณพอเหมาะ diagram ไม่มี text เลยคนอ่านต้องเดาความหมายเอง text เยอะเกินไป diagram กลายเป็นแค่ของประดับ
+
+Simple Language เป็นอีก pattern ที่ชอบ ใช้ประโยคสั้น ใช้ verb ที่แข็งแรง เลี่ยง jargon เมื่อมีคำที่ง่ายกว่า ไม่ได้หมายความว่าทำให้ง่ายจนเสียคุณค่า แต่หมายถึงการ precise และ accessible ไปพร้อมกัน
+
+หนังสือแนะนำ Structured Writing โดยใช้ Minto Pyramid Principle: เริ่มจาก key message ก่อน ตามด้วย supporting arguments แล้วจึง data ตรงข้ามกับวิธีที่ engineer หลายคนเขียนตามธรรมชาติ (build up ไปหา conclusion) แต่แนวทาง key-message-first มีประสิทธิภาพกว่ามากสำหรับคนอ่านที่ยุ่ง
+
+### Chapter 8: Verbal Communication
+
+Chapter 8 เข้าสู่ spoken communication ทั้ง presentations, meetings, และการสนทนา หนังสือครอบคลุม rhetoric triangle (ethos, pathos, logos) จาก Aristotle: สร้างความน่าเชื่อถือ (ethos) เชื่อมอารมณ์ (pathos) และใช้ logic กับ evidence (logos) ทั้ง 3 จำเป็นสำหรับ persuasion ที่มีประสิทธิภาพ
+
+ส่วน argumentation โดดเด่น เวลาเสนอ technical decision (สมมติว่าจะ migrate ไปใช้ database ใหม่) ต้องการมากกว่า technical merit ต้อง frame ในแง่ที่ audience สนใจ สำหรับ CTO อาจเป็นเรื่อง cost และ risk สำหรับ engineering team อาจเป็น developer experience และ operational burden
+
+Architecture Decision Records (ADRs) ได้รับความสนใจมากในฐานะเครื่องมือ document และ communicate decisions หนังสือแนะนำ ADRs เป็นวิธี capture ไม่แค่ *สิ่งที่ตัดสินใจ* แต่ *ทำไม* ถึงตัดสินใจ รวมถึง context, constraints, options ที่พิจารณา, และ trade-offs ที่ยอมรับ สิ่งนี้สร้าง decision trail ที่มีคุณค่ามากสำหรับคนที่เข้ามาในทีมทีหลัง
+
+<MermaidDiagram chart={`
+flowchart TB
+    subgraph ADR["ADR Structure"]
+        direction TB
+        T["Title: Statement of Decision"]
+        S["Status: Draft / Decided / Superseded"]
+        C["Context: Why the decision is needed"]
+        EC["Evaluation Criteria"]
+        O["Options: Scored against criteria"]
+        D["Decision: What was chosen and why"]
+        I["Implications: Consequences"]
+        T --> S --> C --> EC --> O --> D --> I
+    end
+    style ADR fill:#f0fff0,stroke:#66cc66
+    style T fill:#e0ffe0,stroke:#66cc66
+    style S fill:#e0ffe0,stroke:#66cc66
+    style C fill:#e0ffe0,stroke:#66cc66
+    style EC fill:#e0ffe0,stroke:#66cc66
+    style O fill:#e0ffe0,stroke:#66cc66
+    style D fill:#e0ffe0,stroke:#66cc66
+    style I fill:#e0ffe0,stroke:#66cc66
+`} />
+
+ตัวอย่าง ADR สำหรับการเลือก message broker อาจเป็นแบบนี้:
+
+> **ADR-042: Use Apache Kafka for Event Streaming**
+>
+> **Status:** Decided
+>
+> **Context:** ระบบ order processing ต้อง handle 50,000+ events ต่อวินาที พร้อม guaranteed delivery และ replay capability ระบบ RabbitMQ ปัจจุบันใกล้ถึง throughput limit และไม่ support event replay
+>
+> **Evaluation Criteria:** Throughput, replay capability, ecosystem maturity, team familiarity, operational cost
+>
+> **Options Considered:** Apache Kafka (18/25), Amazon Kinesis (15/25), Apache Pulsar (14/25)
+>
+> **Decision:** Apache Kafka — คะแนนสูงสุดด้าน throughput และ replay capability สมาชิกในทีม 2 คนมีประสบการณ์ production กับ Kafka
+>
+> **Implications:** ต้อง manage ZooKeeper/KRaft cluster ทีมต้อง training เรื่อง Kafka Streams การ migrate จาก RabbitMQ ใช้เวลาประมาณ 3 sprints
+
+สำหรับคนที่อยากศึกษาเพิ่มเรื่อง ADRs:
+
+- [Joel Parker Henderson's ADR collection](https://github.com/joelparkerhenderson/architecture-decision-record) — รวม ADR templates และตัวอย่างที่ครบถ้วน
+- [MADR template (minimal)](https://github.com/adr/madr/blob/4.0.0/template/adr-template-minimal.md?plain=1) — ADR template แบบเบา
+- [MADR template (full)](https://github.com/adr/madr/blob/4.0.0/template/adr-template.md?plain=1) — Markdown Any Decision Records template ฉบับเต็ม
+
+### Chapter 9: Rhetoric
+
+Chapter นี้ลงลึกเรื่อง persuasion techniques ครอบคลุม cognitive biases ที่ส่งผลต่อการตัดสินใจ เช่น confirmation bias, sunk cost fallacy, groupthink การตระหนักถึง biases เหล่านี้ในตัวเองและ audience ช่วยปรับปรุงการ communicate technical proposals ได้
+
+แนวคิด acceptance prophecy น่าสนใจ: ถ้าเข้า meeting ด้วยความคาดหวังว่าไอเดียจะถูกปฏิเสธ body language และ tone จะสะท้อนความคาดหวังนั้นออกมา ทำให้โดน reject ง่ายขึ้น ในทางกลับกัน communicate อย่างมั่นใจ (ขณะที่ยังเปิดรับ feedback) เพิ่มโอกาสที่จะได้ผลลัพธ์ที่ดี
+
+Chapter นี้ยังครอบคลุมการ handle meeting dynamics ต่าง ๆ ทั้ง manage disagreement, facilitate discussions ที่ไม่ใช่ทุกคนจะพูด, และทำให้ถึง decisions แทนที่จะเลื่อนออกไปเรื่อย ๆ ทักษะเหล่านี้เป็นสิ่งที่คนสาย technical หลายคนไม่เคยเรียนอย่างเป็นทางการ
+
+---
+
+## Part III — Knowledge Management
+
+### Chapter 10: Knowledge Management
+
+Part III เปลี่ยนจากการสร้าง communications มาเป็นการจัดการ knowledge ในฐานะ organizational asset ครอบคลุมวิธี capture, store, และ share knowledge ข้ามทีมและองค์กร
+
+หนังสือแยกระหว่าง tacit knowledge (สิ่งที่คนรู้แต่ไม่ได้เขียนไว้) กับ explicit knowledge (ข้อมูลที่ document ไว้แล้ว) ความท้าทายขององค์กรคือการแปลง tacit เป็น explicit โดยเฉพาะก่อนที่คนสำคัญจะออกจากทีม
+
+Knowledge graphs, wikis, และ knowledge management systems อื่น ๆ ถูกพูดถึงเป็นเครื่องมือให้ข้อมูลค้นหาได้ ผู้เขียนเน้นว่า knowledge management ไม่ใช่ one-time project แต่เป็น practice ที่ต้องทำต่อเนื่อง ข้อมูลต้อง update ให้ทันสมัย ข้อมูลที่ล้าสมัยอาจแย่กว่าไม่มีข้อมูลเลย
+
+### Chapter 11: Architecture Knowledge Management
+
+Chapter 11 ประยุกต์ knowledge management กับ software architecture โดยเฉพาะ ADRs (ที่แนะนำใน Chapter 8) ได้รับการ treat ลึกขึ้น หนังสือครอบคลุม lifecycle เต็มของ ADR ตั้งแต่ draft ถึง decided ถึง superseded และว่า ADRs สร้าง decision trail ที่ช่วยให้ทีมเข้าใจว่าทำไมระบบถึงออกมาเป็นแบบที่เห็น
+
+Architecture characteristics (บางทีเรียก non-functional requirements หรือ quality attributes) ได้รับการ cover อย่างละเอียด หนังสือใช้ worksheet approach สำหรับ define และ prioritize characteristics ซึ่งผมว่าใช้ได้ดี แทนที่จะพูดลอย ๆ ว่าระบบควร scale ได้ คุณ define ว่า scalability หมายถึงอะไรใน context ของคุณ วัดยังไง และ priority เทียบกับ characteristics อื่นเป็นยังไง
+
+แนวคิด just-in-time architecture ก็น่าสนใจ คือสร้าง architecture documentation และ decisions เฉพาะเมื่อจำเป็น แทนที่จะ document ทุกอย่างล่วงหน้า สอดคล้องกับ Agile practices และเลี่ยงการสร้าง documents ที่ล้าสมัยก่อนที่จะมีใครอ่าน
+
+### Chapter 12: Effective Practices
+
+Chapter นี้รวบรวมแนวปฏิบัติสำหรับจัดการ knowledge Documentation as Code เป็น pattern สำคัญ คือ treat documentation เหมือนกับ code: version controlled, reviewed, tested, และ automatically deployed
+
+<MermaidDiagram chart={`
+flowchart LR
+    subgraph DAC["Documentation as Code"]
+        direction LR
+        A["Authoring"] --> C["Conversion"] --> P["Publishing"]
+        A1["Writing"] --> A
+        A2["Reviewing"] --> A
+        A3["Verification"] --> A
+        C1["HTML / DocBook / ..."] --> C
+        P1["Build"] --> P
+        P2["Deploy"] --> P
+    end
+    style DAC fill:#fff0f0,stroke:#cc6666
+    style A fill:#ffe0e0,stroke:#cc6666
+    style C fill:#ffe0e0,stroke:#cc6666
+    style P fill:#ffe0e0,stroke:#cc6666
+`} size="medium" />
+
+หนังสือแนะนำให้ใช้ text-based diagram tools อย่าง Mermaid หรือ PlantUML เพื่อให้ diagrams ถูก version control ไปพร้อมกับ documentation ตรงนี้สอดคล้องกับประสบการณ์ของผมเอง ที่เพิ่งแปลง image-based diagrams เป็น Mermaid ในบล็อกตัวเองด้วยเหตุผลเดียวกัน
+
+Automatically Generated Documentation ถูก cover ด้วยมุมมองที่สมดุล Auto-generated API docs (Swagger, Doxygen ฯลฯ) มีประโยชน์สำหรับ code-level documentation แต่บอกไม่ได้ว่า *ทำไม* ถึง design แบบนั้น ยังต้องการ human-written documentation สำหรับ context และ business reasoning อยู่ดี
+
+Chapter นี้ยังพูดถึง AI-generated documentation โดยย้ำว่าแม้ AI tools จะช่วยได้ แต่ output ต้อง review อย่างระมัดระวัง เพราะ AI สามารถ produce output ที่ดูน่าเชื่อถือแต่ผิดทั้งหมดได้อย่างมั่นใจ
+
+---
+
+## Part IV — Communicating Remotely
+
+### Chapter 13: Remote Time
+
+Part IV เข้าสู่เรื่อง communication ใน distributed teams Chapter 13 พูดเรื่อง time ทั้งหมด ทั้ง time zones, working patterns, และ energy management
+
+คำแนะนำเรื่อง time zones นั้นจับต้องได้ ระบุ time zone ทุกครั้ง เมื่อ communicate ข้าม time zones ให้ใช้ time zone ของ *ผู้รับ* แทนของตัวเอง (หรือใช้ reference กลางอย่าง UTC) หนังสือครอบคลุมความซับซ้อนของ daylight saving time โดยชี้ว่าแต่ละประเทศเปลี่ยนวันที่ต่างกัน และบาง region ในประเทศเดียวกันอาจ observe DST หรือไม่ก็ได้
+
+ส่วน Respect Working Patterns เป็นส่วนที่ผมอยากให้ manager ทุกคนอ่าน ครอบคลุมการ communicate availability, ปกป้องเวลาทำงาน part-time, วางแผนสำหรับ holidays (ที่ต่างกันตามประเทศและ region), และตระหนักว่าเพื่อนร่วมงานมี personal commitments ที่ส่งผลต่อ schedule
+
+ส่วน Energy and Productivity ครอบคลุม circadian rhythms และผลกระทบต่อ communication จัด high-energy activities (brainstorming, decision-making) ช่วงที่พลังงานสูง และ low-energy tasks (อ่าน email, status updates) ช่วงพลังงานต่ำ ควบคุม notifications แทนที่จะปล่อยให้มันควบคุมเรา block focus time บน calendar
+
+### Chapter 14: Remote Principles
+
+Chapter นี้สำรวจ principles เบื้องหลัง remote communication ที่มีประสิทธิภาพ insight สำคัญคือ remote meetings ใช้พลังงานมากกว่า in-person งานวิจัยจาก Stanford เรื่อง Zoom fatigue อธิบายเหตุผลไว้ดี: eye contact ระยะใกล้ intense และไม่เป็นธรรมชาติ การเห็นตัวเองตลอดเวลาทำให้เหนื่อย video calls จำกัดการเคลื่อนไหว และ cognitive load สูงกว่ามากเมื่อไม่สามารถอ่าน body language แบบ passive ได้
+
+ส่วน synchronous versus asynchronous communication เป็นหนึ่งในส่วนที่มีประโยชน์ที่สุดของเล่มนี้ ผู้เขียนให้ guidelines ชัดเจนว่าควรใช้เมื่อไหร่:
+
+- Synchronous (meetings, calls): เหมาะสำหรับ build rapport, generate ideas, และ make final decisions
+- Asynchronous (email, documents, wikis): เหมาะสำหรับ report progress, gather feedback, และ disseminate information
+
+<MermaidDiagram chart={`
+flowchart TB
+    subgraph COMM["When to Use Sync vs Async"]
+        direction TB
+        subgraph SYNC["Synchronous"]
+            S1["Build rapport / team-building"]
+            S2["Generate ideas / brainstorm"]
+            S3["Make final decisions"]
+            S4["Resolve urgent issues"]
+        end
+        subgraph ASYNC["Asynchronous"]
+            A1["Report progress / status updates"]
+            A2["Gather feedback on documents"]
+            A3["Disseminate information"]
+            A4["Work across distant time zones"]
+        end
+    end
+    style SYNC fill:#e8f4e8,stroke:#66aa66
+    style ASYNC fill:#e8e8f4,stroke:#6666aa
+`} />
+
+แนวคิด asynchronous sandwich จำได้ง่าย: ห่อ synchronous events ด้วย asynchronous communication ก่อนและหลัง ก่อน meeting แชร์ context และ pre-work แบบ async หลัง meeting document decisions และ action items แบบ async ตัว synchronous meeting คือไส้ตรงกลาง
+
+Remote-First vs. Remote-Friendly เป็นความแตกต่างที่สำคัญ Remote-first organizations optimize processes และ decisions สำหรับ remote work พนักงานทุกคนอยู่บนพื้นฐานเท่าเทียมไม่ว่าจะอยู่ที่ไหน Remote-friendly organizations อนุญาตให้ทำงาน remote แต่โดยพื้นฐานเป็น office-centric ซึ่งมักทำให้ remote workers เสียเปรียบ หนังสือ argue ว่า remote-first ให้ประโยชน์กับทุกคน รวมถึงคนที่ทำงานจาก office
+
+### Chapter 15: Remote Channels
+
+Chapter สุดท้ายครอบคลุม channels ที่ใช้ communicate แบบ remote Symmetrical Email เป็น pattern สำหรับจัดโครงสร้าง email communication: ตั้ง expectations เรื่องความเร่งด่วนใน subject line ระบุชัดว่าใครต้องตอบและภายในเมื่อไหร่ และสร้าง shared standards สำหรับการใช้ email
+
+เทคนิค subject line ที่ใช้ได้เลย:
+- `[URGENT, response required by 1 p.m. CET today]` สำหรับ request เร่งด่วน
+- `[FYI]` สำหรับ informational messages ที่ไม่ต้องตอบ
+- `[Response required - Libby]` เมื่อต้องการให้คนเฉพาะตอบ
+
+ส่วน Online Presentations ครอบคลุมการปรับเทคนิค presentation สำหรับ remote audience คำแนะนำสำคัญ: ใช้ slides มากขึ้นแต่ content ต่อ slide น้อยลง (เพื่อรักษา pace และ attention) ใช้ presenter mode ให้หน้าเห็นคู่กับ slides วางแผน break ทุก 45-60 นาที และโฟกัสที่ challenge หรือ pain point ที่กำลังพูดถึงแทนที่จะเริ่มด้วย agenda slide
+
+Remote Tools and Governance ครอบคลุมเรื่องการจัดการ software tools ที่เพิ่มจำนวนในองค์กร distributed แนวคิด shadow IT — software ที่บริษัทไม่รู้หรือควบคุมไม่ได้ — เป็น security และ compliance risk ที่โตตาม remote work หนังสือแนะนำให้สร้าง application portfolio, audit tools เป็นประจำ, และใช้ strangler fig pattern สำหรับ tool migration (ค่อย ๆ แทนที่ tools เก่าด้วยตัวใหม่)
+
+หนังสือยังแนะนำแนวคิด technology radar (ได้แรงบันดาลใจจาก Thoughtworks) สำหรับ communicate ว่า tools ไหน adopted, กำลัง trial, กำลัง assess, หรือ on hold ภายในองค์กร
+
+---
+
+## ความเห็นโดยรวม
+
+**Rating: 4/5**
+
+สิ่งที่ชอบ:
+- โครงสร้าง pattern/antipattern ทำให้นำไปใช้ได้ทันที ระบุปัญหาใน communication practices ของตัวเอง แล้วหา pattern ที่ตรงกันมาปรับปรุง
+- Running example Polyglot Media ทำให้เนื้อหามีความต่อเนื่องและเห็นภาพตลอดทั้งเล่ม
+- ครอบคลุม communication หลายระดับ ตั้งแต่ออกแบบ diagram ไปจนถึง organizational knowledge management ถึง distributed team practices
+- Chapter เรื่อง accessibility เป็นสิ่งที่ไม่เคยเห็นในหนังสือ software architecture เล่มอื่น ทำให้ผมทบทวนว่าใช้สีใน diagram ตัวเองยังไง
+- เนื้อหา ADR ดีที่สุดที่ผมเคยอ่าน ทั้งในแง่ practical, structured, และเชื่อมกับ workflow ชัดเจน
+
+สิ่งที่อาจปรับปรุงได้:
+- Part IV (Communicating Remotely) ละเอียดดี แต่บางส่วนให้ความรู้สึกเป็น remote work advice ทั่วไปมากกว่า communication-specific patterns ส่วนที่พูดเรื่อง time zones และ holidays แม้จะมีประโยชน์แต่อาจกระชับกว่านี้ได้
+- หนังสือมุ่งเป้าไปที่ software architects และ technical leads เป็นหลัก Individual contributors อาจพบว่าบาง chapters (เช่น Knowledge Management และ Tool Governance) ไม่ค่อยเกี่ยวกับงานประจำวันโดยตรง
+
+## ใครควรอ่าน
+
+หนังสือเล่มนี้เหมาะกับ software architects, tech leads, และ engineering managers หรือใครก็ตามที่ใช้เวลาส่วนมากในการ communicate technical ideas ให้คนหลายกลุ่ม ถ้าคุณสร้าง architecture diagrams, เขียน technical documents, run meetings, หรือทำงานใน distributed teams เป็นประจำ จะเจอเทคนิคที่นำไปใช้ได้ครับ
+
+แม้จะมั่นใจว่าตัวเอง communicate ได้ดีอยู่แล้ว format pattern/antipattern ก็ช่วยให้ตั้งชื่อและระบุสิ่งที่อาจทำอยู่โดยไม่รู้ตัว ทั้งนิสัยดีและนิสัยไม่ดี
+
+---
+
+*Communication Patterns* โดย Jacqui Read ตีพิมพ์โดย O'Reilly Media (2023)
