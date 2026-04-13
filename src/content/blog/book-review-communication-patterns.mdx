@@ -10,6 +10,7 @@ tags:
     "Documentation",
     "Remote Work",
   ]
+heroImage: "/assets/images/blogs/books-cover/communication-patterns.jpg"
 language: "en"
 ---
 
@@ -136,6 +137,28 @@ flowchart TB
     style D fill:#e0ffe0,stroke:#66cc66
     style I fill:#e0ffe0,stroke:#66cc66
 `} />
+
+For example, an ADR for choosing a message broker might look like this:
+
+> **ADR-042: Use Apache Kafka for Event Streaming**
+>
+> **Status:** Decided
+>
+> **Context:** Our order processing system needs to handle 50,000+ events per second with guaranteed delivery and replay capability. The current RabbitMQ setup is reaching throughput limits and does not support event replay.
+>
+> **Evaluation Criteria:** Throughput, replay capability, ecosystem maturity, team familiarity, operational cost.
+>
+> **Options Considered:** Apache Kafka (18/25), Amazon Kinesis (15/25), Apache Pulsar (14/25)
+>
+> **Decision:** Apache Kafka — highest score on throughput and replay capability. Two team members have production experience with it.
+>
+> **Implications:** Requires ZooKeeper/KRaft cluster management. Team needs training on Kafka Streams. Migration from RabbitMQ will take approximately 3 sprints.
+
+If you want to learn more about ADRs and see templates, here are some useful references:
+
+- [Joel Parker Henderson's ADR collection](https://github.com/joelparkerhenderson/architecture-decision-record) — comprehensive collection of ADR templates and examples
+- [MADR template (minimal)](https://github.com/adr/madr/blob/4.0.0/template/adr-template-minimal.md?plain=1) — a lightweight ADR template
+- [MADR template (full)](https://github.com/adr/madr/blob/4.0.0/template/adr-template.md?plain=1) — the full Markdown Any Decision Records template
 
 ### Chapter 9: Rhetoric
 
