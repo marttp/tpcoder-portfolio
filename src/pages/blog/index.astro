@@ -79,7 +79,7 @@ const allTags = [...new Set(posts.flatMap((post) => post.data.tags))].sort();
   <!-- Tag Filter + Blog Posts Side-by-Side -->
   <div class="flex flex-col md:flex-row gap-6">
     <!-- Tag Sidebar -->
-    <aside class="md:w-48 lg:w-56 flex-shrink-0">
+    <aside class="hidden md:block md:w-48 lg:w-56 flex-shrink-0">
       <TagFilter tags={allTags} client:only="solid-js" />
     </aside>
 
