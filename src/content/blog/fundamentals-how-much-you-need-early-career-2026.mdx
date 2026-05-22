@@ -103,16 +103,12 @@ Time and space complexity are **not** about memorizing formulas. They're about b
   chart={`
 flowchart LR
     subgraph Acceptable["Acceptable for Most Cases"]
-        O1["O(1) — Constant\nHash lookup, array access"]
-        OlogN["O(log n) — Logarithmic\nBinary search, balanced tree"]
-        ON["O(n) — Linear\nSingle loop, linear scan"]
-        ONlogN["O(n log n) — Common Sort\nMerge sort, heap sort"]
+        O1["O(1)\nConstant\nHash lookup"] --> OlogN["O(log n)\nLogarithmic\nBinary search"] --> ON["O(n)\nLinear\nSingle loop"] --> ONlogN["O(n log n)\nCommon Sort\nMerge sort"]
     end
     subgraph Danger["Danger Zone at Scale"]
-        ON2["O(n²) — Quadratic\nNested loops — easy to miss in review"]
-        ON3["O(n³) — Cubic\nTriple nested — almost always wrong"]
-        O2N["O(2ⁿ) — Exponential\nBrute-force recursion"]
+        ON2["O(n²)\nQuadratic\nNested loops"] --> ON3["O(n³)\nCubic\nTriple nested"] --> O2N["O(2n)\nExponential\nBrute-force"]
     end
+    ONlogN -->|"gets expensive"| ON2
 `}
   size="medium"
 />
@@ -160,13 +156,13 @@ sequenceDiagram
     participant DB as Database
 
     C->>LB: Request
-    LB->>S: Forward (TCP connection)
-    S->>DB: Query (connection from pool)
+    LB->>S: Forward
+    Note right of LB: 504 if S times out\n502 if S returns error
+    Note right of S: Uses connection pool\nno new TCP handshake per query
+    S->>DB: Query
     DB-->>S: Result
-    Note over S,DB: If no connection pool:\nnew TCP handshake per query
     S-->>LB: Response
     LB-->>C: Response
-    Note over C,LB: 504 = LB timeout waiting for S\n502 = S returned error to LB
 `}
 />
 
@@ -251,7 +247,7 @@ Most applications run fine on Read Committed. But if you're implementing financi
 This is the most common performance issue I run into, and it comes from not understanding how queries compose.
 
 ```
-// AI generates this:
+// N+1 pattern — works fine locally, breaks in production:
 const users = await User.findAll();
 for (const user of users) {
   const orders = await Order.findAll({ where: { userId: user.id } });
@@ -277,6 +273,66 @@ If you don't know what N+1 is, you won't recognize it when you see it. And it wi
 
 This is a skill you build over time, but knowing it exists and how to read it is something you should have by mid-level.
 
+### Pagination — why OFFSET breaks at scale
+
+Pagination comes up in almost every backend system, and the default implementation breaks under load.
+
+```sql
+-- Common approach — looks fine, breaks at depth
+SELECT * FROM transactions
+WHERE wallet_id = 123
+ORDER BY created_at DESC
+LIMIT 20 OFFSET 1000
+```
+
+`OFFSET 1000` tells the database to read 1020 rows and throw away the first 1000. The further into the dataset you page, the more rows are discarded. At page 500 (offset 10,000), you are doing a full index scan of 10,020 rows to return 20.
+
+**Keyset pagination** solves this:
+
+```sql
+-- Client sends back the created_at of the last item they received
+SELECT * FROM transactions
+WHERE wallet_id = 123
+  AND created_at < '2026-01-15 10:30:00'
+ORDER BY created_at DESC
+LIMIT 20
+```
+
+The database uses the index on `(wallet_id, created_at)` and jumps directly to the cursor position. No rows are scanned and discarded. Performance is consistent regardless of how deep into the result set you are.
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    subgraph Offset["OFFSET Pagination"]
+        O1["Scan from start"] --> O2["Skip first 1000 rows"] --> O3["Return 20 rows"]
+    end
+    subgraph Keyset["Keyset Pagination"]
+        K1["Jump to cursor\nvia index"] --> K2["Return 20 rows"]
+    end
+    Offset -->|"gets slower\nwith each page"| SLOW["O(offset + limit)"]
+    Keyset -->|"constant speed"| FAST["O(log n + limit)"]
+`}
+  size="medium"
+/>
+
+The trade-off: keyset pagination doesn't support jumping to an arbitrary page number. It only supports next and previous. For most real use cases — transaction history, notification feeds, infinite scroll — this is fine.
+
+### Time-bound queries — matching the index to the query
+
+Date range queries are one of the most common patterns in backend systems, especially anything transactional. The index needs to match the query shape.
+
+```sql
+-- Transactions for a wallet in the last 30 days
+SELECT * FROM transactions
+WHERE wallet_id = 123
+  AND created_at >= NOW() - INTERVAL '30 days'
+ORDER BY created_at DESC
+```
+
+This query needs a composite index on `(wallet_id, created_at)`. With it, the database narrows first by wallet, then by date range — both conditions satisfied in one index scan. Without `created_at` in the index, the database finds all rows for that wallet and filters by date in memory. Fine for a wallet with 200 transactions, slow for one with 200,000.
+
+In practice, transaction history queries combine both patterns — time-bounded *and* paginated. The cursor in keyset pagination becomes the `created_at` of the last item seen, and the date range naturally bounds the scan.
+
 ---
 
 ## Operating Systems & Concurrency — The Layer Below Your Code
@@ -289,7 +345,7 @@ Most application engineers treat the OS as a black box. That's fine up to a poin
 
 **Thread**: a unit of execution within a process. Threads share memory. This is what makes them fast and dangerous simultaneously — shared memory means race conditions.
 
-**Async/coroutines**: cooperative multitasking within a single thread. No parallelism, but high concurrency for I/O-bound work. This is how Node.js works, how async/await works in Python, and how goroutines work in Go.
+**Async/coroutines**: cooperative multitasking within a single thread. No parallelism, but high concurrency for I/O-bound work. This is how Node.js works and how async/await works in Python. Go's goroutines are a different model — lightweight threads managed by the Go runtime that can run in parallel across multiple CPU cores, making them efficient for both I/O-bound and CPU-bound work. They sit closer to the "mixed workloads" category than the pure async model.
 
 <MermaidDiagram
   chart={`
@@ -300,9 +356,11 @@ flowchart LR
     subgraph IO["I/O-Bound Work\n(waiting on network/disk)"]
         A["Async / Event Loop\nOne thread, many tasks\nNo parallelism needed"]
     end
-    subgraph Both["Mixed Workloads"]
-        T["Thread Pool for CPU\n+ Async for I/O\nMost web servers"]
+    subgraph Both["Mixed Workloads\n(most web servers)"]
+        T["Thread Pool for CPU\n+ Async for I/O"]
     end
+    CPU --> Both
+    IO --> Both
 `}
   size="medium"
 />
@@ -401,7 +459,7 @@ Caches trade consistency for performance. Every caching decision involves answer
 - **What happens when the cache is down?** Does your service degrade gracefully or fail completely?
 - **Is stale data acceptable?** For how long?
 
-AI will suggest adding a cache and stop there. You need to complete the question.
+Adding a cache is easy to suggest and hard to complete. You need to answer all four questions above before the decision is actually made.
 
 ### Failure modes — the questions you must ask
 
@@ -430,53 +488,97 @@ This is not interview prep. This is how you think about every external dependenc
 
 ## Design Diagrams — Talking About Code With Your Team
 
-There's a layer between knowing how to code and being able to communicate a design to your team. That layer is worth developing early — not because UML is a formal requirement, but because a shared visual language prevents a lot of misunderstanding in design discussions, code reviews, and architecture docs.
+There's a layer between knowing how to code and being able to communicate a design to your team. That layer is worth developing early — not because UML is a formal requirement, but because a shared visual language prevents misunderstanding in design discussions, code reviews, and architecture docs.
 
-You don't need every diagram type. You don't need formal precision. You need enough consistency that when you draw a line between two boxes, everyone in the room means the same thing.
+The best way to learn diagram types is through one coherent problem. Let's use a **digital wallet / cashless payment system** — the same domain, seen from three different angles.
 
-### Class diagrams — relationships between code
+### Class diagrams — object relationships
 
-Class diagrams show how objects relate to each other: what owns what, what knows about what, what extends what. The notation doesn't need to be exact. The relationships do need to be clear.
+Class diagrams show how objects relate to each other in code: what owns what, what knows about what, what extends what.
 
 The five relationships worth knowing:
 
-- **Inheritance (is-a)**: hollow arrowhead pointing to the parent. `Dog` extends `Animal` — Dog is an Animal.
-- **Composition (owns strongly)**: filled diamond on the owner. The child cannot exist without the parent. An `Order` owns its `LineItems` — delete the order, the line items go too.
-- **Aggregation (has loosely)**: hollow diamond on the owner. The child exists independently. A `Team` has `Players` — a player can exist without that team.
-- **Association**: plain arrow. Objects know about each other. A `User` places an `Order`.
-- **Dependency**: dashed arrow. One class uses another temporarily. `OrderService` calls `PaymentGateway` to process a charge.
+- **Composition (owns strongly)**: filled diamond on the owner. The component cannot exist without its parent — delete the parent, the component goes too.
+- **Aggregation (has loosely)**: hollow diamond on the owner. The component exists independently — it can belong to a different parent or none.
+- **Association**: plain arrow. Objects know about each other and interact.
+- **Dependency**: dashed arrow. One class uses another temporarily, without holding a permanent reference.
+- **Inheritance (is-a)**: hollow arrowhead pointing to the parent. The subclass is a specialization of the parent.
+
+Applied to a digital wallet:
 
 <MermaidDiagram
   chart={`
 classDiagram
-    Animal <|-- Dog : is-a
-    Order *-- LineItem : owns
-    Team o-- Player : has
-    User --> Order : places
-    OrderService ..> PaymentGateway : uses
+    User "1" *-- "1" Wallet : owns
+    Wallet "1" *-- "many" Transaction : records
+    User "1" o-- "many" PaymentMethod : has
+    Transaction --> PaymentMethod : charged via
+    Transaction --> Merchant : paid to
+    WalletService ..> PaymentGateway : uses
 `}
   size="medium"
 />
 
-The practical use: when someone asks "should UserProfile be inside User, or separate?" — being able to sketch this and distinguish composition from aggregation makes the conversation much faster than explaining it in words. And the answer to that question has real consequences for database schema, deletion behavior, and API design.
+Reading this diagram:
+- A `Wallet` is owned by a `User` with composition — delete the user, the wallet goes too
+- `Transactions` are recorded by the `Wallet` with composition — they can't exist without a wallet
+- `PaymentMethods` (cards, bank accounts) are held with aggregation — they could theoretically be detached or reassigned
+- A `Transaction` is associated with both the `PaymentMethod` used and the `Merchant` paid
+- `WalletService` depends on `PaymentGateway` — it calls it for each transaction but doesn't own it
 
-### Sequence diagrams — message flow over time
+The reason this matters in practice: composition vs aggregation determines what happens on delete. Get it wrong in the schema (missing CASCADE or a wrong FK constraint) and you either orphan records or accidentally delete data you intended to keep.
 
-You've already seen several in this article. Sequence diagrams show how services or components interact over time — which message goes where, in what order, and what comes back.
+### Sequence diagrams — what happens when a payment is processed
 
-At entry level: be able to read one. At mid-level: be able to produce one to explain a flow you're designing or debugging. Most architecture discussions in backend teams eventually come down to "draw me a sequence diagram of what happens when X."
+Sequence diagrams show the message flow over time. Same digital wallet domain — here's what happens when a user initiates a payment:
 
-### ER diagrams — database schema at a glance
+<MermaidDiagram
+  chart={`
+sequenceDiagram
+    participant U as User
+    participant App as Mobile App
+    participant WS as Wallet Service
+    participant DB as Database
+    participant PG as Payment Gateway
 
-ER diagrams represent database structure: tables as entities, relationships as lines with cardinality. One user has many orders. One order has many line items. Many-to-many relationships need a junction table.
+    U->>App: Pay 500 THB to merchant
+    App->>WS: POST /payments
+    WS->>DB: Check wallet balance
+    DB-->>WS: Balance OK
+    WS->>DB: INSERT transaction (PENDING)
+    WS->>PG: Charge payment method
+    PG-->>WS: Approved
+    WS->>DB: UPDATE transaction (COMPLETED)
+    WS-->>App: 201 Created
+    App-->>U: Payment confirmed
+`}
+/>
 
-In practice most teams sketch informal ER diagrams rather than formal Crow's Foot notation. As long as it communicates the schema clearly, the formality level doesn't matter.
+This shows the two-phase pattern common in payment systems: create a PENDING transaction first, then update to COMPLETED only after the gateway confirms. If the gateway call fails, the transaction stays PENDING (or is rolled back) — you never mark something COMPLETED before you have confirmation.
+
+At entry level: be able to read this and trace what happens if the gateway returns an error. At mid-level: be able to produce this for any flow you're designing.
+
+### ER diagrams — what the database actually looks like
+
+ER diagrams represent the database schema: tables, columns, and the cardinality of relationships between them.
+
+<MermaidDiagram
+  chart={`
+erDiagram
+    USER ||--|| WALLET : owns
+    USER ||--o{ PAYMENT_METHOD : has
+    WALLET ||--o{ TRANSACTION : records
+    MERCHANT ||--o{ TRANSACTION : receives
+    TRANSACTION }o--|| PAYMENT_METHOD : "charged via"
+`}
+  size="medium"
+/>
+
+The same domain, now as a schema. Notice how the class diagram and the ER diagram tell the same story at different levels — one is about code structure, the other is about database structure. When the two are inconsistent (the code models ownership differently from how the schema enforces it), bugs follow.
 
 ### The shared language point
 
-The goal isn't certification-level accuracy. The goal is that your team reads the same design from the diagram that you drew. The problems come when there's no shared convention — when a line between two boxes means "connected somehow" with nothing to distinguish ownership from reference from inheritance.
-
-Knowing the standard conventions, even loosely, prevents that ambiguity.
+The goal isn't formal precision. The goal is that your team reads the same design from the diagram that you drew. When you can show the same problem as a class diagram, a sequence diagram, and an ER diagram, you're communicating at the level where real design conversations happen — not just implementing what someone else decided.
 
 ---
 
