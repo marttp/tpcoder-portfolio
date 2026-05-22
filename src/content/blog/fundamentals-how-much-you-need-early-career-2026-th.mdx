@@ -1,0 +1,777 @@
+---
+title: "Fundamentals? คุณต้องรู้มากแค่ไหนสำหรับ Early Career ในปี 2026"
+description: "คำตอบชัดๆ สำหรับคำถามที่ engineer ระดับ early และ mid-level ถามกันบ่อย — CS fundamentals ไหนสำคัญในยุค AI แต่ละหัวข้อสอนอะไร และ study path ที่เป็นไปได้โดยไม่หมดแรงกลางทาง"
+pubDate: "2026-05-22"
+tags:
+  [
+    "Software Engineering",
+    "Career",
+    "Fundamentals",
+    "CS Basics",
+    "Early Career",
+    "Backend",
+  ]
+heroImage: "/assets/images/blogs/fundamentals-2026/hero-banner.png"
+language: "th"
+---
+
+import MermaidDiagram from "../../components/blog/MermaidDiagram.astro";
+
+บทสนทนาหนึ่งที่วนซ้ำทุกสองสามเดือน และมักฟังดูประมาณนี้: ยังต้องเรียน fundamentals อยู่ไหม? ต้องรู้มากแค่ไหนถึงจะเริ่มได้?
+
+โพสต์นี้พยายามตอบให้ชัด — ไม่ใช่เวอร์ชันที่ต้องอ่านหนังสือเจ็ดเล่มก่อนได้งานแรก และไม่ใช่เวอร์ชันที่ fundamentals ไม่สำคัญเพราะมี Claude Code หรือ coding agent อยู่แล้ว ทั้งสองเวอร์ชันนั้นผิด
+
+สิ่งที่จะทำในบทความนี้คือไปทีละหัวข้อ — data structures, networking, databases, operating systems, system design — แล้วแยกสิ่งที่ต้องรู้เพื่อเริ่ม ออกจากสิ่งที่ต้องรู้เพื่อเติบโต สองรายการนั้นต่างกัน และการเอาไปรวมกันคือสาเหตุที่ทำให้บางคนเตรียมตัวน้อยเกินไป หรืออีกทางหนึ่งก็พยายามทำให้ถึง bar ที่ไม่ใช่ entry-level bar จนหมดแรงกลางทาง
+
+---
+
+## ทำไมถึงถามคำถามผิด
+
+ส่วนใหญ่จะถามว่า ต้องรู้ fundamentals เพื่อให้ได้งานไหม?
+
+นั่นแคบเกินไป คำถามที่ดีกว่าคือ **ต้องรู้ fundamentals เพื่อให้เข้าใจว่าโค้ดตัวเองทำอะไรอยู่ไหม?**
+
+และคำตอบคือใช่ — เพราะความเข้าใจคือสิ่งที่แยก engineer ที่ debug ได้จาก engineer ที่ทำได้แค่เขียนใหม่, แยกคนที่วินิจฉัยได้จากคนที่แค่เดา, แยกคนที่เติบโตสม่ำเสมอจากคนที่ plateau หลังสองปี
+
+สิ่งที่สังเกตเห็นใน engineer ที่ข้าม fundamentals ไป:
+
+- ส่งโค้ดที่ทำงานได้กับ 100 rows แต่พังกับ 100,000 — เพราะไม่เข้าใจ complexity หรือ indexes
+- อ่าน error ระดับ infrastructure ไม่ออก — 502 กับ 504 บอกเรื่องต่างกันสิ้นเชิง แต่ต่อเมื่อรู้ว่ามีอะไรอยู่ระหว่าง service กับ client
+- เพิ่ม feature ได้แต่วินิจฉัย slowdown ไม่ได้ — ไม่มี mental model ว่า bottleneck อยู่ที่ไหน
+- เจอ bug ที่ไม่คุ้นเคยโดยไม่มีกรอบอ้างอิง เลือกเขียนใหม่แทนที่จะ fix
+
+ไม่ใช่เรื่องของ interview trivia แต่เป็นเรื่องของความสามารถในการทำงานเมื่อสิ่งต่างๆ พัง — และใน production systems สิ่งต่างๆ จะพัง
+
+ในสภาพแวดล้อมปัจจุบัน ช่องว่างนี้ยิ่งชัดขึ้น เมื่อ AI สร้างโค้ด งานของเราคือ review มัน การ review ต้องอาศัยการรู้ว่า ถูกต้อง หน้าตาเป็นยังไง — ไม่ใช่แค่รู้ว่า น่าเชื่อถือ หน้าตาเป็นยังไง AI สร้างสิ่งที่น่าเชื่อถือได้อย่างสม่ำเสมอ Fundamentals คือสิ่งที่ช่วยบอกความต่างระหว่างสองอย่างนั้น
+
+---
+
+## Floor ของ Entry Level
+
+ก่อนจะไปทีละหัวข้อในเชิงลึก ขอตอบก่อน: ต้องรู้อะไรบ้างเพื่อเริ่มงานแรก?
+
+นี่คือ minimum ที่พูดได้ชัด — ไม่ใช่ ideal ไม่ใช่สิ่งที่จะมีหลังสองปี แค่ floor:
+
+- **Data structures**: รู้จัก array และ hash map เข้าใจว่าทำไมถึงเลือกอันหนึ่งแทนอีกอัน มีความรู้สึกคร่าวๆ ว่า O(n) ช้ากว่า O(1) แค่นั้นพอ
+- **Networking**: รู้ว่า HTTP คืออะไร เข้าใจ GET, POST, PUT, DELETE ในระดับ conceptual รู้ว่า 200, 400, 404, 500 แปลว่าอะไร รู้ว่า HTTPS หมายถึง connection ที่ถูก encrypt
+- **Databases**: เขียน query พื้นฐานได้ — SELECT, INSERT, UPDATE, DELETE รู้ว่า index มีอยู่และทำให้ read เร็วขึ้น เข้าใจว่า transaction คืออะไรในระดับ conceptual (ทำงานทั้งหมดหรือไม่ทำงานเลย)
+- **Operating systems**: รู้ว่า process กับ thread ต่างกัน แค่นั้นพอสำหรับวันแรก
+- **System design**: รู้ว่า load balancer คืออะไร รู้ว่า cache มีอยู่และแก้ปัญหาอะไร
+- **Design diagrams**: อ่าน class diagram อย่างง่ายได้และเข้าใจ relationship พื้นฐาน รู้ว่า sequence diagram แสดงอะไร รู้ว่า ER diagram แทนอะไร
+
+ทุกอย่างในบทความนี้ที่เกินกว่ารายการนั้น? นั่นคือสิ่งที่สองปีแรกมีไว้สำหรับ ไม่ใช่ checklist ที่ต้องผ่านก่อนจะสมัครงานได้
+
+### ทำไมถึงรู้สึกว่า Bar สูงขึ้น
+
+มันเปลี่ยนแล้ว — แต่ไม่ใช่แบบที่ส่วนใหญ่คิด
+
+Floor สำหรับงานแรกไม่ได้เปลี่ยนไปมากนัก สิ่งที่เปลี่ยนคือ ceiling สิ่งที่คาดหวังจาก mid-level สูงขึ้น และบริษัทต้องการ early-career engineer ที่ ramp up ได้เร็ว ความกดดันจาก ceiling นั้นถูก project ย้อนกลับมา และทันใดนั้นความคาดหวังที่บรรยายว่าเป็น early career ก็ฟังดูเหมือนสิ่งที่เคยเป็น two-year mark
+
+ดังนั้นเมื่อใครพูดว่า bar สูงขึ้นแล้ว พวกเขาพูดถูกเรื่อง mid-level expectations และผิดนิดหน่อยเรื่อง entry-level Floor ยังเข้าถึงได้ สิ่งที่ต่างคือ velocity ที่คาดหวังหลังเริ่มงาน — เร็วแค่ไหนที่ต้องขยับจาก floor ไปหา ceiling ที่สูงขึ้น
+
+นั่นคือการตีความที่มีประโยชน์กว่า ไม่ใช่เรื่องของการต้องรู้มากขึ้นก่อนเริ่ม แต่เป็นเรื่องของการมี direction ที่ชัดเจนว่าจะเรียนอะไรเมื่ออยู่ใน role แล้ว ส่วนต่างๆ ด้านล่างคือ direction นั้น
+
+![Entry-level floor vs mid-level ceiling](/assets/images/blogs/fundamentals-2026/floor-vs-ceiling.png)
+
+---
+
+## Data Structures & Algorithms — ชั้นสำหรับ Evaluate
+
+ขอบอกก่อน: ไม่ได้พูดถึงการ grind LeetCode แต่พูดถึงการเข้าใจ data structures ดีพอที่จะรู้ว่าเมื่อไหรที่ใช้ผิดอัน
+
+![Data structure visual metaphors](/assets/images/blogs/fundamentals-2026/data-structures-metaphors.png)
+
+### สิ่งที่ต้องรู้
+
+**Arrays และ dynamic arrays** — structure ที่ทุกคน reach for เป็นอันดับแรก เข้าใจว่าทำไม random access ถึงเป็น O(1) แต่ insertion กลางกลุ่มถึงเป็น O(n) เรื่องนี้เจอบ่อยมากในโค้ดที่ insert ซ้ำๆ ไปที่หน้า list ข้างในลูป
+
+**Hash maps** — น่าจะเป็น structure ที่ใช้บ่อยที่สุด เข้าใจว่า lookup เป็น O(1) โดยเฉลี่ย ไม่ใช่ทุกครั้ง เข้าใจ hash collision, load factor, และทำไม HashMap ถึงไม่ sorted รู้ว่าเมื่อไหร่ LinkedHashMap หรือ TreeMap สำคัญ
+
+**Linked lists** — ไม่ค่อยได้ใช้โดยตรงมาก แต่จำเป็นสำหรับการเข้าใจ queues, LRU caches, และการทำงานของ memory allocation ข้างใน อีกทั้งการคิดแบบ pointer ยังช่วยเรื่อง tree traversal
+
+**Trees** — BST, heap, trie Heap สำคัญสำหรับ priority queues Trie สำคัญสำหรับ prefix search BST สำคัญสำหรับ sorted data operations ไม่ต้อง implement เองได้จากหัว แต่ต้องรู้ว่าเมื่อไหรควร reach for แต่ละอัน
+
+**Graphs** — BFS และ DFS ไม่ใช่ interview tricks มันโผล่ใน dependency resolution, service mesh traversal, recommendation systems, และระบบที่มี relationship ใดๆ เข้าใจ adjacency list กับ matrix สำคัญเมื่อ graph มี sparse connections (ส่วนใหญ่ใน real-world เป็นแบบนี้)
+
+**Stacks และ queues** — รู้ความต่าง และรู้ว่าใช้อย่างไรใน call stacks, undo systems, task queues, และ parsing
+
+### Complexity — ส่วนที่ใช้งานได้
+
+Time และ space complexity ไม่ใช่เรื่องของการจำสูตร แต่เป็นเรื่องของการมองโค้ดแล้วบอกได้ว่า อันนี้จะพังที่ scale
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    subgraph Acceptable["Acceptable for Most Cases"]
+        O1["O(1)\nConstant\nHash lookup"] --> OlogN["O(log n)\nLogarithmic\nBinary search"] --> ON["O(n)\nLinear\nSingle loop"] --> ONlogN["O(n log n)\nCommon Sort\nMerge sort"]
+    end
+    subgraph Danger["Danger Zone at Scale"]
+        ON2["O(n²)\nQuadratic\nNested loops"] --> ON3["O(n³)\nCubic\nTriple nested"] --> O2N["O(2n)\nExponential\nBrute-force"]
+    end
+    ONlogN -->|"gets expensive"| ON2
+`}
+  size="medium"
+/>
+
+Nested loops ที่ควรเป็น hash maps คือแหล่งที่มาของ O(n²) ที่พบบ่อยใน production code — พลาดได้ง่ายถ้าอ่าน complexity ไม่ออก
+
+### สิ่งที่ข้ามได้
+
+ไม่จำเป็นต้องรู้ red-black tree rotations ไม่ต้อง implement Dijkstra จากหัวได้ ไม่ต้อง solve dynamic programming puzzles ภายใต้ความกดดัน สิ่งเหล่านี้เป็น interview gatekeeping tools ไม่ใช่ทักษะวิศวกรรมประจำวัน เรียนรู้ concept เบื้องหลัง dynamic programming (memoization, overlapping subproblems) — แต่ไม่ต้องเป็น DP wizard ในระดับ early career
+
+---
+
+## Networking — รากฐานที่มองไม่เห็น
+
+Networking คือจุดที่เห็นช่องว่างใหญ่ที่สุดใน engineer ระดับ early และ mid-level ทุกคนรู้ว่า HTTP คือ protocol ที่ web ใช้ แต่แทบไม่มีใครเข้าใจดีพอที่จะ debug มันได้
+
+### HTTP จากพื้นฐาน
+
+ต้องเข้าใจ HTTP ไม่ใช่ในฐานะ protocol ที่ใช้ แต่ในฐานะ protocol ที่อ่านเมื่อสิ่งต่างๆ พัง
+
+**Methods สำคัญ** GET เป็น idempotent และไม่ควรเปลี่ยน state POST ไม่ใช่ PUT แทนที่ PATCH แก้ไข DELETE ลบ สิ่งเหล่านี้ไม่ใช่ convention — มี semantic meaning ที่สำคัญสำหรับ caching, retries, และ API design การสลับ PUT กับ PATCH หรือใช้ GET กับ request ที่มี body ทำให้เกิดปัญหาละเอียดที่โผล่ทีหลังในที่ที่คาดไม่ถึง
+
+**Status codes คือ vocabulary** 200 คือ success 201 คือ created 204 คือ success ไม่มี body 400 คือความผิดของ client 401 คือ unauthenticated 403 คือ unauthorized 404 คือ not found 409 คือ conflict 422 คือ validation failure 500 คือ server error 502 คือ bad gateway (upstream ล้มเหลว) 503 คือ service unavailable 504 คือ gateway timeout (upstream ไม่ตอบทันเวลา)
+
+รู้ความต่างระหว่าง 502 กับ 504 รู้ความต่างระหว่าง 401 กับ 403 มันบอกว่าควรไป debug ที่ไหน
+
+![HTTP status code reference](/assets/images/blogs/fundamentals-2026/http-status-codes.png)
+
+**Headers คือชั้น metadata** `Content-Type`, `Authorization`, `Cache-Control`, `Accept`, `X-Request-ID`, `CORS` headers — จะได้เจอทั้งหมดนี้ เข้าใจว่า `Authorization: Bearer <token>` เป็น convention ไม่ใช่เวทมนตร์ เข้าใจว่า `Cache-Control: no-store` ป้องกัน caching ทุกชั้น เข้าใจว่า CORS error เป็น browser enforcement ไม่ใช่ network error
+
+### TCP — ทำไมสำคัญแม้ไม่เคยแตะ sockets
+
+Engineer ส่วนใหญ่มอง TCP เป็นสิ่งที่มีให้ใช้ มันจัดการ delivery จบ แต่ TCP มีผลที่รู้สึกได้ทุกวัน:
+
+- **Connection establishment แพง** Three-way handshake นั่นแหละทำให้ connection pooling มีอยู่ใน database clients และ HTTP clients การข้ามมันเป็น shortcut ที่ทำให้เกิดปัญหา latency ที่ scale
+- **TCP เป็น stateful** Connection มีอยู่ระหว่างสอง endpoints นั่นคือเหตุผลที่การ scale แนวนอนของ stateful services ยาก
+- **Timeouts เป็นเรื่องของ TCP** Connect timeout กับ read timeout กับ write timeout — สิ่งเหล่านี้ต่างกัน การใช้ generic timeout อันเดียวโดยไม่แยกแยะเป็น oversight ที่พบบ่อย
+
+<MermaidDiagram
+  chart={`
+sequenceDiagram
+    participant C as Client
+    participant LB as Load Balancer
+    participant S as Server
+    participant DB as Database
+
+    C->>LB: Request
+    LB->>S: Forward
+    Note right of S: connect timeout means S is unreachable
+    S->>DB: Query
+    Note right of S: read timeout means S is too slow
+    DB-->>S: Result
+    Note right of LB: 504 timed out, 502 bad response from S
+    S-->>LB: Response
+    LB-->>C: Response
+`}
+/>
+
+### DNS — debug resolution chain
+
+DNS failures เป็นเรื่องที่พบบ่อยและสร้างความสับสนถ้าไม่เข้าใจ resolution chain รู้ว่า:
+
+- DNS ถูก cache หลายชั้น: browser, OS, resolver
+- TTL (time-to-live) ควบคุมว่า cached entries ใช้ได้นานแค่ไหน
+- เมื่อเปลี่ยน DNS records propagation ใช้เวลาเพราะ TTL
+- ใน containerized environments DNS resolution ทำงานต่างออกไป — internal service names resolve ผ่าน path ต่างจาก public internet names
+
+เมื่อ service บอก `cannot resolve hostname` นั่นคือปัญหา DNS เมื่อบอก `connection refused` service ล่มหรือไม่ได้ listen เมื่อบอก `connection timeout` host เข้าถึงได้แต่ไม่ตอบ Failure modes เหล่านี้ต่างกันและต้องการ fix ต่างกัน
+
+### TLS / HTTPS
+
+TLS ไม่ใช่ optional ในปี 2026 ต้องเข้าใจ:
+
+- Certificate chains: leaf, intermediate, root CA
+- ทำไม certificate expiry ถึงทำให้เกิด incident (และ monitor อย่างไร)
+- ความต่างระหว่าง TLS termination ที่ load balancer กับ end-to-end TLS
+- mTLS (mutual TLS) — จะเจอสิ่งนี้ใน service meshes และ microservice architectures
+
+ไม่ต้อง implement TLS แต่ต้องเข้าใจดีพอที่จะ debug certificate errors และตัดสินใจว่าจะ terminate TLS ที่ไหนใน architecture
+
+---
+
+## Databases — ที่ที่ App ส่วนใหญ่พัง
+
+**production incidents ส่วนใหญ่ที่เห็นมา trace กลับไปยัง database problem** ไม่ว่าจะเป็น missing index, bad query, transaction deadlock, หรือ consistency model ที่เข้าใจผิด Databases คือที่ที่ fundamentals สำคัญที่สุดสำหรับงาน backend ประจำวัน
+
+### Indexes — เครื่องมือ performance ที่เข้าใจผิดมากที่สุด
+
+Index แลก write performance กับ read performance นี่คือ trade-off พื้นฐาน และมองข้ามได้ง่ายเมื่อ review schema changes หรือ migration files
+
+**สิ่งที่ต้องเข้าใจ:**
+
+**B-tree indexes** คือ default ใน relational databases ส่วนใหญ่ รองรับ range queries, equality, และ prefix matching เรียงลำดับ ทำงานได้ดีกับ columns ที่มี cardinality สูง
+
+**Composite indexes** คือ index บน multiple columns ลำดับ column สำคัญ Index บน `(user_id, created_at)` ตอบ query ที่ filter เฉพาะ `user_id` ได้ หรือ filter ทั้งคู่ได้ — แต่ไม่สามารถตอบ query ที่ filter เฉพาะ `created_at` ได้
+
+**Covering indexes** รวม columns ทั้งหมดที่ query ต้องการ ทำให้ database ไม่ต้องแตะตัว table optimization สำคัญสำหรับ read-heavy queries
+
+**Index selectivity** คืออัตราส่วนของค่าที่ distinct ต่อ row ทั้งหมด Index บน boolean column (สองค่าที่เป็นไปได้) แทบไม่มีประโยชน์ Index บน UUID column (ค่าที่ near-unique) มีประสิทธิภาพสูง
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    Q["SELECT * FROM orders\nWHERE user_id = 123\nAND status = 'pending'"] --> P{Query Planner}
+    P -->|No index| A["Sequential Scan\nRead every row\nO(n) — slow at scale"]
+    P -->|Index on user_id| B["Index Scan on user_id\nFilter status in memory\nO(log n + k) — fast"]
+    P -->|Composite index\non user_id, status| C["Index Scan\nBoth conditions in index\nMost efficient"]
+    A --> SLOW["⚠ 500ms+ on 1M rows"]
+    B --> OK["~5ms"]
+    C --> FAST["~1ms"]
+`}
+/>
+
+เมื่อ review schema changes หรือ migration files คำถามแรกควรเป็น: Columns ไหนอยู่ใน WHERE clauses, JOIN conditions, และ ORDER BY? มี index อยู่ไหม?
+
+### Transactions และ ACID
+
+**Atomicity**: operations ทั้งหมดใน transaction สำเร็จ หรือไม่สำเร็จทั้งหมด นี่คือสิ่งที่ป้องกัน partial updates — ถ้าอัปเดต balance ของ user และสร้าง transaction record ไม่ต้องการให้อันหนึ่งสำเร็จโดยที่อีกอันไม่สำเร็จ
+
+**Consistency**: database ย้ายจาก valid state หนึ่งไปอีก valid state หนึ่ง Constraints (foreign keys, unique constraints, check constraints) ถูก enforce
+
+**Isolation**: concurrent transactions ไม่รบกวนกัน นี่คืออันที่ซับซ้อน
+
+**Durability**: transactions ที่ commit แล้วรอดจาก crash นี่เป็นเรื่องของ write-ahead logging และการ flush ไป disk
+
+Isolation levels คือจุดที่ engineer ส่วนใหญ่มีช่องว่าง:
+
+- **Read Uncommitted**: อ่านได้จาก transactions ที่ยังไม่ commit แทบไม่ใช่สิ่งที่ต้องการ
+- **Read Committed**: อ่านได้เฉพาะ committed data แต่อ่านค่าต่างกันได้จากสอง reads ใน transaction เดียวกัน (non-repeatable read)
+- **Repeatable Read**: query เดียวกัน return ผลลัพธ์เดิมภายใน transaction Default ใน MySQL/InnoDB
+- **Serializable**: transactions ทำงานเหมือนกับว่าวิ่งทีละอัน ปลอดภัยที่สุด แต่ช้าที่สุด
+
+Applications ส่วนใหญ่ทำงานได้ดีกับ Read Committed แต่ถ้า implement financial logic, inventory reservation, หรือ check-then-act pattern ต้องคิดเรื่อง isolation level ให้ดี — และมองข้ามการคิดนั้นได้ง่ายมาก
+
+### The N+1 Problem — Performance Bug ที่พบบ่อยที่สุด
+
+นี่คือ performance issue ที่เจอบ่อยที่สุด และมาจากการไม่เข้าใจว่า queries ประกอบกันอย่างไร
+
+```
+// N+1 pattern — works fine locally, breaks in production:
+const users = await User.findAll();
+for (const user of users) {
+  const orders = await Order.findAll({ where: { userId: user.id } });
+  // 1 query for users + N queries for orders = N+1 queries
+}
+
+// What it should be:
+const users = await User.findAll({ include: [{ model: Order }] });
+// 1 query with JOIN = 1 query total
+```
+
+ถ้าไม่รู้ว่า N+1 คืออะไร ก็จะไม่รู้จักมันเมื่อเห็น และมันจะทำงานได้ดีมากใน development กับ 10 users แล้วทำลาย performance ใน production กับ 10,000
+
+**N+1 — สิ่งที่เกิดขึ้นกับ database:**
+
+<MermaidDiagram chart={`
+sequenceDiagram
+    participant App
+    participant DB
+
+    App->>DB: SELECT * FROM users
+    DB-->>App: user1, user2, ... userN
+    loop For each of N users
+        App->>DB: SELECT * FROM orders WHERE user_id = ?
+        DB-->>App: orders
+    end
+    Note over App,DB: 1 + N round trips to the database
+`} size="medium" />
+
+**วิธีแก้ — หนึ่ง query ด้วย JOIN:**
+
+<MermaidDiagram chart={`
+sequenceDiagram
+    participant App
+    participant DB
+
+    App->>DB: SELECT u.*, o.* FROM users u LEFT JOIN orders o ON u.id = o.user_id
+    DB-->>App: all users with their orders in one response
+    Note over App,DB: 1 round trip to the database
+`} size="medium" />
+
+### Query Planning — อ่าน EXPLAIN
+
+`EXPLAIN` (หรือ `EXPLAIN ANALYZE` ใน PostgreSQL) แสดงให้เห็นว่า database จะ execute query อย่างไร ต้องรู้วิธีอ่าน สัญญาณสำคัญ:
+
+- **Seq Scan**: sequential scan อ่านทุก row บางครั้งถูกต้องสำหรับ tables เล็ก แต่แทบผิดเสมอสำหรับ tables ใหญ่ที่ไม่มี WHERE clause ที่ใช้ index
+- **Index Scan**: ใช้ index ส่วนใหญ่ดี
+- **Index Only Scan**: อ่านจาก index เพียงอย่างเดียวโดยไม่แตะตัว table Best case สำหรับ covered queries
+- **Hash Join / Nested Loop**: วิธี join tables Nested loop แพงสำหรับ result sets ใหญ่
+- **rows**: ประมาณ row count ถ้าประมาณผิดมาก (1 กับ 100,000) แสดงว่า statistics เก่า
+
+เป็นทักษะที่ build ขึ้นมาเรื่อยๆ แต่การรู้ว่ามันมีอยู่และอ่านได้เป็นสิ่งที่ควรมีถึงตอน mid-level
+
+### Pagination — ทำไม OFFSET พังที่ scale
+
+Pagination โผล่ใน backend system แทบทุกระบบ และ default implementation พังภายใต้ load
+
+```sql
+-- Common approach — looks fine, breaks at depth
+SELECT * FROM transactions
+WHERE wallet_id = 123
+ORDER BY created_at DESC
+LIMIT 20 OFFSET 1000
+```
+
+`OFFSET 1000` บอก database ให้อ่าน 1020 rows แล้วทิ้ง 1000 แรกไป ยิ่ง page ลึก ยิ่งทิ้ง rows มาก ที่ page 500 (offset 10,000) กำลัง full index scan 10,020 rows เพื่อ return 20
+
+**Keyset pagination** แก้ปัญหานี้:
+
+```sql
+-- Client sends back the created_at of the last item they received
+SELECT * FROM transactions
+WHERE wallet_id = 123
+  AND created_at < '2026-01-15 10:30:00'
+ORDER BY created_at DESC
+LIMIT 20
+```
+
+Database ใช้ index บน `(wallet_id, created_at)` และ jump ไปยัง cursor position ไม่มีการ scan แล้วทิ้ง rows Performance คงที่ไม่ว่าจะลึกแค่ไหน
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    subgraph Offset["OFFSET Pagination"]
+        O1["Scan from start"] --> O2["Skip first 1000 rows"] --> O3["Return 20 rows"]
+    end
+    subgraph Keyset["Keyset Pagination"]
+        K1["Jump to cursor\nvia index"] --> K2["Return 20 rows"]
+    end
+    Offset -->|"gets slower\nwith each page"| SLOW["O(offset + limit)"]
+    Keyset -->|"constant speed"| FAST["O(log n + limit)"]
+`}
+  size="medium"
+/>
+
+Trade-off: keyset pagination ไม่รองรับการ jump ไปยัง page number ตามอำเภอใจ รองรับแค่ next และ previous สำหรับ use cases ส่วนใหญ่ — transaction history, notification feeds, infinite scroll — ไม่เป็นปัญหา
+
+### Time-bound queries — จับคู่ index กับรูปแบบ query
+
+Date range queries เป็นหนึ่งใน pattern ที่พบบ่อยที่สุดใน backend systems โดยเฉพาะระบบที่มี transaction Index ต้องจับคู่กับรูปแบบ query
+
+```sql
+-- Transactions for a wallet in the last 30 days
+SELECT * FROM transactions
+WHERE wallet_id = 123
+  AND created_at >= NOW() - INTERVAL '30 days'
+ORDER BY created_at DESC
+```
+
+Query นี้ต้องการ composite index บน `(wallet_id, created_at)` ด้วย index นั้น database จะ narrow ก่อนด้วย wallet แล้วค่อยด้วย date range — ทั้งสอง conditions ตอบได้ใน index scan เดียว ถ้าไม่มี `created_at` ใน index database จะหา rows ทั้งหมดของ wallet นั้นแล้ว filter ด้วยวันที่ใน memory ปรับขนาดได้กับ wallet ที่มี 200 transactions แต่ช้ากับ wallet ที่มี 200,000
+
+ใน practice transaction history queries รวมทั้งสอง pattern — time-bounded และ paginated Cursor ใน keyset pagination กลายเป็น `created_at` ของ item สุดท้ายที่เห็น และ date range จำกัด scan ได้เองตามธรรมชาติ
+
+---
+
+## Operating Systems & Concurrency — ชั้นใต้โค้ด
+
+Engineer ส่วนใหญ่มอง OS เป็น black box ถึงจุดหนึ่งก็ไม่เป็นไร แต่มี concepts บางอย่างที่รั่วออกมาเรื่อยๆ และพลาดไปทำให้เกิด bugs ที่ debug ยากมาก
+
+### Processes กับ threads กับ async — ไม่สามารถใช้แทนกันได้
+
+**Process**: execution environment ที่ isolated มี memory space ของตัวเอง Processes ไม่ share memory โดย default การสื่อสารผ่าน IPC (pipes, sockets, shared memory) การ spawn process แพง
+
+**Thread**: unit of execution ภายใน process Threads share memory นั่นคือสิ่งที่ทำให้เร็วและอันตรายพร้อมกัน — shared memory หมายถึง race conditions
+
+**Async/coroutines**: cooperative multitasking ภายใน single thread ไม่มี parallelism แต่ concurrency สูงสำหรับ I/O-bound work Node.js ทำงานแบบนี้ และ async/await ใน Python ก็เช่นกัน Go's goroutines เป็น model ต่างออกไป — lightweight threads ที่จัดการโดย Go runtime ซึ่งสามารถวิ่งพร้อมกันบน multiple CPU cores ทำให้ efficient ทั้งสำหรับ I/O-bound และ CPU-bound work อยู่ใกล้กับ mixed workloads มากกว่า pure async model
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    subgraph CPU["CPU-Bound Work\n(computation)"]
+        P["Multiple Processes\nor Threads\nTrue parallelism"]
+    end
+    subgraph IO["I/O-Bound Work\n(waiting on network/disk)"]
+        A["Async / Event Loop\nOne thread, many tasks\nNo parallelism needed"]
+    end
+    subgraph Both["Mixed Workloads\n(most web servers)"]
+        T["Thread Pool for CPU\n+ Async for I/O"]
+    end
+    CPU --> Both
+    IO --> Both
+`}
+  size="medium"
+/>
+
+ถ้า language/runtime ไม่ชัดในหัว จะเขียนโค้ดที่ไม่ scale หรือมี data corruption bugs ที่ละเอียด Thread-unsafe access ไปยัง shared state พลาดได้ง่าย โดยเฉพาะในโค้ดที่ไม่ได้เขียนขึ้นมาโดยคิดถึง concurrency
+
+### Race conditions และ pattern พื้นฐานสำหรับป้องกัน
+
+Race condition คือเมื่อผลลัพธ์ขึ้นอยู่กับ timing ของ concurrent operations ตัวอย่างคลาสสิก:
+
+```
+// Thread A and Thread B both read balance = 100
+// Thread A adds 50: balance = 150, writes 150
+// Thread B subtracts 30: balance = 70, writes 70
+// Final balance: 70 — Thread A's write was lost
+```
+
+Solutions ขึ้นอยู่กับ context:
+- **Mutex/lock**: มีแค่ thread เดียวที่เข้าถึง critical section ในแต่ละครั้ง
+- **Atomic operations**: hardware-level guarantees สำหรับ operations ง่ายๆ
+- **Immutability**: ไม่ share mutable state — share copies หรือใช้ message passing
+- **Optimistic locking**: check-and-set กับ version numbers (พบบ่อยใน databases)
+
+ไม่ต้องเป็น concurrency expert ในระดับ early career ต้องรู้จัก danger signs และรู้ว่าเมื่อไหรควรถาม: นี่คือ shared state ไหม? สอง threads เข้าถึงพร้อมกันได้ไหม?
+
+### Memory — stack กับ heap และทำไมสำคัญ
+
+**Stack**: ขนาดคงที่ เร็ว จัดการอัตโนมัติ Local variables อยู่ที่นี่ Stack overflow เกิดขึ้นเมื่อ recurse ลึกเกินไป (stack เต็ม)
+
+**Heap**: dynamic ใหญ่กว่า จัดการ manually (หรือ GC-managed) Objects, arrays, data ที่ allocate แบบ dynamic อยู่ที่นี่ Memory leaks เกิดที่นี่ — เมื่อถือ references ไปยัง objects ที่ไม่ต้องการแล้ว
+
+![Stack vs heap memory layout](/assets/images/blogs/fundamentals-2026/stack-vs-heap.png)
+
+ใน garbage-collected languages (Java, Python, Go, JavaScript) ไม่ต้อง free memory ด้วยตัวเอง แต่ยังทำให้ memory leak ได้ด้วยการถือ references ที่ไม่ต้องการ สาเหตุทั่วไป:
+- Unbounded caches
+- Event listeners ที่ไม่เคยถูก remove
+- Closures ที่ capture objects ขนาดใหญ่
+- Static collections ที่โตขึ้นไม่หยุด
+
+การเข้าใจว่า GC มีอยู่และทำไมถึง pause application เป็นครั้งคราวสำคัญสำหรับ latency-sensitive services การเข้าใจ heap dumps และ memory profiling เป็นทักษะ mid-level ที่ควรมี
+
+### File descriptors และ connection limits
+
+ทุก open file, socket, และ pipe คือ file descriptor Operating systems มีขีดจำกัดว่า process หนึ่งจะมี file descriptors เปิดได้กี่อัน ถ้ามี bug ที่เปิด connections แล้วไม่ปิด จะถึง limit นั้นและ service จะ fail ด้วย error ที่งง
+
+นั่นคือเหตุผลที่ connection pooling สำคัญใน database clients นั่นคือเหตุผลที่ HTTP clients ควร reuse connections นั่นคือเหตุผลที่ต้อง close file handles หลังอ่านไฟล์เสมอ
+
+---
+
+## System Design — ไม่ใช่แบบ Interview
+
+System design แบบที่สอนใน interview prep (วาดกล่องบน whiteboard พูดว่า ต้องการ cache ต้องการ message queue เสร็จ) ไม่ใช่สิ่งที่หมายถึง หมายถึงการเข้าใจว่า **components ทำอะไรได้** และ **ทำอะไรไม่ได้**
+
+### Load balancers — สิ่งที่มันทำ
+
+A load balancer กระจาย incoming requests ไปยัง multiple instances ของ service มันยังทำ:
+
+- **Health checking**: ลบ instances ที่ fail health checks ออกจาก pool
+- **SSL termination**: จัดการ TLS decryption เพื่อที่ service จะได้ไม่ต้องทำ
+- **Sticky sessions**: route requests จาก client เดิมไปยัง instance เดิม (เกี่ยวข้องกับ stateful services)
+
+สิ่งที่มันไม่ทำ: ไม่ทำให้ service กลายเป็น stateless ถ้า service เก็บ session state ใน memory การ load balance ข้าม instances จะทำให้เกิดปัญหา — request 1 อาจ build state บน instance A, request 2 ลงที่ instance B และ state หายไป
+
+### Message queues — async และ decoupling
+
+A message queue (Kafka, RabbitMQ, SQS) decouples producer จาก consumer Producer push ไปที่ queue แล้วก็ไปต่อ Consumer อ่านจาก queue ตาม pace ของตัวเอง
+
+สิ่งที่แก้ได้:
+- **Backpressure**: consumer ตามไม่ทัน producer — queue รับ burst ไว้
+- **Reliability**: ถ้า consumer ล่ม messages รอใน queue แทนที่จะหาย
+- **Decoupling**: producer และ consumer ไม่ต้อง run พร้อมกัน
+
+สิ่งที่แก้ไม่ได้:
+- **Ordering guarantees**: queues ไม่ preserve order เสมอที่ scale — Kafka preserve ต่อ partition, SQS ไม่ guarantee ข้าม shards
+- **Exactly-once delivery**: queues ส่วนใหญ่ให้ at-least-once ซึ่งหมายความว่า consumer ต้องจัดการ duplicate messages (idempotency)
+- **Transactions**: การ write ไปที่ queue และ write ไปที่ database ใน atomic transaction เดียวกันทำยาก — ดู outbox pattern
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    API["API Service"] -->|"publish event"| Q["Message Queue\nat-least-once delivery"]
+    Q -->|"consume"| W1["Worker 1"]
+    Q -->|"consume"| W2["Worker 2"]
+    W1 -->|"write"| DB["Database"]
+    W2 -->|"write"| DB
+    W1 -.->|"fail mid-process:\nmessage re-delivered"| Q
+`}
+/>
+
+### Caching — และทำไมการเพิ่ม cache ถึงไม่ใช่คำตอบที่สมบูรณ์
+
+Caches แลก consistency กับ performance ทุก caching decision ต้องตอบ:
+
+- **Invalidation strategy คืออะไร?** TTL (time-to-live), explicit invalidation, write-through, write-behind?
+- **เกิดอะไรขึ้นเมื่อ cache miss?** ทุก miss ตี database หรือเปล่า? Thundering herd — เมื่อ cache หมดอายุและ 1,000 requests ตี database พร้อมกัน
+- **เกิดอะไรขึ้นเมื่อ cache ล่ม?** Service degrade gracefully หรือ fail ทั้งหมด?
+- **Stale data ยอมรับได้ไหม?** นานแค่ไหน?
+
+การเพิ่ม cache เสนอได้ง่ายและทำให้สมบูรณ์ยาก ต้องตอบสี่คำถามด้านบนทั้งหมดก่อนที่การตัดสินใจจะถือว่า complete
+
+### Failure modes — คำถามที่ต้องถาม
+
+สำหรับทุก component ใน system ถาม:
+
+1. เกิดอะไรขึ้นถ้าอันนี้ช้า? (timeout, retry logic)
+2. เกิดอะไรขึ้นถ้าอันนี้ล่ม? (fallback, circuit breaker)
+3. เกิดอะไรขึ้นถ้าอันนี้ return ข้อมูลผิด? (validation, consistency checks)
+4. เกิดอะไรขึ้นถ้ามีสองอัน? (consistency, coordination)
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    S["Service Call"] --> T{Response?}
+    T -->|Success| OK["Process normally"]
+    T -->|Timeout| RT["Retry with backoff\nDead letter if exhausted"]
+    T -->|Error 5xx| CB["Circuit breaker\nFail fast if repeated"]
+    T -->|Error 4xx| NR["Don't retry\nClient error — fix the request"]
+    T -->|Down| FB["Fallback response\nor graceful degradation"]
+`}
+/>
+
+ไม่ใช่ interview prep แต่เป็นวิธีที่ต้องคิดถึง external dependency ทุกอย่างที่ service เรียก — databases, third-party APIs, other microservices, message queues
+
+---
+
+## Design Diagrams — คุยเรื่องโค้ดกับทีม
+
+มีชั้นหนึ่งระหว่างการรู้วิธีเขียนโค้ดและการสื่อสาร design ไปยังทีม ชั้นนั้นควรพัฒนาตั้งแต่เนิ่นๆ — ไม่ใช่เพราะ UML เป็น requirement ที่เป็นทางการ แต่เพราะ visual language ที่ใช้ร่วมกันป้องกันความเข้าใจผิดใน design discussions, code reviews, และ architecture docs
+
+วิธีที่ดีที่สุดในการเรียน diagram types คือผ่านปัญหาเดียวที่สอดคล้องกัน ใช้ **digital wallet / cashless payment system** — domain เดียวกัน มองจากสามมุม
+
+### Class diagrams — object relationships
+
+Class diagrams แสดงว่า objects เชื่อมกันอย่างไรใน code: อะไร owns อะไร อะไรรู้เกี่ยวกับอะไร อะไร extends อะไร
+
+ห้า relationships ที่ควรรู้:
+
+- **Composition (owns strongly)**: filled diamond ที่ owner Component ไม่สามารถมีอยู่ได้โดยปราศจาก parent — ลบ parent ออก component ก็ไปด้วย
+- **Aggregation (has loosely)**: hollow diamond ที่ owner Component มีอยู่ได้อิสระ — สามารถ belong ไปยัง parent ต่างออกไปหรือไม่มีเลย
+- **Association**: plain arrow Objects รู้เกี่ยวกับกันและ interact กัน
+- **Dependency**: dashed arrow Class หนึ่งใช้อีก class ชั่วคราว โดยไม่ถือ reference ถาวร
+- **Inheritance (is-a)**: hollow arrowhead ชี้ไปที่ parent Subclass เป็น specialization ของ parent
+
+ใช้กับ digital wallet:
+
+<MermaidDiagram
+  chart={`
+classDiagram
+    User "1" *-- "1" Wallet : owns
+    Wallet "1" *-- "many" Transaction : records
+    User "1" o-- "many" PaymentMethod : has
+    Transaction --> PaymentMethod : charged via
+    Transaction --> Merchant : paid to
+    WalletService ..> PaymentGateway : uses
+`}
+  size="medium"
+/>
+
+อ่าน diagram นี้:
+- `Wallet` เป็น owned โดย `User` ด้วย composition — ลบ user ออก wallet ก็ไป
+- `Transactions` ถูก record โดย `Wallet` ด้วย composition — ไม่สามารถมีอยู่ได้โดยปราศจาก wallet
+- `PaymentMethods` (cards, bank accounts) ถูกถือด้วย aggregation — สามารถ detach หรือ reassign ได้
+- `Transaction` เชื่อมกับทั้ง `PaymentMethod` ที่ใช้และ `Merchant` ที่จ่าย
+- `WalletService` depend ต่อ `PaymentGateway` — เรียกมันสำหรับแต่ละ transaction แต่ไม่ได้ own มัน
+
+เหตุผลที่สำคัญใน practice: composition กับ aggregation กำหนดสิ่งที่เกิดขึ้นเมื่อ delete ทำผิดใน schema (missing CASCADE หรือ FK constraint ที่ผิด) และจะ orphan records หรือลบข้อมูลที่ตั้งใจจะเก็บโดยไม่ตั้งใจ
+
+### Sequence diagrams — สิ่งที่เกิดขึ้นเมื่อ payment ถูก process
+
+Sequence diagrams แสดง message flow ตามเวลา Domain digital wallet เดิม — สิ่งที่เกิดขึ้นเมื่อ user เริ่ม payment:
+
+<MermaidDiagram
+  chart={`
+sequenceDiagram
+    participant U as User
+    participant App as Mobile App
+    participant WS as Wallet Service
+    participant DB as Database
+    participant PG as Payment Gateway
+
+    U->>App: Pay 500 THB to merchant
+    App->>WS: POST /payments
+    WS->>DB: Check wallet balance
+    DB-->>WS: Balance OK
+    WS->>DB: INSERT transaction (PENDING)
+    WS->>PG: Charge payment method
+    PG-->>WS: Approved
+    WS->>DB: UPDATE transaction (COMPLETED)
+    WS-->>App: 201 Created
+    App-->>U: Payment confirmed
+`}
+/>
+
+นี่แสดง two-phase pattern ที่พบบ่อยใน payment systems: สร้าง PENDING transaction ก่อน แล้วค่อยอัปเดตเป็น COMPLETED เมื่อ gateway ยืนยันเท่านั้น ถ้า gateway call ล้มเหลว transaction อยู่ที่ PENDING (หรือ rollback) — ไม่ mark ว่า COMPLETED ก่อนที่จะมีการยืนยัน
+
+ในระดับ entry: อ่านได้และ trace ได้ว่าเกิดอะไรขึ้นถ้า gateway return error ในระดับ mid-level: สร้างสิ่งนี้ได้สำหรับ flow ที่กำลัง design
+
+### ER diagrams — database มีหน้าตาเป็นอย่างไร
+
+ER diagrams แทน database schema: tables, columns, และ cardinality ของ relationships ระหว่างกัน
+
+<MermaidDiagram
+  chart={`
+erDiagram
+    USER ||--|| WALLET : owns
+    USER ||--o{ PAYMENT_METHOD : has
+    WALLET ||--o{ TRANSACTION : records
+    MERCHANT ||--o{ TRANSACTION : receives
+    TRANSACTION }o--|| PAYMENT_METHOD : "charged via"
+`}
+  size="medium"
+/>
+
+Domain เดิม ตอนนี้เป็น schema สังเกตว่า class diagram และ ER diagram บอกเรื่องเดียวกันในระดับต่างกัน — อันหนึ่งเป็นเรื่องโครงสร้าง code อีกอันเป็นเรื่องโครงสร้าง database เมื่อสองอย่างไม่สอดคล้องกัน (code model ownership ต่างจากวิธีที่ schema enforce) bugs ตามมา
+
+### จุดของ shared language
+
+เป้าหมายไม่ใช่ formal precision เป้าหมายคือทีมอ่าน design เดียวกันจาก diagram ที่วาด เมื่อแสดงปัญหาเดียวกันเป็น class diagram, sequence diagram, และ ER diagram ได้ กำลังสื่อสารในระดับที่ design discussions เกิดขึ้น — ไม่ใช่แค่ implement สิ่งที่คนอื่นตัดสินใจ
+
+---
+
+## AI Era เปลี่ยนอะไรไปบ้าง
+
+จะพูดให้ชัดเพราะมี noise จากทั้งสองฝั่งมาก
+
+**AI ไม่ได้เปลี่ยน fundamentals** Hash maps ยังเป็น hash maps TCP ยังมี three-way handshake Indexes ยังมี trade-offs สิ่งเหล่านี้ไม่ไปไหน
+
+**AI เปลี่ยนความเร็วที่ bad decisions กลายเป็น production code** ก่อนจะมี AI tools การเขียนโค้ดใช้เวลา และเวลานั้นสร้าง friction ตามธรรมชาติในการคิด Senior engineer ที่เขียน query ด้วยมืออาจหยุดคิดว่า เดี๋ยว column นี้ต้องการ index AI สร้าง 50 บรรทัดใน 3 วินาที มนุษย์ review ใน 5 วินาที Index หาย ส่งขึ้น production
+
+**AI สร้างโค้ดที่น่าเชื่อถือ ไม่ใช่โค้ดที่ถูกต้องเสมอไป** มี pattern ที่สอดคล้องกัน: AI สร้างโค้ดที่ทำงานได้สำหรับ happy path ใน test environment ที่ scale เล็ก Edge cases, failure modes, performance ที่ 1M rows — สิ่งเหล่านั้นต้องการความเข้าใจเพื่อจะจับได้
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    A["AI generates code"] --> B["Looks correct at a glance?"]
+    B -->|Yes| C["Handles edge cases?"]
+    B -->|No| FIX["Obvious fix — easy to catch"]
+    C -->|Yes| D["Performs at scale?"]
+    C -->|No| EDGE["N+1, missing validation\nRace condition — needs fundamentals to catch"]
+    D -->|Yes| E["Handles failures?"]
+    D -->|No| PERF["Missing index, O(n²)\nNeeds CS knowledge to catch"]
+    E -->|Yes| SHIP["Safe to ship"]
+    E -->|No| FAIL["Missing timeout, no retry\nNeeds system design to catch"]
+`}
+/>
+
+Engineer ที่ทำงานได้ดีกับ AI tools ตอนนี้คือคนที่ใช้ AI เพื่อ generate และใช้ fundamentals เพื่อ evaluate Engineer ที่กำลังลำบากคือคนที่ generate แล้วส่งขึ้นโดยไม่ review
+
+### ใช้ AI เพื่อเรียน fundamentals
+
+ด้านนี้มักถูกพูดถึงน้อยเกินไป การพูดส่วนใหญ่เกี่ยวกับ AI ใน engineering มุ่งที่ AI ในฐานะ code generator แต่ AI ยังเป็นเครื่องมือเรียนรู้ที่มีประโยชน์สำหรับ fundamentals — ถ้าเข้าหาในฐานะ active practice ไม่ใช่แค่การหาคำตอบ
+
+วิธีที่พบว่าได้ผล:
+
+**Generate practice problems ตามต้องการ** แทนที่จะทำ textbook exercises ลองถามว่า ให้ 5 real-world scenarios ที่การใช้ hash map เป็นทางเลือกที่ผิด และอธิบาย trade-off ในแต่ละอัน สามารถถามต่อได้เรื่อยๆ ซึ่ง textbooks ไม่อนุญาต
+
+**ทำงานกับ EXPLAIN outputs ด้วยความช่วยเหลือ** เอา query จาก codebase ของตัวเอง run EXPLAIN ANALYZE แล้ว paste output ถาม AI ให้อธิบายว่าแต่ละ step หมายความว่าอะไร จากนั้น verify claims สำคัญกับ documentation ของ database การอธิบายจาก AI รวมกับการ verify ของเราเองสร้างความเข้าใจได้เร็วกว่า docs เพียงอย่างเดียว
+
+**Deliberate error spotting** ขอให้ AI เขียนโค้ดที่มี flaw specific เช่น เขียน query ที่มีปัญหา N+1 หรือ เขียน concurrent counter ที่มี race condition แล้วหาเองว่าอยู่ที่ไหน ควบคุม difficulty ได้เอง และถามหา hint หรือคำอธิบายทีหลังได้
+
+**Probe ด้วย follow-up questions** ลองถามว่า อธิบายว่าทำไม TCP connection establishment ถึงส่งผลต่อ database query latency แล้วต่อด้วย แปลว่าอะไรสำหรับค่า timeout default ใน JDBC connection pool? สามารถตาม confusion ที่มีแทนที่จะเดิน learning path ที่ textbook สมมติไว้
+
+ความต่างสำคัญ: ใช้ AI เพื่อ skip ความเข้าใจ กับใช้ AI เพื่อเร่งความเข้าใจ ทั้งสองแบบทำให้เนื้อหาได้รับการอธิบาย มีแค่แบบเดียวที่ทำให้รู้มันได้เมื่อต้องการตอนตี 2 ระหว่าง incident
+
+---
+
+## สิ่งที่ไม่มีใครพูดถึง — Layoffs และใครรอดได้
+
+ไม่มีใครเขียนเรื่องนี้ใน learn your fundamentals posts ดังนั้นจะเขียนเอง
+
+ทุกบริษัทมี cash flow เมื่อการตัดสินใจเรื่อง headcount เกิดขึ้น คำถามที่กำลังตอบอยู่ — ไม่ว่าจะพูดออกมาหรือไม่ — คือ: output-to-cost ratio ของแต่ละคนเป็นเท่าไหร่? ถ้า engineer หนึ่งคนที่มี fundamentals แน่นและใช้ AI tools ได้ดีสามารถ produce ได้เท่ากับที่เคยต้องใช้สอง engineer ก่อนหน้านั้น คณิตศาสตร์ไม่ซับซ้อน Headcount decisions คือ cash flow decisions
+
+ไม่ใช่เรื่องส่วนตัว ไม่ใช่เรื่องของ loyalty บริษัทไม่ใช่ครอบครัว ไม่ว่า all-hands presentations จะบรรยายพวกเขาแบบนั้นกี่ครั้งก็ตาม
+
+Engineer ที่รอดจาก cuts ซ้ำๆ หรือ land ที่ดีกว่าได้ทันทีหลังโดน มักเป็นคนที่ evaluate code ได้, debug production issues ได้, และตัดสินใจ architectural ได้ — ไม่ว่าจะเขียน first draft เองหรือ review สิ่งที่ agent สร้างขึ้น คนนั้นสามารถอยู่ที่ไหนก็ได้ ไม่ต้องอยู่ที่บริษัทที่มี layoffs เกิดขึ้น บริษัทที่เพิ่ง cut รอบหนึ่งคือบริษัทที่กำลัง hire อย่างคัดเลือกด้วย — บ่อยครั้งสำหรับ profile นั้นพอดี
+
+Fundamentals ที่แน่นไม่ได้ทำให้ immune product line ที่แย่หรือ quarter ที่แย่พา engineer ที่ดีลงด้วยกัน แต่มันเปลี่ยนสิ่งที่เกิดขึ้นหลังจากนั้น — เร็วแค่ไหนที่ land ได้ และจะไปข้างๆ หรือขึ้น
+
+ถ้าต้องการ zero layoff risk มีทางเดียว: เปิดธุรกิจของตัวเอง ไม่มีใคร fire ได้ ไม่มี performance review แตะถึงในฐานะ founder
+
+แต่พึงระวัง — มันมาพร้อม problems ชุดอื่น Revenue ที่มาช้าหรือไม่มาเลย Customers ที่ ghost หลังสามครั้ง Servers ที่ล่มตอนตีสามและ on-call คือ... แค่คุณ ไม่มี colleague ให้ rubber duck ด้วยตอนสี่ทุ่ม ไม่มี paid leave คำถามเงียบๆ ช้าๆ รอบเดือนที่แปดว่านี่คือ call ที่ถูกต้องไหม
+
+ไม่มี layoffs ปัญหาต่างออกไปทั้งหมด เลือก risk profile ที่เหมาะ
+
+---
+
+## Study Path ที่เป็นไปได้สำหรับปี 2026
+
+ไม่ใช่รายการอ่านหนังสือสิบเล่มนี้ แต่เป็นสิ่งที่จะ prioritize ถ้ามีเวลาหนึ่งชั่วโมงต่อวัน ขึ้นอยู่กับที่อยู่ปัจจุบัน
+
+![Study path roadmap from pre-employment to mid-level](/assets/images/blogs/fundamentals-2026/study-path-roadmap.png)
+
+**ถ้ากำลังเตรียมตัวสำหรับงานแรก (pre-employment):**
+
+มุ่งไปที่การถึง floor ไม่ใช่ ceiling สร้างบางอย่าง — basic API ที่มี database อยู่เบื้องหลัง ทำให้มัน CRUD ได้
+
+แต่แบบฝึกหัดที่สำคัญกว่าไม่ใช่การทำให้มันทำงาน แต่เป็นการสามารถอธิบายทุกการตัดสินใจในมันได้
+
+ทำไม create endpoint ถึง return 201 ไม่ใช่ 200? ทำไมถึง structure table นี้ด้วย columns เหล่านี้? ทำไม route นี้ถึงเป็น POST ไม่ใช่ PUT? ทำไม query นี้ถึงเป็นแบบนี้? ถ้าใครถามใน code review หรือ design discussion และตอบได้แค่ มันทำงานได้ หรือ copy มาจาก tutorial — นั่นคือช่องว่าง ช่องว่างนั้นมองเห็นได้ทันทีสำหรับ engineers ที่กำลัง interview หรือ onboard
+
+Engineer ปัจจุบันไม่ได้แค่ implement พวกเขา explain reasoning ว่าทำไมถึง design แบบนี้ คิดอะไรไว้แล้วไม่เลือก trade-off ที่ทำ นั่นคือบทสนทนาที่จะอยู่ในตั้งแต่วันแรก — ใน PR reviews, architecture discussions, standups เมื่อสิ่งต่างๆ พัง
+
+ไม่ต้องการ EXPLAIN, isolation levels, หรือ race conditions ก่อนเริ่ม แต่ต้องสามารถมองโค้ดของตัวเองและพูดได้ถึงการตัดสินใจในนั้น สร้างสิ่งนั้น จากนั้น practice อธิบายออกเสียง — ราวกับว่าใครบางคนเพิ่งขอให้ walk through มัน
+
+**ถ้าอยู่ในช่วงสองปีแรก:**
+
+เริ่ม deepen databases เข้าใจ indexes, เรียนรู้วิธีอ่าน EXPLAIN output, จำ N+1 ให้ออกเมื่อเห็น อันนี้ให้ return สูงที่สุดสำหรับงาน backend ประจำวัน
+
+จากนั้น networking ลึกกว่าแค่รู้ว่า HTTP มีอยู่ — เข้าใจว่าเกิดอะไรขึ้นในแต่ละ layer เมื่อ request ล้มเหลว และ status code ไหนบอกว่าควรไปดูที่ไหน
+
+จากนั้น data structures และ complexity ไม่ใช่ LeetCode หาแหล่งที่สอน why เบื้องหลัง structures ไม่ใช่แค่ implementation
+
+ยังเริ่ม sketch class diagrams ด้วย เลือก module ใน codebase แล้ววาด relationships ระหว่าง main classes ออกมา ไม่จำเป็นต้องมี tool — กระดาษหรือ whiteboard ก็ได้ จุดสำคัญคือการสร้างนิสัยของการคิดในแง่ relationships ไม่ใช่แค่ใน code
+
+**Communication patterns — landscape ของ trade-offs**
+
+ก่อนสิ้นสุดสองปีแรก ควรมีภาพของวิธีที่ services สื่อสารกัน ครอบทั้ง sync และ async landscape ที่กว้างกว่าแค่ HTTP ที่สำคัญกว่านั้น ควรสามารถ reason ได้ว่าทำไมทีมถึงเลือก approach หนึ่งแทนอีกอัน และจะเปลี่ยนอะไรถ้าไม่ได้เลือก
+
+การแบ่งพื้นฐาน:
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    Q["How should services communicate?"] --> SYNC["Synchronous\ncaller waits for response"]
+    Q --> ASYNC["Asynchronous\ncaller sends and moves on"]
+    SYNC --> CF["Client-facing API\nREST · GraphQL"]
+    SYNC --> IS["Internal service-to-service\ngRPC"]
+    SYNC --> RT["Real-time bidirectional\nWebSocket · RSocket"]
+    ASYNC --> ONCE["Each message consumed once\nMessage Queue"]
+    ASYNC --> MANY["Event fans out to many subscribers\nPub/Sub"]
+`}
+/>
+
+**REST** คือ default Stateless, text-based, supported ทุกที่, debug ง่าย เหมาะสำหรับ client-facing APIs ส่วนใหญ่ ข้อจำกัด: ไม่มี streaming ในตัว, clients มักจะ over-fetch หรือ under-fetch
+
+**gRPC** เป็น binary บน HTTP/2 กับ Protocol Buffers contracts เร็วกว่ามากสำหรับ high-throughput internal calls, strongly typed — contract change คือ compile error Browser-native ไม่ได้โดยไม่มี proxy, debug ยากกว่า REST, overkill สำหรับ client-facing work ส่วนใหญ่
+
+**GraphQL** ให้ client ระบุได้ว่าต้องการข้อมูลอะไร แก้ over-fetching สำหรับ APIs ที่รองรับหลาย client types (web, mobile) Trade-off: N+1 risk ด้าน server โดยไม่มี dataloaders, cache ยากกว่า REST, ความซับซ้อนย้ายไปอยู่ที่ schema design
+
+**WebSocket** รักษา bidirectional connection ที่ persistent ไว้ เหมาะสำหรับ real-time use cases — payment status updates, live dashboards, chat Trade-off: stateful connections ทำให้ horizontal scaling ยากขึ้น ต้องการ sticky sessions หรือ shared pub/sub layer เบื้องหลัง WebSocket servers
+
+**RSocket** เป็น reactive streams protocol ที่มีหลาย interaction models — request/response, fire-and-forget, request/stream, channel พบน้อยกว่า gRPC แต่มีประโยชน์เมื่อต้องการ flow control หรือ streaming ในตัว protocol
+
+**Message Queue** (Kafka, RabbitMQ, SQS): แต่ละ message ถูก consume ครั้งเดียวโดย consumer หนึ่งราย เหมาะสำหรับ task distribution — process payment, send email, resize image Trade-off: at-least-once delivery หมายความว่า consumer ต้องเป็น idempotent
+
+**Pub/Sub** (SNS, Redis Pub/Sub, Kafka topics ที่มีหลาย consumer groups): หนึ่ง event, subscribers อิสระหลายราย เหมาะสำหรับ broadcasting — transaction completed event ไปถึง analytics, fraud detection, และ notifications พร้อมกัน Trade-off: ไม่รับประกัน processing order ข้าม subscribers, deduplication ยากขึ้น
+
+![Communication protocols comparison matrix](/assets/images/blogs/fundamentals-2026/communication-protocols-matrix.png)
+
+การคิดที่ต้องการ build ขึ้นมาไม่ใช่ว่าแต่ละ technology ทำอะไรได้ แต่เป็น ถ้าทำแบบอื่นแทน อะไรจะพังหรือยากขึ้น:
+
+- REST → gRPC สำหรับ internal service? เร็วขึ้นและ type-safe แต่ตอนนี้ต้องการ protobuf contracts และการ debug ยากขึ้น คุ้มค่าที่ call frequency สูง น่าจะไม่คุ้มกับ low-traffic internal admin API
+- Synchronous REST call → message queue? Decouple services และรับ burst load ไว้ได้ แต่ caller ไม่รู้ทันทีว่าสำเร็จไหม Eventual consistency ยอมรับได้ที่นี่ไหม? User ต้องการ real-time confirmation ไหม?
+- Message queue → pub/sub? ตอนนี้หลาย services react ต่อ event เดียวกันอิสระ — ดีสำหรับ fan-out แต่แต่ละ subscriber process ทุก message และ deduplication กลายเป็นปัญหาของแต่ละ subscriber
+- REST polling → WebSocket? Real-time push แทน client-initiated checks แต่มี stateful connections เข้ามา Server รองรับ concurrent connections ได้กี่อัน? เกิดอะไรขึ้นเมื่อ restart?
+
+คำถามไม่ใช่ว่า technology ไหนดีที่สุดเพียงลำพัง มันคือเสมอว่า: ด้วย constraints เหล่านี้ trade-offs ไหนยอมรับได้?
+
+**ถ้ากำลังขยับสู่ mid-level (2–5 ปี):**
+
+Operating systems และ concurrency นี่คือช่องว่างที่เห็นบ่อยที่สุดในระดับนี้ เข้าใจ threading models, memory management, และ file descriptors
+
+System design — แบบ failure mode สำหรับ external dependency ทุกอย่างใน current system trace ผ่าน failure modes นี่คือ practice ที่ทำได้ที่ทำงานกับ systems ที่มีอยู่
+
+**More than that:**
+
+ขอบอก: มีประสบการณ์ 7 ปี ไม่สามารถให้ map ที่แน่นอนสำหรับสิ่งที่มาหลัง mid-level ได้ — paths แยกออกมากเกินไประหว่าง staff engineering, architecture, management, หรือการสร้างบางอย่างของตัวเอง แต่สิ่งที่บอกได้คือ starting point
+
+ถ้าถึงระดับนี้ self-reflection กลายเป็นเครื่องมือที่เชื่อถือได้ที่สุด ปัญหาอะไรที่ดึงดูดเรา งานอะไรที่ทำให้เหนื่อยสม่ำเสมอ เลือก direction ที่เหมาะ แล้ว grow จากที่นั่น และถ้ามันหยุดเหมาะ — มองย้อนกลับไปที่สิ่งที่รู้สึกว่าดีก่อนหน้านี้แต่ไม่เคยมีเวลา explore อย่างเต็มที่ pivots ที่ดีส่วนใหญ่ไม่ได้สุ่ม มักเป็นสิ่งที่สังเกตเห็นและเก็บไว้ก่อน
+
+---
+
+## ปิดท้าย
+
+Fundamentals ไม่ใช่ trivia gatekeeping ที่ interview culture ทำให้ดูเป็น มันคือสิ่งที่ทำให้คิดเกี่ยวกับ code ได้อย่างชัดเจน — ไม่ว่าจะกำลัง debug production incident, review PR ของเพื่อนร่วมงาน, หรือ evaluate สิ่งที่ AI สร้างขึ้นมาในสามวินาที
+
+Engineer ที่จะเติบโตได้เร็วที่สุดในสองสามปีข้างหน้าไม่ใช่คนที่ prompt ได้เก่งที่สุด แต่เป็นคนที่ prompt ได้ดีและ evaluate ได้ถูกต้อง และการ evaluate สร้างขึ้นบนการเข้าใจสิ่งที่กำลังมอง
+
+ไม่จำเป็นต้องรู้ทุกอย่าง ต้องรู้พอที่จะถามคำถามที่ถูกต้องเกี่ยวกับ code ที่อยู่ตรงหน้า
+
+เริ่มจาก databases พูดกับตัวเองว่าไม่รู้อะไร สร้างความเข้าใจ ไม่ใช่แค่ความคุ้นเคย ที่เหลือจะตามมา
+
+---
+
+เขียนจากประสบการณ์ทำงานบน backend systems ที่ส่วนใหญ่ปัญหาที่น่าสนใจเป็นเรื่อง database, networking, หรือ concurrency — ไม่ใช่ algorithm puzzles
