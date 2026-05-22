@@ -81,7 +81,7 @@ Before getting into each technical area, there is a thinking skill that applies 
 
 When you see a new ticket, three questions matter before you write a line of code.
 
-**How large is this?** Is this a one-file change, a feature that touches three layers of the stack, or something that requires a schema migration and a coordinated deployment? Misjudging scope is where early engineers most often surprise their team. Something estimated at two days becomes two weeks because nobody mapped out what "support payment methods" actually involves end to end.
+**How large is this?** Is this a one-file change, a feature that touches three layers of the stack, or something that requires a schema migration and a coordinated deployment? The point isn't estimating precisely — wrong estimates happen at every level. It's being able to look at a ticket and see its shape before committing. Which layers does it touch? Where might hidden complexity sit? A ticket like "support payment methods" looks small until you trace what it involves end to end.
 
 **What are the subproblems?** A feature does not ship as one thing. Break it down. "Let users top up their wallet" decomposes into: validate input, check the wallet exists, create a PENDING transaction, call the payment gateway, update the balance on success, handle each failure case. Each subproblem is small, testable, and independently understandable. If you cannot decompose the feature, you do not understand it yet — and that is the right signal to pause, not to start coding.
 
