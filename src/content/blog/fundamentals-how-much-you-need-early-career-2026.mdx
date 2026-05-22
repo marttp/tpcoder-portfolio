@@ -71,11 +71,6 @@ So when someone says "the bar is higher now," they're usually right about mid-le
 
 That's actually the useful reframe. It's not that you need to know more before starting. It's that you need to have a clear direction for what to learn once you're in the role. The sections below are that direction.
 
-{/*
-  IMAGE PLACEHOLDER
-  Save to: public/assets/images/blogs/fundamentals-2026/floor-vs-ceiling.png
-  Prompt: A clean minimal infographic showing a vertical career progression scale. Two horizontal lines divide the space: a lower line labeled "Entry-Level Floor" (accessible, calm tone) and a higher line labeled "Mid-Level Ceiling". The gap between them has a double-headed arrow labeled "First 2 years: velocity matters". Below the floor line is a small checkmark zone labeled "Start here". Visual feel should be aspirational not intimidating — the floor is reachable, the ceiling is the growth target. Flat design, tech editorial illustration style. Color palette: soft teal/green near the floor (achievable), deeper navy near the ceiling (advanced). Clean white background. No people. Landscape orientation, 16:9 aspect ratio.
-*/}
 ![Entry-level floor vs mid-level ceiling](/assets/images/blogs/fundamentals-2026/floor-vs-ceiling.png)
 
 ---
@@ -84,18 +79,6 @@ That's actually the useful reframe. It's not that you need to know more before s
 
 Let me be clear upfront: I am **not** talking about LeetCode grind. I'm talking about understanding data structures well enough to know when the wrong one was used.
 
-{/*
-  IMAGE PLACEHOLDER
-  Save to: public/assets/images/blogs/fundamentals-2026/data-structures-metaphors.png
-  Prompt: A clean flat illustration showing 6 data structures as everyday real-world analogies, arranged in a 2×3 grid. Each cell has the structure name and a simple visual metaphor:
-  1. Array — a numbered bookshelf with slots labeled 0, 1, 2, 3. Items sit in each slot.
-  2. Hash Map — a library card catalog with alphabetical tabs (A, B, C...) for fast lookup.
-  3. Linked List — a chain of train cars, each car has a small arrow pointing to the next one.
-  4. Tree — a simple org-chart tree shape, root node at top, branching downward.
-  5. Stack — a stack of plates with a downward arrow labeled "LIFO — last in, first out".
-  6. Queue — a line of abstract figures at a counter with an arrow labeled "FIFO — first in, first out".
-  Style: clean flat design, consistent color palette (soft blue/teal), sans-serif labels, light background. No photorealism. Tech editorial illustration style. Landscape orientation.
-*/}
 ![Data structure visual metaphors](/assets/images/blogs/fundamentals-2026/data-structures-metaphors.png)
 
 ### What you actually need to know
@@ -156,16 +139,6 @@ You need to understand HTTP not as a protocol you use, but as a protocol you rea
 
 Know the difference between 502 and 504. Know the difference between 401 and 403. They tell you different things about where to look when debugging.
 
-{/*
-  IMAGE PLACEHOLDER
-  Save to: public/assets/images/blogs/fundamentals-2026/http-status-codes.png
-  Prompt: A clean reference card showing HTTP status codes organized into four color-coded columns:
-  - 2xx column (green): 200 OK, 201 Created, 204 No Content — label "Success"
-  - 3xx column (blue): 301 Moved, 302 Found, 304 Not Modified — label "Redirect"
-  - 4xx column (amber/orange): 400 Bad Request, 401 Unauthenticated, 403 Unauthorized, 404 Not Found, 409 Conflict, 422 Validation Failed, 429 Rate Limited — label "Client Error"
-  - 5xx column (red): 500 Server Error, 502 Bad Gateway, 503 Unavailable, 504 Gateway Timeout — label "Server Error"
-  Special visual callouts: a bracket or highlight distinguishing 401 (not logged in) vs 403 (logged in, no permission), and 502 (upstream returned error) vs 504 (upstream timed out). Code numbers in bold monospace font, short descriptions below each. Card/poster aesthetic, clean white or very light background. Compact and scannable. Landscape orientation.
-*/}
 ![HTTP status code reference](/assets/images/blogs/fundamentals-2026/http-status-codes.png)
 
 **Headers are the metadata layer.** `Content-Type`, `Authorization`, `Cache-Control`, `Accept`, `X-Request-ID`, `CORS` headers — you will interact with all of these. Understand that `Authorization: Bearer <token>` is a convention, not magic. Understand that `Cache-Control: no-store` prevents caching at every layer. Understand that CORS errors are a browser enforcement, not a network error.
@@ -361,14 +334,6 @@ You don't need to be a concurrency expert at early career. You need to know the 
 
 **Heap**: dynamic, larger, manually managed (or GC-managed). Objects, arrays, any dynamically allocated data lives here. Memory leaks happen here — when you hold references to objects you no longer need.
 
-{/*
-  IMAGE PLACEHOLDER
-  Save to: public/assets/images/blogs/fundamentals-2026/stack-vs-heap.png
-  Prompt: A clean technical illustration showing two memory regions side by side with a vertical dividing line:
-  Left side — STACK: Ordered rectangular frames stacking upward. Bottom frame labeled "main()", middle frame "functionA()" with small variable labels inside (x: int, name: string), top frame "functionB()". Arrow on the side showing stack grows upward. Label at top: "Stack — fixed size, auto-managed, LIFO". Cool blue color scheme.
-  Right side — HEAP: Scattered objects of different sizes floating in space — a large box labeled "User object", a medium box labeled "List", several small boxes labeled "String". Reference arrows connecting them. One or two objects shown with no incoming arrows and a subtle red/orange warning marker indicating "no reference = GC candidate". Label: "Heap — dynamic size, GC-managed, objects live here". Warm tan/orange color scheme.
-  Style: clean technical diagram aesthetic, monospace font for variable names, sans-serif for labels, light background, simple line art. Educational illustration style. Landscape orientation.
-*/}
 ![Stack vs heap memory layout](/assets/images/blogs/fundamentals-2026/stack-vs-heap.png)
 
 In garbage-collected languages (Java, Python, Go, JavaScript), you don't manually free memory. But you still cause memory leaks by holding references you don't need. Common causes:
@@ -557,6 +522,26 @@ Some approaches that I've found work well:
 **Probe a concept with follow-up questions.** "Explain why TCP connection establishment affects database query latency" — then follow up: "what does that mean for the default timeout values in a JDBC connection pool?" You can follow your actual confusion instead of a textbook's assumed learning path.
 
 The distinction matters: using AI to skip understanding vs. using AI to accelerate understanding. Both result in content being explained to you. Only one results in you actually knowing it when you need it at 2am during an incident.
+
+---
+
+## Harsh Truth — On Layoffs and Who Survives Them
+
+Nobody writes this in the "learn your fundamentals" posts, so I will.
+
+Every company has cash flow. When headcount decisions happen, the question being answered — whether out loud or not — is: what is the output-to-cost ratio for each person? If one engineer with solid fundamentals and good AI tooling can produce what two engineers without those produced before, the math is not complicated. Headcount decisions are cash flow decisions.
+
+It's not personal. It's not about loyalty. Companies are not families, regardless of how many all-hands presentations describe them that way.
+
+The engineers who survive repeated cuts, or who land somewhere better immediately after getting caught in one, tend to be the ones who can evaluate code, debug production issues, and make architectural decisions — whether they wrote the first draft themselves or reviewed what an agent produced. That person could be anywhere. They don't have to be at the company where the layoffs happen. Companies that just did a round of cuts are also companies that are now hiring selectively — often for exactly that profile.
+
+Strong fundamentals don't make you immune. A bad product line or a bad quarter takes down good engineers too. But they change what happens *after* — how fast you land, and whether you go sideways or upward.
+
+Now, if you truly want zero layoff risk, there is exactly one option: open your own business. Nobody can fire you. No performance review touches you as a founder.
+
+But heads up — it comes with its own set of problems. Revenue that shows up late, or doesn't. Customers who ghost you after three calls. Servers that go down at 3am and the on-call is just... you. No colleague to rubber duck with at 11pm. No paid leave. The slow quiet question around month eight of whether this was the right call.
+
+No layoffs. Different problems entirely. Pick your risk profile.
 
 ---
 
