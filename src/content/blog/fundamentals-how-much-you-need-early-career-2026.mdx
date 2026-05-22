@@ -157,10 +157,11 @@ sequenceDiagram
 
     C->>LB: Request
     LB->>S: Forward
-    Note right of LB: 504 if S times out\n502 if S returns error
-    Note right of S: Uses connection pool\nno new TCP handshake per query
+    Note right of S: connect timeout means S is unreachable
     S->>DB: Query
+    Note right of S: read timeout means S is too slow
     DB-->>S: Result
+    Note right of LB: 504 timed out, 502 bad response from S
     S-->>LB: Response
     LB-->>C: Response
 `}
@@ -262,7 +263,33 @@ const users = await User.findAll({ include: [{ model: Order }] });
 If you don't know what N+1 is, you won't recognize it when you see it. And it will work perfectly in development with 10 users, then destroy performance in production with 10,000.
 
 
-![N+1 queries vs a single JOIN](/assets/images/blogs/fundamentals-2026/n-plus-one-vs-join.png)
+**N+1 — what's actually happening at the database:**
+
+<MermaidDiagram chart={`
+sequenceDiagram
+    participant App
+    participant DB
+
+    App->>DB: SELECT * FROM users
+    DB-->>App: user1, user2, ... userN
+    loop For each of N users
+        App->>DB: SELECT * FROM orders WHERE user_id = ?
+        DB-->>App: orders
+    end
+    Note over App,DB: 1 + N round trips to the database
+`} size="medium" />
+
+**The fix — one query with JOIN:**
+
+<MermaidDiagram chart={`
+sequenceDiagram
+    participant App
+    participant DB
+
+    App->>DB: SELECT u.*, o.* FROM users u LEFT JOIN orders o ON u.id = o.user_id
+    DB-->>App: all users with their orders in one response
+    Note over App,DB: 1 round trip to the database
+`} size="medium" />
 
 ### Query Planning — reading EXPLAIN
 
