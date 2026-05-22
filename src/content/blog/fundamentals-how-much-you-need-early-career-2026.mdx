@@ -17,11 +17,11 @@ language: "en"
 
 import MermaidDiagram from "../../components/blog/MermaidDiagram.astro";
 
-There's a conversation that keeps coming up every few months, and it usually sounds like this: *"Do I still need to study fundamentals? Can't AI just handle it?"*
+There's a conversation that keeps coming up every few months, and it usually sounds like this: *"Do I still need to study fundamentals? How much do I actually need to know before I can start?"*
 
-The honest answer is: **you need more than you think, but not in the way bootcamps framed it.** This post is not going to tell you to grind 300 LeetCode problems. It's also not going to tell you fundamentals don't matter because you have Copilot. Both of those are wrong, and I've seen both damage people's early careers in different ways.
+This post tries to answer that directly — not the version where you need to read seven books before your first job, and not the version where fundamentals don't matter because you have Claude Code or a coding agent doing it for you. Both of those are wrong.
 
-What I'm going to do instead is go through each area — data structures, networking, databases, operating systems, system design — and tell you what it actually teaches you, what it looks like when you're missing it, and what's worth your time in 2026.
+What I'm going to do is go through each area — data structures, networking, databases, operating systems, system design — and separate what you need to **start** from what you need to **grow**. Those are different lists, and conflating them is what makes people either underprepare or burn out trying to reach a bar that isn't actually the entry-level bar.
 
 ---
 
@@ -29,36 +29,80 @@ What I'm going to do instead is go through each area — data structures, networ
 
 Most people frame this as: *"Do I need fundamentals to get a job?"*
 
-That's the wrong question. The right question is: **"Do I need fundamentals to stay employed, grow, and not get burned by AI-generated code?"**
+That's too narrow. The better question is: **"Do I need fundamentals to actually understand what my code does?"**
 
-And the answer to that is an emphatic yes — more so now than three years ago.
+And the answer is yes — because understanding is what separates engineers who can debug from engineers who can only rewrite, who can diagnose from who can only guess, who grow steadily from who plateau after two years.
 
-Here's why. When you use AI to generate code, you are no longer the author. You are the **reviewer**. And reviewing code requires a deeper understanding than writing it, because you need to spot not just what the code does, but what it *fails* to do — the edge cases, the wrong complexity, the missing constraint, the subtle race condition.
+Here's what I've observed in engineers who skipped the fundamentals:
 
-<MermaidDiagram
-  chart={`
-flowchart TD
-    A[AI Generates Code] --> B{You Review It}
-    B -->|Strong Fundamentals| C[Spot wrong data structure\nCatch missing index\nIdentify race condition\nQuestion the trade-off]
-    B -->|Weak Fundamentals| D[Code looks plausible\nYou ship it\nProblems surface in production]
-    C --> E[Confident, safe ship]
-    D --> F[Incident, debugging\nunder pressure]
-`}
-/>
+- They ship code that works at 100 rows and breaks at 100,000 — because they didn't understand complexity or indexes
+- They can't read infrastructure-layer errors — a 502 vs 504 tells you completely different things, but only if you know what sits between your service and the client
+- They can add features but can't diagnose slowdowns — no mental model for where the bottleneck actually lives
+- They hit an unfamiliar bug with no frame of reference, so they rewrite instead of fix
 
-The shift is real. Implementation is cheaper. Judgment is the bottleneck. And judgment is built on fundamentals.
+This isn't about interview trivia. It's about being able to function when things go wrong — and in production systems, they will.
+
+In the current environment, this gap becomes more visible. When AI generates code, you're reviewing it. Reviewing requires knowing what *correct* looks like — not just what *plausible* looks like. AI reliably produces plausible. Fundamentals are what help you tell the difference.
+
+---
+
+## The Actual Entry-Level Floor
+
+Before walking through each area in depth, let me answer the question directly: *what do you need to know to start your first job?*
+
+This is the honest minimum — not the ideal, not what you'll have after two years, just the floor:
+
+- **Data structures**: Know arrays and hash maps. Understand why you'd pick one over the other. Have a rough sense that O(n) is slower than O(1). That's it.
+- **Networking**: Know what HTTP is. Understand GET, POST, PUT, DELETE at a conceptual level. Know what 200, 400, 404, and 500 mean. Know that HTTPS means the connection is encrypted.
+- **Databases**: Write basic queries — SELECT, INSERT, UPDATE, DELETE. Know that indexes exist and make reads faster. Understand what a transaction is at a conceptual level (either it all works, or none of it does).
+- **Operating systems**: Know that processes and threads are different things. That's enough for day one.
+- **System design**: Know what a load balancer is. Know that caches exist and what problem they solve.
+- **Design diagrams**: Be able to read a simple class diagram and understand the basic relationships. Know what a sequence diagram shows. Know what an ER diagram represents.
+
+Everything in the rest of this article beyond that list? That's what the first two years are for building. Not a checklist to clear before you're allowed to apply.
+
+### Why it feels like the bar has shifted
+
+It has — but not in the way most people think.
+
+The actual floor for a first job hasn't changed dramatically. What has changed is the **ceiling**. What's expected at mid-level is higher now, and companies want early-career engineers who can ramp up quickly. That ceiling pressure gets projected backward, and suddenly the expectation described for "early career" reads like what used to be the two-year mark.
+
+So when someone says "the bar is higher now," they're usually right about mid-level expectations and slightly wrong about entry-level. The floor is still achievable. What's different is the velocity expected after you start — how fast you're expected to move from the floor toward that higher ceiling.
+
+That's actually the useful reframe. It's not that you need to know more before starting. It's that you need to have a clear direction for what to learn once you're in the role. The sections below are that direction.
+
+{/*
+  IMAGE PLACEHOLDER
+  Save to: public/assets/images/blogs/fundamentals-2026/floor-vs-ceiling.png
+  Prompt: A clean minimal infographic showing a vertical career progression scale. Two horizontal lines divide the space: a lower line labeled "Entry-Level Floor" (accessible, calm tone) and a higher line labeled "Mid-Level Ceiling". The gap between them has a double-headed arrow labeled "First 2 years: velocity matters". Below the floor line is a small checkmark zone labeled "Start here". Visual feel should be aspirational not intimidating — the floor is reachable, the ceiling is the growth target. Flat design, tech editorial illustration style. Color palette: soft teal/green near the floor (achievable), deeper navy near the ceiling (advanced). Clean white background. No people. Landscape orientation, 16:9 aspect ratio.
+*/}
+![Entry-level floor vs mid-level ceiling](/assets/images/blogs/fundamentals-2026/floor-vs-ceiling.png)
 
 ---
 
 ## Data Structures & Algorithms — The Evaluation Layer
 
-Let me be clear upfront: I am **not** talking about LeetCode grind. I'm talking about understanding data structures well enough to know when AI has picked the wrong one.
+Let me be clear upfront: I am **not** talking about LeetCode grind. I'm talking about understanding data structures well enough to know when the wrong one was used.
+
+{/*
+  IMAGE PLACEHOLDER
+  Save to: public/assets/images/blogs/fundamentals-2026/data-structures-metaphors.png
+  Prompt: A clean flat illustration showing 6 data structures as everyday real-world analogies, arranged in a 2×3 grid. Each cell has the structure name and a simple visual metaphor:
+  1. Array — a numbered bookshelf with slots labeled 0, 1, 2, 3. Items sit in each slot.
+  2. Hash Map — a library card catalog with alphabetical tabs (A, B, C...) for fast lookup.
+  3. Linked List — a chain of train cars, each car has a small arrow pointing to the next one.
+  4. Tree — a simple org-chart tree shape, root node at top, branching downward.
+  5. Stack — a stack of plates with a downward arrow labeled "LIFO — last in, first out".
+  6. Queue — a line of abstract figures at a counter with an arrow labeled "FIFO — first in, first out".
+  Style: clean flat design, consistent color palette (soft blue/teal), sans-serif labels, light background. No photorealism. Tech editorial illustration style. Landscape orientation.
+*/}
+![Data structure visual metaphors](/assets/images/blogs/fundamentals-2026/data-structures-metaphors.png)
 
 ### What you actually need to know
 
-**Arrays and dynamic arrays** — the default structure everyone reaches for. Understand why random access is O(1) but insertion in the middle is O(n). This comes up constantly when AI generates code that repeatedly inserts into the front of a list in a loop.
+**Arrays and dynamic arrays** — the default structure everyone reaches for. Understand why random access is O(1) but insertion in the middle is O(n). This comes up constantly in code that repeatedly inserts into the front of a list inside a loop.
 
-**Hash maps** — probably the structure you'll use most. Understand that lookup is O(1) average, not always. Understand hash collisions, load factor, and why a HashMap is not sorted. Know when a LinkedHashMap or TreeMap matters — and AI often doesn't distinguish.
+**Hash maps** — probably the structure you'll use most. Understand that lookup is O(1) average, not always. Understand hash collisions, load factor, and why a HashMap is not sorted. Know when a LinkedHashMap or TreeMap matters.
 
 **Linked lists** — less commonly used directly, but essential for understanding queues, LRU caches, and how memory allocation works under the hood. Also, understanding pointer-style thinking helps with tree traversal.
 
@@ -82,7 +126,7 @@ flowchart LR
         ONlogN["O(n log n) — Common Sort\nMerge sort, heap sort"]
     end
     subgraph Danger["Danger Zone at Scale"]
-        ON2["O(n²) — Quadratic\nNested loops — common AI mistake"]
+        ON2["O(n²) — Quadratic\nNested loops — easy to miss in review"]
         ON3["O(n³) — Cubic\nTriple nested — almost always wrong"]
         O2N["O(2ⁿ) — Exponential\nBrute-force recursion"]
     end
@@ -90,7 +134,7 @@ flowchart LR
   size="medium"
 />
 
-AI-generated code produces O(n²) surprisingly often. It will write a nested loop where a hash map would give you O(n). If you can't read complexity, you won't catch it.
+Nested loops that could be hash maps are a common source of O(n²) in real code — easy to miss if you can't read complexity.
 
 ### What you can skip
 
@@ -106,11 +150,23 @@ Networking is the area where I see the biggest gap in early and mid-level engine
 
 You need to understand HTTP not as a protocol you use, but as a protocol you read when things go wrong.
 
-**Methods matter.** GET is idempotent and should not change state. POST is not. PUT replaces. PATCH modifies. DELETE removes. These are not conventions — they have semantic meaning that matters for caching, retries, and API design. AI frequently generates PUT when PATCH is correct, or GET when it should be POST because it involves a body.
+**Methods matter.** GET is idempotent and should not change state. POST is not. PUT replaces. PATCH modifies. DELETE removes. These are not conventions — they have semantic meaning that matters for caching, retries, and API design. Mixing up PUT and PATCH, or using GET for requests with a body, causes subtle issues that surface later in unexpected places.
 
 **Status codes are a vocabulary.** 200 is success. 201 is created. 204 is success with no body. 400 is your fault. 401 is unauthenticated. 403 is unauthorized. 404 is not found. 409 is conflict. 422 is validation failure. 500 is server error. 502 is bad gateway (upstream failed). 503 is service unavailable. 504 is gateway timeout (upstream didn't respond in time).
 
 Know the difference between 502 and 504. Know the difference between 401 and 403. They tell you different things about where to look when debugging.
+
+{/*
+  IMAGE PLACEHOLDER
+  Save to: public/assets/images/blogs/fundamentals-2026/http-status-codes.png
+  Prompt: A clean reference card showing HTTP status codes organized into four color-coded columns:
+  - 2xx column (green): 200 OK, 201 Created, 204 No Content — label "Success"
+  - 3xx column (blue): 301 Moved, 302 Found, 304 Not Modified — label "Redirect"
+  - 4xx column (amber/orange): 400 Bad Request, 401 Unauthenticated, 403 Unauthorized, 404 Not Found, 409 Conflict, 422 Validation Failed, 429 Rate Limited — label "Client Error"
+  - 5xx column (red): 500 Server Error, 502 Bad Gateway, 503 Unavailable, 504 Gateway Timeout — label "Server Error"
+  Special visual callouts: a bracket or highlight distinguishing 401 (not logged in) vs 403 (logged in, no permission), and 502 (upstream returned error) vs 504 (upstream timed out). Code numbers in bold monospace font, short descriptions below each. Card/poster aesthetic, clean white or very light background. Compact and scannable. Landscape orientation.
+*/}
+![HTTP status code reference](/assets/images/blogs/fundamentals-2026/http-status-codes.png)
 
 **Headers are the metadata layer.** `Content-Type`, `Authorization`, `Cache-Control`, `Accept`, `X-Request-ID`, `CORS` headers — you will interact with all of these. Understand that `Authorization: Bearer <token>` is a convention, not magic. Understand that `Cache-Control: no-store` prevents caching at every layer. Understand that CORS errors are a browser enforcement, not a network error.
 
@@ -118,9 +174,9 @@ Know the difference between 502 and 504. Know the difference between 401 and 403
 
 Most engineers treat TCP as a given. It handles delivery, done. But TCP has implications you feel every day:
 
-- **Connection establishment is expensive.** Three-way handshake. This is why connection pooling exists in database clients and HTTP clients. When AI generates database access code, it will sometimes skip connection pooling. You need to know why that matters.
+- **Connection establishment is expensive.** Three-way handshake. This is why connection pooling exists in database clients and HTTP clients. Skipping it is a common shortcut that causes latency problems at scale.
 - **TCP is stateful.** Connections exist between two endpoints. This is why horizontal scaling of stateful services is hard.
-- **Timeouts are a TCP concern.** Connect timeout vs read timeout vs write timeout — these are different things. AI often generates one generic timeout without distinguishing them.
+- **Timeouts are a TCP concern.** Connect timeout vs read timeout vs write timeout — these are different things. Using a single generic timeout without distinguishing them is a common oversight.
 
 <MermaidDiagram
   chart={`
@@ -171,7 +227,7 @@ I'll be direct: **most production incidents I've seen trace back to a database p
 
 ### Indexes — the most misunderstood performance tool
 
-An index trades write performance for read performance. This is the fundamental trade-off, and it's one AI frequently ignores.
+An index trades write performance for read performance. This is the fundamental trade-off, and it's one that's easy to overlook when reviewing schema changes or migration files.
 
 **What you need to understand:**
 
@@ -196,7 +252,7 @@ flowchart TD
 `}
 />
 
-AI-generated queries frequently lack appropriate indexes. When you review AI-generated database schema or migration files, your first question should be: *"Which columns are in WHERE clauses, JOIN conditions, and ORDER BY? Are those indexed?"*
+When reviewing schema changes or migration files, your first question should be: *"Which columns are in WHERE clauses, JOIN conditions, and ORDER BY? Are those indexed?"*
 
 ### Transactions and ACID
 
@@ -215,11 +271,11 @@ Isolation levels are where most engineers have gaps:
 - **Repeatable Read**: the same query returns the same results within a transaction. Default in MySQL/InnoDB.
 - **Serializable**: transactions behave as if they ran sequentially. Safest, but slowest.
 
-Most applications run fine on Read Committed. But if you're implementing financial logic, inventory reservation, or any "check then act" pattern, you need to think carefully about isolation level — and AI almost never does.
+Most applications run fine on Read Committed. But if you're implementing financial logic, inventory reservation, or any "check then act" pattern, you need to think carefully about isolation level — and it's easy to skip that thinking entirely.
 
-### The N+1 Problem — AI's Favorite Bug
+### The N+1 Problem — The Most Common Performance Bug
 
-This is the most common performance issue I see in AI-generated code, and it comes from not understanding how queries compose.
+This is the most common performance issue I run into, and it comes from not understanding how queries compose.
 
 ```
 // AI generates this:
@@ -234,7 +290,7 @@ const users = await User.findAll({ include: [{ model: Order }] });
 // 1 query with JOIN = 1 query total
 ```
 
-If you don't know what N+1 is, you won't recognize it in AI-generated code. And it will work perfectly in development with 10 users, then destroy performance in production with 10,000.
+If you don't know what N+1 is, you won't recognize it when you see it. And it will work perfectly in development with 10 users, then destroy performance in production with 10,000.
 
 ### Query Planning — reading EXPLAIN
 
@@ -278,7 +334,7 @@ flowchart LR
   size="medium"
 />
 
-If your language/runtime is not clear in your head, you will write code that doesn't scale or has subtle data corruption bugs. AI generates thread-unsafe code regularly, especially when accessing shared state.
+If your language/runtime is not clear in your head, you will write code that doesn't scale or has subtle data corruption bugs. Thread-unsafe access to shared state is easy to miss, especially in code that wasn't written with concurrency in mind.
 
 ### Race conditions and the basic patterns to prevent them
 
@@ -304,6 +360,16 @@ You don't need to be a concurrency expert at early career. You need to know the 
 **Stack**: fixed-size, fast, automatically managed. Local variables live here. Stack overflow happens when you recurse too deeply (stack is full).
 
 **Heap**: dynamic, larger, manually managed (or GC-managed). Objects, arrays, any dynamically allocated data lives here. Memory leaks happen here — when you hold references to objects you no longer need.
+
+{/*
+  IMAGE PLACEHOLDER
+  Save to: public/assets/images/blogs/fundamentals-2026/stack-vs-heap.png
+  Prompt: A clean technical illustration showing two memory regions side by side with a vertical dividing line:
+  Left side — STACK: Ordered rectangular frames stacking upward. Bottom frame labeled "main()", middle frame "functionA()" with small variable labels inside (x: int, name: string), top frame "functionB()". Arrow on the side showing stack grows upward. Label at top: "Stack — fixed size, auto-managed, LIFO". Cool blue color scheme.
+  Right side — HEAP: Scattered objects of different sizes floating in space — a large box labeled "User object", a medium box labeled "List", several small boxes labeled "String". Reference arrows connecting them. One or two objects shown with no incoming arrows and a subtle red/orange warning marker indicating "no reference = GC candidate". Label: "Heap — dynamic size, GC-managed, objects live here". Warm tan/orange color scheme.
+  Style: clean technical diagram aesthetic, monospace font for variable names, sans-serif for labels, light background, simple line art. Educational illustration style. Landscape orientation.
+*/}
+![Stack vs heap memory layout](/assets/images/blogs/fundamentals-2026/stack-vs-heap.png)
 
 In garbage-collected languages (Java, Python, Go, JavaScript), you don't manually free memory. But you still cause memory leaks by holding references you don't need. Common causes:
 - Unbounded caches
@@ -352,13 +418,12 @@ What this doesn't solve:
 <MermaidDiagram
   chart={`
 flowchart LR
-    API["API Service"] -->|"publish event"| Q["Message Queue"]
-    Q -->|"consume"| W1["Worker Instance 1"]
-    Q -->|"consume"| W2["Worker Instance 2"]
-    W1 --> DB["Database"]
-    W2 --> DB
-    Note1["⚠ If worker fails mid-processing\nmessage is re-delivered\nConsumer must be idempotent"]
-    W1 -.-> Note1
+    API["API Service"] -->|"publish event"| Q["Message Queue\nat-least-once delivery"]
+    Q -->|"consume"| W1["Worker 1"]
+    Q -->|"consume"| W2["Worker 2"]
+    W1 -->|"write"| DB["Database"]
+    W2 -->|"write"| DB
+    W1 -.->|"fail mid-process:\nmessage re-delivered"| Q
 `}
 />
 
@@ -398,6 +463,58 @@ This is not interview prep. This is how you think about every external dependenc
 
 ---
 
+## Design Diagrams — Talking About Code With Your Team
+
+There's a layer between knowing how to code and being able to communicate a design to your team. That layer is worth developing early — not because UML is a formal requirement, but because a shared visual language prevents a lot of misunderstanding in design discussions, code reviews, and architecture docs.
+
+You don't need every diagram type. You don't need formal precision. You need enough consistency that when you draw a line between two boxes, everyone in the room means the same thing.
+
+### Class diagrams — relationships between code
+
+Class diagrams show how objects relate to each other: what owns what, what knows about what, what extends what. The notation doesn't need to be exact. The relationships do need to be clear.
+
+The five relationships worth knowing:
+
+- **Inheritance (is-a)**: hollow arrowhead pointing to the parent. `Dog` extends `Animal` — Dog is an Animal.
+- **Composition (owns strongly)**: filled diamond on the owner. The child cannot exist without the parent. An `Order` owns its `LineItems` — delete the order, the line items go too.
+- **Aggregation (has loosely)**: hollow diamond on the owner. The child exists independently. A `Team` has `Players` — a player can exist without that team.
+- **Association**: plain arrow. Objects know about each other. A `User` places an `Order`.
+- **Dependency**: dashed arrow. One class uses another temporarily. `OrderService` calls `PaymentGateway` to process a charge.
+
+<MermaidDiagram
+  chart={`
+classDiagram
+    Animal <|-- Dog : is-a
+    Order *-- LineItem : owns
+    Team o-- Player : has
+    User --> Order : places
+    OrderService ..> PaymentGateway : uses
+`}
+  size="medium"
+/>
+
+The practical use: when someone asks "should UserProfile be inside User, or separate?" — being able to sketch this and distinguish composition from aggregation makes the conversation much faster than explaining it in words. And the answer to that question has real consequences for database schema, deletion behavior, and API design.
+
+### Sequence diagrams — message flow over time
+
+You've already seen several in this article. Sequence diagrams show how services or components interact over time — which message goes where, in what order, and what comes back.
+
+At entry level: be able to read one. At mid-level: be able to produce one to explain a flow you're designing or debugging. Most architecture discussions in backend teams eventually come down to "draw me a sequence diagram of what happens when X."
+
+### ER diagrams — database schema at a glance
+
+ER diagrams represent database structure: tables as entities, relationships as lines with cardinality. One user has many orders. One order has many line items. Many-to-many relationships need a junction table.
+
+In practice most teams sketch informal ER diagrams rather than formal Crow's Foot notation. As long as it communicates the schema clearly, the formality level doesn't matter.
+
+### The shared language point
+
+The goal isn't certification-level accuracy. The goal is that your team reads the same design from the diagram that you drew. The problems come when there's no shared convention — when a line between two boxes means "connected somehow" with nothing to distinguish ownership from reference from inheritance.
+
+Knowing the standard conventions, even loosely, prevents that ambiguity.
+
+---
+
 ## What the AI Era Actually Changes
 
 I want to be honest about this because there's a lot of noise on both sides.
@@ -425,25 +542,49 @@ flowchart TD
 
 The engineers who are thriving with AI tools right now are the ones who use AI to generate and use fundamentals to evaluate. The engineers who are struggling are the ones who generate and ship without reviewing.
 
+### Using AI to learn fundamentals
+
+This side of the equation gets undersold. Most discussion about AI in engineering focuses on AI as a code generator. But AI is also a useful learning tool for fundamentals — if you approach it as active practice rather than answer-seeking.
+
+Some approaches that I've found work well:
+
+**Generate practice problems on demand.** Instead of working through textbook exercises: "Give me 5 real-world scenarios where using a hash map would be the wrong choice, and explain the trade-off in each." You can keep asking follow-up questions, which textbooks don't allow.
+
+**Work through EXPLAIN outputs with help.** Take a query from your actual codebase, run EXPLAIN ANALYZE, and paste the output. Ask AI to walk through what each step means. Then verify the key claims against your database's documentation. AI explanation combined with your own verification builds understanding faster than docs alone.
+
+**Deliberate error spotting.** Ask AI to write code with a specific class of flaw — "write a query with an N+1 problem" or "write a concurrent counter with a race condition" — and then find it yourself. You control the difficulty, and you can ask for a hint or explanation afterward.
+
+**Probe a concept with follow-up questions.** "Explain why TCP connection establishment affects database query latency" — then follow up: "what does that mean for the default timeout values in a JDBC connection pool?" You can follow your actual confusion instead of a textbook's assumed learning path.
+
+The distinction matters: using AI to skip understanding vs. using AI to accelerate understanding. Both result in content being explained to you. Only one results in you actually knowing it when you need it at 2am during an incident.
+
 ---
 
 ## A Realistic Study Path for 2026
 
-This is not a "read these 10 books" list. This is what I would prioritize if I had one hour a day.
+This is not a "read these 10 books" list. This is what I would prioritize if I had one hour a day, depending on where I am.
 
-**If you're early career (0–2 years):**
+**If you're preparing for your first role (pre-employment):**
 
-Start with databases. It has the highest return on investment for practical backend work. Understand indexes, EXPLAIN, N+1, and transactions. This will immediately make you more useful.
+Focus on reaching the floor, not the ceiling. Build something — a basic API with a database behind it. Make it do CRUD. Understand what query runs when you insert a record. Know what HTTP status code your endpoint returns on each scenario and why.
 
-Then networking. Work through HTTP deeply — build something that manually constructs HTTP requests. Learn what happens when you curl a URL step by step.
+You don't need EXPLAIN, isolation levels, or race conditions before day one. You need to be able to read code and have some intuition for what it's doing. Get that first.
 
-Then data structures and complexity. Not LeetCode. Pick a resource that teaches you the *why* behind structures, not just the implementation.
+**If you're in your first two years:**
 
-**If you're mid-level (2–5 years):**
+Start deepening databases. Understand indexes, learn to read EXPLAIN output, recognize N+1 when you see it. This has the highest return on daily backend work.
+
+Then networking. Go deeper than just knowing HTTP exists — understand what happens at each layer when a request fails, and which status code tells you where to look.
+
+Then data structures and complexity. Not LeetCode. Find a resource that teaches the *why* behind structures, not just the implementation.
+
+Also start learning to sketch class diagrams. Pick a module in your codebase and draw the relationships between its main classes. You don't need a tool — paper or a whiteboard is fine. The point is building the habit of thinking in relationships, not just in code.
+
+**If you're moving toward mid-level (2–5 years):**
 
 Operating systems and concurrency. This is the gap I see most often at this level. Understand threading models, memory management, and file descriptors.
 
-System design — the failure mode kind. For every external dependency in your current system, trace through the failure modes. This is practice you can do at work.
+System design — the failure mode kind. For every external dependency in your current system, trace through the failure modes. This is practice you can do at work, with real systems.
 
 **What to use:**
 
@@ -454,19 +595,19 @@ System design — the failure mode kind. For every external dependency in your c
 
 **One concrete thing to do this week:**
 
-Take any query in your current codebase that runs on a table with more than 10,000 rows. Run EXPLAIN on it. See if it's doing a sequential scan. If it is, understand why — and whether an index would help.
+If you have a codebase: take any query that runs on a table with more than 10,000 rows, run EXPLAIN on it, and see if it's doing a sequential scan.
 
-That exercise teaches you more than an hour of reading.
+If you don't have a codebase yet: build one. Set up a PostgreSQL database locally, create a table with a few columns, insert some rows, and write a SELECT with a WHERE clause. Then run EXPLAIN on it. See what it says. That one exercise is worth more than an hour of reading about indexes abstractly.
 
 ---
 
 ## Closing
 
-Fundamentals are not the gatekeeping trivia that interview culture made them feel like. They are the actual substrate of the judgment that makes an engineer valuable as AI takes over implementation.
+Fundamentals are not the gatekeeping trivia that interview culture made them feel like. They are what lets you think clearly about code — whether you're debugging a production incident, reviewing a colleague's PR, or evaluating what an AI generated in three seconds.
 
 The engineers who will grow fastest in the next few years are not the ones who prompt best. They're the ones who prompt well and *evaluate correctly*. And evaluation is built on understanding what you're looking at.
 
-You don't need to know everything. You need to know enough to ask the right questions about the code in front of you — whether you wrote it, a colleague wrote it, or an AI generated it in three seconds.
+You don't need to know everything. You need to know enough to ask the right questions about the code in front of you.
 
 Start with databases. Be honest about what you don't know. Build understanding, not just familiarity. The rest follows.
 
