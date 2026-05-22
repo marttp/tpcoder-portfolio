@@ -230,15 +230,21 @@ I'll be direct: **most production incidents I've seen trace back to a database p
 
 An index trades write performance for read performance. This is the fundamental trade-off, and it's one that's easy to overlook when reviewing schema changes or migration files.
 
-**What you need to understand:**
+#### B-tree indexes
 
-**B-tree indexes** are the default in most relational databases. They support range queries, equality, and prefix matching. They're ordered. They work well for columns with high cardinality.
+The default in most relational databases. They support range queries, equality, and prefix matching. They're ordered. They work well for columns with high cardinality.
 
-**Composite indexes** are indexes on multiple columns. Column order matters. An index on `(user_id, created_at)` can satisfy queries filtering on `user_id` alone, or filtering on both — but not queries filtering on `created_at` alone.
+#### Composite indexes
 
-**Covering indexes** include all the columns needed for a query, so the database doesn't need to touch the actual table. This is a significant optimization for read-heavy queries.
+Indexes on multiple columns. Column order matters. An index on `(user_id, created_at)` can satisfy queries filtering on `user_id` alone, or filtering on both — but not queries filtering on `created_at` alone.
 
-**Index selectivity** is the ratio of distinct values to total rows. An index on a boolean column (two possible values) is almost useless. An index on a UUID column (near-unique values) is highly effective.
+#### Covering indexes
+
+Include all the columns needed for a query, so the database doesn't need to touch the actual table. This is a significant optimization for read-heavy queries.
+
+#### Index selectivity
+
+The ratio of distinct values to total rows. An index on a boolean column (two possible values) is almost useless. An index on a UUID column (near-unique values) is highly effective.
 
 <MermaidDiagram
   chart={`
@@ -257,13 +263,21 @@ When reviewing schema changes or migration files, your first question should be:
 
 ### Transactions and ACID
 
-**Atomicity**: all operations in a transaction succeed, or none do. This is what prevents partial updates — if you update a user's balance and create a transaction record, you don't want one to succeed without the other.
+#### Atomicity
 
-**Consistency**: the database moves from one valid state to another. Constraints (foreign keys, unique constraints, check constraints) are enforced.
+All operations in a transaction succeed, or none do. This is what prevents partial updates — if you update a user's balance and create a transaction record, you don't want one to succeed without the other.
 
-**Isolation**: concurrent transactions don't interfere with each other. This is the complicated one.
+#### Consistency
 
-**Durability**: committed transactions survive crashes. This is about write-ahead logging and flushing to disk.
+The database moves from one valid state to another. Constraints (foreign keys, unique constraints, check constraints) are enforced.
+
+#### Isolation
+
+Concurrent transactions don't interfere with each other. This is the complicated one.
+
+#### Durability
+
+Committed transactions survive crashes. This is about write-ahead logging and flushing to disk.
 
 Isolation levels are where most engineers have gaps:
 
@@ -402,11 +416,17 @@ Most application engineers treat the OS as a black box. That's fine up to a poin
 
 ### Processes vs threads vs async — they are not interchangeable
 
-**Process**: an isolated execution environment with its own memory space. Processes don't share memory by default. Communication happens through IPC (pipes, sockets, shared memory). Spawning a process is expensive.
+#### Process
 
-**Thread**: a unit of execution within a process. Threads share memory. This is what makes them fast and dangerous simultaneously — shared memory means race conditions.
+An isolated execution environment with its own memory space. Processes don't share memory by default. Communication happens through IPC (pipes, sockets, shared memory). Spawning a process is expensive.
 
-**Async/coroutines**: cooperative multitasking within a single thread. No parallelism, but high concurrency for I/O-bound work. This is how Node.js works and how async/await works in Python. Go's goroutines are a different model — lightweight threads managed by the Go runtime that can run in parallel across multiple CPU cores, making them efficient for both I/O-bound and CPU-bound work. They sit closer to the "mixed workloads" category than the pure async model.
+#### Thread
+
+A unit of execution within a process. Threads share memory. This is what makes them fast and dangerous simultaneously — shared memory means race conditions.
+
+#### Async/coroutines
+
+Cooperative multitasking within a single thread. No parallelism, but high concurrency for I/O-bound work. This is how Node.js works and how async/await works in Python. Go's goroutines are a different model — lightweight threads managed by the Go runtime that can run in parallel across multiple CPU cores, making them efficient for both I/O-bound and CPU-bound work. They sit closer to the "mixed workloads" category than the pure async model.
 
 <MermaidDiagram
   chart={`
@@ -729,11 +749,9 @@ You don't need EXPLAIN, isolation levels, or race conditions before you start. B
 
 **If you're in your first two years:**
 
-Start deepening databases. Understand indexes, learn to read EXPLAIN output, recognize N+1 when you see it. This has the highest return on daily backend work.
+The order matters. Databases first — highest daily return, most direct path to production impact. Networking next — the failure vocabulary that makes logs and alerts legible rather than confusing. Data structures third — not for interviews, but to recognize performance problems by their shape.
 
-Then networking. Go deeper than just knowing HTTP exists — understand what happens at each layer when a request fails, and which status code tells you where to look.
-
-Then data structures and complexity. Not LeetCode. Find a resource that teaches the *why* behind structures, not just the implementation.
+If you only have bandwidth for one area right now, make it databases.
 
 Also start learning to sketch class diagrams. Pick a module in your codebase and draw the relationships between its main classes. You don't need a tool — paper or a whiteboard is fine. The point is building the habit of thinking in relationships, not just in code.
 
@@ -790,7 +808,7 @@ System design — the failure mode kind. For every external dependency in your c
 
 **More than that:**
 
-Honest admission: I have 7 years of experience. I cannot give you a definitive map for what comes after mid-level — the paths diverge too much between staff engineering, architecture, management, or building something of your own. What I can give you is a starting point.
+Honest admission: I have 7 years of experience. I cannot give you a definitive map for what comes after — the paths diverge too much between staff engineering, architecture, management, or building something of your own. What I can give you is a starting point.
 
 If you reach this level, self-reflection becomes the most reliable tool you have. What problems actually pulled you in? What work consistently drained you? Pick the direction that fits you, and grow from there. And if it stops fitting — look back at what felt right earlier that you never had time to fully explore. Most good pivots are not random. They are things you noticed and set aside.
 
@@ -804,7 +822,7 @@ The engineers who will grow fastest in the next few years are not the ones who p
 
 You don't need to know everything. You need to know enough to ask the right questions about the code in front of you.
 
-Start with databases. Be honest about what you don't know. Build understanding, not just familiarity. The rest follows.
+Name one thing you cannot clearly explain after reading this. Not a topic area — a specific behavior: why pagination slows past page 100, what the difference between 401 and 403 means in your system's actual auth flow, what happens to an in-progress transaction when the payment gateway call times out. Take that gap and close it on something in your actual codebase this week. Understanding accumulates in specific, deliberate moments — not in reading lists or good intentions.
 
 ---
 
