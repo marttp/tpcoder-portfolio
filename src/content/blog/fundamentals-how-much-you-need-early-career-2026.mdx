@@ -653,9 +653,15 @@ This is not a "read these 10 books" list. This is what I would prioritize if I h
 
 **If you're preparing for your first role (pre-employment):**
 
-Focus on reaching the floor, not the ceiling. Build something — a basic API with a database behind it. Make it do CRUD. Understand what query runs when you insert a record. Know what HTTP status code your endpoint returns on each scenario and why.
+Focus on reaching the floor, not the ceiling. Build something — a basic API with a database behind it. Make it do CRUD.
 
-You don't need EXPLAIN, isolation levels, or race conditions before day one. You need to be able to read code and have some intuition for what it's doing. Get that first.
+But the real exercise isn't making it work. It's being able to explain every decision in it.
+
+Why does your create endpoint return 201 and not 200? Why did you structure this table with these columns? Why is this route a POST and not a PUT? Why does this query look the way it does? If someone asks you in a code review or a design discussion and you can only say "it works" or "I copied it from a tutorial" — that's the gap. That gap is visible immediately to the engineers interviewing or onboarding you.
+
+Current engineers don't just implement. They explain their reasoning. Why they designed it this way, what they considered and rejected, what trade-off they made. That's the conversation you'll be in from day one — in PR reviews, in architecture discussions, in standups when something breaks.
+
+You don't need EXPLAIN, isolation levels, or race conditions before you start. But you do need to be able to look at your own code and articulate the decisions in it. Build the thing, then practice explaining it out loud — as if someone just asked you to walk them through it.
 
 **If you're in your first two years:**
 
@@ -667,24 +673,59 @@ Then data structures and complexity. Not LeetCode. Find a resource that teaches 
 
 Also start learning to sketch class diagrams. Pick a module in your codebase and draw the relationships between its main classes. You don't need a tool — paper or a whiteboard is fine. The point is building the habit of thinking in relationships, not just in code.
 
+**Communication patterns — the trade-off landscape**
+
+By the end of your first two years, you should have a working picture of how services communicate — not just HTTP, but the full sync and async landscape. More importantly, you should be able to reason about why a team picked one approach over another, and what would change if they hadn't.
+
+The fundamental split:
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    Q["How should services communicate?"] --> SYNC["Synchronous\ncaller waits for response"]
+    Q --> ASYNC["Asynchronous\ncaller sends and moves on"]
+    SYNC --> CF["Client-facing API\nREST · GraphQL"]
+    SYNC --> IS["Internal service-to-service\ngRPC"]
+    SYNC --> RT["Real-time bidirectional\nWebSocket · RSocket"]
+    ASYNC --> ONCE["Each message consumed once\nMessage Queue"]
+    ASYNC --> MANY["Event fans out to many subscribers\nPub/Sub"]
+`}
+/>
+
+**REST** is the default. Stateless, text-based, universally supported, easy to debug. Right for most client-facing APIs. Limitation: no built-in streaming, clients often over-fetch or under-fetch.
+
+**gRPC** is binary over HTTP/2 with Protocol Buffers contracts. Significantly faster for high-throughput internal calls, strongly typed — a contract change is a compile error. Not browser-native without a proxy, harder to debug than REST, overkill for most client-facing work.
+
+**GraphQL** lets the client specify exactly what data it needs. Solves over-fetching for APIs serving multiple client types (web, mobile). Trade-off: N+1 risk server-side without dataloaders, harder to cache than REST, complexity moves into schema design.
+
+**WebSocket** keeps a persistent bidirectional connection open. Right for real-time use cases — payment status updates, live dashboards, chat. Trade-off: stateful connections make horizontal scaling harder. You need sticky sessions or a shared pub/sub layer behind the WebSocket servers.
+
+**RSocket** is a reactive streams protocol with multiple interaction models — request/response, fire-and-forget, request/stream, channel. Less common than gRPC but useful when you need flow control or streaming built into the protocol itself.
+
+**Message Queue** (Kafka, RabbitMQ, SQS): each message is consumed once by one consumer. Right for task distribution — process a payment, send an email, resize an image. Trade-off: at-least-once delivery means your consumer must be idempotent.
+
+**Pub/Sub** (SNS, Redis Pub/Sub, Kafka topics with multiple consumer groups): one event, many independent subscribers. Right for broadcasting — a transaction completed event goes to analytics, fraud detection, and notifications simultaneously. Trade-off: no guarantee on processing order across subscribers, deduplication gets harder.
+
+The thinking you want to build is not "what does each technology do" but "what if we did it the other way, and what would break or become harder":
+
+- *REST → gRPC for an internal service?* Faster and type-safe, but now you need protobuf contracts and your debugging gets harder. Worth it at high call frequency, probably not for a low-traffic internal admin API.
+- *Synchronous REST call → message queue?* You've decoupled the services and absorbed burst load, but the caller no longer knows if it succeeded immediately. Is eventual consistency acceptable here? Does the user need a real-time confirmation?
+- *Message queue → pub/sub?* Now multiple services react to the same event independently — good for fan-out, but each subscriber processes every message and deduplication becomes each subscriber's problem.
+- *REST polling → WebSocket?* Real-time push instead of client-initiated checks, but you've introduced stateful connections. How many concurrent connections can your server hold? What happens when it restarts?
+
+The question is never which technology is best in isolation. It's always: given these constraints, which trade-offs are acceptable?
+
 **If you're moving toward mid-level (2–5 years):**
 
 Operating systems and concurrency. This is the gap I see most often at this level. Understand threading models, memory management, and file descriptors.
 
 System design — the failure mode kind. For every external dependency in your current system, trace through the failure modes. This is practice you can do at work, with real systems.
 
-**What to use:**
+**More than that:**
 
-- *Designing Data-Intensive Applications* by Martin Kleppmann — for databases and distributed systems, there is no better book
-- *Computer Networking: A Top-Down Approach* — for networking fundamentals
-- *The Linux Command Line* — for OS fluency
-- Your own production code — read your EXPLAIN outputs, trace your request flows, understand your own stack
+Honest admission: I have 7 years of experience. I cannot give you a definitive map for what comes after mid-level — the paths diverge too much between staff engineering, architecture, management, or building something of your own. What I can give you is a starting point.
 
-**One concrete thing to do this week:**
-
-If you have a codebase: take any query that runs on a table with more than 10,000 rows, run EXPLAIN on it, and see if it's doing a sequential scan.
-
-If you don't have a codebase yet: build one. Set up a PostgreSQL database locally, create a table with a few columns, insert some rows, and write a SELECT with a WHERE clause. Then run EXPLAIN on it. See what it says. That one exercise is worth more than an hour of reading about indexes abstractly.
+If you reach this level, self-reflection becomes the most reliable tool you have. What problems actually pulled you in? What work consistently drained you? Pick the direction that fits you, and grow from there. And if it stops fitting — look back at what felt right earlier that you never had time to fully explore. Most good pivots are not random. They are things you noticed and set aside.
 
 ---
 
