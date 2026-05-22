@@ -261,6 +261,16 @@ const users = await User.findAll({ include: [{ model: Order }] });
 
 If you don't know what N+1 is, you won't recognize it when you see it. And it will work perfectly in development with 10 users, then destroy performance in production with 10,000.
 
+{/*
+  IMAGE PLACEHOLDER
+  Save to: public/assets/images/blogs/fundamentals-2026/n-plus-one-vs-join.png
+  Prompt: A split illustration comparing two database query patterns side by side.
+  Left side — N+1 pattern (labeled "N+1 — 1 + N roundtrips"): Show a backend server icon at the top. Below it, draw 1 thick arrow going down to a database icon labeled "SELECT users (1 query)". Then show 10 thin arrows going back and forth between the server and the database, each labeled "SELECT orders WHERE userId=?" — visually crowded, many roundtrips. A count badge shows "11 queries total". Color: red/orange warning tone.
+  Right side — JOIN pattern (labeled "JOIN — 1 roundtrip"): Same server icon. One single clean thick arrow going down to the database, labeled "SELECT users JOIN orders (1 query)". One arrow returning with the result. A count badge shows "1 query total". Color: green/teal.
+  Style: clean flat technical illustration. Monospace labels. Light background. The contrast between the cluttered left side and the clean right side should be visually obvious at a glance. Landscape orientation.
+*/}
+![N+1 queries vs a single JOIN](/assets/images/blogs/fundamentals-2026/n-plus-one-vs-join.png)
+
 ### Query Planning — reading EXPLAIN
 
 `EXPLAIN` (or `EXPLAIN ANALYZE` in PostgreSQL) shows you how the database will execute a query. You need to know how to read it. The key signals:
@@ -651,6 +661,17 @@ No layoffs. Different problems entirely. Pick your risk profile.
 
 This is not a "read these 10 books" list. This is what I would prioritize if I had one hour a day, depending on where I am.
 
+{/*
+  IMAGE PLACEHOLDER
+  Save to: public/assets/images/blogs/fundamentals-2026/study-path-roadmap.png
+  Prompt: A clean horizontal roadmap / timeline illustration showing three career stages as distinct zones from left to right.
+  Zone 1 (left) — "Pre-Employment": Soft green background. Key topics listed inside: CRUD API, HTTP basics, Basic SQL, Read code & explain decisions. A milestone marker at the right edge labeled "Day 1 ready".
+  Zone 2 (middle) — "First 2 Years": Soft blue background. Key topics: Indexes + EXPLAIN, N+1 + Query planning, Pagination + Time-bound queries, Communication protocols trade-offs, Class diagrams. A milestone marker at the right edge labeled "Mid-level ready".
+  Zone 3 (right) — "Moving Toward Mid-Level": Soft purple/indigo background. Key topics: OS + Concurrency, Threading models, System design failure modes, Self-reflection on fit. A label "Path diverges here" at the right edge.
+  A horizontal arrow runs through all three zones left to right, labeled "Time & velocity". The zones get progressively more nuanced/complex. Style: clean flat infographic style, consistent icon set, sans-serif labels. Light background outside zones. Landscape orientation 16:9.
+*/}
+![Study path roadmap from pre-employment to mid-level](/assets/images/blogs/fundamentals-2026/study-path-roadmap.png)
+
 **If you're preparing for your first role (pre-employment):**
 
 Focus on reaching the floor, not the ceiling. Build something — a basic API with a database behind it. Make it do CRUD.
@@ -705,6 +726,21 @@ flowchart TD
 **Message Queue** (Kafka, RabbitMQ, SQS): each message is consumed once by one consumer. Right for task distribution — process a payment, send an email, resize an image. Trade-off: at-least-once delivery means your consumer must be idempotent.
 
 **Pub/Sub** (SNS, Redis Pub/Sub, Kafka topics with multiple consumer groups): one event, many independent subscribers. Right for broadcasting — a transaction completed event goes to analytics, fraud detection, and notifications simultaneously. Trade-off: no guarantee on processing order across subscribers, deduplication gets harder.
+
+{/*
+  IMAGE PLACEHOLDER
+  Save to: public/assets/images/blogs/fundamentals-2026/communication-protocols-matrix.png
+  Prompt: A clean reference matrix / comparison table showing 7 communication protocols as rows. Columns: Protocol name | Sync or Async | Best suited for | Key trade-off. Content:
+  REST | Sync | Client-facing APIs, public endpoints | Over/under-fetching, no streaming
+  gRPC | Sync | Internal service-to-service, high throughput | Not browser-native, binary — harder to debug
+  GraphQL | Sync | Multi-client APIs (web + mobile) with different data needs | N+1 risk, complex schema, hard to cache
+  WebSocket | Sync (persistent) | Real-time bidirectional — chat, live updates, payment status | Stateful connections — scaling is harder
+  RSocket | Sync (streaming) | Reactive systems needing flow control | Less ecosystem support, less common
+  Message Queue | Async | Task distribution — one consumer per message | At-least-once delivery — consumer must be idempotent
+  Pub/Sub | Async | Event broadcasting — many independent consumers | No ordering guarantee, deduplication is each subscriber's problem
+  Design: clean table with alternating row shading. Protocol names in bold monospace. Sync/Async column color-coded (blue=sync, orange=async). Header row distinct. Light background. Compact and scannable — designed to be used as a quick reference card. Landscape orientation.
+*/}
+![Communication protocols comparison matrix](/assets/images/blogs/fundamentals-2026/communication-protocols-matrix.png)
 
 The thinking you want to build is not "what does each technology do" but "what if we did it the other way, and what would break or become harder":
 
