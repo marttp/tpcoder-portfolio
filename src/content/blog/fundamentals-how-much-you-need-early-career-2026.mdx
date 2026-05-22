@@ -75,6 +75,37 @@ That's actually the useful reframe. It's not that you need to know more before s
 
 ---
 
+## Reading a Ticket — Breaking Problems Down
+
+Before getting into each technical area, there is a thinking skill that applies across all of them: how to approach work when it lands in front of you.
+
+When you see a new ticket, three questions matter before you write a line of code.
+
+**How large is this?** Is this a one-file change, a feature that touches three layers of the stack, or something that requires a schema migration and a coordinated deployment? Misjudging scope is where early engineers most often surprise their team. Something estimated at two days becomes two weeks because nobody mapped out what "support payment methods" actually involves end to end.
+
+**What are the subproblems?** A feature does not ship as one thing. Break it down. "Let users top up their wallet" decomposes into: validate input, check the wallet exists, create a PENDING transaction, call the payment gateway, update the balance on success, handle each failure case. Each subproblem is small, testable, and independently understandable. If you cannot decompose the feature, you do not understand it yet — and that is the right signal to pause, not to start coding.
+
+**How do you frame each subproblem in natural language?** Write a sentence for each: "when the wallet does not exist, return 404 and create no records." That sentence is simultaneously your edge case, your test case, and your inline documentation. Engineers who skip this step end up debugging behavior they never explicitly thought about.
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    T["Ticket or Requirement"] --> S["How large is this?"]
+    S --> D["Break into subproblems"]
+    D --> E["Frame each as a plain sentence"]
+    E --> F["Map to technical components"]
+`}
+  size="medium"
+/>
+
+The output of this process is not a plan document. It is a clear head. You should be able to explain what you are building, in what order, and why — before the first function is written.
+
+One more thing. The word ticket is the most structured form this takes. As you grow, the input becomes less structured, not more. A product requirements document you need to extract your own tasks from. Vague direction from a tech lead you need to turn into a ticket yourself. A business goal with no spec, where you design the solution from first principles and write the document that defines what gets built.
+
+If you feel the work getting harder to parse — not technically harder, but harder to even define — that is not a sign something is wrong. That is the sign your level of ownership is increasing. The ability to create structure from ambiguity is what separates engineers who execute from engineers who lead. And if it feels harder, that is your growth.
+
+---
+
 ## Data Structures & Algorithms — The Evaluation Layer
 
 Let me be clear upfront: I am **not** talking about LeetCode grind. I'm talking about understanding data structures well enough to know when the wrong one was used.
