@@ -5,11 +5,9 @@ pubDate: "2026-05-22"
 tags:
   [
     "Software Engineering",
-    "Career",
     "Fundamentals",
     "CS Basics",
-    "Early Career",
-    "Backend",
+    "Early Career"
   ]
 heroImage: "/assets/images/blogs/fundamentals-2026/hero-banner.png"
 language: "th"
@@ -156,9 +154,19 @@ Networking คือจุดที่เห็นช่องว่างให
 
 ### HTTP จากพื้นฐาน
 
-ต้องเข้าใจ HTTP ลึกในระดับที่อ่านมันออกตอนระบบพัง ไม่ใช่รู้จักมันแบบผิวเผินในฐานะ protocol ที่เรียกใช้ทุกวัน
+ต้องเข้าใจ HTTP ลึกในระดับนึง พออ่านและใช้เซนส์ตัวเองได้ตอนระบบมันบึ้ม
 
-**Methods สำคัญ** GET เป็น idempotent และไม่ควรเปลี่ยน state POST ไม่ใช่ idempotent PUT แทนที่ทั้งหมด PATCH แก้ไขบางส่วน DELETE ลบ สิ่งเหล่านี้ไม่ใช่ convention — มี semantic meaning ที่สำคัญสำหรับ caching, retries, และ API design การสลับ PUT กับ PATCH หรือใช้ GET กับ request ที่มี body ทำให้เกิดปัญหาละเอียดที่โผล่ทีหลังในที่ที่คาดไม่ถึง
+**Methods สำคัญ** 
+
+* GET เป็น idempotent และไม่ควรเปลี่ยน state
+* POST ไม่ใช่ idempotent
+* PUT แทนที่ทั้งหมด
+* PATCH แก้ไขบางส่วน
+* DELETE ลบ
+
+สิ่งเหล่านี้ไม่ใช่ convention — มี semantic meaning ที่สำคัญสำหรับ caching, retries, และ API design
+
+การสลับ PUT กับ PATCH หรือใช้ GET กับ request ที่มี body ทำให้เกิดปัญหาละเอียดที่โผล่ทีหลังในที่ที่คาดไม่ถึง
 
 **Status codes คือ vocabulary** 200 คือ success 201 คือ created 204 คือ success ไม่มี body 400 คือความผิดของ client 401 คือ unauthenticated 403 คือ unauthorized 404 คือ not found 409 คือ conflict 422 คือ validation failure 500 คือ server error 502 คือ bad gateway (upstream ล้มเหลว) 503 คือ service unavailable 504 คือ gateway timeout (upstream ไม่ตอบทันเวลา)
 
@@ -170,11 +178,11 @@ Networking คือจุดที่เห็นช่องว่างให
 
 ### TCP — ทำไมสำคัญแม้ไม่เคยแตะ sockets
 
-Engineer ส่วนใหญ่มอง TCP เป็นสิ่งที่มีให้ใช้ มันจัดการ delivery จบ แต่ TCP มีผลที่รู้สึกได้ทุกวัน:
+Engineer ส่วนใหญ่ใช้ TCP โดยไม่ต้องคิดอะไรมาก เพราะมันจัดการเรื่อง delivery ให้หมดแล้ว แต่ TCP ส่งผลกับงานประจำวันมากกว่าที่คิด:
 
-- **Connection establishment แพง** Three-way handshake นั่นแหละทำให้ connection pooling มีอยู่ใน database clients และ HTTP clients การข้ามมันเป็น shortcut ที่ทำให้เกิดปัญหา latency ที่ scale
-- **TCP เป็น stateful** Connection มีอยู่ระหว่างสอง endpoints นั่นคือเหตุผลที่การ scale แนวนอนของ stateful services ยาก
-- **Timeouts เป็นเรื่องของ TCP** Connect timeout กับ read timeout กับ write timeout — สิ่งเหล่านี้ต่างกัน การใช้ generic timeout อันเดียวโดยไม่แยกแยะเป็น oversight ที่พบบ่อย
+- **Connection establishment แพง** ทุกครั้งที่เปิด connection ใหม่ต้องเสียเวลาทำ three-way handshake นี่คือเหตุผลที่ database client และ HTTP client ต้องมี connection pool ไว้ใช้ การไม่ใช้ pool เป็น shortcut ที่ทำให้เจอปัญหา latency เวลา scale ขึ้น
+- **TCP เป็น stateful** หนึ่ง connection ผูกอยู่ระหว่างสอง endpoints เท่านั้น นี่คือเหตุผลที่ stateful service scale แบบ horizontal ได้ยาก
+- **Timeouts เป็นเรื่องของ TCP** Connect timeout, read timeout, write timeout สามอันนี้คนละเรื่องกัน การตั้ง timeout เดียวครอบทั้งสามแบบเป็นข้อผิดพลาดที่เจอบ่อยมาก
 
 <MermaidDiagram
   chart={`
