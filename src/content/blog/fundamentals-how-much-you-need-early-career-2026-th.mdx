@@ -757,7 +757,14 @@ Fundamentals ที่แน่นไม่ได้ทำให้ immune — p
 
 แต่แบบฝึกหัดที่สำคัญกว่าไม่ใช่การทำให้มันรันได้ มันคือการอธิบายทุกการตัดสินใจในนั้นให้ได้
 
-ทำไม create endpoint ถึง return 201 ไม่ใช่ 200? ทำไมถึง structure table นี้ด้วย columns เหล่านี้? ทำไม route นี้ถึงเป็น POST ไม่ใช่ PUT? ทำไม query นี้ถึงเป็นแบบนี้? ถ้าใครถามใน code review หรือ design discussion และตอบได้แค่ มันทำงานได้ หรือ copy มาจาก tutorial — นั่นคือช่องว่าง ช่องว่างนั้นมองเห็นได้ทันทีสำหรับ engineers ที่กำลัง interview หรือ onboard — เคยเป็นแบบนั้น
+* ทำไม create endpoint ถึง return 201 ไม่ใช่ 200?
+* ทำไมถึง structure table นี้ด้วย columns เหล่านี้?
+* ทำไม route นี้ถึงเป็น POST ไม่ใช่ PUT?
+* ทำไม query นี้ถึงเป็นแบบนี้?
+
+ถ้าใครถามใน code review หรือ design discussion และตอบได้แค่ มันทำงานได้ หรือ copy มาจาก tutorial — นั่นคือช่องว่างที่เราไปเติมเต็มได้
+
+ช่องว่างนั้นมองเห็นได้ทันทีสำหรับ engineers ที่กำลัง interview หรือ onboard — เคยเป็นแบบนั้นด้วยตัวเอง กว่าจะตบตีมาจนปัจจุบันได้ (แม้ว่าตอนสัมจะมีหลง ๆ ลืม ๆ ไปบ้างก็เถอะ 😂)
 
 Engineer ทุกวันนี้ไม่ได้แค่ implement พวกเขาอธิบาย reasoning ได้ว่าทำไมถึง design แบบนี้ พิจารณาอะไรไปบ้างแล้วตัดอันไหนทิ้ง เลือก trade-off แบบไหน นั่นคือบทสนทนาที่จะได้เจอตั้งแต่วันแรก — ใน PR reviews, architecture discussions, standups ตอนระบบมีปัญหา
 
@@ -765,7 +772,7 @@ Engineer ทุกวันนี้ไม่ได้แค่ implement พว
 
 **ถ้าอยู่ในช่วงสองปีแรก:**
 
-ลำดับสำคัญ จากที่สังเกตมา: Databases ก่อน — return สูงสุดต่อวัน และเส้นทางที่ใกล้ production impact มากที่สุด จากนั้น networking — vocabulary ของ failure ที่ทำให้ logs และ alerts อ่านออกแทนที่จะงงกับมัน จากนั้น data structures — ไม่ใช่เพื่อ interviews แต่เพื่อจำ performance problems ได้จากรูปร่างของมัน
+จากที่สังเกตมา: Databases ก่อน — Return on Investment สูงที่สุด และเส้นทางที่ใกล้ production impact มากที่สุด จากนั้น networking — vocabulary ของ failure ที่ทำให้ logs และ alerts อ่านออกแทนที่จะงงกับมัน จากนั้น data structures — ไม่ใช่เพื่อ interviews แต่เพื่อจำ performance problems ได้จากรูปร่างของมัน
 
 ถ้าตอนนี้มีเวลาสำหรับหัวข้อเดียว ให้เป็น databases
 
