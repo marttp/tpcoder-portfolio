@@ -482,7 +482,9 @@ Solutions ขึ้นอยู่กับ context:
 
 ![Stack vs heap memory layout](/assets/images/blogs/fundamentals-2026/stack-vs-heap.png)
 
-ใน garbage-collected languages (Java, Python, Go, JavaScript) ไม่ต้อง free memory ด้วยตัวเอง แต่ยังทำให้ memory leak ได้ด้วยการถือ references ที่ไม่ต้องการ สาเหตุทั่วไป:
+ใน garbage-collected languages (Java, Python, Go, JavaScript) ไม่ต้อง free memory ด้วยตัวเอง แต่ยังทำให้ memory leak ได้ด้วยการถือ references ที่ไม่ต้องการ
+
+สาเหตุทั่วไปที่พบได้:
 - Unbounded caches
 - Event listeners ที่ไม่เคยถูก remove
 - Closures ที่ capture objects ขนาดใหญ่
