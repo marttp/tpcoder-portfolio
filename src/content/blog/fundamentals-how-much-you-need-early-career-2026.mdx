@@ -222,7 +222,7 @@ You don't need to implement TLS. You need to understand it well enough to debug 
 
 ## Databases — Where Most Apps Actually Break
 
-I'll be direct: **most production incidents I've seen trace back to a database problem.** Either a missing index, a bad query, a transaction deadlock, or a misunderstood consistency model. Databases are where fundamentals matter most for practical, daily backend work.
+**Most production incidents I've seen trace back to a database problem.** A missing index, a bad query, a transaction deadlock, or a misunderstood consistency model — pick one. For daily backend work, databases are where fundamentals matter most.
 
 ### Indexes — the most misunderstood performance tool
 
@@ -303,7 +303,7 @@ const users = await User.findAll({ include: [{ model: Order }] });
 // 1 query with JOIN = 1 query total
 ```
 
-If you don't know what N+1 is, you won't recognize it when you see it. And it will work perfectly in development with 10 users, then destroy performance in production with 10,000.
+N+1 is hard to spot if you don't know what to look for — the code looks reasonable, it runs fine in development with 10 users, then production hits 10,000 and the database falls over.
 
 
 **N+1 — what's actually happening at the database:**
@@ -336,7 +336,7 @@ sequenceDiagram
 
 ### Query Planning — reading EXPLAIN
 
-`EXPLAIN` (or `EXPLAIN ANALYZE` in PostgreSQL) shows you how the database will execute a query. You need to know how to read it. The key signals:
+`EXPLAIN` (or `EXPLAIN ANALYZE` in PostgreSQL) shows how the database plans to execute a query. Reading the output is a skill worth building. Key signals:
 
 - **Seq Scan**: sequential scan, reading every row. Sometimes correct for small tables, almost always wrong for large tables without a WHERE clause that uses an index.
 - **Index Scan**: using an index. Usually good.
@@ -344,11 +344,11 @@ sequenceDiagram
 - **Hash Join / Nested Loop**: how tables are joined. Nested loop is expensive for large result sets.
 - **rows**: estimated row count. Severely wrong estimates (1 vs 100,000) indicate stale statistics.
 
-This is a skill you build over time, but knowing it exists and how to read it is something you should have by mid-level.
+Reading these takes practice. But by mid-level, knowing EXPLAIN exists and being able to interpret the basic output is the expectation.
 
 ### Pagination — why OFFSET breaks at scale
 
-Pagination comes up in almost every backend system, and the default implementation breaks under load.
+Pagination comes up in almost every backend system. The default OFFSET/LIMIT approach breaks under load.
 
 ```sql
 -- Common approach — looks fine, breaks at depth
@@ -404,7 +404,7 @@ ORDER BY created_at DESC
 
 This query needs a composite index on `(wallet_id, created_at)`. With it, the database narrows first by wallet, then by date range — both conditions satisfied in one index scan. Without `created_at` in the index, the database finds all rows for that wallet and filters by date in memory. Fine for a wallet with 200 transactions, slow for one with 200,000.
 
-In practice, transaction history queries combine both patterns — time-bounded *and* paginated. The cursor in keyset pagination becomes the `created_at` of the last item seen, and the date range naturally bounds the scan.
+In practice, transaction history queries combine both patterns — time-bounded *and* paginated. The cursor in keyset pagination becomes the `created_at` of the last item seen, and the date range limits the scan window.
 
 ---
 

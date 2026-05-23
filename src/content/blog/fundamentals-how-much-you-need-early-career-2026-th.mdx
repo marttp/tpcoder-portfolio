@@ -230,27 +230,27 @@ TLS ไม่ใช่ optional ในปี 2026 ต้องเข้าใจ
 
 ## Databases — ที่ที่ App ส่วนใหญ่พัง
 
-production incidents ส่วนใหญ่ที่เจอมามีต้นเหตุจาก database problem — ไม่ว่าจะเป็น missing index, bad query, transaction deadlock, หรือ consistency model ที่เข้าใจผิด Databases คือที่ที่ fundamentals สำคัญที่สุดสำหรับงาน backend ประจำวัน
+production incident ส่วนใหญ่ที่เจอมามีต้นเหตุมาจาก database ไม่ทางใดก็ทางหนึ่ง — missing index, query แย่ๆ, transaction deadlock, หรือเข้าใจ consistency model ผิด สำหรับงาน backend ประจำวัน database คือจุดที่ fundamentals สำคัญที่สุด
 
-### Indexes — เครื่องมือ performance ที่เข้าใจผิดมากที่สุด
+### Indexes
 
-Index แลก write performance กับ read performance นี่คือ trade-off พื้นฐาน และมองข้ามได้ง่ายเมื่อ review schema changes หรือ migration files
+Index แลก write performance กับ read performance เป็น trade-off พื้นฐานที่มักถูกมองข้าม โดยเฉพาะตอนที่ review schema change หรือ migration file
 
 #### B-tree indexes
 
-คือ default ใน relational databases ส่วนใหญ่ รองรับ range queries, equality, และ prefix matching เรียงลำดับ ทำงานได้ดีกับ columns ที่มี cardinality สูง
+เป็น default ใน relational database ส่วนใหญ่ รองรับ range query, equality, prefix matching และเก็บข้อมูลแบบเรียงลำดับ ทำงานได้ดีกับ column ที่มี cardinality สูง
 
 #### Composite indexes
 
-คือ index บน multiple columns ลำดับ column สำคัญ Index บน `(user_id, created_at)` ตอบ query ที่ filter เฉพาะ `user_id` ได้ หรือ filter ทั้งคู่ได้ — แต่ไม่สามารถตอบ query ที่ filter เฉพาะ `created_at` ได้
+เป็น index ที่ครอบหลาย column ลำดับของ column สำคัญมาก Index บน `(user_id, created_at)` ตอบ query ที่ filter เฉพาะ `user_id` ได้ หรือ filter ทั้งคู่ก็ได้ แต่ใช้กับ query ที่ filter เฉพาะ `created_at` ไม่ได้
 
 #### Covering indexes
 
-รวม columns ทั้งหมดที่ query ต้องการ ทำให้ database ไม่ต้องแตะตัว table optimization สำคัญสำหรับ read-heavy queries
+เก็บ column ทั้งหมดที่ query ต้องใช้ไว้ใน index เลย ทำให้ database ไม่ต้องไปอ่านจาก table เป็น optimization ที่ช่วยได้มากกับ query ที่อ่านบ่อย
 
 #### Index selectivity
 
-คืออัตราส่วนของค่าที่ distinct ต่อ row ทั้งหมด Index บน boolean column (สองค่าที่เป็นไปได้) แทบไม่มีประโยชน์ Index บน UUID column (ค่าที่ near-unique) มีประสิทธิภาพสูง
+คืออัตราส่วนของค่าที่ไม่ซ้ำกันเทียบกับ row ทั้งหมด Index บน boolean column (มีแค่สองค่า) แทบไม่ช่วยอะไร Index บน UUID column (ค่าใกล้เคียง unique) มีประสิทธิภาพสูง
 
 <MermaidDiagram
   chart={`
@@ -265,38 +265,38 @@ flowchart TD
 `}
 />
 
-เมื่อ review schema changes หรือ migration files คำถามแรกควรเป็น: Columns ไหนอยู่ใน WHERE clauses, JOIN conditions, และ ORDER BY? มี index อยู่ไหม?
+เมื่อ review schema change หรือ migration file คำถามแรกที่ควรถามคือ: column ไหนอยู่ใน WHERE clause, JOIN condition, และ ORDER BY บ้าง? และมี index ครอบอยู่หรือยัง?
 
 ### Transactions และ ACID
 
 #### Atomicity
 
-operations ทั้งหมดใน transaction สำเร็จ หรือไม่สำเร็จทั้งหมด นี่คือสิ่งที่ป้องกัน partial updates — ถ้าอัปเดต balance ของ user และสร้าง transaction record ไม่ต้องการให้อันหนึ่งสำเร็จโดยที่อีกอันไม่สำเร็จ
+operation ทั้งหมดใน transaction สำเร็จพร้อมกัน หรือไม่สำเร็จทั้งหมด นี่คือสิ่งที่ป้องกัน partial update — เช่น ถ้าอัปเดต balance ของ user พร้อมกับสร้าง transaction record ก็ไม่อยากให้อันใดอันหนึ่งสำเร็จโดยที่อีกอันไม่สำเร็จ
 
 #### Consistency
 
-database ย้ายจาก valid state หนึ่งไปอีก valid state หนึ่ง Constraints (foreign keys, unique constraints, check constraints) ถูก enforce
+database จะเปลี่ยนจาก state ที่ valid ไปสู่ state ที่ valid อันใหม่เท่านั้น โดยมี constraint (foreign key, unique constraint, check constraint) คอยบังคับใช้
 
 #### Isolation
 
-concurrent transactions ไม่รบกวนกัน นี่คืออันที่ซับซ้อน
+concurrent transaction ไม่ควรรบกวนกัน เรื่องนี้ซับซ้อนที่สุดในสี่อัน
 
 #### Durability
 
-transactions ที่ commit แล้วรอดจาก crash นี่เป็นเรื่องของ write-ahead logging และการ flush ไป disk
+transaction ที่ commit แล้วต้องรอดแม้ระบบจะ crash อันนี้เป็นเรื่องของ write-ahead logging และการ flush ลง disk
 
-Isolation levels คือจุดที่ engineer ส่วนใหญ่มีช่องว่าง:
+Isolation level คือเรื่องที่ engineer ส่วนใหญ่มักมีช่องว่างความเข้าใจ:
 
-- **Read Uncommitted**: อ่านได้จาก transactions ที่ยังไม่ commit แทบไม่ใช่สิ่งที่ต้องการ
-- **Read Committed**: อ่านได้เฉพาะ committed data แต่อ่านค่าต่างกันได้จากสอง reads ใน transaction เดียวกัน (non-repeatable read)
-- **Repeatable Read**: query เดียวกัน return ผลลัพธ์เดิมภายใน transaction Default ใน MySQL/InnoDB
-- **Serializable**: transactions ทำงานเหมือนกับว่าวิ่งทีละอัน ปลอดภัยที่สุด แต่ช้าที่สุด
+- **Read Uncommitted**: อ่านข้อมูลจาก transaction ที่ยังไม่ commit ได้ ส่วนใหญ่ไม่ใช่สิ่งที่ต้องการ
+- **Read Committed**: อ่านได้เฉพาะข้อมูลที่ commit แล้ว แต่ภายใน transaction เดียวกัน ถ้าอ่านซ้ำสองครั้งอาจได้ค่าต่างกัน (non-repeatable read)
+- **Repeatable Read**: query เดิมจะ return ผลลัพธ์เดิมเสมอภายใน transaction เดียวกัน เป็น default ของ MySQL/InnoDB
+- **Serializable**: transaction จะทำงานเสมือนรันทีละอัน ปลอดภัยที่สุด แต่ก็ช้าที่สุด
 
-Applications ส่วนใหญ่ทำงานได้ดีกับ Read Committed แต่ถ้า implement financial logic, inventory reservation, หรือ check-then-act pattern ต้องคิดเรื่อง isolation level ให้ดี — และมองข้ามการคิดนั้นได้ง่ายมาก
+Application ส่วนใหญ่รันบน Read Committed ได้สบาย แต่ถ้ากำลังทำ financial logic, inventory reservation, หรือ check-then-act pattern ใดๆ ต้องคิดเรื่อง isolation level ให้รอบคอบ ซึ่งเป็นจุดที่ถูกข้ามไปได้ง่ายๆ
 
 ### The N+1 Problem — Performance Bug ที่พบบ่อยที่สุด
 
-นี่คือ performance issue ที่เจอบ่อยที่สุด และมาจากการไม่เข้าใจว่า queries ประกอบกันยังไง
+นี่คือ performance issue ที่เจอบ่อยที่สุด มันเกิดจากการไม่เข้าใจว่า query ประกอบกันยังไง
 
 ```
 // N+1 pattern — works fine locally, breaks in production:
@@ -311,7 +311,7 @@ const users = await User.findAll({ include: [{ model: Order }] });
 // 1 query with JOIN = 1 query total
 ```
 
-ถ้าไม่รู้ว่า N+1 คืออะไร ก็จะไม่รู้จักมันเมื่อเห็น และมันจะทำงานได้ดีมากใน development กับ 10 users แล้วทำลาย performance ใน production กับ 10,000
+ถ้ายังไม่รู้จัก N+1 ก็จะหามันไม่เจอตอน review code โค้ดแบบนี้รันใน development กับ user 10 คนก็ดูดี พอขึ้น production มี user 10,000 คน performance ก็พังทันที
 
 **N+1 — สิ่งที่เกิดขึ้นกับ database:**
 
@@ -343,19 +343,19 @@ sequenceDiagram
 
 ### Query Planning — อ่าน EXPLAIN
 
-`EXPLAIN` (หรือ `EXPLAIN ANALYZE` ใน PostgreSQL) แสดงให้เห็นว่า database จะ execute query ยังไง ต้องรู้วิธีอ่าน สัญญาณสำคัญ:
+`EXPLAIN` (หรือ `EXPLAIN ANALYZE` ใน PostgreSQL) จะแสดงให้เห็นว่า database วางแผน execute query ยังไง ต้องอ่านมันให้ออก สัญญาณสำคัญที่ต้องดู:
 
-- **Seq Scan**: sequential scan อ่านทุก row บางครั้งถูกต้องสำหรับ tables เล็ก แต่แทบผิดเสมอสำหรับ tables ใหญ่ที่ไม่มี WHERE clause ที่ใช้ index
-- **Index Scan**: ใช้ index ส่วนใหญ่ดี
-- **Index Only Scan**: อ่านจาก index เพียงอย่างเดียวโดยไม่แตะตัว table Best case สำหรับ covered queries
-- **Hash Join / Nested Loop**: วิธี join tables Nested loop แพงสำหรับ result sets ใหญ่
-- **rows**: ประมาณ row count ถ้าประมาณผิดมาก (1 กับ 100,000) แสดงว่า statistics เก่า
+- **Seq Scan**: sequential scan อ่านทุก row ในตาราง ถ้าตารางเล็กก็พอเหมาะ แต่กับตารางใหญ่ที่ไม่มี WHERE clause ไปใช้ index แทบจะเป็นทางเลือกที่ผิดเสมอ
+- **Index Scan**: ใช้ index ในการค้นหา ส่วนใหญ่ถือว่าดี
+- **Index Only Scan**: อ่านจาก index ได้เลยโดยไม่ต้องไปแตะ table เป็น best case ของ covered query
+- **Hash Join / Nested Loop**: วิธีที่ database ใช้ join ตาราง Nested loop จะแพงเมื่อ result set ใหญ่
+- **rows**: ตัวเลขประมาณว่าจะ return กี่ row ถ้าค่าประมาณคลาดเคลื่อนจากที่ออกมามากๆ (เช่น ประมาณ 1 แต่ออกมา 100,000) แสดงว่า statistics ของตารางเก่าแล้ว
 
-เป็นทักษะที่ build ขึ้นมาเรื่อยๆ แต่การรู้ว่ามันมีอยู่และอ่านได้เป็นสิ่งที่ควรมีถึงตอน mid-level
+เป็นทักษะที่ค่อยๆ สร้างจากประสบการณ์ แต่อย่างน้อยพอเป็น mid-level ก็ควรรู้ว่ามันมีอยู่และอ่านพื้นฐานได้
 
 ### Pagination — ทำไม OFFSET พังที่ scale
 
-Pagination โผล่ใน backend system แทบทุกระบบ และ default implementation พังภายใต้ load
+Pagination เป็นเรื่องที่เจอใน backend แทบทุกระบบ แต่วิธีทำแบบเริ่มต้นมักพังเมื่อโหลดหนัก
 
 ```sql
 -- Common approach — looks fine, breaks at depth
@@ -365,7 +365,7 @@ ORDER BY created_at DESC
 LIMIT 20 OFFSET 1000
 ```
 
-`OFFSET 1000` บอก database ให้อ่าน 1020 rows แล้วทิ้ง 1000 แรกไป ยิ่ง page ลึก ยิ่งทิ้ง rows มาก ที่ page 500 (offset 10,000) กำลัง full index scan 10,020 rows เพื่อ return 20
+`OFFSET 1000` สั่ง database ให้อ่าน 1020 row แล้วทิ้ง 1000 row แรกไป ยิ่ง page ลึก ยิ่งทิ้งของมากขึ้น พอถึง page 500 (offset 10,000) database ต้อง scan 10,020 row จาก index แค่เพื่อ return 20 row
 
 **Keyset pagination** แก้ปัญหานี้:
 
@@ -378,7 +378,7 @@ ORDER BY created_at DESC
 LIMIT 20
 ```
 
-Database ใช้ index บน `(wallet_id, created_at)` และ jump ไปยัง cursor position ไม่มีการ scan แล้วทิ้ง rows Performance คงที่ไม่ว่าจะลึกแค่ไหน
+Database ใช้ index บน `(wallet_id, created_at)` แล้ว jump ไปที่ cursor ได้เลย ไม่มีการ scan แล้วทิ้ง row ไปฟรีๆ Performance คงที่ไม่ว่าจะอยู่ลึกแค่ไหนของ result set
 
 <MermaidDiagram
   chart={`
@@ -395,11 +395,11 @@ flowchart LR
   size="medium"
 />
 
-Trade-off: keyset pagination ไม่รองรับการ jump ไปยัง page number ตามอำเภอใจ รองรับแค่ next และ previous สำหรับ use cases ส่วนใหญ่ — transaction history, notification feeds, infinite scroll — ไม่เป็นปัญหา
+ข้อแลก: keyset pagination ไม่สามารถ jump ไปที่ page number ใดๆ ก็ได้ ทำได้แค่ next กับ previous แต่กับ use case ส่วนใหญ่ — transaction history, notification feed, infinite scroll — ก็ไม่ใช่ปัญหา
 
 ### Time-bound queries — จับคู่ index กับรูปแบบ query
 
-Date range queries เป็นหนึ่งใน pattern ที่พบบ่อยที่สุดใน backend systems โดยเฉพาะระบบที่มี transaction Index ต้องจับคู่กับรูปแบบ query
+Date range query เป็น pattern ที่เจอบ่อยที่สุดใน backend โดยเฉพาะระบบที่มีงาน transaction รูปร่างของ index ต้องสอดคล้องกับรูปร่างของ query
 
 ```sql
 -- Transactions for a wallet in the last 30 days
@@ -409,9 +409,9 @@ WHERE wallet_id = 123
 ORDER BY created_at DESC
 ```
 
-Query นี้ต้องการ composite index บน `(wallet_id, created_at)` ด้วย index นั้น database จะ narrow ก่อนด้วย wallet แล้วค่อยด้วย date range — ทั้งสอง conditions ตอบได้ใน index scan เดียว ถ้าไม่มี `created_at` ใน index database จะหา rows ทั้งหมดของ wallet นั้นแล้ว filter ด้วยวันที่ใน memory ปรับขนาดได้กับ wallet ที่มี 200 transactions แต่ช้ากับ wallet ที่มี 200,000
+Query นี้ต้องใช้ composite index บน `(wallet_id, created_at)` พอมี index นี้ database จะ narrow ด้วย wallet ก่อน แล้วค่อย narrow ด้วย date range — ทั้งสอง condition ตอบได้ใน index scan เดียว ถ้าไม่มี `created_at` ใน index database จะดึง row ทั้งหมดของ wallet นั้นมาก่อน แล้วค่อย filter วันที่ใน memory ถ้า wallet มี 200 transaction ก็ยังไหว แต่ถ้ามี 200,000 ก็ช้าทันที
 
-ใน practice transaction history queries รวมทั้งสอง pattern — time-bounded และ paginated Cursor ใน keyset pagination กลายเป็น `created_at` ของ item สุดท้ายที่เห็น และ date range จำกัด scan ได้เองตามธรรมชาติ
+ในทางปฏิบัติ query สำหรับ transaction history มักรวมทั้งสอง pattern — ทั้ง time-bound และ paginated — เข้าด้วยกัน cursor ใน keyset pagination ก็คือ `created_at` ของ item ล่าสุดที่เห็น ส่วน date range ก็ทำหน้าที่จำกัดขอบเขตของ scan ไปในตัว
 
 ---
 
