@@ -166,7 +166,7 @@ Networking คือจุดที่เห็นช่องว่างให
 
 สิ่งเหล่านี้ไม่ใช่ convention — มี semantic meaning ที่สำคัญสำหรับ caching, retries, และ API design
 
-การสลับ PUT กับ PATCH หรือใช้ GET กับ request ที่มี body ทำให้เกิดปัญหาละเอียดที่โผล่ทีหลังในที่ที่คาดไม่ถึง
+การสลับ PUT กับ PATCH หรือใช้ GET กับ request ที่มี body ทำให้เกิดปัญหาที่โผล่ทีหลังในที่ที่คาดไม่ถึง
 
 **Status codes คือ vocabulary** 200 คือ success 201 คือ created 204 คือ success ไม่มี body 400 คือความผิดของ client 401 คือ unauthenticated 403 คือ unauthorized 404 คือ not found 409 คือ conflict 422 คือ validation failure 500 คือ server error 502 คือ bad gateway (upstream ล้มเหลว) 503 คือ service unavailable 504 คือ gateway timeout (upstream ไม่ตอบทันเวลา)
 
@@ -451,7 +451,7 @@ flowchart LR
   size="medium"
 />
 
-ถ้า language/runtime ไม่ชัดในหัว จะเขียนโค้ดที่ไม่ scale หรือมี data corruption bugs ที่ละเอียด Thread-unsafe access ไปยัง shared state พลาดได้ง่าย โดยเฉพาะในโค้ดที่ไม่ได้เขียนขึ้นมาโดยคิดถึง concurrency
+ถ้า language/runtime ไม่ชัดในหัว จะเขียนโค้ดที่ไม่ scale หรือมี data corruption bugs ที่ Thread-unsafe access ไปยัง shared state สามารถพลาดได้ง่าย โดยเฉพาะในโค้ดที่ไม่ได้เขียนขึ้นมาโดยคิดถึง concurrency
 
 ### Race conditions และ pattern พื้นฐานสำหรับป้องกัน
 
