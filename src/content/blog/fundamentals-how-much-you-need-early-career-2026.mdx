@@ -605,6 +605,8 @@ Reading this diagram:
 - A `Transaction` is associated with both the `PaymentMethod` used and the `Merchant` paid
 - `WalletService` depends on `PaymentGateway` — it calls it for each transaction but doesn't own it
 
+> **Note:** One wallet can use multiple payment methods. In this model, `PaymentMethods` belong to the `User`, not the `Wallet` — so a single wallet (per user) can charge through any of the user's linked cards or accounts. Production systems like Stripe and Apple Pay model it the same way: payment methods live at the user/customer level, and the wallet just records what was spent.
+
 The reason this matters in practice: composition vs aggregation determines what happens on delete. Get it wrong in the schema (missing CASCADE or a wrong FK constraint) and you either orphan records or accidentally delete data you intended to keep.
 
 ### Sequence diagrams — what happens when a payment is processed

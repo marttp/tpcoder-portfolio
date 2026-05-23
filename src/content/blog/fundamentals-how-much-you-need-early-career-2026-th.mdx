@@ -620,6 +620,8 @@ classDiagram
 - `Transaction` เชื่อมกับทั้ง `PaymentMethod` ที่ใช้และ `Merchant` ที่จ่าย
 - `WalletService` พึ่งพา `PaymentGateway` — เรียกมันทุก transaction แต่ไม่ได้ own มัน
 
+> **Note:** Wallet หนึ่งใบใช้ได้กับหลาย payment method ใน model นี้ `PaymentMethods` ถูกถือโดย `User` ไม่ใช่ `Wallet` ดังนั้น wallet ใบเดียว (ต่อ user) ก็ charge ผ่าน card หรือ account ไหนก็ได้ที่ user link ไว้ ระบบ production อย่าง Stripe หรือ Apple Pay ก็ออกแบบแบบเดียวกัน — payment methods อยู่ที่ระดับ user/customer ส่วน wallet ทำหน้าที่ record รายการที่ใช้จ่าย
+
 เหตุผลที่สำคัญใน practice: composition กับ aggregation กำหนดสิ่งที่เกิดขึ้นเมื่อ delete ทำผิดใน schema (missing CASCADE หรือ FK constraint ที่ผิด) แล้วจะ orphan records หรือลบข้อมูลที่ตั้งใจจะเก็บโดยไม่ตั้งใจ
 
 ### Sequence diagrams — สิ่งที่เกิดขึ้นเมื่อ payment ถูก process
