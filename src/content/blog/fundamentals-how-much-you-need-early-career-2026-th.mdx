@@ -520,11 +520,11 @@ Load balancer กระจาย incoming requests ไปยัง multiple inst
 
 ### Message queues — async และ decoupling
 
-Message queue (Kafka, RabbitMQ, SQS) decouples producer จาก consumer Producer push ไปที่ queue แล้วก็ไปต่อ Consumer อ่านจาก queue ตาม pace ของตัวเอง
+Message queue (Kafka, RabbitMQ, SQS) decouples producer จาก consumer — Producer push ไปที่ queue แล้วก็ไปต่อ Consumer อ่านจาก queue ตาม pace ของตัวเอง
 
 สิ่งที่แก้ได้:
 - **Backpressure**: consumer ตามไม่ทัน producer — queue รับ burst ไว้
-- **Reliability**: ถ้า consumer ล่ม messages รอใน queue แทนที่จะหาย
+- **Reliability**: ถ้า consumer ล่ม messages รอใน queue แทนที่จะหายไปเฉย ๆ
 - **Decoupling**: producer และ consumer ไม่ต้อง run พร้อมกัน
 
 สิ่งที่แก้ไม่ได้:
