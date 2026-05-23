@@ -494,7 +494,7 @@ Solutions ขึ้นอยู่กับ context:
 
 ### File descriptors และ connection limits
 
-ทุก open file, socket, และ pipe คือ file descriptor Operating systems มีขีดจำกัดว่า process หนึ่งจะมี file descriptors เปิดได้กี่อัน ถ้ามี bug ที่เปิด connections แล้วไม่ปิด จะถึง limit นั้นและ service จะ fail ด้วย error ที่งง
+ทุก open file, socket, และ pipe คือ file descriptor Operating systems มีขีดจำกัดว่า process หนึ่งจะมี file descriptors เปิดได้กี่อัน ถ้ามี bug ที่เปิด connections แล้วไม่ปิด จะถึง limit นั้นและ service จะ fail ด้วย error ที่เราก็อาจจะงงว่า มันพังอะไรว้าาาาาา 😂
 
 * นั่นคือเหตุผลที่ connection pooling สำคัญใน database clients 
 * นั่นคือเหตุผลที่ HTTP clients ควร reuse connections 
