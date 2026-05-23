@@ -797,19 +797,19 @@ flowchart TD
 `}
 />
 
-**REST** คือ default Stateless, text-based, supported ทุกที่, debug ง่าย เหมาะสำหรับ client-facing APIs ส่วนใหญ่ ข้อจำกัด: ไม่มี streaming ในตัว, clients มักจะ over-fetch หรือ under-fetch
+**REST** เป็น default — stateless, text-based, ใช้ได้แทบทุกที่, debug ง่าย เหมาะกับ client-facing API ส่วนใหญ่ ข้อจำกัด: ไม่มี streaming ในตัว และ client มัก over-fetch หรือ under-fetch
 
-**gRPC** เป็น binary บน HTTP/2 กับ Protocol Buffers contracts เร็วกว่ามากสำหรับ high-throughput internal calls, strongly typed — contract change คือ compile error Browser-native ไม่ได้โดยไม่มี proxy, debug ยากกว่า REST, overkill สำหรับ client-facing work ส่วนใหญ่
+**gRPC** เป็น binary protocol บน HTTP/2 ใช้ Protocol Buffers เป็น contract เร็วกว่า REST มากสำหรับ high-throughput internal call และ strongly typed — contract change กลายเป็น compile error ทันที ใช้ใน browser โดยตรงไม่ได้ ต้องผ่าน proxy debug ยากกว่า REST และ overkill สำหรับ client-facing work ส่วนใหญ่
 
-**GraphQL** ให้ client ระบุได้ว่าต้องการข้อมูลอะไร แก้ over-fetching สำหรับ APIs ที่รองรับหลาย client types (web, mobile) Trade-off: N+1 risk ด้าน server โดยไม่มี dataloaders, cache ยากกว่า REST, ความซับซ้อนย้ายไปอยู่ที่ schema design
+**GraphQL** ให้ client ระบุได้ว่าต้องการข้อมูลอะไร แก้ปัญหา over-fetching สำหรับ API ที่ต้องรองรับหลาย client (web, mobile) Trade-off: ฝั่ง server เสี่ยง N+1 ถ้าไม่มี dataloader, cache ยากกว่า REST, และความซับซ้อนย้ายไปอยู่ที่ schema design
 
-**WebSocket** รักษา bidirectional connection ที่ persistent ไว้ เหมาะสำหรับ real-time use cases — payment status updates, live dashboards, chat Trade-off: stateful connections ทำให้ horizontal scaling ยากขึ้น ต้องการ sticky sessions หรือ shared pub/sub layer เบื้องหลัง WebSocket servers
+**WebSocket** เปิด connection แบบ bidirectional ค้างไว้ตลอด เหมาะกับ real-time use case — payment status update, live dashboard, chat Trade-off: connection ที่ stateful ทำให้ horizontal scaling ยากขึ้น ต้องใช้ sticky session หรือ shared pub/sub layer คั่นไว้เบื้องหลัง
 
-**RSocket** เป็น reactive streams protocol ที่มีหลาย interaction models — request/response, fire-and-forget, request/stream, channel พบน้อยกว่า gRPC แต่มีประโยชน์เมื่อต้องการ flow control หรือ streaming ในตัว protocol
+**RSocket** เป็น reactive streams protocol รองรับหลาย interaction model — request/response, fire-and-forget, request/stream, channel เจอน้อยกว่า gRPC แต่มีประโยชน์เมื่อต้องการ flow control หรือ streaming ที่อยู่ใน protocol เอง
 
-**Message Queue** (Kafka, RabbitMQ, SQS): แต่ละ message ถูก consume ครั้งเดียวโดย consumer หนึ่งราย เหมาะสำหรับ task distribution — process payment, send email, resize image Trade-off: at-least-once delivery หมายความว่า consumer ต้องเป็น idempotent
+**Message Queue** (Kafka, RabbitMQ, SQS): message แต่ละชิ้นถูก consume ครั้งเดียวโดย consumer หนึ่งราย เหมาะกับ task distribution — process payment, send email, resize image Trade-off: at-least-once delivery แปลว่า consumer ต้องเขียนให้ idempotent
 
-**Pub/Sub** (SNS, Redis Pub/Sub, Kafka topics ที่มีหลาย consumer groups): หนึ่ง event, subscribers อิสระหลายราย เหมาะสำหรับ broadcasting — transaction completed event ไปถึง analytics, fraud detection, และ notifications พร้อมกัน Trade-off: ไม่รับประกัน processing order ข้าม subscribers, deduplication ยากขึ้น
+**Pub/Sub** (SNS, Redis Pub/Sub, Kafka topics ที่มีหลาย consumer group): event หนึ่งก้อนกระจายไปถึง subscriber หลายรายที่แยกอิสระจากกัน เหมาะกับ broadcasting — event transaction completed กระจายไปทั้ง analytics, fraud detection, และ notification พร้อมกัน Trade-off: ไม่การันตี processing order ระหว่าง subscriber และ deduplication ยากขึ้น
 
 ![Communication protocols comparison matrix](/assets/images/blogs/fundamentals-2026/communication-protocols-matrix.png)
 
@@ -820,7 +820,7 @@ flowchart TD
 - Message queue → pub/sub? ตอนนี้หลาย services react ต่อ event เดียวกันอิสระ — ดีสำหรับ fan-out แต่แต่ละ subscriber process ทุก message และ deduplication กลายเป็นปัญหาของแต่ละ subscriber
 - REST polling → WebSocket? Real-time push แทน client-initiated checks แต่มี stateful connections เข้ามา Server รองรับ concurrent connections ได้กี่อัน? เกิดอะไรขึ้นเมื่อ restart?
 
-คำถามไม่ใช่ว่า technology ไหนดีที่สุดเพียงลำพัง มันคือเสมอว่า: ด้วย constraints เหล่านี้ trade-offs ไหนยอมรับได้?
+คำถามไม่ใช่ว่า technology ไหนดีที่สุด มันคือการคิดว่า: ด้วย constraints เหล่านี้ trade-offs ไหนยอมรับได้?
 
 **ถ้ากำลังขยับสู่ mid-level (2–5 ปี):**
 
