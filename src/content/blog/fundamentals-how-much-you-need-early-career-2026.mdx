@@ -116,13 +116,13 @@ Let me be clear upfront: I am **not** talking about LeetCode grind. I'm talking 
 
 **Arrays and dynamic arrays** — the default structure everyone reaches for. Understand why random access is O(1) but insertion in the middle is O(n). This comes up constantly in code that repeatedly inserts into the front of a list inside a loop.
 
-**Hash maps** — probably the structure you'll use most. Understand that lookup is O(1) average, not always. Understand hash collisions, load factor, and why a HashMap is not sorted. Know when a LinkedHashMap or TreeMap matters.
+**Hash maps** — probably the structure you'll use most. Understand that lookup is O(1) average, not always. Understand hash collisions, load factor, and why a HashMap is not sorted. Know when a LinkedHashMap or TreeMap matters. You see hash maps everywhere once you start looking: Redis (key-value store), DNS resolution (hostname → IP).
 
-**Linked lists** — less commonly used directly, but essential for understanding queues, LRU caches, and how memory allocation works under the hood. Also, understanding pointer-style thinking helps with tree traversal.
+**Linked lists** — less commonly used directly, but essential for understanding queues, LRU caches, and how memory allocation works under the hood. Also, understanding pointer-style thinking helps with tree traversal. The pattern shows up in real systems: Git commit history (each commit points to its parent), blockchain (each block references the previous), browser back/forward navigation (doubly linked).
 
 **Trees** — BST, heap, trie. The heap matters for priority queues. The trie matters for prefix search. BST matters for sorted data operations. You don't need to implement them from scratch — you need to recognize when to reach for them.
 
-**Graphs** — BFS and DFS are not interview tricks. They come up in dependency resolution, service mesh traversal, recommendation systems, and any system with relationships. Understanding adjacency list vs matrix matters when the graph is sparse (most real-world graphs are).
+**Graphs** — BFS and DFS are not interview tricks. They come up in dependency resolution, service mesh traversal, recommendation systems, and any system with relationships. Understanding adjacency list vs matrix matters when the graph is sparse (most real-world graphs are). Concrete examples: social network friend graphs, package dependency trees (npm, Maven).
 
 **Stacks and queues** — know the difference, and know how they're used in call stacks, undo systems, task queues, and parsing.
 
