@@ -544,16 +544,16 @@ flowchart LR
 `}
 />
 
-### Caching — และทำไมการเพิ่ม cache ถึงไม่ใช่คำตอบที่สมบูรณ์
+### Caching — และทำไมการเพิ่ม cache ถึงไม่ใช่คำตอบที่สมบูรณ์ที่สุด
 
-Caches แลก consistency กับ performance ทุก caching decision ต้องตอบ:
+Caches แลก consistency กับ performance ทุก caching decision ต้องตอบให้ได้ว่า:
 
 - **Invalidation strategy คืออะไร?** TTL (time-to-live), explicit invalidation, write-through, write-behind?
 - **เกิดอะไรขึ้นเมื่อ cache miss?** ทุก miss ตี database หรือเปล่า? Thundering herd — เมื่อ cache หมดอายุและ 1,000 requests ตี database พร้อมกัน
 - **เกิดอะไรขึ้นเมื่อ cache ล่ม?** Service degrade gracefully หรือ fail ทั้งหมด?
 - **Stale data ยอมรับได้ไหม?** นานแค่ไหน?
 
-การเพิ่ม cache เสนอได้ง่ายและทำให้สมบูรณ์ยาก ต้องตอบสี่คำถามด้านบนทั้งหมดก่อนที่การตัดสินใจจะครบถ้วน
+การเพิ่ม cache ทำได้ง่าย แต่ทำให้สมบูรณ์แบบยากมาก ต้องตอบสี่คำถามด้านบนทั้งหมดก่อนที่การตัดสินใจจะครบถ้วน เขาบอกกันด้วยว่าเรื่อง Cache เป็น Hard Engineering Problem ด้วยซ้ำ
 
 ### Failure modes — คำถามที่ต้องถาม
 
