@@ -1,0 +1,833 @@
+---
+title: "Fundamentals? How Much Do You Actually Need for Early Career in 2026"
+description: "A direct answer to the question early and mid-level engineers keep asking — which CS fundamentals matter in the AI era, what each one actually teaches you, and what a realistic study path looks like without burning out."
+pubDate: "2026-05-22"
+tags:
+  [
+    "Software Engineering",
+    "Fundamentals",
+    "CS Basics",
+    "Early Career"
+  ]
+heroImage: "/assets/images/blogs/fundamentals-2026/hero-banner.png"
+language: "en"
+---
+
+import MermaidDiagram from "../../components/blog/MermaidDiagram.astro";
+
+There's a conversation that keeps coming up every few months, and it usually sounds like this: *"Do I still need to study fundamentals? How much do I actually need to know before I can start?"*
+
+This post tries to answer that directly — not the version where you need to read seven books before your first job, and not the version where fundamentals don't matter because you have Claude Code or a coding agent doing it for you. Both of those are wrong.
+
+What I'm going to do is go through each area — data structures, networking, databases, operating systems, system design — and separate what you need to **start** from what you need to **grow**. Those are different lists, and conflating them is what makes people either underprepare or burn out trying to reach a bar that isn't actually the entry-level bar.
+
+---
+
+## Why the Question Is Being Asked Wrong
+
+Most people frame this as: *"Do I need fundamentals to get a job?"*
+
+That's too narrow. The better question is: **"Do I need fundamentals to actually understand what my code does?"**
+
+And the answer is yes — because understanding is what separates engineers who can debug from engineers who can only rewrite, who can diagnose from who can only guess, who grow steadily from who plateau after two years.
+
+Here's what I've observed in engineers who skipped the fundamentals:
+
+- They ship code that works at 100 rows and breaks at 100,000 — because they didn't understand complexity or indexes
+- They can't read infrastructure-layer errors — a 502 vs 504 tells you completely different things, but only if you know what sits between your service and the client
+- They can add features but can't diagnose slowdowns — no mental model for where the bottleneck actually lives
+- They hit an unfamiliar bug with no frame of reference, so they rewrite instead of fix
+
+This isn't about interview trivia. It's about being able to function when things go wrong — and in production systems, they will.
+
+In the current environment, this gap becomes more visible. When AI generates code, you're reviewing it. Reviewing requires knowing what *correct* looks like — not just what *plausible* looks like. AI reliably produces plausible. Fundamentals are what help you tell the difference.
+
+---
+
+## The Actual Entry-Level Floor
+
+Before walking through each area in depth, let me answer the question directly: *what do you need to know to start your first job?*
+
+This is the honest minimum — not the ideal, not what you'll have after two years, just the floor:
+
+- **Data structures**: Know arrays and hash maps. Understand why you'd pick one over the other. Have a rough sense that O(n) is slower than O(1). That's it.
+- **Networking**: Know what HTTP is. Understand GET, POST, PUT, DELETE at a conceptual level. Know what 200, 400, 404, and 500 mean. Know that HTTPS means the connection is encrypted.
+- **Databases**: Write basic queries — SELECT, INSERT, UPDATE, DELETE. Know that indexes exist and make reads faster. Understand what a transaction is at a conceptual level (either it all works, or none of it does).
+- **Operating systems**: Know that processes and threads are different things. That's enough for day one.
+- **System design**: Know what a load balancer is. Know that caches exist and what problem they solve.
+- **Design diagrams**: Be able to read a simple class diagram and understand the basic relationships. Know what a sequence diagram shows. Know what an ER diagram represents.
+
+Everything in the rest of this article beyond that list? That's what the first two years are for building. Not a checklist to clear before you're allowed to apply.
+
+### Why it feels like the bar has shifted
+
+It has — but not in the way most people think.
+
+The actual floor for a first job hasn't changed dramatically. What has changed is the **ceiling**. What's expected at mid-level is higher now, and companies want early-career engineers who can ramp up quickly. That ceiling pressure gets projected backward, and suddenly the expectation described for "early career" reads like what used to be the two-year mark.
+
+So when someone says "the bar is higher now," they're usually right about mid-level expectations and slightly wrong about entry-level. The floor is still achievable. What's different is the velocity expected after you start — how fast you're expected to move from the floor toward that higher ceiling.
+
+That's actually the useful reframe. It's not that you need to know more before starting. It's that you need to have a clear direction for what to learn once you're in the role. The sections below are that direction.
+
+![Entry-level floor vs mid-level ceiling](/assets/images/blogs/fundamentals-2026/floor-vs-ceiling.png)
+
+---
+
+## Reading a Ticket — Breaking Problems Down
+
+Before getting into each technical area, there is a thinking skill that applies across all of them: how to approach work when it lands in front of you.
+
+When you see a new ticket, three questions matter before you write a line of code.
+
+**How large is this?** Is this a one-file change, a feature that touches three layers of the stack, or something that requires a schema migration and a coordinated deployment? The point isn't estimating precisely — wrong estimates happen at every level. It's being able to look at a ticket and see its shape before committing. Which layers does it touch? Where might hidden complexity sit? A ticket like "support payment methods" looks small until you trace what it involves end to end.
+
+**What are the subproblems?** A feature does not ship as one thing. Break it down. "Let users top up their wallet" decomposes into: validate input, check the wallet exists, create a PENDING transaction, call the payment gateway, update the balance on success, handle each failure case. Each subproblem is small, testable, and independently understandable. If you cannot decompose the feature, you do not understand it yet — and that is the right signal to pause, not to start coding.
+
+**How do you frame each subproblem in natural language?** Write a sentence for each: "when the wallet does not exist, return 404 and create no records." That sentence is simultaneously your edge case, your test case, and your inline documentation. Engineers who skip this step end up debugging behavior they never explicitly thought about.
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    T["Ticket or Requirement"] --> S["How large is this?"]
+    S --> D["Break into subproblems"]
+    D --> E["Frame each as a plain sentence"]
+    E --> F["Map to technical components"]
+`}
+  size="medium"
+/>
+
+The output of this process is not a plan document. It is a clear head. You should be able to explain what you are building, in what order, and why — before the first function is written.
+
+One more thing. The word ticket is the most structured form this takes. As you grow, the input becomes less structured, not more. A product requirements document you need to extract your own tasks from. Vague direction from a tech lead you need to turn into a ticket yourself. A business goal with no spec, where you design the solution from first principles and write the document that defines what gets built.
+
+If you feel the work getting harder to parse — not technically harder, but harder to even define — that is not a sign something is wrong. That is the sign your level of ownership is increasing. The ability to create structure from ambiguity is what separates engineers who execute from engineers who lead. And if it feels harder, that is your growth.
+
+---
+
+## Data Structures & Algorithms — The Evaluation Layer
+
+Let me be clear upfront: I am **not** talking about LeetCode grind. I'm talking about understanding data structures well enough to know when the wrong one was used.
+
+![Data structure visual metaphors](/assets/images/blogs/fundamentals-2026/data-structures-metaphors.png)
+
+### What you actually need to know
+
+**Arrays and dynamic arrays** — the default structure everyone reaches for. Understand why random access is O(1) but insertion in the middle is O(n). This comes up constantly in code that repeatedly inserts into the front of a list inside a loop.
+
+**Hash maps** — probably the structure you'll use most. Understand that lookup is O(1) average, not always. Understand hash collisions, load factor, and why a HashMap is not sorted. Know when a LinkedHashMap or TreeMap matters. You see hash maps everywhere once you start looking: Redis (key-value store), DNS resolution (hostname → IP).
+
+**Linked lists** — less commonly used directly, but essential for understanding queues, LRU caches, and how memory allocation works under the hood. Also, understanding pointer-style thinking helps with tree traversal. The pattern shows up in real systems: Git commit history (each commit points to its parent), blockchain (each block references the previous), browser back/forward navigation (doubly linked).
+
+**Trees** — BST, heap, trie. The heap matters for priority queues. The trie matters for prefix search. BST matters for sorted data operations. You don't need to implement them from scratch — you need to recognize when to reach for them.
+
+**Graphs** — BFS and DFS are not interview tricks. They come up in dependency resolution, service mesh traversal, recommendation systems, and any system with relationships. Understanding adjacency list vs matrix matters when the graph is sparse (most real-world graphs are). Concrete examples: social network friend graphs, package dependency trees (npm, Maven).
+
+**Stacks and queues** — know the difference, and know how they're used in call stacks, undo systems, task queues, and parsing.
+
+### Complexity — the practical part
+
+Time and space complexity are **not** about memorizing formulas. They're about being able to look at code and say: *"This is going to fall apart at scale."*
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    subgraph Acceptable["Acceptable for Most Cases"]
+        O1["O(1)\nConstant\nHash lookup"] --> OlogN["O(log n)\nLogarithmic\nBinary search"] --> ON["O(n)\nLinear\nSingle loop"] --> ONlogN["O(n log n)\nCommon Sort\nMerge sort"]
+    end
+    subgraph Danger["Danger Zone at Scale"]
+        ON2["O(n²)\nQuadratic\nNested loops"] --> ON3["O(n³)\nCubic\nTriple nested"] --> O2N["O(2n)\nExponential\nBrute-force"]
+    end
+    ONlogN -->|"gets expensive"| ON2
+`}
+  size="medium"
+/>
+
+Nested loops that could be hash maps are a common source of O(n²) in real code — easy to miss if you can't read complexity.
+
+### What you can skip
+
+You do not need to know red-black tree rotations. You do not need to implement Dijkstra from memory. You do not need to solve dynamic programming puzzles under pressure. These are interview gatekeeping tools, not daily engineering skills. Learn the concept behind dynamic programming (memoization, overlapping subproblems) — but you don't need to be a DP wizard at early career.
+
+---
+
+## Networking — The Invisible Foundation
+
+Networking is the area where I see the biggest gap in early and mid-level engineers. Everyone knows HTTP is "the web thing." Almost nobody understands it well enough to debug it.
+
+### HTTP from the ground up
+
+You need to understand HTTP not as a protocol you use, but as a protocol you read when things go wrong.
+
+**Methods matter.** GET is idempotent and should not change state. POST is not. PUT replaces. PATCH modifies. DELETE removes. These are not conventions — they have semantic meaning that matters for caching, retries, and API design. Mixing up PUT and PATCH, or using GET for requests with a body, causes subtle issues that surface later in unexpected places.
+
+**Status codes are a vocabulary.** 200 is success. 201 is created. 204 is success with no body. 400 is your fault. 401 is unauthenticated. 403 is unauthorized. 404 is not found. 409 is conflict. 422 is validation failure. 500 is server error. 502 is bad gateway (upstream failed). 503 is service unavailable. 504 is gateway timeout (upstream didn't respond in time).
+
+Know the difference between 502 and 504. Know the difference between 401 and 403. They tell you different things about where to look when debugging.
+
+![HTTP status code reference](/assets/images/blogs/fundamentals-2026/http-status-codes.png)
+
+**Headers are the metadata layer.** `Content-Type`, `Authorization`, `Cache-Control`, `Accept`, `X-Request-ID`, `CORS` headers — you will interact with all of these. Understand that `Authorization: Bearer <token>` is a convention, not magic. Understand that `Cache-Control: no-store` prevents caching at every layer. Understand that CORS errors are a browser enforcement, not a network error.
+
+### TCP — why it matters even if you never touch sockets
+
+Most engineers treat TCP as a given. It handles delivery, done. But TCP has implications you feel every day:
+
+- **Connection establishment is expensive.** Three-way handshake. This is why connection pooling exists in database clients and HTTP clients. Skipping it is a common shortcut that causes latency problems at scale.
+- **TCP is stateful.** Connections exist between two endpoints. This is why horizontal scaling of stateful services is hard.
+- **Timeouts are a TCP concern.** Connect timeout vs read timeout vs write timeout — these are different things. Using a single generic timeout without distinguishing them is a common oversight.
+
+<MermaidDiagram
+  chart={`
+sequenceDiagram
+    participant C as Client
+    participant LB as Load Balancer
+    participant S as Server
+    participant DB as Database
+
+    C->>LB: Request
+    LB->>S: Forward
+    Note right of S: connect timeout means S is unreachable
+    S->>DB: Query
+    Note right of S: read timeout means S is too slow
+    DB-->>S: Result
+    Note right of LB: 504 timed out, 502 bad response from S
+    S-->>LB: Response
+    LB-->>C: Response
+`}
+/>
+
+### DNS — debugging the resolution chain
+
+DNS failures are common and confusing if you don't understand the resolution chain. Know that:
+
+- DNS is cached at multiple levels: browser, OS, resolver
+- TTL (time-to-live) controls how long cached entries are valid
+- When you change DNS records, propagation takes time because of TTL
+- In containerized environments, DNS resolution behaves differently — internal service names resolve through a different path than public internet names
+
+When a service says "cannot resolve hostname," it's a DNS problem. When it says "connection refused," the service is down or not listening. When it says "connection timeout," the host is reachable but not responding. These are different failure modes that require different fixes.
+
+### TLS / HTTPS
+
+TLS is not optional in 2026. You need to understand:
+
+- Certificate chains: leaf, intermediate, root CA
+- Why certificate expiry causes incidents (and how to monitor it)
+- The difference between TLS termination at the load balancer vs end-to-end TLS
+- mTLS (mutual TLS) — you'll encounter this in service meshes and microservice architectures
+
+You don't need to implement TLS. You need to understand it well enough to debug certificate errors and make decisions about where to terminate TLS in your architecture.
+
+---
+
+## Databases — Where Most Apps Actually Break
+
+**Most production incidents I've seen trace back to a database problem.** A missing index, a bad query, a transaction deadlock, or a misunderstood consistency model — pick one. For daily backend work, databases are where fundamentals matter most.
+
+### Indexes — the most misunderstood performance tool
+
+An index trades write performance for read performance. This is the fundamental trade-off, and it's one that's easy to overlook when reviewing schema changes or migration files.
+
+#### B-tree indexes
+
+The default in most relational databases. They support range queries, equality, and prefix matching. They're ordered. They work well for columns with high cardinality.
+
+#### Composite indexes
+
+Indexes on multiple columns. Column order matters. An index on `(user_id, created_at)` can satisfy queries filtering on `user_id` alone, or filtering on both — but not queries filtering on `created_at` alone.
+
+#### Covering indexes
+
+Include all the columns needed for a query, so the database doesn't need to touch the actual table. This is a significant optimization for read-heavy queries.
+
+#### Index selectivity
+
+The ratio of distinct values to total rows. An index on a boolean column (two possible values) is almost useless. An index on a UUID column (near-unique values) is highly effective.
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    Q["SELECT * FROM orders\nWHERE user_id = 123\nAND status = 'pending'"] --> P{Query Planner}
+    P -->|No index| A["Sequential Scan\nRead every row\nO(n) — slow at scale"]
+    P -->|Index on user_id| B["Index Scan on user_id\nFilter status in memory\nO(log n + k) — fast"]
+    P -->|Composite index\non user_id, status| C["Index Scan\nBoth conditions in index\nMost efficient"]
+    A --> SLOW["⚠ 500ms+ on 1M rows"]
+    B --> OK["~5ms"]
+    C --> FAST["~1ms"]
+`}
+/>
+
+When reviewing schema changes or migration files, your first question should be: *"Which columns are in WHERE clauses, JOIN conditions, and ORDER BY? Are those indexed?"*
+
+### Transactions and ACID
+
+#### Atomicity
+
+All operations in a transaction succeed, or none do. This is what prevents partial updates — if you update a user's balance and create a transaction record, you don't want one to succeed without the other.
+
+#### Consistency
+
+The database moves from one valid state to another. Constraints (foreign keys, unique constraints, check constraints) are enforced.
+
+#### Isolation
+
+Concurrent transactions don't interfere with each other. This is the complicated one.
+
+#### Durability
+
+Committed transactions survive crashes. This is about write-ahead logging and flushing to disk.
+
+Isolation levels are where most engineers have gaps:
+
+- **Read Uncommitted**: you can read changes from uncommitted transactions. Almost never what you want.
+- **Read Committed**: you only read committed data, but you can read different values across two reads in the same transaction (non-repeatable read).
+- **Repeatable Read**: the same query returns the same results within a transaction. Default in MySQL/InnoDB.
+- **Serializable**: transactions behave as if they ran sequentially. Safest, but slowest.
+
+Most applications run fine on Read Committed. But if you're implementing financial logic, inventory reservation, or any "check then act" pattern, you need to think carefully about isolation level — and it's easy to skip that thinking entirely.
+
+### The N+1 Problem — The Most Common Performance Bug
+
+This is the most common performance issue I run into, and it comes from not understanding how queries compose.
+
+```
+// N+1 pattern — works fine locally, breaks in production:
+const users = await User.findAll();
+for (const user of users) {
+  const orders = await Order.findAll({ where: { userId: user.id } });
+  // 1 query for users + N queries for orders = N+1 queries
+}
+
+// What it should be:
+const users = await User.findAll({ include: [{ model: Order }] });
+// 1 query with JOIN = 1 query total
+```
+
+N+1 is hard to spot if you don't know what to look for — the code looks reasonable, it runs fine in development with 10 users, then production hits 10,000 and the database falls over.
+
+
+**N+1 — what's actually happening at the database:**
+
+<MermaidDiagram chart={`
+sequenceDiagram
+    participant App
+    participant DB
+
+    App->>DB: SELECT * FROM users
+    DB-->>App: user1, user2, ... userN
+    loop For each of N users
+        App->>DB: SELECT * FROM orders WHERE user_id = ?
+        DB-->>App: orders
+    end
+    Note over App,DB: 1 + N round trips to the database
+`} size="medium" />
+
+**The fix — one query with JOIN:**
+
+<MermaidDiagram chart={`
+sequenceDiagram
+    participant App
+    participant DB
+
+    App->>DB: SELECT u.*, o.* FROM users u LEFT JOIN orders o ON u.id = o.user_id
+    DB-->>App: all users with their orders in one response
+    Note over App,DB: 1 round trip to the database
+`} size="medium" />
+
+### Query Planning — reading EXPLAIN
+
+`EXPLAIN` (or `EXPLAIN ANALYZE` in PostgreSQL) shows how the database plans to execute a query. Reading the output is a skill worth building. Key signals:
+
+- **Seq Scan**: sequential scan, reading every row. Sometimes correct for small tables, almost always wrong for large tables without a WHERE clause that uses an index.
+- **Index Scan**: using an index. Usually good.
+- **Index Only Scan**: reading from the index alone without touching the table. Best case for covered queries.
+- **Hash Join / Nested Loop**: how tables are joined. Nested loop is expensive for large result sets.
+- **rows**: estimated row count. Severely wrong estimates (1 vs 100,000) indicate stale statistics.
+
+Reading these takes practice. But by mid-level, knowing EXPLAIN exists and being able to interpret the basic output is the expectation.
+
+### Pagination — why OFFSET breaks at scale
+
+Pagination comes up in almost every backend system. The default OFFSET/LIMIT approach breaks under load.
+
+```sql
+-- Common approach — looks fine, breaks at depth
+SELECT * FROM transactions
+WHERE wallet_id = 123
+ORDER BY created_at DESC
+LIMIT 20 OFFSET 1000
+```
+
+`OFFSET 1000` tells the database to read 1020 rows and throw away the first 1000. The further into the dataset you page, the more rows are discarded. At page 500 (offset 10,000), you are doing a full index scan of 10,020 rows to return 20.
+
+**Keyset pagination** solves this:
+
+```sql
+-- Client sends back the created_at of the last item they received
+SELECT * FROM transactions
+WHERE wallet_id = 123
+  AND created_at < '2026-01-15 10:30:00'
+ORDER BY created_at DESC
+LIMIT 20
+```
+
+The database uses the index on `(wallet_id, created_at)` and jumps directly to the cursor position. No rows are scanned and discarded. Performance is consistent regardless of how deep into the result set you are.
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    subgraph Offset["OFFSET Pagination"]
+        O1["Scan from start"] --> O2["Skip first 1000 rows"] --> O3["Return 20 rows"]
+    end
+    subgraph Keyset["Keyset Pagination"]
+        K1["Jump to cursor\nvia index"] --> K2["Return 20 rows"]
+    end
+    Offset -->|"gets slower\nwith each page"| SLOW["O(offset + limit)"]
+    Keyset -->|"constant speed"| FAST["O(log n + limit)"]
+`}
+  size="medium"
+/>
+
+The trade-off: keyset pagination doesn't support jumping to an arbitrary page number. It only supports next and previous. For most real use cases — transaction history, notification feeds, infinite scroll — this is fine.
+
+### Time-bound queries — matching the index to the query
+
+Date range queries are one of the most common patterns in backend systems, especially anything transactional. The index needs to match the query shape.
+
+```sql
+-- Transactions for a wallet in the last 30 days
+SELECT * FROM transactions
+WHERE wallet_id = 123
+  AND created_at >= NOW() - INTERVAL '30 days'
+ORDER BY created_at DESC
+```
+
+This query needs a composite index on `(wallet_id, created_at)`. With it, the database narrows first by wallet, then by date range — both conditions satisfied in one index scan. Without `created_at` in the index, the database finds all rows for that wallet and filters by date in memory. Fine for a wallet with 200 transactions, slow for one with 200,000.
+
+In practice, transaction history queries combine both patterns — time-bounded *and* paginated. The cursor in keyset pagination becomes the `created_at` of the last item seen, and the date range limits the scan window.
+
+---
+
+## Operating Systems & Concurrency — The Layer Below Your Code
+
+Most application engineers treat the OS as a black box. That's fine up to a point. But there are concepts that leak through constantly, and missing them causes bugs that are very hard to debug.
+
+### Processes vs threads vs async — they are not interchangeable
+
+#### Process
+
+An isolated execution environment with its own memory space. Processes don't share memory by default. Communication happens through IPC (pipes, sockets, shared memory). Spawning a process is expensive.
+
+#### Thread
+
+A unit of execution within a process. Threads share memory. This is what makes them fast and dangerous simultaneously — shared memory means race conditions.
+
+#### Async/coroutines
+
+Cooperative multitasking within a single thread. No parallelism, but high concurrency for I/O-bound work. This is how Node.js works and how async/await works in Python. Go's goroutines are a different model — lightweight threads managed by the Go runtime that can run in parallel across multiple CPU cores, making them efficient for both I/O-bound and CPU-bound work. They sit closer to the "mixed workloads" category than the pure async model.
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    subgraph CPU["CPU-Bound Work\n(computation)"]
+        P["Multiple Processes\nor Threads\nTrue parallelism"]
+    end
+    subgraph IO["I/O-Bound Work\n(waiting on network/disk)"]
+        A["Async / Event Loop\nOne thread, many tasks\nNo parallelism needed"]
+    end
+    subgraph Both["Mixed Workloads\n(most web servers)"]
+        T["Thread Pool for CPU\n+ Async for I/O"]
+    end
+    CPU --> Both
+    IO --> Both
+`}
+  size="medium"
+/>
+
+If your language/runtime is not clear in your head, you will write code that doesn't scale or has subtle data corruption bugs. Thread-unsafe access to shared state is easy to miss, especially in code that wasn't written with concurrency in mind.
+
+### Race conditions and the basic patterns to prevent them
+
+A race condition is when the outcome depends on the timing of concurrent operations. The classic example:
+
+```
+// Thread A and Thread B both read balance = 100
+// Thread A adds 50: balance = 150, writes 150
+// Thread B subtracts 30: balance = 70, writes 70
+// Final balance: 70 — Thread A's write was lost
+```
+
+Solutions depend on the context:
+- **Mutex/lock**: only one thread accesses the critical section at a time
+- **Atomic operations**: hardware-level guarantees for simple operations
+- **Immutability**: don't share mutable state — share copies or use message passing
+- **Optimistic locking**: check-and-set with version numbers (common in databases)
+
+You don't need to be a concurrency expert at early career. You need to know the danger signs and know when to ask: *"Is this shared state? Can two threads reach this simultaneously?"*
+
+### Memory — stack vs heap, and why it matters
+
+**Stack**: fixed-size, fast, automatically managed. Local variables live here. Stack overflow happens when you recurse too deeply (stack is full).
+
+**Heap**: dynamic, larger, manually managed (or GC-managed). Objects, arrays, any dynamically allocated data lives here. Memory leaks happen here — when you hold references to objects you no longer need.
+
+![Stack vs heap memory layout](/assets/images/blogs/fundamentals-2026/stack-vs-heap.png)
+
+In garbage-collected languages (Java, Python, Go, JavaScript), you don't manually free memory. But you still cause memory leaks by holding references you don't need. Common causes:
+- Unbounded caches
+- Event listeners that are never removed
+- Closures that capture large objects
+- Static collections that grow indefinitely
+
+Understanding that GC exists and why it occasionally pauses your application matters for latency-sensitive services. Understanding heap dumps and memory profiling is a mid-level skill worth having.
+
+### File descriptors and connection limits
+
+Every open file, socket, and pipe is a file descriptor. Operating systems have a limit on how many file descriptors a process can have open simultaneously. If you have a bug that opens connections and never closes them, you will hit this limit and your service will fail with a cryptic error.
+
+This is why connection pooling is important in database clients. This is why HTTP clients should reuse connections. This is why you always close file handles after reading files.
+
+---
+
+## System Design — Not the Interview Kind
+
+System design as taught in interview prep (draw boxes on a whiteboard, say "we need a cache, we need a message queue, done") is not what I mean. I mean understanding **what components actually do** and **what they fail to do**.
+
+### Load balancers — what they actually do
+
+A load balancer distributes incoming requests across multiple instances of your service. It also does:
+
+- **Health checking**: removes instances that fail health checks from the pool
+- **SSL termination**: handles TLS decryption so your service doesn't have to
+- **Sticky sessions**: routes requests from the same client to the same instance (relevant for stateful services)
+
+What it doesn't do: it doesn't make your service stateless. If your service stores session state in memory, load balancing across instances will cause problems — request 1 might build state on instance A, request 2 lands on instance B and the state is gone.
+
+### Message queues — asynchrony and decoupling
+
+A message queue (Kafka, RabbitMQ, SQS) decouples the producer from the consumer. The producer pushes to the queue and moves on. The consumer reads from the queue at its own pace.
+
+What this solves:
+- **Backpressure**: consumer can't keep up with producer — queue absorbs the burst
+- **Reliability**: if consumer is down, messages wait in the queue instead of being lost
+- **Decoupling**: producer and consumer don't need to be running simultaneously
+
+What this doesn't solve:
+- **Ordering guarantees**: queues don't always preserve order at scale — Kafka does per-partition, SQS does not guarantee it across shards
+- **Exactly-once delivery**: most queues give you at-least-once, which means your consumer needs to handle duplicate messages (idempotency)
+- **Transactions**: writing to a queue and writing to a database in the same atomic transaction is hard — look up the outbox pattern
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    API["API Service"] -->|"publish event"| Q["Message Queue\nat-least-once delivery"]
+    Q -->|"consume"| W1["Worker 1"]
+    Q -->|"consume"| W2["Worker 2"]
+    W1 -->|"write"| DB["Database"]
+    W2 -->|"write"| DB
+    W1 -.->|"fail mid-process:\nmessage re-delivered"| Q
+`}
+/>
+
+### Caching — and why "add a cache" is never the complete answer
+
+Caches trade consistency for performance. Every caching decision involves answering:
+
+- **What's the invalidation strategy?** TTL (time-to-live), explicit invalidation, write-through, write-behind?
+- **What happens on cache miss?** Does every miss hit the database? Thundering herd — when cache expires and 1,000 requests simultaneously hit the database.
+- **What happens when the cache is down?** Does your service degrade gracefully or fail completely?
+- **Is stale data acceptable?** For how long?
+
+Adding a cache is easy to suggest and hard to complete. You need to answer all four questions above before the decision is actually made.
+
+### Failure modes — the questions you must ask
+
+For any system component, ask:
+
+1. What happens if this is slow? (timeout, retry logic)
+2. What happens if this is down? (fallback, circuit breaker)
+3. What happens if this returns incorrect data? (validation, consistency checks)
+4. What happens if there are two of these? (consistency, coordination)
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    S["Service Call"] --> T{Response?}
+    T -->|Success| OK["Process normally"]
+    T -->|Timeout| RT["Retry with backoff\nDead letter if exhausted"]
+    T -->|Error 5xx| CB["Circuit breaker\nFail fast if repeated"]
+    T -->|Error 4xx| NR["Don't retry\nClient error — fix the request"]
+    T -->|Down| FB["Fallback response\nor graceful degradation"]
+`}
+/>
+
+This is not interview prep. This is how you think about every external dependency your service calls — databases, third-party APIs, other microservices, message queues.
+
+---
+
+## Design Diagrams — Talking About Code With Your Team
+
+There's a layer between knowing how to code and being able to communicate a design to your team. That layer is worth developing early — not because UML is a formal requirement, but because a shared visual language prevents misunderstanding in design discussions, code reviews, and architecture docs.
+
+The best way to learn diagram types is through one coherent problem. Let's use a **digital wallet / cashless payment system** — the same domain, seen from three different angles.
+
+### Class diagrams — object relationships
+
+Class diagrams show how objects relate to each other in code: what owns what, what knows about what, what extends what.
+
+The five relationships worth knowing:
+
+- **Composition (owns strongly)**: filled diamond on the owner. The component cannot exist without its parent — delete the parent, the component goes too.
+- **Aggregation (has loosely)**: hollow diamond on the owner. The component exists independently — it can belong to a different parent or none.
+- **Association**: plain arrow. Objects know about each other and interact.
+- **Dependency**: dashed arrow. One class uses another temporarily, without holding a permanent reference.
+- **Inheritance (is-a)**: hollow arrowhead pointing to the parent. The subclass is a specialization of the parent.
+
+Applied to a digital wallet:
+
+<MermaidDiagram
+  chart={`
+classDiagram
+    User "1" *-- "1" Wallet : owns
+    Wallet "1" *-- "many" Transaction : records
+    User "1" o-- "many" PaymentMethod : has
+    Transaction --> PaymentMethod : charged via
+    Transaction --> Merchant : paid to
+    WalletService ..> PaymentGateway : uses
+`}
+  size="medium"
+/>
+
+Reading this diagram:
+- A `Wallet` is owned by a `User` with composition — delete the user, the wallet goes too
+- `Transactions` are recorded by the `Wallet` with composition — they can't exist without a wallet
+- `PaymentMethods` (cards, bank accounts) are held with aggregation — they could theoretically be detached or reassigned
+- A `Transaction` is associated with both the `PaymentMethod` used and the `Merchant` paid
+- `WalletService` depends on `PaymentGateway` — it calls it for each transaction but doesn't own it
+
+The reason this matters in practice: composition vs aggregation determines what happens on delete. Get it wrong in the schema (missing CASCADE or a wrong FK constraint) and you either orphan records or accidentally delete data you intended to keep.
+
+### Sequence diagrams — what happens when a payment is processed
+
+Sequence diagrams show the message flow over time. Same digital wallet domain — here's what happens when a user initiates a payment:
+
+<MermaidDiagram
+  chart={`
+sequenceDiagram
+    participant U as User
+    participant App as Mobile App
+    participant WS as Wallet Service
+    participant DB as Database
+    participant PG as Payment Gateway
+
+    U->>App: Pay 500 THB to merchant
+    App->>WS: POST /payments
+    WS->>DB: Check wallet balance
+    DB-->>WS: Balance OK
+    WS->>DB: INSERT transaction (PENDING)
+    WS->>PG: Charge payment method
+    PG-->>WS: Approved
+    WS->>DB: UPDATE transaction (COMPLETED)
+    WS-->>App: 201 Created
+    App-->>U: Payment confirmed
+`}
+/>
+
+This shows the two-phase pattern common in payment systems: create a PENDING transaction first, then update to COMPLETED only after the gateway confirms. If the gateway call fails, the transaction stays PENDING (or is rolled back) — you never mark something COMPLETED before you have confirmation.
+
+At entry level: be able to read this and trace what happens if the gateway returns an error. At mid-level: be able to produce this for any flow you're designing.
+
+### ER diagrams — what the database actually looks like
+
+ER diagrams represent the database schema: tables, columns, and the cardinality of relationships between them.
+
+<MermaidDiagram
+  chart={`
+erDiagram
+    USER ||--|| WALLET : owns
+    USER ||--o{ PAYMENT_METHOD : has
+    WALLET ||--o{ TRANSACTION : records
+    MERCHANT ||--o{ TRANSACTION : receives
+    TRANSACTION }o--|| PAYMENT_METHOD : "charged via"
+`}
+  size="medium"
+/>
+
+The same domain, now as a schema. Notice how the class diagram and the ER diagram tell the same story at different levels — one is about code structure, the other is about database structure. When the two are inconsistent (the code models ownership differently from how the schema enforces it), bugs follow.
+
+### The shared language point
+
+The goal isn't formal precision. The goal is that your team reads the same design from the diagram that you drew. When you can show the same problem as a class diagram, a sequence diagram, and an ER diagram, you're communicating at the level where real design conversations happen — not just implementing what someone else decided.
+
+---
+
+## What the AI Era Actually Changes
+
+I want to be honest about this because there's a lot of noise on both sides.
+
+**AI does not change what fundamentals are.** Hash maps are still hash maps. TCP still has a three-way handshake. Indexes still have trade-offs. These are not going away.
+
+**AI changes how quickly bad decisions become production code.** Before AI tools, writing code took time, and that time created natural friction to think. A senior engineer writing a query by hand might stop and think "wait, this column needs an index." AI generates 50 lines in 3 seconds. The human reviews it in 5 seconds. The index is missing. It ships.
+
+**AI generates plausible code, not correct code.** There is a consistent pattern: AI produces code that works for the happy path, in a test environment, at small scale. The edge cases, the failure modes, the performance at 1M rows — those require understanding to catch.
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    A["AI generates code"] --> B["Looks correct at a glance?"]
+    B -->|Yes| C["Handles edge cases?"]
+    B -->|No| FIX["Obvious fix — easy to catch"]
+    C -->|Yes| D["Performs at scale?"]
+    C -->|No| EDGE["N+1, missing validation\nRace condition — needs fundamentals to catch"]
+    D -->|Yes| E["Handles failures?"]
+    D -->|No| PERF["Missing index, O(n²)\nNeeds CS knowledge to catch"]
+    E -->|Yes| SHIP["Safe to ship"]
+    E -->|No| FAIL["Missing timeout, no retry\nNeeds system design to catch"]
+`}
+/>
+
+The engineers who are thriving with AI tools right now are the ones who use AI to generate and use fundamentals to evaluate. The engineers who are struggling are the ones who generate and ship without reviewing.
+
+### Using AI to learn fundamentals
+
+This side of the equation gets undersold. Most discussion about AI in engineering focuses on AI as a code generator. But AI is also a useful learning tool for fundamentals — if you approach it as active practice rather than answer-seeking.
+
+Some approaches that I've found work well:
+
+**Generate practice problems on demand.** Instead of working through textbook exercises: "Give me 5 real-world scenarios where using a hash map would be the wrong choice, and explain the trade-off in each." You can keep asking follow-up questions, which textbooks don't allow.
+
+**Work through EXPLAIN outputs with help.** Take a query from your actual codebase, run EXPLAIN ANALYZE, and paste the output. Ask AI to walk through what each step means. Then verify the key claims against your database's documentation. AI explanation combined with your own verification builds understanding faster than docs alone.
+
+**Deliberate error spotting.** Ask AI to write code with a specific class of flaw — "write a query with an N+1 problem" or "write a concurrent counter with a race condition" — and then find it yourself. You control the difficulty, and you can ask for a hint or explanation afterward.
+
+**Probe a concept with follow-up questions.** "Explain why TCP connection establishment affects database query latency" — then follow up: "what does that mean for the default timeout values in a JDBC connection pool?" You can follow your actual confusion instead of a textbook's assumed learning path.
+
+The distinction matters: using AI to skip understanding vs. using AI to accelerate understanding. Both result in content being explained to you. Only one results in you actually knowing it when you need it at 2am during an incident.
+
+---
+
+## Harsh Truth — On Layoffs and Who Survives Them
+
+Nobody writes this in the "learn your fundamentals" posts, so I will.
+
+Every company has cash flow. When headcount decisions happen, the question being answered — whether out loud or not — is: what is the output-to-cost ratio for each person? If one engineer with solid fundamentals and good AI tooling can produce what two engineers without those produced before, the math is not complicated. Headcount decisions are cash flow decisions.
+
+It's not personal. It's not about loyalty. Companies are not families, regardless of how many all-hands presentations describe them that way.
+
+The engineers who survive repeated cuts, or who land somewhere better immediately after getting caught in one, tend to be the ones who can evaluate code, debug production issues, and make architectural decisions — whether they wrote the first draft themselves or reviewed what an agent produced. That person could be anywhere. They don't have to be at the company where the layoffs happen. Companies that just did a round of cuts are also companies that are now hiring selectively — often for exactly that profile.
+
+Strong fundamentals don't make you immune. A bad product line or a bad quarter takes down good engineers too. But they change what happens *after* — how fast you land, and whether you go sideways or upward.
+
+Now, if you truly want zero layoff risk, there is exactly one option: open your own business. Nobody can fire you. No performance review touches you as a founder.
+
+But heads up — it comes with its own set of problems. Revenue that shows up late, or doesn't. Customers who ghost you after three calls. Servers that go down at 3am and the on-call is just... you. No colleague to rubber duck with at 11pm. No paid leave. The slow quiet question around month eight of whether this was the right call.
+
+No layoffs. Different problems entirely. Pick your risk profile.
+
+---
+
+## A Realistic Study Path for 2026
+
+This is not a "read these 10 books" list. This is what I would prioritize if I had one hour a day, depending on where I am.
+
+
+![Study path roadmap from pre-employment to mid-level](/assets/images/blogs/fundamentals-2026/study-path-roadmap.png)
+
+**If you're preparing for your first role (pre-employment):**
+
+Focus on reaching the floor, not the ceiling. Build something — a basic API with a database behind it. Make it do CRUD.
+
+But the real exercise isn't making it work. It's being able to explain every decision in it.
+
+Why does your create endpoint return 201 and not 200? Why did you structure this table with these columns? Why is this route a POST and not a PUT? Why does this query look the way it does? If someone asks you in a code review or a design discussion and you can only say "it works" or "I copied it from a tutorial" — that's the gap. That gap is visible immediately to the engineers interviewing or onboarding you.
+
+Current engineers don't just implement. They explain their reasoning. Why they designed it this way, what they considered and rejected, what trade-off they made. That's the conversation you'll be in from day one — in PR reviews, in architecture discussions, in standups when something breaks.
+
+You don't need EXPLAIN, isolation levels, or race conditions before you start. But you do need to be able to look at your own code and articulate the decisions in it. Build the thing, then practice explaining it out loud — as if someone just asked you to walk them through it.
+
+**If you're in your first two years:**
+
+The order matters. Databases first — highest daily return, most direct path to production impact. Networking next — the failure vocabulary that makes logs and alerts legible rather than confusing. Data structures third — not for interviews, but to recognize performance problems by their shape.
+
+If you only have bandwidth for one area right now, make it databases.
+
+Also start learning to sketch class diagrams. Pick a module in your codebase and draw the relationships between its main classes. You don't need a tool — paper or a whiteboard is fine. The point is building the habit of thinking in relationships, not just in code.
+
+**Communication patterns — the trade-off landscape**
+
+By the end of your first two years, you should have a working picture of how services communicate — not just HTTP, but the full sync and async landscape. More importantly, you should be able to reason about why a team picked one approach over another, and what would change if they hadn't.
+
+The fundamental split:
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    Q["How should services communicate?"] --> SYNC["Synchronous\ncaller waits for response"]
+    Q --> ASYNC["Asynchronous\ncaller sends and moves on"]
+    SYNC --> CF["Client-facing API\nREST · GraphQL"]
+    SYNC --> IS["Internal service-to-service\ngRPC"]
+    SYNC --> RT["Real-time bidirectional\nWebSocket · RSocket"]
+    ASYNC --> ONCE["Each message consumed once\nMessage Queue"]
+    ASYNC --> MANY["Event fans out to many subscribers\nPub/Sub"]
+`}
+/>
+
+**REST** is the default. Stateless, text-based, universally supported, easy to debug. Right for most client-facing APIs. Limitation: no built-in streaming, clients often over-fetch or under-fetch.
+
+**gRPC** is binary over HTTP/2 with Protocol Buffers contracts. Significantly faster for high-throughput internal calls, strongly typed — a contract change is a compile error. Not browser-native without a proxy, harder to debug than REST, overkill for most client-facing work.
+
+**GraphQL** lets the client specify exactly what data it needs. Solves over-fetching for APIs serving multiple client types (web, mobile). Trade-off: N+1 risk server-side without dataloaders, harder to cache than REST, complexity moves into schema design.
+
+**WebSocket** keeps a persistent bidirectional connection open. Right for real-time use cases — payment status updates, live dashboards, chat. Trade-off: stateful connections make horizontal scaling harder. You need sticky sessions or a shared pub/sub layer behind the WebSocket servers.
+
+**RSocket** is a reactive streams protocol with multiple interaction models — request/response, fire-and-forget, request/stream, channel. Less common than gRPC but useful when you need flow control or streaming built into the protocol itself.
+
+**Message Queue** (Kafka, RabbitMQ, SQS): each message is consumed once by one consumer. Right for task distribution — process a payment, send an email, resize an image. Trade-off: at-least-once delivery means your consumer must be idempotent.
+
+**Pub/Sub** (SNS, Redis Pub/Sub, Kafka topics with multiple consumer groups): one event, many independent subscribers. Right for broadcasting — a transaction completed event goes to analytics, fraud detection, and notifications simultaneously. Trade-off: no guarantee on processing order across subscribers, deduplication gets harder.
+
+
+![Communication protocols comparison matrix](/assets/images/blogs/fundamentals-2026/communication-protocols-matrix.png)
+
+The thinking you want to build is not "what does each technology do" but "what if we did it the other way, and what would break or become harder":
+
+- *REST → gRPC for an internal service?* Faster and type-safe, but now you need protobuf contracts and your debugging gets harder. Worth it at high call frequency, probably not for a low-traffic internal admin API.
+- *Synchronous REST call → message queue?* You've decoupled the services and absorbed burst load, but the caller no longer knows if it succeeded immediately. Is eventual consistency acceptable here? Does the user need a real-time confirmation?
+- *Message queue → pub/sub?* Now multiple services react to the same event independently — good for fan-out, but each subscriber processes every message and deduplication becomes each subscriber's problem.
+- *REST polling → WebSocket?* Real-time push instead of client-initiated checks, but you've introduced stateful connections. How many concurrent connections can your server hold? What happens when it restarts?
+
+The question is never which technology is best in isolation. It's always: given these constraints, which trade-offs are acceptable?
+
+**If you're moving toward mid-level (2–5 years):**
+
+Operating systems and concurrency. This is the gap I see most often at this level. Understand threading models, memory management, and file descriptors.
+
+System design — the failure mode kind. For every external dependency in your current system, trace through the failure modes. This is practice you can do at work, with real systems.
+
+**More than that:**
+
+Honest admission: I have 7 years of experience. I cannot give you a definitive map for what comes after — the paths diverge too much between staff engineering, architecture, management, or building something of your own. What I can give you is a starting point.
+
+If you reach this level, self-reflection becomes the most reliable tool you have. What problems actually pulled you in? What work consistently drained you? Pick the direction that fits you, and grow from there. And if it stops fitting — look back at what felt right earlier that you never had time to fully explore. Most good pivots are not random. They are things you noticed and set aside.
+
+---
+
+## Closing
+
+Fundamentals are not the gatekeeping trivia that interview culture made them feel like. They are what lets you think clearly about code — whether you're debugging a production incident, reviewing a colleague's PR, or evaluating what an AI generated in three seconds.
+
+The engineers who will grow fastest in the next few years are not the ones who prompt best. They're the ones who prompt well and *evaluate correctly*. And evaluation is built on understanding what you're looking at.
+
+You don't need to know everything. You need to know enough to ask the right questions about the code in front of you.
+
+Name one thing you cannot clearly explain after reading this. Not a topic area — a specific behavior: why pagination slows past page 100, what the difference between 401 and 403 means in your system's actual auth flow, what happens to an in-progress transaction when the payment gateway call times out. Take that gap and close it on something in your actual codebase this week. Understanding accumulates in specific, deliberate moments — not in reading lists or good intentions.
+
+---
+
+## Last Fun Fact — Language Comes After Fundamentals
+
+After walking through the entry-level floor, the next step is picking a programming language and committing to it for a while. But notice the order — language comes *after* fundamentals. That's deliberate. Once you pick a language, the implementation differs based on the paradigm (object-oriented, functional, systems-level), but the fundamentals underneath carry across regardless of what you write in.
+
+---
+
+_Written from experience working on backend systems where most of the interesting problems were database, networking, or concurrency problems — not algorithm puzzles._
