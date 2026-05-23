@@ -470,7 +470,9 @@ Solutions ขึ้นอยู่กับ context:
 - **Immutability**: ไม่ share mutable state — share copies หรือใช้ message passing
 - **Optimistic locking**: check-and-set กับ version numbers (พบบ่อยใน databases)
 
-ไม่ต้องเป็น concurrency expert ในระดับ early career แต่ต้องรู้จัก danger signs และรู้ว่าเมื่อไหร่ควรถาม: นี่คือ shared state ไหม? สอง threads เข้าถึงพร้อมกันได้ไหม?
+ไม่ต้องเป็น concurrency expert ในระดับ early career แต่ต้องรู้จัก danger signs
+
+และรู้ว่าเมื่อไหร่ที่ควรจะตั้งคำถาม: นี่คือ shared state ไหม? สอง threads เข้าถึงพร้อมกันได้ไหม?
 
 ### Memory — stack กับ heap และทำไมสำคัญ
 
