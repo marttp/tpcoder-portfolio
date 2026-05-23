@@ -590,7 +590,7 @@ flowchart TD
 
 Class diagrams แสดงว่า objects เชื่อมกันยังไงใน code: อะไร owns อะไร อะไรรู้เกี่ยวกับอะไร อะไร extends อะไร
 
-ห้า relationships ที่ควรรู้:
+5 relationships ที่ควรรู้:
 
 - **Composition (owns strongly)**: filled diamond ที่ owner Component ไม่สามารถมีอยู่ได้โดยปราศจาก parent — ลบ parent ออก component ก็ไปด้วย
 - **Aggregation (has loosely)**: hollow diamond ที่ owner Component มีอยู่ได้อิสระ — สามารถ belong ไปยัง parent ต่างออกไปหรือไม่มีเลย
@@ -614,13 +614,13 @@ classDiagram
 />
 
 อ่าน diagram นี้:
-- `Wallet` เป็น owned โดย `User` ด้วย composition — ลบ user ออก wallet ก็ไป
+- `Wallet` owned โดย `User` ด้วย composition — ลบ user ออก wallet ก็ไป
 - `Transactions` ถูก record โดย `Wallet` ด้วย composition — ไม่สามารถมีอยู่ได้โดยปราศจาก wallet
 - `PaymentMethods` (cards, bank accounts) ถูกถือด้วย aggregation — สามารถ detach หรือ reassign ได้
 - `Transaction` เชื่อมกับทั้ง `PaymentMethod` ที่ใช้และ `Merchant` ที่จ่าย
 - `WalletService` พึ่งพา `PaymentGateway` — เรียกมันทุก transaction แต่ไม่ได้ own มัน
 
-เหตุผลที่สำคัญใน practice: composition กับ aggregation กำหนดสิ่งที่เกิดขึ้นเมื่อ delete ทำผิดใน schema (missing CASCADE หรือ FK constraint ที่ผิด) แล้วจะ orphan records หรือลบข้อมูลที่ตั้งใจจะเก็บโดยไม่ตั้งใจ — เคยเจอ
+เหตุผลที่สำคัญใน practice: composition กับ aggregation กำหนดสิ่งที่เกิดขึ้นเมื่อ delete ทำผิดใน schema (missing CASCADE หรือ FK constraint ที่ผิด) แล้วจะ orphan records หรือลบข้อมูลที่ตั้งใจจะเก็บโดยไม่ตั้งใจ
 
 ### Sequence diagrams — สิ่งที่เกิดขึ้นเมื่อ payment ถูก process
 
