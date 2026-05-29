@@ -1,0 +1,139 @@
+---
+title: "Quantum + AI = Quantum AI — James Manyika & Hartmut Neven, Google I/O 2026"
+description: "สรุป session ของ James Manyika และ Hartmut Neven ที่ Google I/O 2026 — Willow chip, Quantum Echoes, AlphaQubits, 2029 PQC deadline และทำไม quantum กับ AI ถึงเร่งกันและกันสองทิศ"
+pubDate: "2026-05-28"
+tags:
+  ["AI", "Quantum Computing"]
+language: "th"
+---
+
+อีก session ที่ Google I/O 2026 ที่ดูจบแล้วค้างคาในหัว — Building the Quantum-AI Future โดย James Manyika (President for Research Labs, Technology and Society ของ Google) และ Hartmut Neven (Founder ของทีม Google Quantum AI)
+
+ก่อนหน้านี้ quantum computing ฟังเหมือนเป็น moonshot ที่ห่างจาก commercial reality 10-20 ปี Session นี้ทำให้มุมมองนั้นเปลี่ยน — timeline หลายอันยุบเข้ามาเร็วกว่าที่อุตสาหกรรมคาดไว้ และมีเรื่องที่ engineer ทั่วไปต้องเริ่มคิดถึงตั้งแต่ตอนนี้
+
+โพสต์นี้สรุปประเด็นที่อยากเก็บไว้
+
+---
+
+## Context — Moonshot และ Nobel Prize ปี 2025
+
+James Manyika เปิด session โดยวาง quantum computing ลงในประวัติศาสตร์ moonshot ของ Google (Search, ML auto-correction ปี 2001, Waymo) ในฐานะ moonshot ถัดไปที่กำลังเปลี่ยนเป็น commercial reality
+
+รากของ superconducting quantum circuit ย้อนไปยุค 1980s ที่ UC Berkeley โดย Michelle Devoret, John Martinis และ John Clarke ทั้งสามคนพิสูจน์ว่า quantum phenomena ที่เคยถูกมองว่าเกิดเฉพาะใน scale อะตอม สามารถสังเกตและควบคุมที่ระดับ macroscopic ได้
+
+ทั้งสามได้ **Nobel Prize สาขาฟิสิกส์ปี 2025** ทั้ง John Martinis และ Michelle Devoret ทำงานในทีม quantum ของ Google มานาน ปัจจุบัน Devoret เป็น Chief Hardware Scientist ของทีม Quantum Computing ที่ Google
+
+---
+
+## Quantum Mechanics 101 — Superposition และ Willow Chip
+
+Superpower ของ quantum computer มาจาก **superposition** — physical system สามารถอยู่ในหลาย configuration พร้อมกันได้ใน time-step เดียว
+
+Neven โชว์ Willow chip — quantum processor 105 physical qubit
+
+ที่น่าตกใจคือคณิตศาสตร์ของ scaling:
+
+- Classical state ของ system 105 bit คือ bitstring เดียวที่มีความยาว 105
+- 105-qubit chip วาง state เหล่านี้ใน massive superposition พร้อมกัน — represent และ evaluate 2^105 configuration ใน clock cycle เดียว
+
+ตัวเลข 2^105 มหาศาลแค่ไหน? Chip 105 qubit ทำ task บางอย่างเสร็จในไม่กี่นาที ในขณะที่ classical supercomputer data center ขนาดเท่าโรงงานต้องใช้ 10 septillion ปี (10^25 ปี) ในการ calculate ตัวเดียวกัน
+
+วิธีที่ Google สร้าง qubit คือเลี่ยงการ engineer และ isolate อะตอมเดี่ยวซึ่งทำได้ยาก — เปลี่ยนเป็นการสร้าง macroscopic qubit จาก loop ของ superconducting wire (Josephson circuit) ทำหน้าที่เป็น artificial atom ที่ integrate กับ silicon chip ได้ง่ายกว่ามาก
+
+Hardware ทั้งหมดทำงานที่ **10 millikelvin** (0.01 Kelvin เหนือ absolute zero) — เย็นที่สุดในกาแล็กซี เพื่อ induce superconductivity และกำจัด thermal noise
+
+---
+
+## Coherence Hurdle และ 6-Milestone Roadmap
+
+Coherence time (เวลาที่ superposition state อยู่รอด) เคยถูกมองเป็น bottleneck ทาง engineering ที่ใหญ่ที่สุด
+
+Google เพิ่ม raw hardware coherence time จาก 20 microsecond ไปสู่กว่า 250 microsecond (เพิ่มขึ้น 10x+) ปัจจุบัน coherence ไม่ได้เป็น constraint ทางฟิสิกส์ที่จำกัดอีกแล้ว — barrier ย้ายไปอยู่ที่ system-level architecture engineering แทน
+
+Google ใช้ 6-stage roadmap เพื่อสร้าง quantum computer ที่ commercially viable:
+
+- **Milestone 1 (2019)** — Quantum Supremacy: quantum processor ทำ exotic math task ในไม่กี่นาทีที่ classical supercomputer ทำซ้ำไม่ได้
+- **Milestone 2 (2022)** — Quantum Error Correction (QEC) reduced to practice: ใช้ physical redundancy รวม noisy physical qubit หลายตัวเป็น stable logical qubit เดียว เพิ่ม qubit แล้ว error rate ลดลงเป็นครั้งแรก แม้แค่ไม่กี่เปอร์เซ็นต์
+- **Milestone 3 (เป้า late 2026)** — สร้าง error-corrected module เดียวที่ refined ดีพอจะเป็น building block สำหรับ large-scale modular quantum computer
+
+---
+
+## Willow Chip และ Quantum Echoes — จาก toy benchmark สู่ useful algorithm
+
+Willow chip (2024) มี architecture quality สูงกว่าเดิมมาก เมื่อ re-run experiment QEC ของปี 2022 บน Willow ผลคือการเพิ่ม redundancy ทำให้ logical error ลดลงสองเท่า (factor of two) เป็นการพิสูจน์ below-threshold error correction ให้กับวงการวิทยาศาสตร์
+
+ที่สำคัญกว่านั้น — **Quantum Echoes (2025)** คือ useful quantum algorithm ตัวแรก ก่อนหน้านี้ quantum processor ถูก benchmark ด้วย Random Circuit Sampling ซึ่งเป็น mathematical tool ที่ไม่มี real-world utility อะไรเลย
+
+Quantum Echoes เป็น quantum machine learning algorithm ที่ออกแบบมา ingest และ parse raw data จาก Nuclear Magnetic Resonance (NMR) และ MRI system Google ร่วมกับนักวิจัย UC Berkeley ใช้ Quantum Echoes ตอบ open debate ทางเคมีเรื่อง diphenyl molecule — algorithm คำนวณมุม rotational ของวง benzene สองวงที่ interconnect กัน เป็นการพิสูจน์ว่า quantum hardware ตอบคำถามที่ยังไม่มีคำตอบในวิทยาศาสตร์เคมีได้
+
+---
+
+## Quantum + AI — เร่งกันและกันสองทิศ
+
+ชื่อทีม Quantum AI ถูกเลือกโดย Neven ตั้งแต่ปี 2012 บน thesis ว่า AI ที่ทรงพลังในอนาคตต้องมี access กับ computational substrate ที่ทรงพลังที่สุดที่มีอยู่
+
+Manyika ชี้ไปยัง essay ใน Daedalus ฉบับพิเศษ ชื่อ Quantum + AI = Quantum AI ที่อธิบายว่าทั้งสองอย่างเร่งกันและกัน:
+
+**AI ช่วย Quantum (AlphaQubits)** — DeepMind ร่วมกับทีม Quantum สร้าง AlphaQubits — ML system ที่ optimize error decoding และ correction บน physical chip
+
+**Quantum ช่วย AI (Synthetic Data Generation)** — AI อย่าง AlphaFold ถูกจำกัดด้วย training data ที่มีอยู่ (AlphaFold ใช้ protein data ที่รัฐบาลรวบรวมไว้ตลอด 50 ปีตั้งแต่ยุค 1970s) Quantum computer สามารถ generate high-precision synthetic training dataset สำหรับ physical domain ได้ Late-breaking news ของ session — Google เพิ่ง generate material science dataset ตัวแรกจาก quantum hardware และส่งให้ DeepMind ใช้ train AI model
+
+---
+
+## Quantum Simulation — ฟิสิกส์เอกซ์โซติกบน chip
+
+ใช้ noisy chip ที่มี qubit ไม่กี่ร้อยตัว Google ก็ทำให้ dream ของ Richard Feynman (simulate nature) เกิดขึ้นบน chip ได้แล้ว และ publish discovery ฟิสิกส์ระดับ high-impact หลายชิ้น:
+
+- **Holographic Duality และ Wormhole** — ใช้ quantum entanglement ระยะไกลบน chip Google สร้าง (ไม่ใช่ simulate) wormhole structure ระดับ microscopic บน chip เพื่อ validate conjecture ทาง quantum gravity และการเชื่อมโยงของ space-time
+- **Time Crystals** — สร้าง system ที่อยู่ใน periodic motion ตลอดเวลาโดยไม่แลกเปลี่ยน energy กับ environment ละเมิด classical thermodynamic intuition
+- **Non-Abelian Anyons** — quantum state ที่การสลับ identical particle สองตัวเปลี่ยน topological property ของระบบทั้งหมด ผิดจาก common-sense physics
+
+---
+
+## Cryptographic Threat — 2029 Deadline สำหรับ PQC
+
+ส่วนที่กระทบ engineer ทั่วไปที่สุด
+
+Quantum computing จะ disrupt drug discovery, battery, fusion reactor แต่ application ที่อันตรายที่สุดคือ cryptoanalysis ผ่าน Shor's Algorithm variant
+
+Timeline ที่ collapse:
+
+- **2019**: industry consensus ประเมินว่าต้องใช้ 20 ล้าน physical qubit เพื่อ crack RSA-2048
+- **2025**: Greg Gitney (Google researcher) publish breakthrough ว่า RSA-2048 crack ได้ด้วย physical qubit แค่ 1 ล้านตัว
+- **Elliptic Curve (ECC-256)** ซึ่งเป็น foundation ของ digital signature, secure web traffic และ cryptocurrency — Gitney แสดงว่า crack ได้ด้วย physical qubit แค่ไม่กี่แสนตัว
+
+เพราะ algorithm efficiency พัฒนาขึ้นมาก quantum computer ที่ commercially disruptive ไม่ต้องรอ Milestone 6 (1 ล้าน qubit) — Milestone 5 (~100,000 qubit) เพียงพอ
+
+Google ออกคำเตือนระดับอุตสาหกรรม — องค์กรต้อง migrate ไปสู่ **post-quantum cryptography (PQC)** ให้เสร็จก่อนปี **2029** รอจนถึงปลาย 2030s = ความเสี่ยงด้าน security ระดับ catastrophic
+
+ถ้างานปัจจุบันแตะ TLS, signing, key exchange, หรือ key management ใด ๆ นี่คือ deadline ที่ควรเริ่มวางแผนแล้ว ไม่ใช่รอจน 2028
+
+---
+
+## Neutral Atom — Alternative Architecture
+
+ปลาย session มีการพูดถึง path ที่ Google ลงทุนเสริม
+
+- **Empirical Quantum ML** — ปลายทศวรรษ quantum ML จะย้ายจาก pen-and-paper proof ไปสู่ empirical engineering ที่ developer test และรัน algorithm บน real hardware ได้แบบ heuristic
+- **Quantum Diffusion สำหรับ generative AI** — Google ลองใช้ quantum processor generate noise tensor หลักให้ diffusion network ผลคือภาพที่ structurally unique เพราะ probability distribution ที่ classical computer เข้าไม่ถึง Google จัด exhibition quantum art (ร่วมกับ Rafik Anadol) ในยุโรป ที่ Berlin คิวยาวหลายไมล์
+- **Neutral Atom approach** — superconducting circuit ยังเป็น primary path ของ Google เพราะ gate speed สูง แต่ Google ตั้ง secondary lab ที่ Boulder, Colorado โฟกัส neutral atom quantum computing ระบบนี้ scale ต่างไป และ compatible กับ quantum-enhanced sensing — ให้ precision ระดับใหม่ในการสังเกต physical feature ของจักรวาล
+
+---
+
+## ปิดท้าย
+
+ที่เก็บกลับมาจาก session นี้
+
+Quantum computing ถูกพูดถึงในแง่ทฤษฎีมาตลอด session นี้ frame มันในแง่ engineering และ commercial reality มากกว่าที่เคยฟังจาก session อื่นของ Google
+
+ถ้าเก็บได้สามอย่าง:
+
+1. **Quantum Echoes คือ useful algorithm ตัวแรก** — quantum hardware ไม่ใช่แค่รัน toy benchmark อีกแล้ว มันตอบคำถามที่ยังไม่มีใครตอบได้ในทางเคมีได้แล้ว
+2. **PQC migration 2029 deadline ไม่ใช่ alarm overpromise** — มาจาก Google researcher เอง algorithm efficiency พัฒนาเร็วกว่าที่อุตสาหกรรมประเมินไว้มาก
+3. **Quantum + AI เร่งกันสองทิศ** — AI ช่วยให้ quantum chip ทำงานได้ดีขึ้น quantum ช่วยให้ AI มี synthetic training data ที่ classical สร้างไม่ได้
+
+ส่วนหนึ่งของ session นี้รู้สึกห่างจากงานประจำวัน — แต่อีกส่วน โดยเฉพาะ cryptography กับ PQC deadline แตะระบบที่ engineer ส่วนใหญ่ทำงานกับมันอยู่ทุกวัน
+
+---
+
+Original session: [Building the Quantum-AI Future — James Manyika & Hartmut Neven, Google I/O 2026](https://youtu.be/yQPnb4gxKRc?si=Sc2JUUJAdfJd13cc)
