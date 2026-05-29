@@ -1,0 +1,189 @@
+---
+title: "The ABCs of Agent Building — Chris Overhalt, Google I/O 2026"
+description: "สรุป session ของ Chris Overhalt ที่ Google I/O 2026 — 6 protocol สำหรับ build agent ที่ใช้งานได้ใน production: MCP, A2A, UCP, AP2, A2UI, AGUI พร้อม end-to-end orchestration trace"
+pubDate: "2026-05-29"
+tags:
+  ["AI", "Software Engineering"]
+heroImage: "/assets/images/blogs/abcs-of-agent-building-google-io-2026/six-protocols-summary.jpg"
+language: "th"
+---
+
+อีก session ของ Google I/O 2026 ที่อยากเก็บมาเขียน — The ABCs of Agent Building โดย Chris Overhalt, Developer Relations Engineer ที่ Google Cloud
+
+มุมที่ session นี้ใช้ practical กว่า session ส่วนใหญ่เรื่อง agent — แทนที่จะพูด framework หรือ vision Chris ลงลึกที่ protocol layer 6 ตัวที่ทำให้ agent ขึ้นจาก toy demo ไปสู่ production ได้
+
+ก่อนเข้าเรื่อง protocol ขอวาง limitation ของ plain agent ที่ Chris ตั้งไว้ก่อน
+
+---
+
+## ทำไม Plain Agent ไม่พอ
+
+Out-of-the-box AI agent ที่รันแค่ instruction prompt และ basic tool call ติดผนังโครงสร้าง — fail ทันทีเมื่อต้อง interact กับ legacy commerce system, coordinate กับ peer agent, execute financial transaction หรือ render UI
+
+ปัญหามาจาก — Legacy web API ถูกออกแบบสำหรับ human-in-the-loop เป็นหลัก (สมมติว่ามีคนกดปุ่ม Buy เอง อ่าน storefront ด้วยตา พิมพ์ form ด้วยมือ)
+
+พอ baseline agent ที่ไม่มี standardized protocol ถูกสั่งให้ manage environment ซับซ้อน (เช่น check stock ครัวร้านอาหารแล้วสั่งของจาก wholesale supplier) มัน default ไป hallucinate — inventory ลอย, ราคาลอย, checkout confirmation ลอย ๆ
+
+Chris วาง 6 protocol ที่ปิดช่องว่างนี้ทั้งหมด
+
+![6 protocols summary - what each agent gains](/assets/images/blogs/abcs-of-agent-building-google-io-2026/six-protocols-summary.jpg)
+
+---
+
+## Protocol 1: Model Context Protocol (MCP) — Dynamic Tool Discovery
+
+**ปัญหา**: hard-code wrapper สำหรับ API แต่ละตัว และ JSON schema ของ tool ทุก service ทำให้ tool sprawl บาน model reasoning เริ่มเสื่อม
+
+**Solution ของ MCP**: decouple agent ออกจาก fixed tool definition Agent connect เข้า centralized MCP server ที่ publish tool catalog ของตัวเอง runtime
+
+**ADK Implementation**:
+
+```python
+agent.register_mcp_server("wholesale://inventory-db-cluster")
+agent.register_mcp_server("wholesale://recipes-and-procedures")
+agent.register_mcp_server("wholesale://supplier-email-nexus")
+```
+
+ข้อดีคือ swap data source ได้เร็วระหว่าง prototyping โดยไม่ต้องเขียน bespoke API integration code
+
+---
+
+## Protocol 2: Agent-to-Agent Protocol (A2A) — Standardized Delegation
+
+**ปัญหา (Siloed Expertise)**: master agent ตัวเดียวไม่มี domain knowledge ลึกพอที่จะ optimize ทุกเรื่อง (real-time seafood pricing, shipping logistics, food safety grade) expert พวกนี้อยู่ใน agent เฉพาะทางที่แต่ละทีมทำคนละ framework
+
+**Solution ของ A2A**: discovery card ที่ host ที่ /.well-known/a2a — card บอกว่า agent ตัวนี้เชี่ยวชาญอะไรและรับ parameter อะไรบ้าง
+
+**ADK Implementation**:
+
+```python
+my_specialist_agent.to_a2a(endpoint="/agent-card")
+
+response = agent.send_message(
+    target_url="https://logistics-agent.corp/well-known/a2a",
+    message="Can salmon order ID 9812 be routed for delivery by 17:00:00 PST?"
+)
+```
+
+ผลลัพธ์ — agent mesh network ที่ decoupled, agent หา-เจรจา-delegate task ให้ peer ได้โดยไม่ต้องเข้าใจ framework ปลายทาง
+
+---
+
+## Protocol 3: Universal Commerce Protocol (UCP) — Machine-Readable Storefront
+
+**ปัญหา**: agent navigate HTML storefront แบบ consumer ได้ไม่ดี — scrape frontend, เดาตำแหน่งปุ่ม, parse layout วุ่นวาย error rate สูงตอน checkout
+
+**Solution ของ UCP**: mandate path มาตรฐาน /.well-known/ucp ที่แปลง merchant entity ทั้งราย ให้เป็น machine-readable format
+
+**Implementation**: strongly typed JSON endpoint สำหรับ catalog ingestion, item discovery, cart configuration, และ order placement เปลี่ยน brittle web scraping เป็น HTTP interaction ที่ predictable ตาม transaction schema
+
+---
+
+## Protocol 4: Agent Payments Protocol (AP2) — Cryptographic Fiscal Guardrail
+
+**ปัญหา**: ส่ง credit card number หรือ bank credential เข้า context window พร้อม natural language constraint อย่าง "do not spend more than $500" สร้าง security risk, ไม่มี audit trail, และเปิด financial exposure ใหญ่
+
+**Solution ของ AP2**: hard programmatic boundary ผ่าน Typed Mandate และ cryptographic validation อัตโนมัติ:
+
+- **Checkout Mandate** — registry ของ merchant endpoint ที่ pre-approved ห้ามแก้ runtime
+- **Payment Mandate** — กำหนด spending constraint, authorized payment mechanism, และผูก transaction กับ explicit human authorization key
+
+**Implementation**: ถ้า agent พยายาม route transaction ไป vendor ที่ไม่อยู่ใน list, protocol kill checkout ที่ network layer ทันที พอ compliance validate ผ่าน AP2 ออก receipt ที่ cryptographically signed เป็น audit trail
+
+---
+
+## Protocol 5: Agent-to-User Interface (A2UI) — Dynamic Primitive Rendering
+
+**ปัญหา**: return text block ใหญ่ ๆ user experience แย่ ในขณะเดียวกัน hard-code frontend template สำหรับทุก response pattern สร้าง frontend engineering debt มหาศาล
+
+**Solution ของ A2UI**: layout registry ที่มี 18 foundational UI primitive (card, list, button, slider, text block, date picker, ...)
+
+Agent ไม่ generate HTML/JS ดิบ มัน evaluate user context แล้ว output declarative JSON schema:
+
+```json
+{
+  "surface": "modal-overlay",
+  "component_tree": {
+    "type": "comparison_card",
+    "primitives": ["text_block", "urgency_slider", "action_button"]
+  },
+  "data_model": {
+    "title": "Wholesale Salmon Vendor Evaluation",
+    "slider_value": 90
+  }
+}
+```
+
+ข้อดี — JSON เดียวกัน render บน Lit, Angular, Flutter ได้หมดผ่าน client-side interpretative engine ของแต่ละ platform Layout กับ data แยกกันชัด
+
+---
+
+## Protocol 6: Agentic Graphical User Interface (AGUI) — Asynchronous Streaming State
+
+**ปัญหา**: agent chain ระยะยาว (เช่น reasoning 15,000 step) ใช้เวลานาน นั่งจ้อง spinner 45 วินาที human experience แย่
+
+**Solution ของ AGUI**: standardize streaming ของ execution trace event จาก background agent เข้า client view layer
+
+**ADK Implementation**: ห่อ execution model ด้วย ADK agent framework ได้ pipeline event ที่ push typed messaging packet (text_message_content, tool_call_result, run_finished) เข้า frontend canvas แบบ real-time
+
+---
+
+## End-to-End Orchestration Trace
+
+Chris demo flow ที่ทั้ง 6 protocol ทำงานในคำสั่งเดียว:
+
+1. **AGUI** เปิด live connection stream initialization event ขึ้น dashboard
+2. **MCP** server connection ดึง inventory metric เจอว่า stock salmon หมด
+3. **A2A** target remote pricing และ logistics agent ดึง market cost และ route constraint ปัจจุบัน
+4. **UCP** ingest supplier catalog schema สร้าง non-human checkout request file
+5. **AP2** intercept request, check ตาม financial mandate ของเจ้าของร้าน, authorize payment, ออก signed receipt
+6. **A2UI** สร้าง side-by-side comparison matrix จาก 18 primitive render live tracking dashboard บน monitor user ทันที
+
+End-user request เดียวเดินทางผ่าน 6 protocol แบบ transparent และ structured
+
+---
+
+## Real-World Applications ที่อยากลองต่อ
+
+Chris demo restaurant scenario แต่ pattern เดียวกัน apply กับ enterprise architecture อื่นที่มี value สูงกว่าได้ สามตัวอย่างที่เก็บกลับมาคิดต่อ
+
+### High-Net-Worth Wealth Management Agent
+
+- **MCP** — hook เข้า core banking ledger, market data stream, tax compliance engine
+- **A2A** — orchestrator query Risk Assessment Agent เพื่อ compute portfolio variance และ Tax Optimization Agent เพื่อประเมิน capital gains liability
+- **AP2 + UCP** — UCP execute trade order ผ่าน private financial market, AP2 enforce compliance mandate (กัน transaction ที่เกิน daily liquidity limit หรือผิด localized international restriction)
+- **A2UI** — wealth dashboard ที่ render asset allocation pie chart และ slider ปรับ risk tolerance ได้ทันที
+
+### Decentralized Smart Grid Optimization Agent
+
+- **MCP** — connect time-series database ของ regional IoT power consumption, industrial battery reserve, weather telemetry
+- **A2A** — local sub-station node agent เจรจา capacity distribution bidirectional balance grid surge
+- **UCP + AP2** — automate spot-market energy procurement พอ deficit ถูก predict, UCP buy capacity จาก green wholesale provider, AP2 token execute payment ภายใน micro-transaction budget
+- **A2UI** — stream grid load map, outage isolation alert, infrastructure health metric ให้ municipal engineer
+
+### Automated Clinical Trial Enrollment Agent
+
+- **MCP** — connect anonymized Electronic Health Record repository, clinical trial matching parameter, hospital inventory tracking
+- **A2A** — coordinate Oncology Specialist Agent ที่ parse genomic data กับ Insurance Eligibility Agent ที่ confirm coverage
+- **UCP + AP2** — UCP discover pharmaceutical provider, AP2 cryptographic signature satisfy medical compliance และ hospital budget authorization
+- **A2UI** — patient onboarding screen, treatment timeline calendar, dosage monitoring form สำหรับ clinical coordinator
+
+---
+
+## ปิดท้าย
+
+ที่เก็บกลับมาจาก session นี้
+
+มุมที่ Chris เลือก present เป็น protocol mindset ไม่ใช่ framework — session ส่วนใหญ่เรื่อง agent มักจบที่ tool หรือ framework Chris ถอยขึ้นไปอีกชั้น โฟกัสที่ contract และ protocol ที่ agent ต้องใช้คุยกับ data, peer agent, commerce, payment, UI, และ user สุดท้าย
+
+ถ้าเก็บได้สามอย่าง:
+
+1. **Plain agent ที่ไม่มี protocol → hallucinate** Inventory, ราคา, checkout ที่ลอย ๆ เกิดเพราะ context ไม่ถูก wire เข้ากับ system ที่ใช้งานอยู่
+2. **Authorship → Orchestration ผ่าน protocol layer** Bottleneck ของ production agent อยู่ที่การต่อ context layer ที่ structured มากกว่าการเขียน prompt
+3. **Protocol stack เปิดทาง agent mesh** A2A, UCP, AP2 ที่มาเป็น public standard ทำให้ agent ของแต่ละองค์กรคุยกันได้โดยไม่ต้องเขียน custom integration
+
+Session นี้ practical ที่สุดของชุด Google I/O 2026 ที่ดูมา — ถ้ากำลังออกแบบ production agent stack ที่บริษัท นี่คือ session แรกที่ควรกลับไปดูซ้ำ
+
+---
+
+Original session: [The ABCs of Agent Building — Chris Overhalt, Google I/O 2026](https://youtu.be/rjoMZyxncUI?si=INkD6GQxoV9jogsi)
