@@ -1,0 +1,220 @@
+---
+title: "Developer Craft + Future of Software Dev — สอง Session จาก Google I/O 2026"
+description: "สรุปสอง session ที่เลือก combine กันจาก Google I/O 2026 — Fireside Chat on the Evolution of the Developer Craft กับ The Future of Software Development แล้วลากเส้น common thread ที่ลึกกว่าคำว่า AI ทำงานแทน"
+pubDate: "2026-05-29"
+tags:
+  ["AI", "Career", "Software Engineering"]
+language: "th"
+---
+
+โพสต์นี้ต่างจาก session recap ก่อนหน้านี้ของผม — เลือก combine สอง session ของ Google I/O 2026 ไว้ด้วยกัน เพราะดูจบติด ๆ กันแล้วรู้สึกว่ามันพูดเรื่องเดียวกันคนละมุม รวมไว้ในโพสต์เดียวเลยมีค่ามากกว่าแยกกัน
+
+Session 1: A Fireside Chat on the Evolution of the Developer Craft โดย Aza, Sierra, Addy และ Richard (moderator)
+
+Session 2: The Future of Software Development โดย Tulsi Doshi (Model Lead, Google DeepMind), Michael (Gemini Enterprise Agent Platform Lead), Varun (Anti-Gravity Tooling Lead) และ Logan (moderator)
+
+Session 1 พูดมุมคน — craft, mentorship, identity Session 2 พูดมุมเครื่อง — model, harness, enterprise architecture พอเอามาวางทาบกัน common thread ของทั้งสองโผล่ออกมาเอง
+
+---
+
+## Session 1: Evolution of the Developer Craft
+
+### Redefining Seniority
+
+Seniority เคยถูกนิยามด้วยความสามารถในการเขียน code ซับซ้อนและ solve niche optimization ที่คนอื่นทำไม่ได้ ในปี 2026 นิยามเปลี่ยน — กลายเป็น architectural intuition ที่ลึกพอจะอ่าน, critique, และเข้าใจ code ที่ตัวเองไม่ได้เขียน
+
+Senior engineer ยังต้องรับผิดชอบเรื่อง trade-off analysis (เช่น balance security กับ latency constraint) อยู่ แต่บริบทเปลี่ยนไปแล้ว Junior graduate ที่เข้าใหม่ถือ AI execution engine ที่ใหญ่มาก expectation ของ judgment ระดับ senior หล่นลงมาถึง entry-level ทันทีตั้งแต่ day one
+
+### Mentorship ที่ต้องถูก codify
+
+Addy ย้ำว่า job description ของ senior ในปี 2026 ต้องดูต่างจากเดิมทั้งหมด — senior ที่นั่ง spawn 20 background agent ปั่น feature quota แล้วทิ้ง junior upskilling ไว้ข้าง ๆ จะสร้าง knowledge gap ที่ใหญ่มากในทีม Mentorship ต้องถูก codify เข้าไปใน expectation ประจำวันของ senior ชัดเจน ไม่ใช่ option
+
+### Role Blurring เกิดเร็วกว่าที่คิด
+
+Sierra เล่า internal study ที่ทีม cross-functional (engineer, UX researcher, data scientist) ลองใช้ AI tool ทำงานทั้งสัปดาห์ ผลที่ออกมาคือ role พลิก — senior engineer ใช้เวลาทั้งสัปดาห์เขียน technical design spec กับ documentation ส่วน UX researcher ใช้เวลาทั้งสัปดาห์ generate และ deploy code
+
+ทุกคน operate ที่ระดับ senior ใน discipline ของตัวเอง และระดับ junior ใน discipline ข้างเคียง ความเป็น expert มันแกว่งไปมาตาม task มากกว่าตำแหน่ง
+
+### Vibe Coding vs Agentic Engineering
+
+ส่วนนี้ Addy แยกสองคำที่หลายคนมักใช้สลับกัน:
+
+- **Vibe Coding** — describe prototype เข้า LLM window ยก global floor ของการสร้าง software ขึ้นมา เปลี่ยน static UI mockup เป็น interactive URL ในไม่กี่นาที
+- **Agentic Engineering** — practice ที่ rigorous กว่า ฉีด CS fundamentals, system safety, security policy, และ long-term maintainability เข้าไปใน build เพื่อ battle-harden มันให้พร้อม production
+
+สองอย่างถูกเรียกต่างกัน เพราะเจตนาคนละแบบ
+
+### Documentation กลายเป็นภาระเร่งด่วน
+
+Shift ไป agent-centric work เหมือนการ double หรือ triple head count ในข้ามคืน แต่ทุกคนที่เข้ามาใหม่เป็น junior
+
+ทีมที่ผ่านมา fail เรื่อง documentation ได้เพราะ pipeline มนุษย์ที่ช้าทำให้ knowledge transfer ค่อย ๆ เกิดเองได้ผ่านการคุยกัน พอ inject agent เป็น mass ทีมต้องเร่ง generate machine-readable documentation ที่สะอาด เพื่อให้ agent เข้าใจ constraint ของ environment ที่มีอยู่
+
+### Cognitive Debt และ Cognitive Surrender
+
+Addy ชี้สอง hazard ที่กว้างกว่า technical debt:
+
+- **Cognitive Debt** — memory และ system intuition ของ engineer ค่อย ๆ กร่อนลง เพราะ offload debugging และ discovery ให้ LLM ไปเรื่อย ๆ
+- **Cognitive Surrender** — หยุดคิด critical ไปเลย merge PR ซับซ้อนเพราะคิดว่า agent บอกถูกแล้ว หรือสมมติว่า agent จะ fix เองหากพังใน production สร้าง architectural house of cards ที่พังครั้งใหญ่ได้
+
+### Architectural Partitioning ที่ทุกคนต้องคิดเอง
+
+คำถาม partitioning ที่เคยอยู่ระดับ architect — ปัจจุบันย้ายลงมาให้ทุก developer ต้องคิดทันที: ปัญหานี้ encapsulate ใน agent เดียว หรือ split? เอา background agent หนึ่งตัวทำหนึ่งวัน หรือ coordinate 24 agent ทำงานขนาน 1 ชั่วโมง? การตัดสินใจระดับ macro ย้ายลงมาเป็นส่วนหนึ่งของ daily work
+
+### Deskill บน Syntax และ IDE Config
+
+Aza เปิดมุมที่ practical — developer ต้อง fall out of love กับ programming language syntax และ hyper-customized IDE config
+
+Aza บอกว่าเขาเขียน complex Lisp ใน Emacs config เมื่อวานเพราะสนุก แต่ทำงานทั้งสัปดาห์เขียน Go system โดยไม่ต้องจำ syntax ทุก detail — อ่าน concept, evaluate trade-off, แล้ว delegate การ format syntax ให้ AI engine ทำ Sierra เสริมว่าควร descale ในทุกอย่างที่สร้าง localized workflow friction (เช่น tune editor preference เป็นชั่วโมง)
+
+### Adversarial Mentor Pattern
+
+Aza เล่า daily habit ของตัวเอง — ใช้ Gemini และ internal tooling เป็น mentor ที่ aggressive และ critical ก่อน push code ทุกครั้ง prompt ที่เขาใช้คือ:
+
+> "Do not be nice. Tell me where I am being an idiot, what edge cases I completely overlooked, and what architectural paths I am going to fail to understand in production."
+
+Offload critique ไปให้ private machine ทำให้ทิ้ง ego ของมนุษย์ออกได้ และยกระดับ logic ที่ ship ออกไป
+
+### Articulated Prompts แทน Caveman Queries
+
+Developer ต้องเลิก habit เก่าที่ query แบบ caveman — ผสม keyword สั้น ๆ Modern context window ต้องการประโยคที่ complete, มี punctuation ครบ, และสื่อสาร environmental constraint กับ logical intent อย่างชัดเจน
+
+### Takeaway ของ Session 1
+
+Sierra แนะนำให้อ่าน paper foundational ของ Dr. Margaret-Anne Storey เรื่อง Three Models of Debt (Technical Debt, Cognitive Debt, Intent Debt) เพื่อเข้าใจวิธี keep human in the loop ระยะยาว
+
+Addy ปิดด้วยการเตือนให้แยกระหว่างความรู้สึก hyper-busy ตอนรัน 20 background agent ออกจากการ produce business value ระยะยาวที่ใช้งานได้
+
+---
+
+## Session 2: The Future of Software Development
+
+### Gemini 3.5 Flash — Flash ในความหมายใหม่
+
+DeepMind launch Gemini 3.5 Flash — model ที่เคลม most capable ของทีม Benchmark show ว่ามัน outperform legacy flagship อย่าง Gemini 3.1 Pro ทั้งใน multi-turn tool utilization, long-running agentic coding lifecycle, และ complex financial analysis
+
+ที่น่าสนใจกว่าคือคำว่า Flash ถูก redefine — เมื่อ 6 เดือนก่อน Flash หมายถึง lightweight model สำหรับ chat latency ต่ำหรือ parse UI query ง่าย ๆ ปี 2026 Flash หมายถึง engine ที่ manage hundreds of sequential tool call และ process ที่ 200+ token/sec เร็วกว่า frontier competitor ทุกตัวในตลาด
+
+### 15,000 Invocation OS Case Study
+
+Varun share milestone ภายในที่ทำให้ผมสะดุดที่สุดของ session — ใช้ Gemini 3.5 Flash design และเขียน operating system layout จากศูนย์ Execution chain ต้องใช้ **15,000 sequential model invocation** รัน background ทั้งหมด
+
+Model หยุดเพื่อ compute, think, evaluate environmental state นาน 30–40 วินาทีก่อนจะ continue downstream — pattern ที่ทำให้ agentic work ระยะยาว stable ได้
+
+### Vertex AI → Gemini Enterprise Agent Platform
+
+Michael เล่าทำไมต้อง rebrand — ตลาดเลิกหา chat-bubble overlay แล้ว Company ย้ายไป precision-engineer multi-layered background architecture ที่ driven โดย long-running agent ชื่อใหม่สะท้อนตลาดที่เปลี่ยน
+
+### 3 Production Archetype ของ Enterprise Agent
+
+Michael แบ่ง enterprise agent ปัจจุบันเป็น 3 archetype ที่ validated แล้วใน production:
+
+1. **Intelligence-Bound / Asynchronous** — coding workflow ซับซ้อนที่ assign Jira ticket ให้ agent ผ่าน CLI แล้วปิด laptop ได้ Agent ไปทำงานเอง spawn sub-agent เขียน code popup chat ขึ้นมาเฉพาะตอน encounter missing context หรือ business constraint ที่ไม่ได้เขียนไว้
+2. **Strict Time-Budget** — flow operational อย่าง real-time retail return (เช่น Verizon customer support) Agent ต้อง parse multi-layered company policy, assess customer record, execute authorization ภายใน 250 millisecond ไม่งั้นเสีย user
+3. **Infinite-Scale Moderation** — pipeline ระดับ internet-scale (เช่น content moderation, Google Search AI overview) ในกรณีนี้ accuracy ถูก cross-reference กับ token cost เพื่อ manage user compute ที่ scale ได้อย่างปลอดภัย
+
+### Legacy Codebase vs Aesthetic Polish
+
+DeepMind validation framework ต้อง evaluate dimension ที่ต่างกัน — model อาจมี aesthetic polish สูงเลย generate clean 0-to-1 web prototype สำหรับ vibe coder ได้ แต่ fail สนิทเมื่อต้องเข้า enterprise monorepo ขนาดล้านบรรทัดที่ coupled กันแน่น
+
+Legacy system ต้องการ contextual longevity ลึก มากกว่า visual output formatting
+
+### Product–Model–Harness Symbiosis
+
+Frontier model สร้างได้ ต้องการ flywheel แน่น 3 ขา — model, product environment, execution harness
+
+Early harness เคยเป็นแค่ script รัน bash command ปัจจุบัน harness ให้ main agent spawn specialized sub-agent แบบ async ได้ ที่น่าสนใจคือ DeepMind ใช้ developer platform ตัวเดียวกันภายในของตัวเอง ทำให้ researcher รัน RL บน execution harness ได้เลย bridge gap ระหว่าง synthetic benchmark number กับ qualitative engineering friction ใน environment ที่ใช้งานเอง
+
+### "Fail Until the Model Succeeds"
+
+Michael ตั้ง principle ที่ติดในหัวที่สุดของ session — view model-harness architecture เหมือน employee
+
+มี advantage ที่ใหญ่มากในการ build system ที่ fail วันนี้เพราะ model ยังไม่ฉลาดพอ มากกว่า fail เพราะ architect harness ผิด พอ model upgrade downstream ระบบจะ transition เป็น production viable ทันทีโดยไม่ต้อง rewrite core
+
+### Qualitative Benchmark
+
+Algorithmic eval แบบเดิมเริ่มตามไม่ทัน product reality DeepMind highlight benchmark ภายนอกอย่าง Vending Bench — วัด intelligence ของ model จากความสามารถในการ manage online store ที่ทำกำไรได้หลายวัน
+
+Metric ใหม่เริ่ม trace trait อย่าง lazy, boastful, overeager ของ model ระหว่าง peer development ระยะยาว
+
+### App-Interface Collapse
+
+Panel debate structural shift ของ computing — AI จะผลักให้เกิด app เฉพาะทางเป็นล้านอัน หรือ collapse software ลงเป็น singular ubiquitous interface? Consensus เอนไปทาง shift ใหญ่ — user เชื่อ singular audio/visual canvas ที่ dynamic spawn และ manage agent หลายร้อยตัว hide ไว้ใน background Paradigm การ switch ระหว่าง isolated app แบบเก่าจะหายไป
+
+### Production Wishlist
+
+- **Tulsi (Choreography Bench)** — อยากให้ model มี multi-modal processing ที่ FPS สูงพอ parse การขยับร่างกายเร็ว ๆ ของคน เช่น choreography หรือ lyricality
+- **Michael (3 AM SRE Agent)** — อยาก SRE agent ที่มี credential สูงและ long-running เพื่อ stabilize distributed cloud architecture ใหญ่ ๆ (เช่น Airbnb) ระหว่าง critical outage fill context window แบบ real-time ผ่าน streaming data pipeline ที่ hook เข้า Kubernetes cluster ลด human query-and-response diagnostic latency
+
+---
+
+## Common Thread — IR Bottleneck เหนือ Raw Model Intelligence
+
+วาง session 1 ทาบ session 2 แล้วเห็นข้อสรุปเดียวกัน — **raw model intelligence ไม่ใช่ constraint หลักของ engineering velocity อีกแล้ว Information Retrieval (IR) bottleneck ต่างหากที่เป็นจุดชี้ขาด**
+
+ทั้งสอง panel ยืนยันแยกกันว่า — difference ระหว่าง engineering org ที่ scale ได้สำเร็จ กับ org ที่ collapse คือ design ของ execution harness และ context access layer
+
+### Context Architecture Divide
+
+เมื่อ frontier model อย่าง Gemini 3.5 Flash scale ผ่าน 15,000 background invocation มัน execute code perfect ได้สบาย — ถ้า context window ถูก populate มาดี
+
+Failure point เกิดที่ product harness feed data ไม่อัปเดตหรือไม่ครบ:
+
+- **Technical Context (System Problem)** — Sierra ย้ำว่า double team ด้วย background agent ไม่มีความหมาย ถ้า documentation, schema, micro-architectural decision ภายในไม่ได้เขียนไว้หรือกระจัดกระจาย Bottleneck คือการ retrieve และ organize data นี้ให้ machine
+- **Business Context (Human Problem)** — Michael ชี้ว่า differentiator ของ enterprise agent (เช่น banking KYC, retail return policy) อยู่ที่ความสามารถขององค์กรในการ credential agent ให้ query sensitive human data system ได้อย่างปลอดภัยใน 250 millisecond โดยไม่มี risk exfiltration มากกว่าเรื่อง math processing capacity ของ model
+
+### Bottleneck ที่ย้ายจาก Authorship → Orchestration & Querying
+
+- Authoring code = commodity ราคาถูก รัน 200+ token/sec
+- งาน engineering ที่มี value สูงตอนนี้คือการ design multi-agent environment ที่ master agent partition ปัญหาได้แม่นยำ, call tool เฉพาะทาง, maintain memory state ข้าม streaming distributed log, และ update shared markdown skill file อัตโนมัติ
+
+---
+
+## Personal Take
+
+จากการดูสอง session ติด ๆ กัน มีบางอย่างที่อยากเพิ่มเติม
+
+### Cognitive Debt คือความเสี่ยงระดับ existential
+
+Cognitive Debt และ Cognitive Surrender ของ Addy ไม่ได้เป็นปัญหา academic — ถ้า 75% ของ codebase ถูกเขียนโดย AI และ engineer ทุกคนยกระดับ altitude ไปอยู่ที่ spec แล้ว ใครจะลงไป engine room ตอนระบบ fail ระดับ catastrophic?
+
+ถ้า entry-level grad ข้าม discipline ของการ parse compilation error, debug memory leak, สู้ syntax ด้วยตัวเอง พวกเขาไม่มี baseline intuition ที่จะมอง structural flaw ออก องค์กรกลายเป็น hostage ของ tool ของตัวเอง — executive layer เขียน spec, AI layer ปั่น code, middle tier ของ human developer หา deep regression ไม่เจอเพราะไม่เข้าใจ systems logic ข้างใต้
+
+### "Fail Until Model Succeeds" คือ principle ที่ติดหัวที่สุด
+
+Principle ของ Michael เป็นมุมมองที่ pragmatic ที่สุดของทั้งสอง session — อย่าทุ่ม engineering capital สร้าง proprietary agent orchestrator เพราะ Google, OpenAI, Anthropic จะทำให้ infrastructure ที่ custom ไว้ obsolete ที่ API level เรื่อย ๆ
+
+งานที่ควรทำคือ engineer clean data pipeline, normalized schema, automated integration testing layer (เช่น Playwright ที่ agent gen ให้), specification document ที่ ironclad design environment ให้มัน feed clear context ลงไปใน frontier API ได้อย่างเป็นระบบ
+
+ถ้า architecture clean และ fail วันนี้เพราะ model พลาด nuanced reasoning เฉย ๆ ตำแหน่งของทีมถือว่า winning — เมื่อ DeepMind release Gemini 4.0 หรือ Flash variant ใหม่ใน quarter ถัดไป product จะ viable production ทันทีโดยไม่ต้องเขียน code เพิ่ม
+
+### Decouple Engineering Identity ออกจาก Volume ของ Syntax
+
+ตอน role ของ UX researcher และ PM blur เข้ามาทาง production developer เผชิญ identity threat ที่ใหญ่ ถ้า engineering manager ยัง reward PR count, commit frequency, line of code accepted — system แตกแน่นอน ทีมจะ accept garbage AI output เพื่อ hit quota และ technical debt ระเบิด
+
+Engineer authority ต้องย้ายไปอยู่ที่ Value Translation, Architectural Design, และ Structural Evaluation Adversarial Mentor habit ของ Aza ใช้ได้เลย — บังคับ machine attack spec ของตัวเองก่อน execute Reward developer ที่ใช้ engineering depth ออกแบบ opinionated guardrail ที่กัน agent generate spaghetti code ตั้งแต่ต้น
+
+---
+
+## ปิดท้าย
+
+ที่เก็บกลับมาจากการดูสอง session คู่กัน
+
+ทำไมเลือก combine ทั้งสอง — เพราะแยกกันมัน deliver message ครึ่งเดียว Session 1 พูด human side: cognitive debt, mentorship, role blurring Session 2 พูด machine side: model harness, flash redefinition, enterprise archetype
+
+Common thread มันโผล่ตอนวางคู่กัน — Information Retrieval bottleneck ที่ harness และ context layer สร้างขึ้น คือจุดชี้ขาดของทั้งฝั่งคนและฝั่งเครื่อง
+
+ถ้าเก็บได้สามอย่าง:
+
+1. **AI ใช้ได้ดี = เรื่อง context architecture มากกว่าเรื่อง model** Documentation, schema, policy ภายในต้องสะอาดและ machine-readable พอที่ agent จะอ่านเข้าใจ
+2. **"Fail until model succeeds" คือกลยุทธ์ของทีมที่คิดยาว** Architect environment ให้ clean ปล่อยให้ model ที่ upgrade downstream เติมเต็มที่เหลือ ห้าม over-invest ใน orchestration ที่ frontier API จะมาแทน
+3. **Cognitive debt เป็นความเสี่ยงระดับองค์กร** ไม่ใช่เรื่องส่วนตัวของ engineer คน ๆ หนึ่ง culture ของทีมต้องไม่สอนให้ปิดสมองและรับ AI output แบบไม่ verify
+
+Victory condition ของ engineer ที่อยากโตในยุคนี้ — optimize architecture ให้ engineer ยัง maintain intellectual control เหนือระบบได้ตอน scale ขึ้นแบบ exponential การ optimize ให้ code machine ทำงานเร็วเป็นเรื่องรอง
+
+---
+
+Original sessions:
+
+- [A Fireside Chat on the Evolution of the Developer Craft](https://youtu.be/VTYx7Ex-0bA?si=rmErYS_0NEOYNlqj)
+- [The Future of Software Development](https://youtu.be/v0RQiNJ9nhw?si=FHqGiHlNzyMfADeE)
