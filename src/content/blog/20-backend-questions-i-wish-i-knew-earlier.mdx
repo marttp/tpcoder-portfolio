@@ -22,19 +22,32 @@ Most application bottlenecks I have encountered trace back to the database layer
 
 ### 1. What happens when you put an index on a random UUID column?
 
-Random UUIDs cause B-tree page fragmentation because inserts land everywhere instead of sequentially. The database ends up doing constant page splits and disk writes. Sequential IDs or time-sorted UUIDs (like ULID or UUIDv7) keep inserts appending to the end of the index, which is dramatically more efficient.
+Random UUIDv4 inserts land all over the B-tree instead of appending in order.
+
+- Causes constant page splits, fragmentation, and extra disk I/O as tables grow.
+- Fix: use sequential keys or time-sorted UUIDs (ULID, UUIDv7) so inserts append to the tail of the index.
 
 ### 2. How do you paginate through 50 million rows without OFFSET?
 
-OFFSET scans and discards rows before returning results. At page 10,000, the database still reads the first 9,990 pages just to throw them away. Keyset (cursor-based) pagination uses a WHERE clause on an indexed column to jump straight to the next batch — query time stays flat regardless of depth.
+`OFFSET 100000` still reads and discards the first 100k rows before returning anything — the deeper the page, the slower the query.
+
+- Use keyset (cursor) pagination: `WHERE id > :last_seen ORDER BY id LIMIT n` on an indexed column.
+- Query time stays flat at any depth. Tradeoff: you lose random jump-to-page-N.
 
 ### 3. When would you use a composite index instead of two separate indexes?
 
-When queries frequently filter on two columns together, two single-column indexes are usually wasteful. The query planner typically picks only one index per table scan. A composite index on (A, B) lets the database filter on both in a single seek. Column order matters — the leftmost prefix must match the query pattern.
+When queries filter on two columns together.
+
+- Two single-column indexes: the planner usually picks only one per scan.
+- A composite index on (A, B) filters both in a single seek.
+- Column order matters — only the leftmost prefix is usable. (A, B) helps `WHERE A` and `WHERE A AND B`, but not `WHERE B` alone.
 
 ### 4. What is the N+1 query problem and how do you fix it?
 
-The classic ORM trap: fetch a list of entities, then loop and fire one query per entity for related data. 100 users = 101 queries. The fix is eager loading (JOIN FETCH in JPA, .includes() in Rails) or explicit joins — anything that batches the related data into one or a small number of queries.
+One query for the list, then one query per row for its related data — 101 queries for 100 rows.
+
+- Fix: eager load or batch — `JOIN FETCH` (JPA), `.includes()` (Rails), DataLoader (GraphQL).
+- Watch ORMs that lazy-load relations by default; the trap is invisible until it's under load.
 
 ---
 
@@ -44,19 +57,36 @@ Distributed systems do things at the same time. If you don't manage that timing,
 
 ### 5. How do you prevent double booking a ticket in a distributed system?
 
-Check-then-book is a race condition. Two requests read available simultaneously, both pass the check, both book. Application-level mutexes don't work across multiple servers. The fix is database-level: SELECT FOR UPDATE to lock the row, or optimistic locking with a version column that rejects stale updates.
+Check-then-book is a race: two requests both read "available," both write.
 
-### 6. What is the difference between repeatable read and serializable isolation?
+- Application-level locks don't span multiple servers.
+- Fix at the database: `SELECT ... FOR UPDATE` (pessimistic) or a version column (optimistic) that rejects stale writes.
+- Add a unique constraint on the seat as a hard backstop, regardless of locking strategy.
 
-Repeatable read (Postgres default) prevents dirty reads and non-repeatable reads but allows phantom reads — new rows appearing between reads in the same transaction. Serializable enforces strict ordering as if transactions ran one at a time. Use serializable when correctness matters more than throughput — financial ledgers, inventory systems.
+### 6. What is the difference between read committed, repeatable read, and serializable?
+
+- **Read committed** (Postgres default): each statement sees the latest committed data, so reads can change within a transaction.
+- **Repeatable read**: a stable snapshot for the whole transaction. The SQL standard still allows phantom reads here, but Postgres's MVCC implementation also prevents them.
+- **Serializable**: behaves as if transactions ran one at a time. It may abort with serialization errors you have to retry.
+
+Use serializable when correctness matters more than throughput — financial ledgers, inventory systems.
 
 ### 7. How do you implement a distributed lock without creating a single point of failure?
 
-A single Redis instance works until it goes down, taking your lock with it. Redlock uses multiple independent Redis nodes and requires a majority quorum to acquire a lock. ZooKeeper and etcd use consensus protocols (ZAB, Raft) and handle leader election and lock handoff more robustly. For most cases, Redis with Redlock is pragmatic. For strong guarantees, ZooKeeper or etcd.
+A single Redis instance dies and takes your lock with it.
+
+- Redlock: acquire on a majority quorum across independent Redis nodes.
+- ZooKeeper / etcd: consensus protocols (ZAB, Raft) handle leader election and lock handoff more robustly.
+- Pragmatic default is Redis; reach for etcd/ZooKeeper when you need strong guarantees. Always set a lock TTL so a dead holder doesn't deadlock everyone.
 
 ### 8. How do you implement idempotency for a payment retry endpoint?
 
-Mobile networks drop connections. Clients retry. Without idempotency, a retried payment charges the card twice. The pattern: client sends a unique idempotency key with each request. The server checks if that key was already processed before executing. Store keys in a durable store (database, not just Redis) with a TTL, and return the cached response for duplicate keys.
+Mobile networks drop connections, clients retry, and a retried payment can charge twice.
+
+- Client sends a unique idempotency key per logical request.
+- Server: if the key was already processed, return the stored response; otherwise process and store the result against the key.
+- Keep keys in a durable store (a database, not just Redis) with a TTL.
+- Put a unique constraint on the key so concurrent retries can't double-insert.
 
 ---
 
@@ -66,19 +96,32 @@ Caching makes things faster. It also introduces new failure modes that are easy 
 
 ### 9. What causes a cache stampede and how do you prevent it?
 
-A high-traffic cache key expires, and thousands of requests miss the cache simultaneously. All of them hit the database at once. Prevention options: probabilistic early expiration (refresh slightly before TTL ends), a per-key lock so only one thread regenerates the cache while others wait, or pre-warming cache on deploy.
+A hot key expires and thousands of simultaneous misses hammer the database at once. Options:
+
+- Per-key lock: one request rebuilds the value while the others wait or serve stale.
+- Probabilistic early refresh: regenerate slightly before the TTL ends.
+- Pre-warm the cache on deploy.
 
 ### 10. If you cache a user profile, how do you invalidate it when they update their email?
 
-Two common patterns. Write-through: update cache and database together. Cache-aside: application checks cache first, misses go to database, then populate cache. For invalidation, explicitly deleting the cache key on update gives immediate consistency. Setting a short TTL is simpler but creates a window of stale reads. I tend to use explicit deletion for user-facing data and TTL for less critical content.
+- **Write-through**: update cache and database together.
+- **Cache-aside**: reads check the cache, misses go to the database and then populate it.
+- For invalidation, deleting the key on update gives immediate consistency; a short TTL is simpler but leaves a stale window.
+- Rule of thumb: explicit delete for user-facing data, TTL for low-stakes content.
 
 ### 11. Why might putting Redis in front of your database actually slow your system down?
 
-Adding a network hop to check Redis costs 1-3ms per request. If your cache hit rate is low (say 20%), you pay that penalty on every request and still hit the database 80% of the time. Net result: slower than querying the database directly. Monitor cache hit ratio. If it drops below ~80%, the cache layer may be hurting more than helping.
+Every cache check adds a 1-3ms network hop.
+
+- With a low hit rate (say 20%), you pay that hop on every request and still hit the database most of the time — net slower than querying directly.
+- Monitor the hit ratio; below ~80% the cache layer may cost more than it saves.
+- Caches pay off on hot, read-heavy keys, not on uniformly random access.
 
 ### 12. What eviction policy makes sense for a session store versus a content feed?
 
-Caches run out of memory and must evict something. LRU (Least Recently Used) works well for content feeds — users rarely revisit old items. LRU is dangerous for session stores because an active user with a long session might get evicted during memory pressure, logging them out unexpectedly. TTL-based expiration or no-eviction (with a size cap) is safer for sessions.
+- **Content feed**: LRU works well — users rarely revisit old items.
+- **Session store**: LRU is risky — an active user can get evicted under memory pressure and logged out unexpectedly.
+- Prefer TTL-based expiry or no-eviction with a size cap (and enough memory headroom) for sessions.
 
 ---
 
@@ -88,19 +131,33 @@ Your API is a contract with clients you don't control. Changing it safely and pr
 
 ### 13. How do you safely change the payload of a live API without breaking existing mobile clients?
 
-Mobile apps live on devices for years without updates. Removing a field breaks old clients. Options: API versioning via URL path (/v2/) or request headers (Accept: application/vnd.api.v2+json). Additive changes (new optional fields) are backward-compatible. Removing or renaming fields requires a new version with a deprecation timeline for the old one.
+Mobile apps live on devices for years; you can't force an upgrade.
+
+- Additive changes (new optional fields) are backward-compatible.
+- Breaking changes (removing/renaming fields) need a new version via URL path (`/v2/`) or header (`Accept: application/vnd.api.v2+json`), with a deprecation window.
+- Never silently repurpose the meaning of an existing field.
 
 ### 14. What is the difference between a sliding window log and a fixed window counter for rate limiting?
 
-Fixed window: count requests in a time bucket (e.g., per minute). Problem — at the boundary between two minutes, a client can burst double the allowed rate. Sliding window: track timestamps of each request and count only those within the rolling window. Smoother enforcement but higher memory usage since you store individual timestamps instead of a single counter.
+- **Fixed window**: count requests per bucket (e.g., per minute). Cheap, but a client can burst 2x the limit right at the boundary.
+- **Sliding window log**: track per-request timestamps and count only those in the rolling window. Smoother, but higher memory.
+- Middle ground: a sliding window counter (weighted blend of two buckets) — cheap and accurate enough for most cases.
 
 ### 15. How do you design an endpoint that needs to upload a 5GB video file?
 
-Reading 5GB into application memory kills the process. Three practical approaches: streaming uploads where the server pipes chunks directly to storage without buffering the whole file, multipart chunking where the client splits the file into smaller parts uploaded in parallel, or presigned URLs where the client uploads directly to S3/GCS and your server never handles the file content at all.
+Reading 5GB into application memory kills the process. Three practical approaches:
+
+- **Presigned URLs**: the client uploads directly to S3/GCS and your server never touches the bytes (best default).
+- **Streaming**: pipe chunks straight to storage without buffering the whole file.
+- **Multipart chunking**: the client splits the file into parts, uploads them in parallel, and can resume.
 
 ### 16. How do you handle long running tasks in a synchronous API request?
 
-If a PDF generation takes 40 seconds, the client connection will timeout. The async worker pattern: API returns 202 Accepted immediately with a job ID. The client polls a separate status endpoint (or receives a webhook) to check completion. The actual work happens in a background worker process.
+A 40-second PDF generation will time out the client connection. Use the async worker pattern:
+
+- API returns `202 Accepted` immediately with a job ID.
+- Client polls a status endpoint or receives a webhook on completion.
+- The actual work runs in a background worker or queue.
 
 ---
 
@@ -110,19 +167,35 @@ Real systems decouple work. You need to know what happens when those decoupled p
 
 ### 17. Why would you choose RabbitMQ over Kafka, or vice versa?
 
-They solve different problems. Kafka is an append-only distributed log optimized for high throughput, replay, and event streaming. Think of it as a durable, ordered sequence of events. RabbitMQ is a smart broker with flexible routing (exchanges, queues, bindings) optimized for task distribution. If you need to replay events or process streams, Kafka. If you need complex routing and per-message acknowledgment, RabbitMQ.
+They solve different problems.
+
+- **Kafka**: an append-only distributed log — high throughput, ordered, replayable. Good for event streaming, audit trails, and fanning out to many consumers.
+- **RabbitMQ**: a smart broker — flexible routing (exchanges, bindings) and per-message acknowledgment. Good for task queues and complex routing.
+- Need replay or streams → Kafka. Need routing or per-message ack → RabbitMQ.
 
 ### 18. What happens if your Kafka consumer reads a message but fails to commit the offset?
 
-The consumer will re-read the same message on restart. Your processing logic must be idempotent — processing the same message twice should produce the same result. Common pattern: use a unique event ID and check if it has been processed before executing business logic.
+The consumer re-reads the same message on restart — this is at-least-once delivery.
+
+- So your processing must be idempotent.
+- Common pattern: dedupe on a unique event ID before applying business logic.
+- For stronger guarantees, commit the offset and side effects together (transactional outbox / exactly-once).
 
 ### 19. How do you handle poison messages that repeatedly crash your workers?
 
-A malformed message causes a worker crash. The message returns to the queue. Another worker picks it up and crashes. The loop continues. The fix: Dead Letter Queue (DLQ). After N failed attempts, route the message to a DLQ for inspection. Also set retry limits with exponential backoff to avoid flooding the queue with immediate retries.
+A malformed message crashes a worker, gets requeued, crashes the next one, and loops.
+
+- Set a retry limit, then route the message to a Dead Letter Queue for inspection.
+- Add exponential backoff between retries so you don't flood the queue with immediate ones.
+- Monitor DLQ depth — an unusual spike tells you something upstream is broken.
 
 ### 20. How do you ensure messages are processed in the exact order they were sent?
 
-Guaranteeing global order across multiple consumers is impractical — consumer A might take longer on message 1 than consumer B takes on message 2. The practical approach: partition or routing keys. Messages with the same key always go to the same partition and are consumed by a single thread in order. You get per-key ordering without sacrificing parallelism.
+Guaranteeing global order across multiple consumers is impractical — consumer A might take longer on message 1 than consumer B takes on message 2.
+
+- Use partition or routing keys: messages with the same key go to the same partition and are consumed in order by a single thread.
+- You get per-key ordering while keeping parallelism across keys.
+- Tradeoff: a hot key becomes a throughput bottleneck.
 
 ---
 
