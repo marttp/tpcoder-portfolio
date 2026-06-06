@@ -1,0 +1,135 @@
+---
+title: "20 Backend Questions I Wish I Knew Earlier (My Interview Prep Notes)"
+description: "A personal compilation of 20 backend interview questions covering databases, concurrency, caching, APIs, and message brokers — with practical answers from experience and study."
+pubDate: "2026-06-06"
+tags:
+  ["Backend", "Career", "Software Engineering"]
+language: "en"
+translationSlug: "20-backend-questions-i-wish-i-knew-earlier-th"
+---
+
+I came across a post online listing 20 backend interview questions that the author swore by. As I read through them, I found myself nodding along — these are the same concepts that kept coming up in my own study and the conversations I have had with senior engineers.
+
+I don't claim to have mastered all of these. Some I learned the hard way through production incidents, some I am still deepening my understanding of. But I wanted to write them down with my own answers as a study exercise, and maybe it helps someone else who is preparing for backend interviews.
+
+The questions fall into five areas: databases, concurrency, caching, APIs, and message brokers. Each answer is based on what I understand from practice and reading — not textbook definitions.
+
+---
+
+## Databases and Query Performance
+
+Most application bottlenecks I have encountered trace back to the database layer. Knowing how data moves in and out efficiently when tables grow large is non-negotiable.
+
+### 1. What happens when you put an index on a random UUID column?
+
+Random UUIDs cause B-tree page fragmentation because inserts land everywhere instead of sequentially. The database ends up doing constant page splits and disk writes. Sequential IDs or time-sorted UUIDs (like ULID or UUIDv7) keep inserts appending to the end of the index, which is dramatically more efficient.
+
+### 2. How do you paginate through 50 million rows without OFFSET?
+
+OFFSET scans and discards rows before returning results. At page 10,000, the database still reads the first 9,990 pages just to throw them away. Keyset (cursor-based) pagination uses a WHERE clause on an indexed column to jump straight to the next batch — query time stays flat regardless of depth.
+
+### 3. When would you use a composite index instead of two separate indexes?
+
+When queries frequently filter on two columns together, two single-column indexes are usually wasteful. The query planner typically picks only one index per table scan. A composite index on (A, B) lets the database filter on both in a single seek. Column order matters — the leftmost prefix must match the query pattern.
+
+### 4. What is the N+1 query problem and how do you fix it?
+
+The classic ORM trap: fetch a list of entities, then loop and fire one query per entity for related data. 100 users = 101 queries. The fix is eager loading (JOIN FETCH in JPA, .includes() in Rails) or explicit joins — anything that batches the related data into one or a small number of queries.
+
+---
+
+## Concurrency and Transactions
+
+Distributed systems do things at the same time. If you don't manage that timing, things break silently.
+
+### 5. How do you prevent double booking a ticket in a distributed system?
+
+Check-then-book is a race condition. Two requests read available simultaneously, both pass the check, both book. Application-level mutexes don't work across multiple servers. The fix is database-level: SELECT FOR UPDATE to lock the row, or optimistic locking with a version column that rejects stale updates.
+
+### 6. What is the difference between repeatable read and serializable isolation?
+
+Repeatable read (Postgres default) prevents dirty reads and non-repeatable reads but allows phantom reads — new rows appearing between reads in the same transaction. Serializable enforces strict ordering as if transactions ran one at a time. Use serializable when correctness matters more than throughput — financial ledgers, inventory systems.
+
+### 7. How do you implement a distributed lock without creating a single point of failure?
+
+A single Redis instance works until it goes down, taking your lock with it. Redlock uses multiple independent Redis nodes and requires a majority quorum to acquire a lock. ZooKeeper and etcd use consensus protocols (ZAB, Raft) and handle leader election and lock handoff more robustly. For most cases, Redis with Redlock is pragmatic. For strong guarantees, ZooKeeper or etcd.
+
+### 8. How do you implement idempotency for a payment retry endpoint?
+
+Mobile networks drop connections. Clients retry. Without idempotency, a retried payment charges the card twice. The pattern: client sends a unique idempotency key with each request. The server checks if that key was already processed before executing. Store keys in a durable store (database, not just Redis) with a TTL, and return the cached response for duplicate keys.
+
+---
+
+## Caching Strategy
+
+Caching makes things faster. It also introduces new failure modes that are easy to overlook until they hit production.
+
+### 9. What causes a cache stampede and how do you prevent it?
+
+A high-traffic cache key expires, and thousands of requests miss the cache simultaneously. All of them hit the database at once. Prevention options: probabilistic early expiration (refresh slightly before TTL ends), a per-key lock so only one thread regenerates the cache while others wait, or pre-warming cache on deploy.
+
+### 10. If you cache a user profile, how do you invalidate it when they update their email?
+
+Two common patterns. Write-through: update cache and database together. Cache-aside: application checks cache first, misses go to database, then populate cache. For invalidation, explicitly deleting the cache key on update gives immediate consistency. Setting a short TTL is simpler but creates a window of stale reads. I tend to use explicit deletion for user-facing data and TTL for less critical content.
+
+### 11. Why might putting Redis in front of your database actually slow your system down?
+
+Adding a network hop to check Redis costs 1-3ms per request. If your cache hit rate is low (say 20%), you pay that penalty on every request and still hit the database 80% of the time. Net result: slower than querying the database directly. Monitor cache hit ratio. If it drops below ~80%, the cache layer may be hurting more than helping.
+
+### 12. What eviction policy makes sense for a session store versus a content feed?
+
+Caches run out of memory and must evict something. LRU (Least Recently Used) works well for content feeds — users rarely revisit old items. LRU is dangerous for session stores because an active user with a long session might get evicted during memory pressure, logging them out unexpectedly. TTL-based expiration or no-eviction (with a size cap) is safer for sessions.
+
+---
+
+## APIs and Network Architecture
+
+Your API is a contract with clients you don't control. Changing it safely and protecting it from abuse are baseline skills.
+
+### 13. How do you safely change the payload of a live API without breaking existing mobile clients?
+
+Mobile apps live on devices for years without updates. Removing a field breaks old clients. Options: API versioning via URL path (/v2/) or request headers (Accept: application/vnd.api.v2+json). Additive changes (new optional fields) are backward-compatible. Removing or renaming fields requires a new version with a deprecation timeline for the old one.
+
+### 14. What is the difference between a sliding window log and a fixed window counter for rate limiting?
+
+Fixed window: count requests in a time bucket (e.g., per minute). Problem — at the boundary between two minutes, a client can burst double the allowed rate. Sliding window: track timestamps of each request and count only those within the rolling window. Smoother enforcement but higher memory usage since you store individual timestamps instead of a single counter.
+
+### 15. How do you design an endpoint that needs to upload a 5GB video file?
+
+Reading 5GB into application memory kills the process. Three practical approaches: streaming uploads where the server pipes chunks directly to storage without buffering the whole file, multipart chunking where the client splits the file into smaller parts uploaded in parallel, or presigned URLs where the client uploads directly to S3/GCS and your server never handles the file content at all.
+
+### 16. How do you handle long running tasks in a synchronous API request?
+
+If a PDF generation takes 40 seconds, the client connection will timeout. The async worker pattern: API returns 202 Accepted immediately with a job ID. The client polls a separate status endpoint (or receives a webhook) to check completion. The actual work happens in a background worker process.
+
+---
+
+## Message Brokers and Asynchronous Processing
+
+Real systems decouple work. You need to know what happens when those decoupled pieces fail — because they will.
+
+### 17. Why would you choose RabbitMQ over Kafka, or vice versa?
+
+They solve different problems. Kafka is an append-only distributed log optimized for high throughput, replay, and event streaming. Think of it as a durable, ordered sequence of events. RabbitMQ is a smart broker with flexible routing (exchanges, queues, bindings) optimized for task distribution. If you need to replay events or process streams, Kafka. If you need complex routing and per-message acknowledgment, RabbitMQ.
+
+### 18. What happens if your Kafka consumer reads a message but fails to commit the offset?
+
+The consumer will re-read the same message on restart. Your processing logic must be idempotent — processing the same message twice should produce the same result. Common pattern: use a unique event ID and check if it has been processed before executing business logic.
+
+### 19. How do you handle poison messages that repeatedly crash your workers?
+
+A malformed message causes a worker crash. The message returns to the queue. Another worker picks it up and crashes. The loop continues. The fix: Dead Letter Queue (DLQ). After N failed attempts, route the message to a DLQ for inspection. Also set retry limits with exponential backoff to avoid flooding the queue with immediate retries.
+
+### 20. How do you ensure messages are processed in the exact order they were sent?
+
+Guaranteeing global order across multiple consumers is impractical — consumer A might take longer on message 1 than consumer B takes on message 2. The practical approach: partition or routing keys. Messages with the same key always go to the same partition and are consumed by a single thread in order. You get per-key ordering without sacrificing parallelism.
+
+---
+
+## My Takeaway After Writing This
+
+Going through these 20 questions was a useful exercise. What I noticed is that every single one maps to a specific way that production systems break — slow queries under load, race conditions during concurrent writes, cache failures under traffic spikes, broken clients after API changes, and lost or duplicated messages in async pipelines.
+
+I don't think memorizing answers is the point. Understanding why these problems happen and what the tradeoffs are — that is what makes these questions useful. And honestly, half of these I only understood properly after encountering something similar in a real system.
+
+If you are preparing for backend interviews, or just want to pressure-test your own understanding, I found it helpful to try explaining each one out loud. If you can explain it conversationally without reaching for textbook phrasing, you probably understand it well enough.

@@ -1,0 +1,135 @@
+---
+title: "20 คำถาม Backend ที่ผมอยากรู้ตั้งแต่แรก (บันทึกเตรียมสัมภาษณ์)"
+description: "รวม 20 คำถาม backend interview ที่ครอบคลุม databases, concurrency, caching, APIs, และ message brokers พร้อมคำตอบแบบ practical จากประสบการณ์และการศึกษาของผม"
+pubDate: "2026-06-06"
+tags:
+  ["Backend", "Career", "Software Engineering"]
+language: "th"
+translationSlug: "20-backend-questions-i-wish-i-knew-earlier"
+---
+
+ผมเจอบทความออนไลน์ที่รวม 20 คำถาม backend interview ไว้ ตอนอ่านจบผมพยักหน้าไปตลอดเพราะเป็นเรื่องเดียวกันกับที่ผมเจอมาตอนเรียนรู้และคุยกับ senior engineer หลาย ๆ คน
+
+ผมไม่ได้เก่งหรือ master ทุกข้อนะครับ บางข้อเรียนรู้จาก production incident โดยตรง บางข้อก็ยังศึกษาเพิ่มเติมอยู่ แต่อยากเขียนสรุปไว้เป็นบันทึกของตัวเอง พร้อมคำตอบในแบบของผม ถ้าใครกำลังเตรียมสัมภาษณ์ backend ก็หวังว่าจะมีประโยชน์บ้าง
+
+คำถามทั้งหมดแบ่งเป็น 5 กลุ่ม: databases, concurrency, caching, APIs, และ message brokers คำตอบแต่ละข้อเป็นสิ่งที่ผมเข้าใจจากการลงมือทำและอ่านเพิ่มเติม ไม่ใช่ textbook definition
+
+---
+
+## Databases and Query Performance
+
+Bottleneck ส่วนใหญ่ที่ผมเจอมาจะวนกลับไปที่ database layer เสมอ การรู้ว่าข้อมูลเข้าออกอย่างมีประสิทธิภาพตอน table ใหญ่ขึ้นเป็นเรื่องที่หลีกเลี่ยงไม่ได้
+
+### 1. เกิดอะไรขึ้นถ้าเอา index ไปใส่ random UUID column?
+
+Random UUID ทำให้ B-tree page fragmentation รุนแรงเพราะ insert กระจายไปทั่วแทนที่จะเรียงต่อกันได้ Database ต้องทำ page split และ disk write ตลอดเวลา วิธีแก้คือใช้ sequential IDs หรือ time-sorted UUID เช่น ULID หรือ UUIDv7 ที่ทำให้ insert ไปต่อท้าย index ตลอด ซึ่งมีประสิทธิภาพดีกว่ามาก
+
+### 2. จะ paginate 50 ล้านแถวโดยไม่ใช้ OFFSET ทำยังไง?
+
+OFFSET ต้อง scan แล้วทิ้ง rows ที่อยู่ก่อนหน้า ถึง page 10,000 database ยังอ่าน 9,990 pages แรกแล้วทิ้งทั้งหมด วิธีแก้คือ keyset (cursor-based) pagination ใช้ WHERE clause บน indexed column เพื่อกระโดดไปยังชุดข้อมูลถัดไปได้เลย — query time คงที่ไม่ว่าจะลึกแค่ไหน
+
+### 3. เมื่อไหร่ควรใช้ composite index แทนที่จะสร้าง index แยกสองอัน?
+
+เวลา query ใช้สอง column ร่วมกันบ่อย ๆ การสร้าง single-column index แยกกันมักไม่คุ้มค่าเพราะ query planner มักเลือกใช้แค่ index เดียวต่อการ scan หนึ่งครั้ง Composite index บน (A, B) ช่วยให้ database filter ทั้งสอง column ใน seek เดียว ลำดับ column สำคัญ — leftmost prefix ต้องตรงกับ query pattern
+
+### 4. N+1 query problem คืออะไรและแก้ยังไง?
+
+เป็น trap ของ ORM ที่เจอบ่อยมาก: ดึง list ของ entities มา แล้ววน loop เพื่อ query related data ทีละอัน 100 users = 101 queries วิธีแก้คือ eager loading (JOIN FETCH ใน JPA, .includes() ใน Rails) หรือ explicit join — อะไรก็ตามที่รวบรวม related data เป็น query ไม่กี่อันแทนที่จะยิงทีละร้อย
+
+---
+
+## Concurrency and Transactions
+
+Distributed systems ทำหลายอย่างพร้อมกัน ถ้าไม่จัดการ timing ให้ดี ทุกอย่างพังโดยไม่รู้ตัว
+
+### 5. ป้องกันการจองที่นั่งซ้ำใน distributed system ทำยังไง?
+
+Check-then-book เป็น race condition สอง request อ่าน status พร้อมกัน ทั้งสองผ่านเงื่อนไข ทั้งสองจอง Application-level mutex ใช้ไม่ได้ข้ามหลาย servers วิธีแก้คือ database-level: SELECT FOR UPDATE เพื่อ lock row นั้น หรือ optimistic locking ด้วย version column ที่ reject stale updates
+
+### 6. Repeatable read กับ serializable isolation ต่างกันยังไง?
+
+Repeatable read (default ของ Postgres) ป้องกัน dirty reads และ non-repeatable reads แต่ยังมี phantom reads — rows ใหม่โผล่ขึ้นมาระหว่าง reads ใน transaction เดียวกัน Serializable บังคับ strict ordering เสมือนว่า transactions รันทีละอัน ใช้ serializable เวลาที่ correctness สำคัญกว่า throughput — เช่น financial ledgers, inventory systems
+
+### 7. สร้าง distributed lock โดยไม่สร้าง single point of failure ทำยังไง?
+
+Redis instance เดียวใช้ได้จนกว่ามันจะล่ม แล้ว lock หายไปพร้อมกัน Redlock ใช้หลาย Redis nodes อิสระต่อกัน ต้องได้ majority quorum ถึงจะ acquire lock ได้ ZooKeeper และ etcd ใช้ consensus protocols (ZAB, Raft) จัดการ leader election และ lock handoff ได้แข็งแกร่งกว่า ส่วนใหญ่ Redis + Redlock ก็ใช้ได้ pragmatic แล้ว ถ้าต้องการ guarantee แรงกว่านั้นค่อยใช้ ZooKeeper หรือ etcd
+
+### 8. สร้าง idempotency สำหรับ payment retry endpoint ทำยังไง?
+
+Mobile networks มี connection หลุดบ่อย Client retry ถ้าไม่มี idempotency การ retry จะ charge บัตรสองรอบ Pattern คือ: client ส่ง idempotency key แปลกๆ มากับแต่ละ request Server เช็คว่า key นั้น process ไปแล้วหรือยังก่อน execute เก็บ keys ใน durable store (database ไม่ใช่แค่ Redis) พร้อม TTL แล้ว return cached response สำหรับ duplicate keys
+
+---
+
+## Caching Strategy
+
+Caching ทำให้ระบบเร็วขึ้น แต่ก็เพิ่ม failure modes ใหม่ที่มองข้ามง่ายจนกว่าจะไปโผล่ใน production
+
+### 9. Cache stampede เกิดจากอะไรและป้องกันยังไง?
+
+Cache key ที่มี traffic สูงหมดอายุ แล้ว requests หลายพันตัว miss cache พร้อมกัน ทั้งหมดพุ่งไปที่ database ในเวลาเดียวกัน วิธีป้องกัน: probabilistic early expiration (refresh ก่อน TTL จะหมด), per-key lock ให้แค่ thread เดียว regenerate cache ส่วนที่เหลือรอ, หรือ pre-warming cache ตอน deploy
+
+### 10. ถ้า cache user profile ไว้ จะ invalidate ยังไงตอน user เปลี่ยน email?
+
+สอง pattern ที่เจอบ่อย Write-through: update cache และ database พร้อมกัน Cache-aside: application เช็ค cache ก่อน miss ไปที่ database แล้วค่อย populate cache สำหรับ invalidation ผมมักใช้ explicit deletion สำหรับ user-facing data เพราะได้ consistency ทันที ส่วน content ที่ไม่ critical ใช้ short TTL ได้เพราะง่ายกว่า
+
+### 11. ทำไมการเอา Redis ไว้หน้า database อาจทำให้ระบบช้าลงได้?
+
+การเพิ่ม network hop ไปเช็ค Redis ใช้เวลา 1-3ms ต่อ request ถ้า cache hit rate ต่ำ (สมมุติ 20%) คุณจ่าย penalty นี้ทุก request แต่ก็ยังไป hit database 80% อยู่ดี ผลลัพธ์สุทธิ: ช้ากว่า query database ตรงเลย ต้อง monitor cache hit ratio ถ้าต่ำกว่า ~80% cache layer อาจทำร้ายมากกว่าช่วย
+
+### 12. Eviction policy ที่เหมาะกับ session store กับ content feed ต่างกันยังไง?
+
+Cache หมด memory แล้วต้อง evict อะไรสักอย่าง LRU (Least Recently Used) เหมาะกับ content feed เพราะ user ไม่ค่อยกลับไปดู content เก่า แต่ LRU อันตรายกับ session store เพราะ active user ที่มี session ยาวอาจถูก evict ตอน memory ไม่พอ ทำให้ถูก log out โดยไม่คาดคิด TTL-based expiration หรือ no-eviction (พร้อม size cap) ปลอดภัยกว่าสำหรับ sessions
+
+---
+
+## APIs and Network Architecture
+
+API ของคุณเป็น contract กับ clients ที่คุณควบคุมไม่ได้ การเปลี่ยนแปลงอย่างปลอดภัยและป้องกันการถูกใช้งานในทางที่ผิดเป็น basic skills ที่ต้องมี
+
+### 13. เปลี่ยน payload ของ API ที่ใช้งานอยู่โดยไม่ทำให้ mobile clients เก่าพังทำยังไง?
+
+Mobile apps อยู่บน devices ของ user เป็นปีๆ โดยไม่ update การลบ field ออกทำให้ client เก่าพัง ทางเลือก: API versioning ผ่าน URL path (/v2/) หรือ request headers (Accept: application/vnd.api.v2+json) Additive changes (เพิ่ม optional fields) เป็น backward-compatible ส่วนการลบหรือเปลี่ยนชื่อ fields ต้องสร้าง version ใหม่พร้อมกำหนด deprecation timeline ให้ version เก่า
+
+### 14. Sliding window log กับ fixed window counter สำหรับ rate limiting ต่างกันยังไง?
+
+Fixed window: นับ requests ในช่วงเวลา (เช่น ต่อนาที) ปัญหาคือตรงขอบระหว่างสองนาที client สามารถ burst เป็นสองเท่าของ rate ที่กำหนด Sliding window: track timestamp ของแต่ละ request แล้วนับเฉพาะที่อยู่ใน rolling window บังคับได้ smooth กว่าแต่ใช้ memory มากกว่าเพราะเก็บ timestamps เป็นราย item แทนที่จะเป็น counter เดียว
+
+### 15. ออกแบบ endpoint สำหรับ upload video 5GB ทำยังไง?
+
+การอ่าน 5GB เข้า memory ของ application server จะ kill process ทิ้ง สามวิธีที่ใช้ได้: streaming uploads ที่ server pipe chunks ไป storage โดยไม่ต้อง buffer ทั้ง file, multipart chunking ที่ client แบ่ง file เป็น parts เล็กๆ แล้ว upload แบบ parallel, หรือ presigned URLs ที่ client upload ตรงไป S3/GCS เลย โดย server ไม่ต้องจัดการ file content เลย
+
+### 16. จัดการ long running tasks ใน synchronous API request ทำยังไง?
+
+ถ้า PDF generation ใช้เวลา 40 วินาที client connection จะ timeout ใช้ async worker pattern: API return 202 Accepted ทันทีพร้อม job ID Client poll status endpoint แยก (หรือรับ webhook) เพื่อเช็คว่าเสร็จหรือยัง ส่วนงานที่เหลือเกิดขึ้นใน background worker process
+
+---
+
+## Message Brokers and Asynchronous Processing
+
+ระบบ production decouple work ออกจากกัน และคุณต้องรู้ว่าเกิดอะไรขึ้นเวลาชิ้นส่วนที่ถูก decouple พวกนั้นล้มเหลว — เพราะมันจะล้ม
+
+### 17. เลือก RabbitMQ หรือ Kafka เมื่อไหร่?
+
+มันแก้ปัญหาคนละอย่าง Kafka เป็น append-only distributed log ออกแบบมาเพื่อ high throughput, replay, และ event streaming — คิดว่ามันเป็นลำดับ events ที่เรียงลำดับ RabbitMQ เป็น smart broker ที่มี flexible routing (exchanges, queues, bindings) ออกแบบมาเพื่อ task distribution ถ้าต้องการ replay events หรือ process streams ใช้ Kafka ถ้าต้องการ complex routing และ per-message acknowledgment ใช้ RabbitMQ
+
+### 18. เกิดอะไรขึ้นถ้า Kafka consumer อ่าน message แล้ว commit offset ไม่สำเร็จ?
+
+Consumer จะอ่าน message เดิมซ้ำตอน restart Processing logic ต้องเป็น idempotent — การประมวลผล message เดียวกันสองรอบต้องให้ผลลัพธ์เหมือนเดิม Pattern ที่ใช้บ่อย: ใช้ unique event ID แล้วเช็คก่อนว่า process ไปแล้วหรือยังก่อนจะ execute business logic
+
+### 19. จัดการ poison messages ที่ทำให้ workers พังซ้ำๆ ทำยังไง?
+
+Message ที่ format ผิดทำให้ worker crash Message กลับเข้า queue Worker ตัวใหม่รับไปแล้ว crash อีก วนไปเรื่อยๆ วิธีแก้: Dead Letter Queue (DLQ) หลังจาก fail N ครั้ง ให้ route message ไป DLQ เพื่อตรวจสอบ และตั้ง retry limits พร้อม exponential backoff เพื่อไม่ให้ queue ถูก flood ด้วย immediate retries
+
+### 20. ทำให้ messages ถูก process ตามลำดับที่ส่งมาได้ยังไง?
+
+การรับประกัน global order ข้ามหลาย consumers ไม่มีทางทำได้ในทางปฏิบัติ — consumer A อาจใช้เวลานานกว่ากับ message 1 กว่า consumer B จะเสร็จ message 2 วิธีที่ใช้ได้: partitioning หรือ routing keys Messages ที่มี key เดียวกันจะไป partition เดียวกันเสมอ แล้วถูก consume โดย single thread เรียงลำดับ คุณได้ per-key ordering โดยไม่ต้องเสีย parallelism
+
+---
+
+## สิ่งที่ผมได้จากการเขียนบทความนี้
+
+ผ่าน 20 คำถามนี้มาเป็น exercise ที่ดีสำหรับตัวเอง สิ่งที่ผมสังเกตคือทุกข้อ map ไปยังวิธีที่ production systems พังได้ — slow queries ตอน load สูง, race conditions ตอน concurrent writes, cache failures ตอน traffic spikes, broken clients หลัง API changes, และ messages ที่หายหรือซ้ำใน async pipelines
+
+ผมว่าจำคำตอบไม่ใช่ประเด็นนะครับ การเข้าใจว่าทำไมปัญหาพวกนี้เกิดขึ้นและ tradeoffs มีอะไรบ้าง — นั่นคือสิ่งที่ทำให้คำถามพวกนี้มีประโยชน์ และพูดตรงๆ ว่าครึ่งหนึ่งของพวกนี้ผมเข้าใจอย่างถ่องแท้ก็ต่อเมื่อเจออะไรคล้ายๆ กันในระบบ production แล้ว
+
+ถ้าใครกำลังเตรียมสัมภาษณ์ backend หรืออยากทดสอบความเข้าใจตัวเอง ลองอธิบายแต่ละข้อออกมาเป็นคำพูดดู ถ้าอธิบายได้แบบสนทนาโดยไม่ต้องเอา textbook phrasing มาใช้ แสดงว่าน่าจะเข้าใจดีพอแล้วครับ
