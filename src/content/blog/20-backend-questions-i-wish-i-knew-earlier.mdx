@@ -34,6 +34,8 @@ Random UUIDv4 inserts land all over the B-tree instead of appending in order.
 - Use keyset (cursor) pagination: `WHERE id > :last_seen ORDER BY id LIMIT n` on an indexed column.
 - Query time stays flat at any depth. Tradeoff: you lose random jump-to-page-N.
 
+![Offset vs Keyset Pagination](/assets/images/blogs/20-backend-questions/offset-vs-keyset.png)
+
 ### 3. When would you use a composite index instead of two separate indexes?
 
 When queries filter on two columns together.
@@ -49,6 +51,8 @@ One query for the list, then one query per row for its related data — 101 quer
 - Fix: eager load or batch — `JOIN FETCH` (JPA), `.includes()` (Rails), DataLoader (GraphQL).
 - Watch ORMs that lazy-load relations by default; the trap is invisible until it's under load.
 
+![N+1 Query Problem](/assets/images/blogs/20-backend-questions/n-plus-one.png)
+
 ---
 
 ## Concurrency and Transactions
@@ -62,6 +66,8 @@ Check-then-book is a race: two requests both read "available," both write.
 - Application-level locks don't span multiple servers.
 - Fix at the database: `SELECT ... FOR UPDATE` (pessimistic) or a version column (optimistic) that rejects stale writes.
 - Add a unique constraint on the seat as a hard backstop, regardless of locking strategy.
+
+![Double Booking Lock](/assets/images/blogs/20-backend-questions/double-booking.png)
 
 ### 6. What is the difference between read committed, repeatable read, and serializable?
 
@@ -79,6 +85,8 @@ A single Redis instance dies and takes your lock with it.
 - ZooKeeper / etcd: consensus protocols (ZAB, Raft) handle leader election and lock handoff more robustly.
 - Pragmatic default is Redis; reach for etcd/ZooKeeper when you need strong guarantees. Always set a lock TTL so a dead holder doesn't deadlock everyone.
 
+![Redlock Distributed Lock](/assets/images/blogs/20-backend-questions/redlock.png)
+
 ### 8. How do you implement idempotency for a payment retry endpoint?
 
 Mobile networks drop connections, clients retry, and a retried payment can charge twice.
@@ -87,6 +95,8 @@ Mobile networks drop connections, clients retry, and a retried payment can charg
 - Server: if the key was already processed, return the stored response; otherwise process and store the result against the key.
 - Keep keys in a durable store (a database, not just Redis) with a TTL.
 - Put a unique constraint on the key so concurrent retries can't double-insert.
+
+![Idempotent Payment Retry](/assets/images/blogs/20-backend-questions/idempotency.png)
 
 ---
 
@@ -101,6 +111,8 @@ A hot key expires and thousands of simultaneous misses hammer the database at on
 - Per-key lock: one request rebuilds the value while the others wait or serve stale.
 - Probabilistic early refresh: regenerate slightly before the TTL ends.
 - Pre-warm the cache on deploy.
+
+![Cache Stampede Prevention](/assets/images/blogs/20-backend-questions/cache-stampede.png)
 
 ### 10. If you cache a user profile, how do you invalidate it when they update their email?
 
@@ -159,6 +171,8 @@ A 40-second PDF generation will time out the client connection. Use the async wo
 - Client polls a status endpoint or receives a webhook on completion.
 - The actual work runs in a background worker or queue.
 
+![Sync vs Async Task Worker](/assets/images/blogs/20-backend-questions/sync-vs-async.png)
+
 ---
 
 ## Message Brokers and Asynchronous Processing
@@ -172,6 +186,8 @@ They solve different problems.
 - **Kafka**: an append-only distributed log — high throughput, ordered, replayable. Good for event streaming, audit trails, and fanning out to many consumers.
 - **RabbitMQ**: a smart broker — flexible routing (exchanges, bindings) and per-message acknowledgment. Good for task queues and complex routing.
 - Need replay or streams → Kafka. Need routing or per-message ack → RabbitMQ.
+
+![RabbitMQ vs Kafka Architecture](/assets/images/blogs/20-backend-questions/rabbitmq-vs-kafka.png)
 
 ### 18. What happens if your Kafka consumer reads a message but fails to commit the offset?
 
