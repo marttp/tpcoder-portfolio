@@ -1,0 +1,122 @@
+---
+title: "What I Took Away from Hilary Mason's Talk on the Next Generation of AI Products"
+description: "Reflections on Hilary Mason's QCon AI talk — new ideas I hadn't considered (chat as a broken UX, turning generation into ranking, mediocrity as bias) plus quick catch-ups on topics I've written about before."
+pubDate: "2026-06-06"
+heroImage: "/assets/images/blogs/next-gen-ai-products/hero-banner.png"
+tags:
+  ["AI", "AI Agents", "Software Engineering", "Career"]
+language: "en"
+translationSlug: "what-i-took-away-from-hilary-mason-next-gen-ai-products-th"
+---
+
+I watched Hilary Mason's talk from QCon AI titled *The Next Generation of AI Products*. Hilary has been working in machine learning since before it was cool — she started Fast Forward Labs in 2014, sold it to Cloudera, and now runs Hidden Door, a narrative game company powered by AI. Her perspective sits at the intersection of deep technical understanding and product thinking, which made the talk particularly useful for me.
+
+Rather than summarizing everything, I want to split this into two parts: ideas that were genuinely new to me and worth thinking about more, and quick catch-ups on topics I have already written about so you can get up to speed.
+
+---
+
+## New Ideas I Had Not Considered
+
+### Chat Is a Fundamentally Flawed Interface
+
+This was the most provocative claim in the talk, and I think Hilary is right.
+
+ChatGPT's success was a product success, not a model success. The underlying model existed for a while before the chat wrapper made it take off. The problem: that success locked the entire industry into chat-first thinking for AI products. Every startup puts a text box front and center.
+
+Hilary's argument is that chat is a terrible way to get anything done. It puts all the cognitive burden on the user — you have to figure out what to ask, how to phrase it, and whether the response is useful. At Hidden Door, they found that giving players an open text box caused writer's block and anxiety. When they showed three concrete options (one hard, one easy, one free) alongside the text input, engagement improved dramatically.
+
+![Chat UX vs. Contextual UI](/assets/images/blogs/next-gen-ai-products/chat-vs-contextual-ui.png)
+
+The implication: the right UX for AI products has not been invented yet. It is probably not chat. Whoever figures out what it actually is will have a significant advantage.
+
+This is something I had not thought about explicitly. I have been focused on the backend and orchestration side of AI agents, but the interface layer is where a lot of product differentiation will happen.
+
+### Turn Generation Into Ranking
+
+This is a practical cost optimization pattern that I wish I had known earlier.
+
+The idea: instead of using an LLM to generate content from scratch every time, pre-generate most of what you need, store it in a database, and use embeddings to rank and select the best match at runtime. Then do a small, cheap LLM pass to customize the selected content for the current context.
+
+Hilary shared that Hidden Door's operational costs are low precisely because most content already exists in a generic form. They do a light LLM pass at the end to make it specific to the current game moment.
+
+![LLM Generation vs. Template Ranking](/assets/images/blogs/next-gen-ai-products/generation-vs-ranking.png)
+
+This resonates with me as a backend engineer. It is the same principle as caching — move computation out of the hot path. But applied to AI specifically, it is a pattern I had not seen articulated this clearly. Most discussions about AI costs focus on model selection or prompt optimization. This is an architectural approach to the same problem.
+
+### All LLM Outputs Are Equal — The Model Does Not Know When It Is Lying
+
+I have written about AI reliability before, but Hilary's framing was different and sharper.
+
+Her point: hallucination is not a bug that occasionally happens. It is the default state of all LLM output. Some outputs happen to be factually correct, some are not. The model treats them all identically. It does not have a separate mechanism for knowing whether what it generated is true.
+
+This changes how you think about guardrails. If you accept that every output is equally unreliable, you stop trying to make the model less wrong and start building systems around it that assume wrongness. Verification layers, human-in-the-loop checkpoints, constrained output formats — these become the architecture, not patches.
+
+### Mediocrity as a Form of Bias
+
+The standard conversation about AI bias focuses on representation — gender, race, and other demographic dimensions. Hilary added a different angle: AI systems are biased toward mediocrity.
+
+LLMs are, as she put it, engines for producing generally mid content. They take everything in the training data and produce something that looks like what is most common. The output is safe, shallow, and lacks taste or originality. That is a form of bias that affects product quality, not just representation.
+
+This matters for anyone building AI products. If your product's value depends on creativity, nuance, or taste, the model's default output will work against you. You need deliberate design choices to push past the mediocre middle.
+
+### Probabilistic vs. Discrete Engineering Mindsets
+
+This one hit close to home. Hilary pointed out that teams with a data-first background (probabilistic thinking) and teams with a software-first background (deterministic thinking) often look like they are doing the same work. But they reason about problems in fundamentally different ways.
+
+Software engineers expect systems to behave the same way every time. Data people expect variance and plan for it. When these two cultures work on the same AI product without acknowledging the difference, friction is inevitable.
+
+I have felt this tension in my own work. Building backend systems with AI components requires holding both mindsets at the same time — designing for the happy path and for the probabilistic failures. Naming it explicitly helps.
+
+![Deterministic vs. Probabilistic Engineering Mindsets](/assets/images/blogs/next-gen-ai-products/deterministic-vs-probabilistic.png)
+
+### The Existential Crisis of Senior Engineers
+
+This was not entirely new to me, but Hilary's framing was more specific than what I had encountered before.
+
+The crisis is not just AI replacing junior engineers. It is that senior engineers whose value came from deep syntax and system knowledge are finding that junior engineers with AI tools can now match their output on implementation tasks. The differentiator shifts from knowing how to write code to knowing what good code looks like, what the right problem to solve is, and how to evaluate quality at a systems level.
+
+Good judgment, systems thinking, and taste become more valuable than syntax knowledge. Our hiring processes and career ladders have not caught up with this shift yet.
+
+---
+
+## Quick Catch-Ups: Topics I Have Written About Before
+
+These are ideas from the talk that overlap with things I have already explored. If you want to go deeper, I am linking the context.
+
+### AI Agents as Systems, Not Magic
+
+Hilary described agents as systems that take action on a person's behalf — but noted that when an investor says agent, they see software priced like labor. When an engineer says agent, they are talking about many LLM calls stitched together with context management and process control.
+
+I covered a similar framing in my post about the shift from monolithic agents to composable workflows. The key takeaway is the same: agents are orchestration problems, not intelligence problems.
+
+### Fundamentals Matter More Than Ever
+
+Hilary emphasized that the math, the code, and the data are still the same foundation. Good data hygiene, curation, and provenance matter even more now than before, even though they are not the shiny thing everyone is excited about.
+
+I wrote about this from a career perspective — the fundamentals are no longer optional when your job shifts from writing code to evaluating AI-generated code.
+
+### Context Management Is the Core Engineering Challenge
+
+Hilary identified context management as the central problem right now: what information you use, for what task, with what model, in what format, and how the response is verified and routed.
+
+This aligns with what I wrote about building engineering culture around AI orchestration. The hard part is not calling the model — it is managing what goes in, what comes out, and how it fits into the broader system.
+
+### Evaluating AI Output Quality
+
+At Hidden Door, every story goes through both quantitative and qualitative evaluation. Hilary gets an alert if quality drops below a threshold. She also argued that our old metrics (precision, recall, accuracy, daily active users, chat message count) may not be the right measures for AI products anymore.
+
+I touched on this in my post about AI coding agent guidelines — the evaluation criteria for AI-assisted development are different from traditional code review.
+
+---
+
+## What Stuck With Me
+
+The talk was wide-ranging, but three things are still bouncing around in my head a day later.
+
+First, chat is not the answer. We are all building chat interfaces because ChatGPT proved the model worked, but the product form that unlocks AI's full potential has not been discovered yet. That is both unsettling and exciting.
+
+Second, turning generation into ranking is an architectural insight I want to apply. Pre-generate, store, select with embeddings, customize with a light LLM pass. It is the caching metaphor applied to AI, and I suspect it generalizes far beyond content products.
+
+Third, the collision between probabilistic and deterministic mindsets within engineering teams is real and under-discussed. Naming it makes it easier to address.
+
+If you are building AI products or working on teams that are, this talk is worth your time. Hilary brings a rare combination of deep technical chops and honest product thinking — she calls things what they are, including the failures.

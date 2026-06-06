@@ -1,0 +1,122 @@
+---
+title: "สิ่งที่ผมได้จากการดู Hilary Mason พูดเรื่อง Next Generation of AI Products"
+description: "สรุปและ reflections จาก Hilary Mason ที่ QCon AI — ไอเดียใหม่ที่ผมยังไม่เคยคิด (chat เป็น UX ที่ผิด, เปลี่ยน generation เป็น ranking, mediocrity as bias) บวก catch-up สั้นๆ สำหรับหัวข้อที่เคยเขียนไปแล้ว"
+pubDate: "2026-06-06"
+heroImage: "/assets/images/blogs/next-gen-ai-products/hero-banner.png"
+tags:
+  ["AI", "AI Agents", "Software Engineering", "Career"]
+language: "th"
+translationSlug: "what-i-took-away-from-hilary-mason-next-gen-ai-products"
+---
+
+ผมดู Hilary Mason พูดที่ QCon AI หัวข้อ *The Next Generation of AI Products* Hilary ทำ ML มาตั้งแต่ยังไม่มีคนสนใจ เธอเริ่ม Fast Forward Labs ในปี 2014, ขายให้ Cloudera, และตอนนี้บริหาร Hidden Door บริษัททำเกม narrative ที่ใช้ AI เป็น core เธอมีมุมมองที่ผสมผสานระหว่างความเข้าใจทางเทคนิคเชิงลึกกับ product thinking ซึ่งทำให้ talk นี้มีประโยชน์สำหรับผมมาก
+
+แทนที่จะสรุปทุกอย่าง ผมอยากแบ่งเป็นสองส่วน: ไอเดียที่ใหม่สำหรับผมและน่าคิดต่อ กับ catch-up สั้นๆ สำหรับหัวข้อที่ผมเคยเขียนไปแล้ว เผื่อใครยังไม่ได้อ่านจะตามทัน
+
+---
+
+## ไอเดียใหม่ที่ผมยังไม่เคยคิด
+
+### Chat คือ Interface ที่ผิดตั้งแต่รากฐาน
+
+นี่คือประเด็นที่ challenge ความคิดมากที่สุดใน talk และผมคิดว่า Hilary พูดถูก
+
+ความสำเร็จของ ChatGPT เป็น product success ไม่ใช่ model success Model ตัวนั้นมีอยู่ก่อนหน้านี้แล้ว แต่ chat wrapper ทำให้มันไวรัล ปัญหาคือความสำเร็จนั้นดึงให้ทั้งอุตสาหกรรม lock ตัวเองเข้าสู่ chat-first thinking สตาร์ทอัพทุกเจ้าก็เอา text box ไปวางตรงกลาง
+
+Hilary ให้เหตุผลว่า chat เป็นวิธีที่แย่มากในการทำงานให้เสร็จ มันโยนภาระทางความคิดทั้งหมดไปที่ user คือต้องคิดเองว่าจะถามอะไร ใช้คำพูดยังไง และ response ที่ได้มามีประโยชน์ไหม ที่ Hidden Door พอให้ผู้เล่นเจอ text box เปล่าๆ คนกลับเกิด writer's block และความกังวล พอแสดงตัวเลือก 3 อัน (ยาก 1, ง่าย 1, free action 1) คู่กับ text input engagement ดีขึ้นอย่างเห็นได้ชัด
+
+![เปรียบเทียบการใช้งานแบบ Chat vs Contextual UI](/assets/images/blogs/next-gen-ai-products/chat-vs-contextual-ui.png)
+
+ข้อสรุป: UX ที่ถูกต้องสำหรับ AI products ยังไม่ถูกคิดค้นขึ้นมา และมันคงไม่ใช่ chat ใครคิดเจอก่อนจะได้เปรียบมาก
+
+นี่เป็นเรื่องที่ผมยังไม่เคยคิดเป็นเรื่องเป็นราวมาก่อนนะครับ ผม focus อยู่ที่ฝั่ง backend และ orchestration ของ AI agents แต่ interface layer น่าจะเป็นจุดที่ product differentiation เกิดขึ้นเยอะมาก
+
+### เปลี่ยน Generation เป็น Ranking
+
+นี่คือ pattern สำหรับลด cost ที่ผมอยากรู้มานานแล้ว
+
+ไอเดียคือ: แทนที่จะใช้ LLM generate content ใหม่ทุกรอบ ให้ pre-generate ส่วนใหญ่ไว้ก่อน เก็บใน database แล้วใช้ embeddings เพื่อ rank และ select ตัวที่ match ที่สุดตอน runtime จากนั้นค่อยใช้ LLM pass เล็กๆ ถูกๆ เพื่อ customize content นั้นให้เข้ากับ context ปัจจุบัน
+
+Hilary บอกว่า Hidden Door มี operational cost ต่ำเพราะ content ส่วนใหญ่มีอยู่แล้วในรูปแบบ generic แล้วค่อยทำ LLM pass เบาๆ ตอนท้ายเพื่อให้เฉพาะเจาะจงกับช่วงเวลาในเกม
+
+![สถาปัตยกรรมแบบ LLM Generation vs Template Ranking](/assets/images/blogs/next-gen-ai-products/generation-vs-ranking.png)
+
+อันนี้โดนใจผมในฐานะ backend engineer เพราะมันคือหลักการเดียวกับ caching คือเอา computation ออกจาก hot path แต่พอเอามาใช้กับ AI โดยเฉพาะ มันเป็น pattern ที่ผมยังไม่เคยเห็นใครอธิบายได้ชัดเจนแบบนี้ ส่วนใหญ่ที่คุยเรื่อง AI cost จะ focus ที่ model selection หรือ prompt optimization แต่นี่คือ architectural approach สำหรับปัญหาเดียวกัน
+
+### LLM Outputs ทั้งหมดเท่ากัน — Model ไม่รู้หรอกว่าตอนไหนกำลังโกหก
+
+ผมเคยเขียนเรื่อง AI reliability มาบ้าง แต่ framing ของ Hilary แหลมคมกว่า
+
+เธอบอกว่า hallucination ไม่ใช่ bug ที่เกิดเป็นบางครั้ง มันคือ default state ของ LLM output ทั้งหมด Output บางอันบังเอิญถูกต้อง บางอันไม่ถูก Model จัดการทุกอันเหมือนกันหมด ไม่มี mechanism แยกที่บอกได้ว่าสิ่งที่ generate ออกมาถูกต้องไหม
+
+นี่เปลี่ยนวิธีคิดเรื่อง guardrails ถ้ายอมรับว่าทุก output มีความน่าเชื่อถือเท่ากันหมด คุณจะเลิกพยายามทำให้ model ผิดน้อยลง แล้วไป build systems รอบๆ มันที่ assume ว่ามันผิดได้เสมอ Verification layers, human-in-the-loop checkpoints, constrained output formats เหล่านี้กลายเป็น architecture ไม่ใช่ patches
+
+### Mediocrity เป็นรูปแบบหนึ่งของ Bias
+
+บทสนทนามาตรฐานเรื่อง AI bias มัก focus ที่ representation อย่างเพศ เชื้อชาติ และ dimensions อื่นๆ Hilary เพิ่มมุมอื่น: AI systems มี bias ไปทาง mediocrity
+
+LLMs เป็น engines สำหรับผลิต content ที่กลางๆ โดยรวม ตามคำพูดของเธอ พวกมันเอาทุกอย่างจาก training data แล้ว produce อะไรที่ดูเหมือนสิ่งที่พบบ่อยที่สุด Output จะออกมา safe, shallow, ขาด taste หรือ originality นั่นคือ bias ที่ส่งผลต่อ product quality ไม่ใช่แค่ representation
+
+นี่สำคัญสำหรับใครกำลัง build AI products ถ้าคุณค่าของ product มาจาก creativity, nuance หรือ taste output เริ่มต้นของ model จะสวนทางกับสิ่งที่คุณต้องการ คุณต้องตั้งใจออกแบบ (deliberate design choices) เพื่อ push ให้พ้นจาก middle ที่ mediocre
+
+### Probabilistic vs. Discrete Engineering Mindsets
+
+ข้อนี้โดนใจผมมาก Hilary ชี้ว่าทีมที่มาจาก data-first background (probabilistic thinking) กับทีมที่มาจาก software-first background (deterministic thinking) มักดูเหมือนกำลังทำงานเหมือนกัน แต่ reasoning ต่างกันโดยพื้นฐาน
+
+Software engineers คาดหวังว่า systems จะทำงานเหมือนเดิมทุกรอบ ส่วน data people คาดหวัง variance และวางแผนรับมัน พอทั้งสอง cultures ทำงานบน AI product เดียวกันโดยไม่รับรู้ความต่างนี้ friction จะตามมา
+
+ผมเคยเจอ tension นี้ในงานของตัวเอง การ build backend systems ที่มี AI components ต้องถือทั้งสอง mindsets พร้อมกัน คือออกแบบเผื่อทั้ง happy path และ probabilistic failures การเรียกมันออกมาเป็นชื่อชัดๆ ช่วยให้จัดการง่ายขึ้น
+
+![ความแตกต่างของวิธีคิดแบบ Deterministic vs Probabilistic](/assets/images/blogs/next-gen-ai-products/deterministic-vs-probabilistic.png)
+
+### Existential Crisis ของ Senior Engineers
+
+ข้อนี้ไม่ใช่เรื่องใหม่ทั้งหมดสำหรับผม แต่ framing ของ Hilary จำเพาะกว่าที่เคยเจอ
+
+วิกฤตไม่ใช่แค่ AI มาแทน junior engineers แต่คือ senior engineers ที่คุณค่าเคยมาจากความรู้ syntax และระบบเชิงลึก กำลังเจอว่า junior engineers ที่ใช้ AI tools สามารถตามผลงาน implementation ของพวกเขาได้แล้ว สิ่งที่แยกคนออกจากกันเลื่อนจากการรู้ว่าเขียน code ยังไง ไปเป็นการรู้ว่า code ดีเป็นยังไง, ปัญหาไหนควรแก้, และ evaluate quality ได้ที่ระดับ systems
+
+Good judgment, systems thinking, และ taste มีค่ามากกว่า syntax knowledge แต่ hiring processes และ career ladders ของเรายังไม่ทันกับการเปลี่ยนแปลงนี้
+
+---
+
+## Catch-Up สั้นๆ: หัวข้อที่ผมเคยเขียนไปแล้ว
+
+พวกนี้คือไอเดียจาก talk ที่ซ้อนกับสิ่งที่ผมเคยเขียนไว้ ถ้าอยากอ่านเพิ่มผมใส่ context ไว้ให้
+
+### AI Agents เป็น Systems, ไม่ใช่ Magic
+
+Hilary อธิบาย agents ว่าเป็น systems ที่ลงมือทำแทนคน แต่เธอสังเกตว่าพอ investor พูดคำว่า agent พวกเขาเห็น software ที่ตั้งราคาแบบคิดเป็นค่าแรงคน ส่วน engineer ที่พูดคำว่า agent หมายถึง LLM calls หลายๆ อันที่เย็บต่อกันด้วย context management และ process control
+
+ผมเคยเขียน framing คล้ายกันในเรื่องการเปลี่ยนจาก monolithic agents เป็น composable workflows ข้อสรุปเหมือนกัน: agents เป็น orchestration problems, ไม่ใช่ intelligence problems
+
+### Fundamentals สำคัญกว่าเดิม
+
+Hilary เน้นว่า math, code, และ data ยังเป็น foundation เดิม data hygiene, curation, และ provenance ที่ดี ยิ่งสำคัญกว่าเดิมในตอนนี้ ถึงแม้จะไม่ใช่สิ่งที่ทุกคนตื่นเต้นด้วยก็ตาม
+
+ผมเคยเขียนเรื่องนี้จากมุม career ว่า fundamentals ไม่ใช่ optional อีกต่อไปเวลาที่งานเปลี่ยนจากการเขียน code เป็นการ evaluate code ที่ AI generate มา
+
+### Context Management คือ Engineering Challenge หลัก
+
+Hilary ระบุว่า context management เป็นปัญหากลางตอนนี้: ใช้ข้อมูลอะไร, สำหรับ task อะไร, กับ model ไหน, ใน format ไหน, และ response ถูก verify และ route ยังไง
+
+นี่ตรงกับที่ผมเคยเขียนเรื่อง building engineering culture รอบ AI orchestration ส่วนที่ยากไม่ใช่การเรียก model แต่คือการจัดการว่าอะไรเข้า อะไรออก และมันเข้ากับ broader system ยังไง
+
+### Evaluating AI Output Quality
+
+ที่ Hidden Door story ทุกเรื่องผ่านทั้ง quantitative และ qualitative evaluation Hilary จะได้ alert ถ้า quality ต่ำกว่า threshold เธอยังแย้งว่า metrics เก่าๆ (precision, recall, accuracy, daily active users, chat message count) อาจไม่ใช่ measure ที่ถูกต้องสำหรับ AI products อีกต่อไปแล้ว
+
+ผมเคยพูดถึงเรื่องนี้ในโพสต์เกี่ยวกับ AI coding agent guidelines ว่า criteria สำหรับ evaluate AI-assisted development ต่างจาก code review แบบดั้งเดิม
+
+---
+
+## สิ่งที่ติดอยู่ในหัวผม
+
+Talk ครอบคลุมมาก แต่มีสามอย่างที่ยังอยู่ในหัวผมวันต่อมา
+
+ข้อแรก chat ไม่ใช่คำตอบ เราทุกคนกำลัง build chat interfaces เพราะ ChatGPT พิสูจน์ว่า model ใช้ได้ แต่ product form ที่ unlock ศักยภาพเต็มที่ของ AI ยังไม่ถูกค้นพบ มันทั้งน่ากังวลและน่าตื่นเต้น
+
+ข้อสอง เปลี่ยน generation เป็น ranking เป็น architectural insight ที่ผมอยากนำไปใช้ Pre-generate, store, select ด้วย embeddings, customize ด้วย LLM pass เบาๆ มันคือ metaphor ของ caching ที่ applied กับ AI และผมสงสัยว่ามัน generalize ได้ไกลกว่า content products
+
+ข้อสาม การชนกันระหว่าง probabilistic และ deterministic mindsets ใน engineering teams เป็นเรื่องที่เกิดขึ้นแน่นอนและยังไม่ค่อยมีคนพูดถึง การตั้งชื่อให้มันทำให้จัดการง่ายขึ้น
+
+ถ้าใครกำลัง build AI products หรือทำงานในทีมที่เกี่ยวข้อง talk นี้คุ้มค่าเวลาดูครับ Hilary มีการผสมผสานที่หายากระหว่างความสามารถทางเทคนิคเชิงลึกกับ product thinking ที่ตรงไปตรงมา เธอเรียกสิ่งต่างๆ ตามที่มันเป็น รวมถึงตอนที่มันล้มเหลวด้วย
