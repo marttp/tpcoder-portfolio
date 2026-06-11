@@ -1,0 +1,27 @@
+---
+import Layout from "../layouts/BaseLayout.astro";
+import SectionTitle from "../components/SectionTitle";
+---
+
+<Layout
+  title="Support Me"
+  description="Support the work of Thanaphoom Babparn."
+>
+  {/* Support Section */}
+  <SectionTitle title="Support Me 🙏" />
+  <p class="text-l mb-4 flex justify-center items-center text-center">
+    If you find these resources helpful, consider supporting my work. Thank you very much!
+  </p>
+  <div class="w-full flex flex-col items-center mb-6 md:flex-row md:justify-center md:space-x-4 space-y-4 md:space-y-0">
+    <img
+      src="/assets/images/ThanaphoomBabparn-PromptPay-100THB.jpg"
+      alt="PromptPay QR Code 100THB for supporting Thanaphoom Babparn as donation"
+      class="w-1/2 md:w-3/12 h-auto object-cover rounded-lg border border-gray-300 dark:border-primary-light"
+    />
+    <img
+      src="/assets/images/Stripe-Supporting-Thanaphoom-Babparn.png"
+      alt="Stripe QR Code 100THB for supporting Thanaphoom Babparn as donation"
+      class="w-1/2 md:w-3/12 h-auto object-cover rounded-lg border border-gray-300 dark:border-primary-light"
+    />
+  </div>
+</Layout>
