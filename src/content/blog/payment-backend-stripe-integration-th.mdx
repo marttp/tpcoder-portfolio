@@ -1,0 +1,650 @@
+---
+title: "การออกแบบ Payment backend ที่ต่อกับ Stripe ในทางปฏิบัติ"
+description: "Blueprint การออกแบบ payment backend ที่เชื่อม Stripe แบบครบ ตั้งแต่ correctness under failure, idempotency ทุก layer, ledger, webhook ordering, state machine, subscription, refund, dispute, Connect, reconciliation ไปจนถึง edge case ที่เจอตอนขึ้น production"
+pubDate: "2026-06-13"
+tags:
+  ["Software Architecture", "Software Engineering"]
+heroImage: "/assets/images/blogs/payment-backend-stripe-integration/hero-banner.png"
+language: "th"
+translationSlug: "payment-backend-stripe-integration-en"
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+## เกริ่นนำ
+
+ผมทำงานสาย payment system อยู่ที่บริษัทตอนนี้ พอเห็น newsletter ตัวนึงพาดหัวว่า complete engineering blueprint สำหรับ payment backend ที่ต่อกับ Stripe ก็เลยอยากอ่าน แต่ช่วงนี้ยังไม่อยากเสียเงิน subscribe (ปัญหากระเป๋าเงิน engineer อะนะ) ก็เลยทำอีกทางคือ reverse มันออกมาจากส่วนที่เปิดให้อ่านฟรี แล้วเติมช่องว่างด้วยเรื่องที่ผมเจอเองตอนทำงาน
+
+เพราะฉะนั้นโพสต์นี้เป็นโน้ตที่ผมเขียนเพื่อเรียนรู้มากกว่าจะเป็นตำรา เป้าหมายคือผมได้เรียนจากการลงมือเขียน แล้วคนอ่านก็ได้อะไรกลับไปด้วย ผมตั้งใจปล่อยให้มันยาว เพราะส่วนที่มักโดนตัดออกจาก tutorial สวย ๆ มันคือส่วนที่ทำเงินหายตอน production พอดี
+
+ไอเดียเดียวที่อยากให้จับไว้ก่อนเข้าเรื่อง: payment backend เป็นระบบไม่กี่อย่างที่ bug ของมันไม่ได้แค่ทำให้ UX แย่ แต่ทำให้เงินหายไปจากบัญชีของใครบางคนเลย คุณสมบัติข้อนี้เปลี่ยนวิธีออกแบบทั้งหมด หัวใจของมันไม่ใช่เรื่อง performance หรือ feature เยอะ ๆ แต่เป็นเรื่อง **correctness under failure** ทุกการตัดสินใจตั้งแต่เลือก database engine ไปจนถึง retry policy ต้องตอบคำถามเดียวกันให้ได้ว่า ถ้า component นี้ตายกลางคัน จะเกิดอะไรขึ้น
+
+มาค่อย ๆ ประกอบมันขึ้นมาจากจุดนั้นกัน
+
+---
+
+## 3 วิธีในการรับ Payment
+
+ก่อนจะลงโค้ด ขอปูภาพรวมก่อน มันมี 3 แนวทางหลัก และการเลือกผิด scale คือการเสียทั้งเวลา engineer เป็นปี หรือเสีย fee เป็นล้าน
+
+![Three options for accepting payments](/assets/images/blogs/payment-backend-stripe-integration/three-options.png)
+
+**ทางเลือกที่ 1: สร้าง payment processor เอง** คุณต้องเชื่อมเข้า card network (Visa, Mastercard) ขอ banking license เอง ดูแล PCI DSS Level 1 compliance เอง (tier สูงสุด สำหรับเจ้าที่ทำ transaction เกิน 6 ล้านรายการต่อปี) สร้าง fraud detection เอง และดูแลความสัมพันธ์กับ issuing bank เอง ข้อดีคือ cost ต่อ transaction ถูกลง พอ scale ใหญ่มาก ๆ ประหยัดแค่ 0.5% ต่อ transaction ก็รวมเป็นหลายร้อยล้านต่อปี เจ้าอย่าง Amazon, Uber, Airbnb ก็ทำบางส่วนของ stack แบบนี้ แต่ข้อเสียคือโหดมาก แค่ขอ license ก็ใช้เวลา 12 ถึง 24 เดือน บวกเงินหลายล้าน บวกภาระ regulatory ต่อเนื่อง แนวนี้คุ้มก็ต่อเมื่อคุณทำ volume ระดับพันล้านต่อปีแล้ว ถ้ายังไม่ถึงจุดนั้น มันคือ premature optimization ขั้นสุด
+
+**ทางเลือกที่ 2: ใช้ payment service provider (PSP)** อย่าง Stripe, PayPal, Adyen หรือ Braintree ตัว PSP จะจัดการ chain ทั้งเส้นให้คุณ ทั้ง card network integration, ความสัมพันธ์กับธนาคาร, fraud tooling, PCI compliance และ payment method ทั่วโลก คุณจ่าย fee ต่อ transaction ราว 2.9% + $0.30 กับ Stripe เพื่อแลกกับการไม่ต้องสร้าง infrastructure พวกนั้นเอง แนวนี้เหมาะกับเกือบทุกคน ตั้งแต่ startup ระยะแรกไปจนถึง platform ขนาดใหญ่ ขนาด Shopify ที่ทำ volume ระดับพันล้านต่อปี ยังสร้าง Shopify Payments บน Stripe แทนที่จะต่อ card network เองเลย
+
+**ทางเลือกที่ 3: ใช้ no-code hosted flow** อย่าง Stripe Checkout หรือ Payment Links Stripe จะ host หน้า checkout ทั้งหน้าให้ คุณแค่สร้าง session, redirect user ไปหน้าของ Stripe แล้ว Stripe จัดการทั้ง UI, การเลือก payment method และการ confirm ให้ แนวนี้เร็วสุด (ขึ้นได้ในไม่กี่ชั่วโมง) เหมาะกับการขายของชิ้นเดียว, รับบริจาค หรือทำ prototype เร็ว ๆ ข้อแลกเปลี่ยนคือ customize ได้จำกัด และคุมประสบการณ์ได้น้อย คุณฝังลงใน UI ของตัวเองแบบลึก ๆ ไม่ได้ สร้าง subscription logic เองไม่ได้ และ react กับ payment event แบบคุมเองทั้งหมดไม่ได้
+
+ที่เหลือของโพสต์นี้สมมติว่าใช้ทางเลือกที่ 2 คือคุณ integrate Stripe เป็น PSP แล้ว own backend รอบ ๆ มันเอง เพราะจุดนั้นคือที่ที่ engineering สนุก
+
+---
+
+## เงินมันไหลยังไง
+
+คุณออกแบบ backend ให้ถูกต้องไม่ได้เลยถ้ายังไม่เข้าใจ lifecycle ของ transaction ตลอดเส้น เพราะแต่ละ phase มี timing และ failure mode ของตัวเอง ในหนึ่ง card transaction มีผู้เล่น 6 ฝ่าย
+
+<MermaidDiagram chart={`
+flowchart LR
+    CH["Cardholder"] --> M["Merchant"]
+    M --> PSP["PSP\nStripe"]
+    PSP --> AB["Acquiring Bank\nMerchant's bank"]
+    AB --> CN["Card Network\nVisa / Mastercard"]
+    CN --> IB["Issuing Bank\nCardholder's bank"]
+`} />
+
+- **Cardholder** — ลูกค้าที่จ่ายเงิน
+- **Merchant** — ธุรกิจของคุณ คนขายสินค้าหรือบริการ
+- **PSP** — ในเคสนี้คือ Stripe
+- **Acquiring bank** — ธนาคารฝั่ง merchant ที่รับเงินเข้า
+- **Card network** — Visa, Mastercard, Amex
+- **Issuing bank** — ธนาคารที่ออกบัตรให้ลูกค้า
+
+เงินไหลผ่าน 3 phase
+
+<MermaidDiagram chart={`
+sequenceDiagram
+    participant CH as Cardholder
+    participant M as Merchant
+    participant S as Stripe
+    participant CN as Card Network
+    participant IB as Issuing Bank
+    CH->>M: Submit payment
+    M->>S: Create PaymentIntent
+    S-->>M: client_secret
+    M-->>CH: Render Stripe Elements
+    CH->>S: Confirm payment (tokenized card)
+    S->>CN: ISO 8583 authorization
+    CN->>IB: Validate card and funds
+    IB-->>CN: Approve and hold funds
+    CN-->>S: Authorization code
+    S-->>M: PaymentIntent confirmed
+    M-->>CH: Payment accepted
+    M->>S: Capture (auto or on fulfillment)
+    S->>CN: Capture confirmed
+    Note over CN,IB: End of day batch
+    IB-->>CN: Transfer funds minus interchange
+    CN-->>S: Transfer minus assessment fees
+    S-->>M: Payout minus Stripe fee
+`} />
+
+### Phase 1: Authorization (1–3 วินาที)
+
+นี่คือ synchronous path ที่เงินถูก verify และถูกกันไว้
+
+backend ของคุณสร้าง Stripe **PaymentIntent** ขึ้นมาเพื่อ track lifecycle ของ transaction การเรียกครั้งนี้ return `client_secret` กลับไปให้ frontend จากนั้นลูกค้ากรอกข้อมูลบัตรลงใน **Stripe Elements** ซึ่งเป็น iframe ที่ Stripe host ไว้และโหลดผ่าน Stripe.js หน้าตามันเหมือนเป็นส่วนหนึ่งของเว็บคุณ แต่เลขบัตรดิบ (PAN, Primary Account Number) ไม่เคยแตะ server ของคุณเลย การออกแบบจุดนี้จุดเดียวทำให้ PCI scope ของคุณลงไปอยู่ tier ต่ำสุด (SAQ A) ซึ่งเป็นเหตุผลใหญ่ข้อหนึ่งที่ทำให้คนเลือกใช้ PSP ตั้งแต่แรก
+
+![Stripe Elements tokenization boundary](/assets/images/blogs/payment-backend-stripe-integration/tokenization-boundary.png)
+
+พอลูกค้ากด submit Stripe จะ tokenize บัตร, ประกอบ message แบบ ISO 8583 authorization แล้วส่งไปที่ acquiring bank ตัว acquiring bank อ่าน BIN (6 ถึง 8 หลักแรก) เพื่อระบุ card network แล้ว forward request ต่อ network route ไปที่ issuing bank ซึ่งจะเช็คความถูกต้องของบัตร, วงเงินที่เหลือ, การ match ของ CVV/AVS และ fraud model ของตัวเอง issuer ส่ง response code สองหลักกลับมา approve หรือ decline ย้อนกลับขึ้นไปตาม chain ถ้า approve จะมีการตั้ง **hold** บน balance ของลูกค้า แต่เงินยังไม่ขยับไปไหน Mastercard รายงานว่า network response time เฉลี่ยอยู่ราว 130 ms และ network ของ Visa ออกแบบมาให้รับ peak ได้ 56,000+ message ต่อวินาที ส่วน round trip เต็ม ๆ รวมทุก hop มักจบใน 1 ถึง 3 วินาที
+
+#### มาดู PaymentIntent ให้ละเอียดขึ้น
+
+PaymentIntent เป็น stateful object ที่ Stripe ใช้ track หนึ่ง payment ตั้งแต่ต้นจนจบ มองมันเป็น source of truth ของ transaction นั้นได้เลย ระบบสมัยก่อนแค่ยิง charge request ออกไปแล้วก็ภาวนา payment สมัยนี้ซับซ้อนกว่านั้นเพราะมีขั้นตอน two-factor อย่าง 3D Secure และ fraud check เพราะงั้น PaymentIntent เลยวิ่งผ่าน state ต่าง ๆ
+
+- `requires_payment_method` — สร้างแล้ว แต่ลูกค้ายังไม่กรอกบัตร
+- `requires_action` — ลูกค้าต้อง verify ใน app ธนาคาร (3D Secure / SCA)
+- `processing` — Stripe กำลังคุยกับธนาคาร
+- `succeeded` — เงินถูก authorize หรือ capture แล้ว
+- `canceled` — ถูกทิ้งกลางทาง หรือถูกยกเลิกก่อนเสร็จ
+
+state `requires_action` เป็นตัวที่คนมักประเมินค่าต่ำไป ในยุโรป Strong Customer Authentication (SCA) ทำให้ payment สัดส่วนหนึ่งจะเด้งเข้า 3DS challenge และทั้ง frontend กับ state machine ของคุณต้องรับมือกับมันอย่างนุ่มนวล แทนที่จะถือว่ามันคือ failure
+
+![3D Secure/SCA flow](/assets/images/blogs/payment-backend-stripe-integration/sca-challenge.png)
+
+### Phase 2: Capture (ทันที หรือ delayed)
+
+Capture คือตอนที่ merchant สั่ง acquiring bank ให้ finalize ยอดที่ authorize ไว้
+
+สำหรับ digital goods และ subscription คุณ capture ทันที default ของ Stripe คือ `capture_method: automatic` ส่วนของจับต้องได้, โรงแรม หรือ ride-hailing คุณจะ delay capture จนกว่าจะ fulfill เสร็จ คุณ capture ยอดที่น้อยกว่าหรือเท่ากับยอดที่ authorize ได้ แต่ห้ามมากกว่า (partial capture จะปล่อย hold ส่วนที่เหลือคืน)
+
+จุดนี้คือ engineering risk ที่กัดคนมานักต่อนัก authorization hold มักอยู่ได้ 5 ถึง 7 วัน (Visa ให้ได้ถึง 31 วันสำหรับ lodging) ถ้าคุณไม่ capture ภายใน window ตัว issuing bank จะ drop hold ทิ้ง แล้ว capture call ทีหลังของคุณจะ fail state machine ของคุณต้องถือว่า `AUTHORIZED` กับ `CAPTURED` เป็นคนละ state กันชัด ๆ ถ้าระบบคุณเชื่อว่า payment ถูก authorize แล้ว แต่ธนาคาร release hold ไปแล้ว การ capture จะ fail และคุณเสียรายได้ไปเงียบ ๆ วิธีแก้คือ background job ที่คอยตรวจ authorization ที่ค้างพวกนี้ แล้ว mark เป็น expired ก่อนมันเน่า
+
+### Phase 3: Clearing และ Settlement (T+1 ถึง T+3)
+
+ปลายวันทำการ transaction ที่ capture แล้วจะถูก batch รวมแล้วส่งเข้า network เพื่อ clearing ตัว network คำนวณ fee และแลกไฟล์กันข้ามคืน Settlement คือตอนที่เงินขยับในเชิงบัญชี: issuing bank ส่งเงิน (หัก fee แล้ว) ไปที่ network, network ส่งต่อให้ acquiring bank, แล้ว acquiring bank ฝากเข้าบัญชี merchant ในวงการธนาคาร T ย่อมาจาก transaction date เพราะงั้น T+2 แปลว่าเงินมาถึงในอีกสองวันทำการ default ของ Stripe ฝั่ง US คือ T+2 ถึงแม้ว่า account ใหม่มักจะติด hold ช่วงแรก 7 ถึง 14 วัน
+
+![Transaction lifecycle timeline](/assets/images/blogs/payment-backend-stripe-integration/transaction-timeline.png)
+
+### ค่า fee มันไปไหนบ้าง
+
+บน transaction online ฝั่ง US ที่ $100 ค่า fee 2.9% + $0.30 (รวมเป็น $3.20) แตกออกเป็น 3 ทาง
+
+<MermaidDiagram chart={`
+pie showData
+    title Fee split on a 100 USD charge (3.20 total)
+    "Interchange to issuing bank" : 2.05
+    "Assessment to card network" : 0.16
+    "Markup kept by Stripe" : 0.99
+`} />
+
+- **Interchange (~$2.05)** ไปที่ issuing bank ก้อนนี้ใหญ่สุด มันครอบ risk ของธนาคารและจ่ายค่า reward บัตรของลูกค้า
+- **Assessment (~$0.16)** ไปที่ card network เป็นค่าใช้ rail ของเขา
+- **Markup (~$0.99)** คือส่วนที่ Stripe เก็บไว้ เป็นค่า API, fraud tooling (Radar), security และ infrastructure
+
+การรู้ว่าก้อนนี้แตกยังไงสำคัญมากตอนที่ finance มาขอให้ reconcile payout เทียบกับ gross charge เพราะตัวเลขที่เข้าบัญชีคุณ ไม่เคยเท่ากับตัวเลขที่ลูกค้าจ่ายเลย ledger ของคุณต้อง model ค่า fee เป็น entry ของมันเอง ซึ่งเดี๋ยวผมจะกลับมาเรื่องนี้
+
+### Event ที่ยิงออกมาระหว่างทาง
+
+webhook คือทางที่ backend ของคุณรู้ว่าเกิดอะไรขึ้น และหนึ่ง payment ยิง event ออกมาหลายตัว การรู้ว่า event ไหน mark transition ไหน ช่วยให้คุณไม่ต้องไปประดิษฐ์ state ที่ไม่จำเป็นขึ้นมาเอง
+
+| Phase | Stripe event หลัก | Worker ทำอะไร |
+| --- | --- | --- |
+| Authorization | `payment_intent.created`, `payment_intent.requires_action`, `payment_intent.processing` | สร้างหรือเดินหน้า payment record; โชว์ 3DS ถ้าต้อง |
+| Approved | `payment_intent.amount_capturable_updated`, `payment_intent.succeeded`, `charge.succeeded` | ขยับไป `AUTHORIZED` หรือ `CAPTURED`; เขียน ledger entry |
+| Declined | `payment_intent.payment_failed` | ขยับไป `FAILED`, เก็บเหตุผลที่ decline |
+| Capture | `charge.captured` | ยืนยัน `CAPTURED` ถ้า capture แยก |
+| Refund | `charge.refunded`, `refund.updated` | ลง accounting ของ refund |
+| Dispute | `charge.dispute.created`, `charge.dispute.closed` | เปิดหรือปิด workflow ของ dispute |
+
+---
+
+## Functional และ Non-Functional Requirements
+
+สำหรับ platform ระดับกลางถึงใหญ่ functional requirement จะแบ่งเป็น 6 กลุ่ม ส่วน non-functional คือจุดที่ payment ต่างจาก backend ทั่วไปอย่างชัด
+
+![Functional and non-functional requirements](/assets/images/blogs/payment-backend-stripe-integration/requirements-panel.png)
+
+**Functional:**
+
+1. payment แบบ one-time และ saved payment method ที่เอากลับมาใช้ซ้ำได้
+2. รับ payment รวมถึง split payment แบบ marketplace
+3. refund ทั้งเต็มและบางส่วน ผ่าน refund state machine ที่แยกออกมา
+4. subscription และ recurring billing พร้อม proration ตอนเปลี่ยน plan, trial และ Smart Retries ของ Stripe สำหรับ renewal ที่ fail
+5. ประมวลผล webhook อย่างเชื่อถือได้ เพราะ webhook คือ source of truth ของสถานะ payment
+6. ทั้ง lifecycle ถูก model เป็น finite-state machine ที่ enforce transition
+
+**Non-functional** คือส่วนที่น่าสนใจ:
+
+- **Exactly-once processing** คือ requirement ตัวพาดหัว charge ซ้ำบนยอด $1,000 แปลว่าเงินถูกหักจากคนคนหนึ่งสองรอบ ตัว exactly-once แบบสมบูรณ์เป็นไปไม่ได้ใน distributed system (Two Generals Problem) เพราะงั้นทางออกเชิงปฏิบัติคือ at-least-once delivery บวก idempotent processing บวก reconciliation
+- **availability สูงสุดขั้ว** Stripe เองตั้งเป้า API uptime ที่ 99.999% หรือราว ๆ downtime 5 นาทีต่อปี
+- **idempotency ในทุก layer** ตั้งแต่ client ถึง backend, backend ถึง Stripe และตอน process webhook ทุก retry ต้องให้ผลเหมือน request แรก
+- **consistency มาก่อน availability** payment เป็นไม่กี่ domain ที่ CAP ควรเอียงไปทาง consistency อย่างหนักแน่น balance ที่อ่านได้ค่าเก่า หรือ write ที่หายไป แย่กว่าการ down ชั่วครู่เยอะ นั่นคือเหตุผลที่ Shopify, Uber, Airbnb ใช้ SQL database ที่มี ACID guarantee สำหรับ core payment data
+
+**ขอแตะเรื่อง scale หน่อย** platform ที่ทำ 100,000 payment ต่อวัน จะสร้าง webhook event ราว 500,000 ถึง 1,000,000 ตัวต่อวัน เพราะแต่ละ payment ยิง event 5 ถึง 10 ตัวตลอด lifecycle ของมัน default rate limit ของ Stripe คือ 100 request/วินาทีต่อ account โดย endpoint แต่ละตัวถูก cap ต่ำกว่านั้น (ราว 25 request/วินาที) และขอเพิ่มได้โดยตกลงกัน ตั้งเป้า latency ของ payment API ตลอดเส้นให้ต่ำกว่า 5 วินาทีรวม round trip ของ Stripe และ call ระหว่าง service ภายในให้ต่ำกว่า 100 ms
+
+---
+
+## High-Level Architecture
+
+architecture แบ่งเป็น 7 component จุดประสงค์ทั้งหมดของการแบ่งคือแยก synchronous path ฝั่งที่คุยกับลูกค้า ออกจาก asynchronous processing และทำให้ webhook ingestion หลุดออกจาก business logic เพื่อให้ bank call ช้า ๆ ไม่ไปทำให้ checkout แย่
+
+<MermaidDiagram chart={`
+flowchart LR
+    FE["Frontend Client"]
+    subgraph SYNC["Synchronous Path"]
+        API["Payment API Service"]
+        ADP["Stripe Integration Layer"]
+    end
+    STRIPE["Stripe API"]
+    subgraph ASYNC["Asynchronous Path"]
+        WH["Webhook Receiver"]
+        MQ["Message Queue\nKafka / SQS"]
+        WK["Background Job Workers"]
+    end
+    subgraph DATA["Data Layer"]
+        DB[("Payment Database")]
+        LG[("Ledger")]
+    end
+    FE -->|payment request| API
+    API --> ADP
+    ADP -->|API calls| STRIPE
+    API -->|read and write| DB
+    STRIPE -.->|webhook events| WH
+    WH -->|enqueue| MQ
+    MQ -->|dequeue| WK
+    WK -->|state transitions| DB
+    DB --> LG
+`} />
+
+1. **Payment API Service** — synchronous entry point มัน validate input, เช็ค idempotency key กับ database, สร้างหรือดึง payment record, สร้าง PaymentIntent แล้ว return `client_secret` กลับไปให้ frontend มันไม่ block รอ downstream เลย แค่สร้าง record, dispatch งานต่อ แล้ว return
+2. **Stripe Integration Layer (PSP adapter)** — ทุก Stripe call อยู่หลัง interface เดียวกัน มัน map Stripe error type เป็น internal code, แปะ idempotency key ทุก POST และจัดการ timeout Airbnb เรียก layer นี้ว่า PSP adapter ถ้าวันหนึ่งคุณจะเพิ่ม provider ตัวที่สองอย่าง Adyen ก็แก้แค่ layer นี้
+3. **Payment Database** — system of record ตัว `payments` ที่ mutable เก็บ state ปัจจุบัน (optimize เพื่อ query) ส่วน `payment_events` ที่ append-only เก็บ log ทุกการเปลี่ยน state แบบ immutable (optimize เพื่อ audit, debug, reconciliation) ทั้งคู่อยู่ใน SQL database เดียวกันและถูกเขียนใน transaction เดียวกัน
+4. **Webhook Receiver** — endpoint เบา ๆ ที่ทำแค่ 3 อย่าง: verify signature ของ Stripe, เก็บ raw event และ return 200 OK ให้ไว Stripe timeout ราว 20 วินาที เพราะงั้นงานหนักทั้งหมดเกิดแบบ asynchronous ตัว receiver แค่ enqueue
+5. **Message Queue** (Kafka, SQS, RabbitMQ) — แยก webhook receipt ออกจาก processing และให้ at-least-once delivery partition ด้วย `account_id` หรือ `payment_id` เพื่อให้ event ของลูกค้าคนเดียวถูก process ตามลำดับเป๊ะ Uber รัน Kafka เป็นกระดูกสันหลังของ payment platform ตัวเอง
+6. **Background Job Workers** — งาน async 4 แบบ: process webhook event, retry worker ที่ใช้ exponential backoff, reconciliation worker รายวัน และ stuck-payment detector ที่ alert payment ที่ค้างใน intermediate state
+7. **Ledger** — double-entry bookkeeping ทุกการขยับของเงินคือคู่ debit กับ credit ที่ balance กัน มัน append-only การแก้ผิดคือใส่ reversing entry ใหม่ ไม่ใช่ update หรือ delete ledger ของ Stripe เองเก็บ money-movement event ราว 5 พันล้านตัวต่อวัน
+
+architecture บอกว่าจะสร้างอะไร แต่ database design คือที่ที่ correctness ถูก enforce หรือหลุดมือ เพราะงั้นต่อไปเรื่องนั้น
+
+---
+
+## Database Schema เพื่อความถูกต้อง
+
+กลยุทธ์ storage แบ่งเป็น **stateful operational table** (lookup สถานะปัจจุบันได้ไว) กับ **append-only event log** (เก็บประวัติเต็ม) ทั้งคู่เขียนใน database transaction เดียวกัน
+
+```sql
+-- Enums for the state machine and currencies
+CREATE TYPE payment_status AS ENUM (
+    'REQUIRES_PAYMENT_METHOD',
+    'REQUIRES_ACTION',
+    'PROCESSING',
+    'AUTHORIZED',
+    'CAPTURED',
+    'FAILED',
+    'CANCELED',
+    'EXPIRED',
+    'PARTIALLY_REFUNDED',
+    'REFUNDED',
+    'DISPUTED'
+);
+
+CREATE TYPE currency_code AS ENUM ('USD', 'EUR', 'THB', 'SGD', 'JPY');
+
+-- Idempotency key registry
+CREATE TABLE idempotency_keys (
+    idempotency_key VARCHAR(255) PRIMARY KEY,
+    request_path    VARCHAR(255) NOT NULL,
+    request_hash    CHAR(64)     NOT NULL, -- SHA-256 of the payload, to catch mutated retries
+    status          VARCHAR(20)  NOT NULL DEFAULT 'IN_PROGRESS', -- IN_PROGRESS, COMPLETED
+    response_code   INT,
+    response_body   JSONB,
+    created_at      TIMESTAMPTZ  DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Payments operational table (stateful)
+CREATE TABLE payments (
+    id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    account_id               UUID NOT NULL,
+    authorized_amount_minor  BIGINT NOT NULL,        -- in minor units, never floats
+    captured_amount_minor    BIGINT NOT NULL DEFAULT 0,
+    refunded_amount_minor    BIGINT NOT NULL DEFAULT 0,
+    currency                 currency_code NOT NULL,
+    status                   payment_status NOT NULL DEFAULT 'REQUIRES_PAYMENT_METHOD',
+    stripe_payment_intent_id VARCHAR(255) UNIQUE,
+    idempotency_key          VARCHAR(255) REFERENCES idempotency_keys(idempotency_key),
+    version                  INT NOT NULL DEFAULT 1, -- optimistic locking
+    created_at               TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at               TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Payment events log (append-only)
+CREATE TABLE payment_events (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    payment_id      UUID NOT NULL REFERENCES payments(id),
+    from_status     payment_status,
+    to_status       payment_status NOT NULL,
+    stripe_event_id VARCHAR(255) UNIQUE,             -- the webhook dedup key
+    payload         JSONB NOT NULL,
+    created_at      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Double-entry ledger (immutable)
+CREATE TABLE ledger_entries (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    transfer_id   UUID NOT NULL,                     -- groups the balanced pair(s)
+    payment_id    UUID NOT NULL REFERENCES payments(id),
+    account       VARCHAR(40) NOT NULL,              -- e.g. stripe_balance, fees, revenue
+    entry_type    VARCHAR(10) CHECK (entry_type IN ('DEBIT', 'CREDIT')),
+    amount_minor  BIGINT NOT NULL CHECK (amount_minor > 0),
+    currency      currency_code NOT NULL,
+    created_at    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Transactional outbox
+CREATE TABLE transactional_outbox (
+    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    aggregate_type VARCHAR(255) NOT NULL,
+    aggregate_id   UUID NOT NULL,
+    event_type     VARCHAR(255) NOT NULL,
+    payload        JSONB NOT NULL,
+    status         VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- PENDING, PROCESSED, FAILED
+    created_at     TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_payments_stripe_id     ON payments(stripe_payment_intent_id);
+CREATE INDEX idx_payment_events_payment ON payment_events(payment_id);
+CREATE INDEX idx_ledger_transfer        ON ledger_entries(transfer_id);
+CREATE INDEX idx_ledger_account         ON ledger_entries(account);
+CREATE INDEX idx_outbox_pending         ON transactional_outbox(status) WHERE status = 'PENDING';
+```
+
+กฎไม่กี่ข้อที่ผมยึดเป็นหลัก:
+
+- **ห้ามใช้ float กับเงินเด็ดขาด** `10.53` ถูกเก็บเป็น `1053` ใน `BIGINT` floating-point arithmetic ทำให้เกิด rounding error เล็ก ๆ ที่สะสมทบกันตลอดหลายล้าน operation แล้วในที่สุดทำให้ ledger reconciliation พัง ใช้ integer เท่านั้น
+- **เก็บเป็น minor unit แต่เคารพ currency exponent ด้วย** อันนี้คือช่องว่างที่ผมเห็นคนข้ามบ่อยสุด และมันกัดผมมาเองกับมือ schema ด้านบนมี THB กับ SGD ซึ่งทั้งคู่มีทศนิยมสองตำแหน่ง เพราะงั้น คูณด้วย 100 ใช้ได้ แต่ **zero-decimal currency ทำให้สมมติฐานนั้นพัง** JPY กับ KRW ไม่มี minor unit เลย เพราะงั้น ¥1000 คือ integer `1000` ไม่ใช่ `100000` ถ้าคุณ hardcode คูณ 100 ไว้ที่ไหน คุณจะเก็บเงินลูกค้าญี่ปุ่นเกินไป 100 เท่า ให้ดึง exponent มาจาก per-currency table แล้วส่งยอดให้ Stripe ใน unit ที่ Stripe คาดหวังสำหรับ currency นั้น
+- **แยก authorized, captured และ refunded ออกจากกัน** column `amount` ตัวเดียวที่ mutable มันปนกันระหว่าง ยอดที่ charge ไป กับ ยอดที่ยัง refund ได้ และคุณจะสูญตัวเลขตั้งต้นทันทีที่มีอะไรเกิดแบบ partial สาม column ช่วยรักษา audit trail ไว้และทำให้ refund guard ง่ายลง
+- **optimistic concurrency control** column `version` คือ guard ทุกการ update state ต้อง assert version ที่คาดไว้ ซึ่งกัน race ระหว่าง webhook ฝั่ง async กับ checkout ฝั่ง user ที่แตะ row เดียวกัน
+
+---
+
+## ออกแบบ Ledger
+
+ตาราง `payments` บอกคุณว่า **สถานะ** ของ payment เป็นยังไง ส่วน ledger บอกว่า **เงิน** อยู่จุดไหน และสองอย่างนี้ไม่ใช่อย่างเดียวกัน payment หนึ่งตัวเป็น `CAPTURED` ได้ ในขณะที่เงินถูกแยกอยู่ระหว่าง Stripe balance, ค่า processing fee และ revenue ที่รับรู้ ถ้าวันหนึ่ง finance ถามว่าเงินก้อนนี้อยู่ไหน คำตอบต้องมาจาก ledger ไม่ใช่จาก column สถานะ
+
+double-entry bookkeeping แปลว่าทุกการขยับของเงินถูกบันทึกเป็นชุด debit กับ credit ที่ balance กันจนรวมเป็นศูนย์ สำหรับ capture $100 ครั้งเดียวที่มี fee $3.20 ชุด entry (จัดกลุ่มใต้ `transfer_id` เดียว) จะหน้าตาแบบนี้
+
+| Account | Debit (minor) | Credit (minor) |
+| --- | --- | --- |
+| `stripe_balance` (asset) | 9680 | |
+| `processing_fees` (expense) | 320 | |
+| `revenue` (income) | | 10000 |
+
+![Double-entry bookkeeping ledger](/assets/images/blogs/payment-backend-stripe-integration/double-entry-ledger.png)
+
+debit รวม (9680 + 320) เท่ากับ credit รวม (10000) ความเท่ากันนี้คือ invariant ถ้า transaction ไหนพยายามเขียนชุดที่ไม่ balance คุณ reject ทิ้ง refund ไม่ใช่การ `UPDATE` row พวกนี้ แต่เป็นชุด balance ชุดใหม่ที่ขยับเงินไปทางกลับกัน โดยผูกกับ payment เดิม ledger เป็น append-only เพราะงั้นประวัติจึงถาวรและ audit ได้ ส่วน balance ของแต่ละ account ก็แค่ `SUM(credits) - SUM(debits)` ต่อ account จะ snapshot เป็นช่วง ๆ ก็ได้ เพื่อไม่ต้อง sum row เป็นพันล้านทุกครั้งที่อ่าน
+
+เหตุผลที่ต้องเข้มขนาดนี้: ledger ที่ append-only พร้อม check แข็ง ๆ ว่า debit เท่ากับ credit คือที่เดียวในระบบที่พิสูจน์ได้ว่าบัญชีของคุณ consistent ในตัวเอง โดยไม่ขึ้นกับ bug ใด ๆ ใน application code ที่อยู่ข้างบน
+
+---
+
+## Idempotency ในทุก Layer
+
+exactly-once แบบสมบูรณ์เป็นไปไม่ได้เชิงคณิตศาสตร์บน network ที่เชื่อถือไม่ได้ (Two Generals Problem อีกแล้ว) เพราะงั้นเราใช้ at-least-once transport บวก idempotent execution แบบ deterministic across 3 interface
+
+![Idempotency checkpoints](/assets/images/blogs/payment-backend-stripe-integration/idempotency-checkpoints.png)
+
+**Layer 1 — Client ถึง backend ของคุณ** ก่อนยิง create request ตัว client สร้าง UUID v4 แล้วส่งมาเป็น header `X-Idempotency-Key` พอ request เข้ามา คุณ lookup key นั้นใน `idempotency_keys` ถ้าเจอ row ที่ `COMPLETED` ให้คำนวณ SHA-256 ของ body ที่เข้ามาแล้วเทียบกับ `request_hash` ที่เก็บไว้ ถ้า match ก็ return response ที่ cache ไว้โดยไม่ต้องรันอะไรซ้ำ ถ้า body เปลี่ยนทั้งที่ใช้ key เดิม ให้ reject ด้วย `400 Bad Request` เพราะนั่นคือ bug ฝั่ง client หรือความพยายาม tamper และการเงียบ ๆ process ต่อมันแย่กว่า
+
+จุดนี้มี race ละเอียด ๆ ที่เวอร์ชันง่าย ๆ มองข้าม: request สอง request ที่ **พร้อมกัน** ด้วย key เดียวกัน ซึ่งคนละเคสกับ retry ตามลำดับ วิธีแก้คือ insert row ของ key ด้วย unique constraint และ status `IN_PROGRESS` ก่อนเริ่มทำงานใด ๆ request แรกชนะการ insert ส่วนตัวที่สองจะชน unique-constraint violation เห็น row ที่ค้างอยู่ แล้วเลือกจะรอเพื่อ return response ที่ cache ในภายหลัง หรือตอบ `409 Conflict` ถ้าไม่มีอันนี้ checkout ที่โดนกดรัว ๆ อาจเล็ดลอดเป็น charge สองรอบในช่วงเสี้ยวก่อนตัวแรกจะเสร็จ
+
+**Layer 2 — Backend ของคุณถึง Stripe** Stripe รองรับ header `Idempotency-Key` แบบ native กฎที่ผมอยากขีดเส้นใต้: **อย่าเอา key ของ client จาก Layer 1 มาใช้เป็น Stripe key ซ้ำ** ถ้าลูกค้า retry แต่ platform ของคุณเปลี่ยน fee หรือ coupon ภายในไปแล้วระหว่างนั้น การใช้ raw client key ต่อจะทำให้ Stripe คืน PaymentIntent ที่ cache ไว้สำหรับ **ยอดคนละยอด** ให้ใช้ `payments.id` ภายในของคุณ (หรือค่าที่ derive จากมัน) เป็น key ฝั่ง downstream แทน Stripe เก็บ idempotency key ไว้ราว 24 ชั่วโมง ซึ่งพอสำหรับ window ของ retry แต่ไม่ใช่ dedup store ถาวร
+
+**Layer 3 — Webhook ingestion** Stripe เตือนชัดเจนว่า webhook มาผิดลำดับหรือมาซ้ำได้ ทุก event มี id ไม่ซ้ำ (`evt_...`) ก่อน process ตัว consumer บันทึก id นั้นใต้ unique constraint (column `stripe_event_id` ด้านบน) หรือจับ row lock ถ้า event id ถูก process ไปแล้ว ก็ทิ้ง message แล้ว ack success จบ
+
+ขอแยกออกมาหนึ่งประโยคเรื่อง production: การ verify signature ของ webhook มีมากกว่าการเช็ค HMAC เฉย ๆ Stripe sign ด้วย HMAC-SHA256 บน timestamp บวก payload ส่งมาใน header `Stripe-Signature` คุณควร enforce tolerance window (default ของ Stripe คือ 5 นาที) เพื่อให้ attacker เอา webhook ที่ดักไว้มา replay ทีหลังเป็นชั่วโมงไม่ได้ verify timestamp ด้วย ไม่ใช่ดู signature อย่างเดียว
+
+**อย่าลืม cleanup** idempotency key สะสมไปเรื่อย ๆ ถ้าปล่อยไว้ รัน job ที่ลบ row ที่เก่ากว่า window ของ retry (24 ถึง 48 ชั่วโมงก็เหลือเฟือ) ไม่งั้น table นี้จะค่อย ๆ กลายเป็นตัวที่ใหญ่และช้าสุดของคุณเงียบ ๆ
+
+---
+
+## เจาะลึก Stripe Integration Layer
+
+adapter ตัวนี้เล็กแต่คุ้มค่ามาก เพราะปัญหา flaky-network และ rate-limit ทุกอย่างไหลผ่านมันหมด มี 3 อย่างที่มันต้องทำให้ถูก: error classification, retry และ API versioning
+
+**Error classification** ไม่ใช่ทุก error ของ Stripe ควรถูก retry การ retry hard decline แค่กวนใจลูกค้า ส่วนการไม่ retry network blip ชั่วคราวคือการทำ payment หล่นหาย ตัว Stripe SDK ให้ typed error มา เพราะงั้น map มันอย่างตั้งใจ
+
+| Stripe error type | retry ได้ไหม? | การจัดการ |
+| --- | --- | --- |
+| `StripeCardError` | ไม่ | decline ขั้นสุด; โชว์เหตุผลให้ user |
+| `StripeRateLimitError` (429) | ได้ | back off แบบมี jitter; คุณเกิน limit แล้ว |
+| `StripeConnectionError` | ได้ | network fail; retry แล้วค่อย verify ด้วย `GET` |
+| `StripeAPIError` (5xx) | ได้ แต่ระวัง | ปัญหาฝั่ง Stripe; retry แบบ backoff, alert ถ้าค้างนาน |
+| `StripeInvalidRequestError` | ไม่ | bug ในโค้ดเรา; alert, ห้าม retry |
+| `StripeAuthenticationError` | ไม่ | API key เสียหรือถูก revoke; page on-call |
+| `StripeIdempotencyError` | ไม่ | key ถูกใช้ซ้ำด้วย param คนละชุด; เป็น bug ที่ต้องแก้ |
+
+**Retry ด้วย backoff และ jitter** สำหรับเคสที่ retry ได้ exponential backoff ที่ใส่ jitter แบบสุ่ม ช่วยกัน thundering herd ที่ทุก request ที่ fail retry พร้อมกันเป๊ะแล้วไป overload API ซ้ำ cap จำนวนครั้งไว้ และหลังจาก cap ก็ push เข้า dead-letter queue ให้คนมาดู แทนที่จะ retry ไม่เลิก คู่ที่สำคัญ: การ retry บน `POST` ปลอดภัยได้ก็เพราะ idempotency key ใน Layer 2 รับประกันว่า Stripe จะไม่ charge ซ้ำ backoff ที่ไม่มี idempotency คือวิธีเปลี่ยน timeout เดียวให้กลายเป็น charge สองรอบ
+
+**Pin API version ไว้** Stripe ทำ version ให้ API ของมัน และทั้ง SDK call กับ webhook payload ของคุณผูกอยู่กับ version pin มันให้ชัด (header `Stripe-Version` และ API version ของ webhook endpoint) เพื่อให้การ upgrade ฝั่ง Stripe ไม่เปลี่ยนรูป field ใต้เท้าคุณเงียบ ๆ upgrade ตามตารางของคุณเอง ใน branch พร้อมเปิด changelog อ่าน ไม่ใช่โดน surprise ตอน production
+
+---
+
+## Webhook Pipeline แบบ Asynchronous
+
+ถ้าคุณรัน ledger logic, risk scoring หรือ external call แบบ synchronous ใน webhook handler ตัว handler จะ block ในที่สุด ทะลุ timeout ~20 วินาทีของ Stripe แล้วจุดชนวน webhook retry เป็น cascade ที่ทำทุกอย่างแย่ลง เพราะงั้น receiver จึงโง่โดยตั้งใจ
+
+```text
+[ WEBHOOK INGEST ]
+  -> verify HMAC signature + timestamp tolerance
+  -> insert raw event into the ingest store (unique on event id)
+  -> publish to the message queue
+  -> return HTTP 200
+
+[ ASYNC PROCESSING ]
+  -> dedup on stripe_event_id (skip if already processed)
+  -> SELECT ... FOR UPDATE by payment_id   (concurrency lock)
+  -> validate the state transition
+       valid?  -> apply ledger + outbox write, mark event processed
+       invalid -> discard, log as out-of-order, ack success
+```
+
+รายละเอียดเชิงปฏิบัติไม่กี่ข้อที่สำคัญพอระบบขึ้น live:
+
+- **Endpoint secret และการ rotate** webhook endpoint แต่ละตัวมี signing secret ของตัวเอง (`whsec_...`) ตอน rotate Stripe ให้ทั้ง secret เก่าและใหม่ verify ได้ในช่วงหนึ่ง เพราะงั้น verify ทั้งสองตัวจนกว่าจะปลดตัวเก่า การตัด secret ทันทีจะทำให้ event ที่ค้างอยู่หลุดหมด
+- **Event type ที่ไม่รู้จัก** Stripe เพิ่ม event type ใหม่เรื่อย ๆ และคุณจะ subscribe มากกว่าที่ handle ไว้ ตั้ง default เป็น ack แล้วเมินตัวที่ไม่รู้จัก แทนที่จะ error ไม่งั้นคุณจะถล่ม retry queue ของ Stripe ด้วย 500
+- **Replay และ thundering herd** ถ้า endpoint คุณ down Stripe retry แบบ backoff ได้นานหลายวัน แล้วอาจ replay backlog ทีเดียวรวดเดียว queue ที่อยู่หน้า worker คือตัวที่ซับ burst นั้นไว้แทนที่จะปล่อยให้ database ละลาย
+
+### Event มาผิดลำดับ กับ state machine
+
+เพราะ queue process partition แบบ concurrent ตัว `payment_intent.succeeded` มาถึง worker **ก่อน** `payment_intent.created` ที่ควรมาก่อนตามลำดับได้ ตัวป้องกันคือ state machine ที่เข้มงวดพร้อม transition ที่ถูก enforce
+
+<MermaidDiagram chart={`
+flowchart TD
+    RPM["REQUIRES_PAYMENT_METHOD"] --> RA["REQUIRES_ACTION (3DS / SCA)"]
+    RPM --> PR["PROCESSING"]
+    RA --> PR
+    RPM --> CAN["CANCELED"]
+    PR --> AUTH["AUTHORIZED"]
+    PR --> FAIL["FAILED"]
+    AUTH --> CAP["CAPTURED"]
+    AUTH --> EXP["EXPIRED (hold dropped)"]
+    AUTH --> CAN
+    CAP --> PREF["PARTIALLY_REFUNDED"]
+    CAP --> REF["REFUNDED"]
+    PREF --> REF
+    CAP --> DIS["DISPUTED"]
+`} />
+
+พอ worker หยิบ message ขึ้นมา มัน lock row ก่อน
+
+```sql
+SELECT status, version FROM payments WHERE id = :payment_id FOR UPDATE;
+```
+
+แล้วประเมิน guard ถ้า row เป็น `CAPTURED` (หรือไปไกลกว่านั้น) ไปแล้ว และ worker ถือ event `created` หรือ `processing` ที่มาผิดลำดับอยู่ มันต้อง **เมิน message นั้นแล้ว exit แบบ success** อย่า throw การ throw ทำให้ queue retry message นั้นไม่เลิกและทำให้ทั้ง partition ค้าง ให้รับรู้ว่าระบบขยับล้ำหน้า event ที่ตามหลังไปแล้ว แล้วเดินต่อ
+
+---
+
+## Saved Cards และ Off-Session Payments
+
+บันทึกบัตรไว้ใช้ครั้งหน้า ฟังดูเหมือนเรื่องเล็ก แต่ไม่เล็ก เพราะการ charge บัตรตอนที่ลูกค้าไม่ได้นั่งอยู่หน้าจอมีกฎของมันเอง
+
+ถ้าจะบันทึกบัตรโดยยังไม่ charge ทันที คุณสร้าง **SetupIntent** แทน PaymentIntent มันรัน flow แบบ Elements + 3DS เหมือนกัน แต่ผลลัพธ์คือ `payment_method` ที่เอากลับมาใช้ซ้ำได้ ผูกกับ Stripe **Customer** object แทนที่จะเป็น charge ทีหลังพอจะ charge บัตรที่บันทึกไว้ตอนลูกค้าไม่อยู่ (renewal, usage bill) คุณสร้าง PaymentIntent ด้วย `off_session: true` และ `confirm: true`
+
+สองอย่างที่คนมักพลาด:
+
+- **Merchant-initiated transaction (MIT) และ SCA exemption** ในยุโรป off-session charge จะได้ SCA exemption **ก็ต่อเมื่อ** การ setup ครั้งแรกแบบ on-session ถูก authenticate และ flag ว่าเป็นจุดเริ่มของข้อตกลง MIT ถ้าข้ามจุดนั้น renewal จะโดน decline ด้วย `authentication_required` แล้วตอนนี้คุณต้องไปไล่ตามลูกค้าให้มา re-authenticate payment ที่เขานึกว่ามันอัตโนมัติ
+- **Network token** Stripe เก็บ network token แทน PAN ดิบได้ ซึ่งยังใช้ได้ต่อตอนที่บัตรของลูกค้าถูกออกใหม่พร้อมเลขใหม่ สำหรับธุรกิจ subscription อันนี้ช่วยกู้ renewal สัดส่วนหนึ่งที่ปกติจะ fail เพราะข้อมูลบัตรหมดอายุไว้เงียบ ๆ
+
+---
+
+## Subscriptions และ Recurring Billing
+
+นี่คือส่วนที่ทีมมักพยายามฉลาดเองแล้วมาเสียใจทีหลัง กับดักคือการรัน subscription clock ไว้ใน timer และ cron ของตัวเอง อย่าทำ ยก timeline ของ billing ให้ Stripe Billing แล้วให้ระบบคุณทำตัวเป็นตัว react กับ webhook ของมัน
+
+Stripe model เรื่องนี้ด้วย **Product** กับ **Price** object, **Subscription** ที่ผูก customer เข้ากับ price และ **Invoice** ที่ถูกสร้างทุก billing cycle ตัว subscription วิ่งผ่าน lifecycle ของมันเอง
+
+<MermaidDiagram chart={`
+flowchart TD
+    INC["incomplete"] --> ACT["active"]
+    INC --> IE["incomplete_expired"]
+    TR["trialing"] --> ACT
+    ACT --> PD["past_due (Smart Retries)"]
+    PD --> ACT
+    PD --> CAN["canceled"]
+    PD --> UNP["unpaid"]
+    ACT --> CAN
+`} />
+
+event ที่คุณ build ตามได้เลย:
+
+| Event | ความหมาย | สิ่งที่ควรทำ |
+| --- | --- | --- |
+| `customer.subscription.created` | subscription ใหม่ อาจกำลัง trial | provision access, เก็บ period end |
+| `invoice.paid` | cycle ถูก bill สำเร็จ | ต่อ access ไปอีก period |
+| `invoice.payment_failed` | charge ตอน renewal fail | ขยับไป `PAST_DUE` แบบนุ่ม ๆ, เริ่ม dunning |
+| `customer.subscription.updated` | เปลี่ยน plan, trial จบ, สถานะเปลี่ยน | re-sync entitlement |
+| `customer.subscription.deleted` | subscription จบแล้วแน่ ๆ | revoke access |
+
+จุดเฉพาะไม่กี่อย่างที่ควรทำให้ถูก:
+
+- **Proration** ตอนลูกค้า upgrade กลางรอบ Stripe จะ prorate ส่วนต่างแล้ว bill ทันที (หรือใน invoice รอบถัดไป ขึ้นกับ `proration_behavior`) ส่วน downgrade มักมีผลตอนจบ period ปล่อยให้ Stripe คำนวณ proration อย่าไปคิดเอง
+- **Trial** `trial_period_days` (หรือกำหนด trial end ชัด ๆ) ทำให้ subscription เริ่มที่ `trialing` โดยยังไม่ charge event `customer.subscription.trial_will_end` คือ hook ให้คุณเตือนลูกค้าก่อนเงินขยับ
+- **Dunning และ Smart Retries** ตอนบัตร renewal decline Stripe retry ตามตารางที่ optimize ไว้หลายวันและส่ง dunning email map วันพวกนั้นเป็น `PAST_DUE` ชั่วคราว แล้ว **เปิด access ไว้** demote หรือ cancel ก็ต่อเมื่อ `customer.subscription.deleted` หรือ `invoice.voided` มาถึง การตัด access ตั้งแต่ decline อ่อน ๆ ครั้งแรก คือวิธีสร้าง ticket โกรธ ๆ จากลูกค้าที่ payment เขาน่าจะผ่านตอน retry รอบสอง
+- **Usage-based billing** สำหรับ plan แบบ metered คุณรายงาน usage ให้ Stripe (usage record / billing meter) แล้วมันคำนวณ invoice ทำให้การรายงานนั้น idempotent ด้วย ไม่งั้น usage report ที่ถูก retry จะ bill ซ้ำ
+
+---
+
+## Refunds
+
+refund สมควรมี state machine เล็ก ๆ ของตัวเอง เพราะมัน fail ในแบบที่ happy path ไม่เคยโชว์
+
+Stripe **Refund** object มี status ของมันเอง: `pending`, `succeeded`, `failed` หรือ `canceled` ส่วนใหญ่สำเร็จทันที แต่ refund ไปบัตรที่ปิดหรือหมดอายุ อาจกลับมาเป็น `failed` ซึ่งเงินจะคืนเข้า Stripe balance ของคุณ และคุณติดหนี้ลูกค้าผ่านช่องทางอื่นแทน เพราะงั้น ออก refund แล้ว ไม่เท่ากับ ลูกค้าได้เงินแล้ว และ UI ของคุณก็ไม่ควรบอกแบบนั้นจนกว่า `refund.updated` จะ confirm `succeeded`
+
+ฝั่ง accounting refund คือ ledger transfer ชุดใหม่ที่ balance กันและขยับเงินกลับทางเดิม ไม่ใช่การแก้ row เก่า และกับดัก concurrency มีอยู่: ลูกค้าหรือ agent กดปุ่ม refund สองรอบ ทำให้ refund เกินได้ ปล่อยให้ database enforce invariant แบบ atomic แทน application code
+
+```sql
+UPDATE payments
+SET refunded_amount_minor = refunded_amount_minor + :refund_amount,
+    status = CASE WHEN (refunded_amount_minor + :refund_amount) = captured_amount_minor
+                  THEN 'REFUNDED'::payment_status
+                  ELSE 'PARTIALLY_REFUNDED'::payment_status END,
+    version = version + 1
+WHERE id = :id
+  AND version = :expected_version
+  AND (refunded_amount_minor + :refund_amount) <= captured_amount_minor;
+```
+
+ถ้า row ไม่ผ่านเงื่อนไข `refunded + new <= captured` แล้ว ตัว update จะกระทบ 0 row และ refund ตัวที่สองจะไม่เกิด database คือกรรมการ concurrency ของคุณ การแยก `captured_amount_minor` กับ `refunded_amount_minor` เป็นคนละ column (แทนที่จะลดยอดเดียว) คือสิ่งที่ทำให้ guard นี้ทั้งถูกต้องและ audit ได้
+
+---
+
+## Disputes และ Chargebacks
+
+source ทั้งสองของผมไม่มีเรื่องนี้ และมันคือสิ่งที่เลี่ยงไม่ได้ตอน production dispute (chargeback) คือการที่ cardholder ไปหาธนาคารตัวเองเพื่อ reverse charge และมันมีนาฬิกานับถอยหลัง มีต้นทุน และมี workflow
+
+<MermaidDiagram chart={`
+flowchart TD
+    NR["needs_response (funds + fee held)"] --> UR["under_review (evidence submitted)"]
+    NR --> ACC["accepted (concede the chargeback)"]
+    UR --> WON["won (funds returned)"]
+    UR --> LOST["lost (debit becomes final)"]
+`} />
+
+พอ `charge.dispute.created` มาถึง Stripe หักยอดที่ถูก dispute **บวกค่า dispute fee** (ราว $15) ออกจาก balance ของคุณทันที และให้ window มาเพื่อ submit evidence (ใบเสร็จ, log, หลักฐานการส่งของ) คุณจะสู้ด้วยการ submit evidence (representment) หรือยอมรับก็ได้ ธนาคารเป็นคนตัดสิน แล้วคุณรู้ผลผ่าน `charge.dispute.closed` ที่เป็น `won` หรือ `lost`
+
+ผลพวงเชิง engineering: เงินที่คุณนับว่า settle แล้ว ถูกดึงกลับได้ในอีกหลายสัปดาห์ ถ้า ledger ของคุณไม่มี concept ของ dispute balance ภายในจะ drift ห่างจากของ Stripe เงียบ ๆ model dispute เป็น state ของมันเองและ ledger transfer ของมันเอง (debit ตอนเปิด, reversing entry ถ้าคุณชนะ) แบบเดียวกับที่ model refund และ subscribe `radar.early_fraud_warning.created` ด้วย มันคือสัญญาณล่วงหน้าว่า dispute มีแนวโน้มจะมา และการรีบ refund charge ที่ถูก flag ไว้ มักถูกกว่าการไปสู้ chargeback แล้วโดนกิน fee
+
+---
+
+## Marketplace Payments ด้วย Stripe Connect
+
+ถ้าคุณเป็น platform ที่จ่ายเงินต่อให้ third party (seller, driver, creator) คุณต้องมี split payment และนั่นแปลว่าใช้ Stripe Connect แทน charge ธรรมดา
+
+<MermaidDiagram chart={`
+flowchart LR
+    CU["Customer pays 100"] --> PL["Platform balance (Stripe)"]
+    PL -->|transfer 90| SE["Seller connected account"]
+    PL -->|application fee 10| RV["Platform revenue"]
+    SE --> PO["Payout to seller bank"]
+`} />
+
+มี 2 รูปแบบหลัก:
+
+- **Destination charges** — charge ถูกสร้างบน platform account ของคุณ พร้อม `transfer_data.destination` ชี้ไปที่ connected account และ `application_fee_amount` ที่คุณเก็บไว้ โมเดลง่ายสุด platform เป็น merchant of record
+- **Separate charges and transfers** — คุณ charge ลูกค้าก่อน แล้วค่อยออก transfer แยกไปยัง connected account หนึ่งหรือหลายตัวทีหลัง ยืดหยุ่นกว่าสำหรับการแบ่ง payment เดียวไปหลาย seller แต่คุณต้องดูแล bookkeeping เองมากขึ้น
+
+ความเป็นไปเชิง production ที่ Connect เพิ่มเข้ามา: connected account แต่ละตัวมี balance และ payout schedule ของตัวเอง, refund และ dispute ดึงเงินกลับออกจาก connected account ที่อาจ payout ออกไปแล้วได้ (negative balance) และ ledger ของคุณตอนนี้ track เงินข้ามหลาย sub-account ไม่ใช่บัญชีเดียว webhook `account.updated` (สถานะ onboarding, capability, สิทธิ์ payout) กลายเป็นตัวสำคัญ เพราะคุณ payout ไปยัง account ที่ยัง verify ไม่เสร็จไม่ได้
+
+---
+
+## Reconciliation
+
+ทุกอย่างข้างบนถูกต้องเป็นเอกเทศได้ แต่บัญชีก็ยัง drift ได้อยู่ดี เพราะ distributed system ทำ message หาย และคนก็ไปแก้ data reconciliation คือ job รายวันที่พิสูจน์ หรือหักล้าง ว่า record ภายในของคุณ match กับของ Stripe
+
+<MermaidDiagram chart={`
+flowchart LR
+    CR["Daily cron"] --> PULL["Pull Stripe balance transactions + payouts"]
+    PULL --> CMP{"Match internal ledger?"}
+    CMP -->|yes| OK["Mark reconciled"]
+    CMP -->|no| CLASS["Classify discrepancy"]
+    CLASS --> EXC["Write exception record + alert"]
+`} />
+
+ตัว worker ดึง balance transaction และ payout ของ Stripe ในวันนั้นมาเทียบกับ ledger ของคุณทีละบรรทัด: amount, fee, net และ status discrepancy ตกลงในไม่กี่ถัง คือ charge ใน Stripe ที่ไม่มี record ภายใน (webhook หล่น), amount หรือ fee ไม่ match, status ที่ drift หรือ payout ที่บวกแล้วไม่ลงตัว บางอันปลอดภัยพอจะ auto-heal โดยถือ Stripe เป็น source of truth แล้ว backfill ledger entry ที่ขาด ส่วนอะไรก็ตามที่เกี่ยวกับส่วนต่างของเงิน ควรเปิด exception record แล้ว alert คนมาดู แทนที่จะแก้เอง ถือ Stripe เป็นแหล่งอ้างอิงของ สิ่งที่เกิดขึ้น และถือ ledger ของคุณเป็นเจ้าของของ สิ่งที่คุณตั้งใจ reconciliation คือที่ที่สองอย่างนี้มาเจอกัน
+
+---
+
+## Edge Case อื่น ๆ ที่เจอตอน Production
+
+happy path น่ะง่าย พวกนี้ต่างหากที่ทำเงินรั่วหรือปลุกคุณตอนตีสาม
+
+### Network timeout กลางคัน
+
+backend ของคุณยิง `POST /v1/payment_intents/pi_123/capture` แล้ว socket หลุดตอนกำลังรอ คุณไม่รู้เลยว่า Stripe รับ request ไปหรือยัง การเดาคือท่าที่ผิด และท่าที่ผิด **มาก ๆ** คือ mark ว่า fail แล้วเดินต่อ ให้ตั้ง local state เป็น `PROCESSING` แล้ว queue verification job ตัว worker ทำ idempotent read กับ Stripe: `GET /v1/payment_intents/pi_123` ถ้า Stripe capture ไปแล้ว ก็ขยับ state เป็น `CAPTURED` ถ้า Stripe ไม่เคยเห็น request เลย ก็ยิง capture ใหม่ด้วย idempotency key ของคุณ อ่านก่อนเขียน อย่าเดา
+
+### Stale read จาก read replica
+
+สถานะ payment เป็นหนึ่งในไม่กี่อย่างที่คุณ **ไม่ควร** อ่านจาก read replica ที่ lag หลัง capture เขียนลง primary การเช็ค status ที่ไปโดน replica ที่ตามหลังอาจยังบอกว่า `AUTHORIZED` แล้วตอนนี้ retry หรือ fulfillment check ตัดสินใจผิดบน data เก่า route การอ่านสถานะ payment ไปที่ primary หรือใช้ read-your-writes consistency อันนี้คือกฎ เอียงไปทาง consistency ของ CAP ที่โผล่มาในรูปที่จับต้องได้มาก
+
+### Payout fail
+
+settlement ไม่ใช่เส้นชัย payout ไปยังธนาคารของคุณ (หรือของ connected account) fail หรือถูก reverse ได้ (`payout.failed`) เช่นบัญชีธนาคารถูกปิด ถ้าคุณ mark ว่าเงิน เข้าแล้ว ตั้งแต่ตอน capture บัญชีของคุณตอนนี้บอกยอดเงินสดเกินไป track สถานะ payout เป็นของมันเอง แล้วให้ reconciliation จับส่วนต่าง
+
+### เศษที่เหลือจาก partial capture
+
+ตอนคุณ authorize $100 แล้ว capture $80 ตัว hold ที่เหลือ $20 ควรถูกปล่อยคืน ไม่ใช่ค้างไว้ ถ้าโค้ดคุณสมมติว่า capture เท่ากับยอดที่ authorize เสมอ คุณจะทิ้ง hold ผีไว้บนบัตรลูกค้าและสร้าง ticket แนว ทำไมยอดเงินยังถูกกันอยู่
+
+---
+
+## Auditability ด้วย Transactional Outbox
+
+ช่องว่างเรื่อง correctness อีกอัน: ถ้า DB write สำเร็จ แต่การ publish ตามไป Kafka fail ตัว worker จะไม่เคย process event นั้น และระบบของคุณจะ drift ห่างกันถาวร วิธีแก้คือทำให้การเปลี่ยน state กับการ publish message เป็นหน่วย atomic เดียว
+
+![Transactional outbox pattern](/assets/images/blogs/payment-backend-stripe-integration/transactional-outbox.png)
+
+```text
+[ ONE POSTGRES ACID TRANSACTION ]
+  1. UPDATE payments SET status = 'CAPTURED' ...
+  2. INSERT INTO ledger_entries (DEBIT, CREDIT) ...
+  3. INSERT INTO transactional_outbox (payload) ...
+            |
+            v   (committed)
+[ Outbox relay: Debezium CDC or a polling worker ]
+  - scan PENDING rows
+  - publish to the message queue
+  - on ack, mark the row PROCESSED
+  - on failure, leave it PENDING and retry
+```
+
+event ลงในตาราง outbox ใน transaction **เดียวกัน** กับที่ update payment และ ledger ตัว relay แยก (CDC tool อย่าง Debezium หรือ polling daemon ง่าย ๆ) อ่าน row ที่ `PENDING` แล้ว publish ออกไป mark แต่ละตัวเป็น `PROCESSED` ก็ต่อเมื่อ queue ack แล้วเท่านั้น ถ้า publish fail row ก็ยัง `PENDING` แล้วถูก retry เพราะงั้น downstream ledger update จะไม่หายไป ข้อแม้เดียว: ตัว relay เองก็เป็น at-least-once เพราะงั้นมัน publish ซ้ำได้ถ้า crash ระหว่าง queue ack แล้ว กับ mark row PROCESSED นั่นไม่เป็นไร เพราะ dedup แบบ webhook ใน Layer 3 ฝั่ง consumer จัดการตัวซ้ำให้อยู่แล้ว การมี idempotency อยู่ทุกที่นี่แหละที่ทำให้ทุก layer อื่นผ่อนคลายได้
+
+---
+
+## Observability, Testing และ Compliance
+
+payment system ที่คุณมองเข้าไปไม่เห็น คือ payment system ที่คุณเชื่อใจไม่ได้
+
+**Observability** track metric ที่ทำนายปัญหาได้: authorization success rate และเหตุผลที่ decline, capture latency, webhook lag (จาก event-created ถึง processed), จำนวน reconciliation mismatch, จำนวน stuck-payment แยกตาม state และ dispute rate ใส่ SLO ให้ตัวที่ลูกค้ารู้สึก (payment API latency, success rate) แล้ว alert ตัวที่ส่งสัญญาณว่า drift เงียบ ๆ (reconciliation mismatch, payment ที่ค้างใน intermediate state เกิน threshold) ตาราง `payment_events` ของคุณทำหน้าที่เป็น audit log ในตัว อย่าลบมัน
+
+**Testing** test mode ของ Stripe บวก Stripe CLI ทำให้ test ได้แบบจับต้องได้ ใช้ `stripe listen --forward-to` เพื่อ pipe webhook event เข้าเครื่อง local และ `stripe trigger` เพื่อยิง event ที่ต้องการตามสั่ง ใช้ test card ตาม doc เพื่อบังคับผลลัพธ์ ทั้ง charge สำเร็จ, hard decline และ path 3DS ของ `requires_action` ส่วน subscription ตัว **test clock** ให้คุณหมุนเวลาไปข้างหน้าเพื่อดู trial จบ, renewal bill และ dunning sequence เล่นจบในไม่กี่วินาทีแทนที่จะรอเป็นสัปดาห์ ไม่มีข้ออ้างที่จะ ship subscription logic ที่คุณเคยเห็นแค่ happy path
+
+**Compliance และ security** การใช้ Elements ทำให้คุณอยู่ที่ PCI DSS SAQ A เพราะ PAN ไม่เคยแตะ server ของคุณ อย่าไปทำลายมันด้วยการ log ข้อมูลบัตรไว้ที่ไหน encrypt PII ของลูกค้า at rest (key ที่ backed ด้วย KMS), ใช้ restricted API key ที่ scope ไว้เท่าที่แต่ละ service ต้องใช้, rotate webhook signing secret ตามตาราง และทำ least-privilege ว่าใคร refund หรืออ่าน ledger ได้บ้าง ในงาน payment รัศมีความเสียหายของ key ที่หลุดวัดกันเป็นเม็ดเงินในบัญชี
+
+---
+
+## สรุปสิ่งที่ได้
+
+3 อย่างที่ติดหัวผมหลัง reverse เรื่องนี้ทั้งหมด
+
+หนึ่ง **payment คือปัญหา correctness ที่ใส่ชุด backend มา** ส่วนยากไม่ใช่ throughput หรือ feature แต่คือสิ่งที่เกิดตอน call timeout, ตอน webhook มาซ้ำ หรือตอน refund สองตัวแข่งกัน ถ้าคุณออกแบบทุก component รอบคำถาม อะไรพังกลางคัน ที่เหลือมันจะเข้าที่เอง
+
+สอง **idempotency คือเสารับน้ำหนัก** ตั้งแต่ client ถึง backend, backend ถึง Stripe, webhook ถึง worker, การรายงาน usage ไปจนถึง outbox relay ทุก hop สมมติว่าตัวก่อนหน้าอาจ retry พอคุณยอมรับ at-least-once ทุกที่และทำ processing ให้ idempotent ทุกที่ exactly-once ก็เลิกเป็นเรื่องเพ้อฝัน แล้วกลายเป็นคุณสมบัติที่ผุดขึ้นมาเอง
+
+สาม **ช่องว่างคือที่ที่เงินอยู่** ทั้ง zero-decimal currency bug, authorization hold ที่หลุด, partial-refund race, dispute ที่คุณไม่ได้ model, renewal ที่ fail SCA, payout ที่เด้งกลับ ไม่มีอันไหนอยู่ใน tutorial happy path เลย และทุกอันทำเงินหาย นั่นแหละคือเหตุผลที่ผมอยากเขียนโน้ตสาย production พวกนี้ไว้ มากกว่าแค่ blueprint
+
+ถ้าคุณกำลังสร้าง payment แล้วจำได้แค่บรรทัดเดียวจากโพสต์นี้: เก็บเงินเป็น integer ใน minor unit, ทำทุกอย่างให้ idempotent, มี double-entry ledger แบบ append-only และให้ database เป็นคน enforce invariant ไม่ใช่ application code
+
+---
+
+_นี่คือโน้ตที่ผม reverse จาก newsletter สาย payment บวกกับประสบการณ์ production ของผมเอง ถ้าผมพลาดรายละเอียดจุดไหน บอกได้เลย นั่นแหละคือวิธีที่โน้ตมันดีขึ้น_
