@@ -1,0 +1,650 @@
+---
+title: "Designing a Payment Backend with Stripe Integration, in Practice"
+description: "A comprehensive, production-grade engineering blueprint for a Stripe-integrated payment backend — correctness under failure, idempotency at every layer, the ledger, webhook ordering, the state machine, subscriptions, refunds, disputes, Connect, reconciliation, and the edge cases that actually bite."
+pubDate: "2026-06-13"
+tags:
+  ["Software Architecture", "Software Engineering"]
+heroImage: "/assets/images/blogs/payment-backend-stripe-integration/hero-banner.png"
+language: "en"
+translationSlug: "payment-backend-stripe-integration-th"
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+## Introduction
+
+I work on payment systems in my day job, so when I saw a newsletter promising "the complete engineering blueprint for a Stripe-integrated payment backend," I wanted to read it. I also didn't want to subscribe right this minute (engineer budget problems, you know how it is), so I did the next best thing: I reconstructed the blueprint from the public portion, then filled in the gaps with the production realities I keep running into at work.
+
+So treat this as my study notes rather than a textbook. The goal is that I learn by writing it down, and you get something useful out of it too. I let it run long on purpose, because the parts that get cut from a tidy tutorial are exactly the parts that cost money in production.
+
+The one idea worth holding onto before anything else: a payment backend is one of the few systems where a bug doesn't just cause a bad user experience, it makes real money disappear from someone's account. That single property changes how you design everything. The core challenge is not performance or feature richness. It is **correctness under failure**. Every decision, from the database engine to the retry policy, has to answer one question: what happens when this component dies mid-transaction?
+
+Let's build it up from there.
+
+---
+
+## Three Ways to Accept Payments
+
+Before any code, it helps to know the landscape. There are three broad strategies, and picking the wrong one for your scale costs you either years of engineering or millions in fees.
+
+![Three options for accepting payments](/assets/images/blogs/payment-backend-stripe-integration/three-options.png)
+
+**Option 1: Build your own payment processor.** You connect directly to card networks (Visa, Mastercard), acquire banking licenses, handle PCI DSS Level 1 compliance yourself (the highest tier, for companies processing more than 6 million transactions a year), build fraud detection, and manage relationships with issuing banks. The upside is lower per-transaction cost, and at massive scale shaving even 0.5% off each transaction adds up to hundreds of millions a year. Amazon, Uber, and Airbnb run parts of their stack this way. The downside is brutal: acquiring the licenses alone takes 12 to 24 months and millions of dollars, with ongoing regulatory obligations. This only makes sense once you process billions in annual volume. For everyone else it is premature optimization at its most extreme.
+
+**Option 2: Integrate a payment service provider (PSP)** like Stripe, PayPal, Adyen, or Braintree. The PSP handles the whole chain on your behalf: card network integrations, banking relationships, fraud tooling, PCI compliance, and global payment methods. You pay a per-transaction fee, typically around 2.9% + $0.30 with Stripe, to skip building that infrastructure. This is the right call for almost everyone, from early-stage startups to large platforms. Even Shopify, which processes billions a year, built Shopify Payments on top of Stripe rather than wiring into card networks directly.
+
+**Option 3: No-code hosted flows** such as Stripe Checkout or Payment Links. Stripe hosts the entire checkout page. You create a session, redirect the user to Stripe's page, and Stripe handles UI, payment method selection, and confirmation. This is the fastest path (live in hours), and it is great for selling a single product, collecting donations, or shipping a prototype. The trade-off is limited customization and little control over the experience. You cannot deeply embed it in your own UI, build custom subscription logic, or react to payment events with full control.
+
+The rest of this post assumes Option 2: you integrate Stripe as the PSP and own the backend around it. That is where the interesting engineering lives.
+
+---
+
+## How Money Actually Moves
+
+You cannot design a correct backend until you understand the transaction lifecycle end to end, because each phase has its own timing and its own failure modes. Six entities take part in every card transaction.
+
+<MermaidDiagram chart={`
+flowchart LR
+    CH["Cardholder"] --> M["Merchant"]
+    M --> PSP["PSP\nStripe"]
+    PSP --> AB["Acquiring Bank\nMerchant's bank"]
+    AB --> CN["Card Network\nVisa / Mastercard"]
+    CN --> IB["Issuing Bank\nCardholder's bank"]
+`} />
+
+- **Cardholder** — the customer paying.
+- **Merchant** — your business, selling the product or service.
+- **PSP** — Stripe, in this case.
+- **Acquiring bank** — the merchant's bank that receives the funds.
+- **Card network** — Visa, Mastercard, Amex.
+- **Issuing bank** — the bank that issued the customer's card.
+
+Money flows through three phases.
+
+<MermaidDiagram chart={`
+sequenceDiagram
+    participant CH as Cardholder
+    participant M as Merchant
+    participant S as Stripe
+    participant CN as Card Network
+    participant IB as Issuing Bank
+    CH->>M: Submit payment
+    M->>S: Create PaymentIntent
+    S-->>M: client_secret
+    M-->>CH: Render Stripe Elements
+    CH->>S: Confirm payment (tokenized card)
+    S->>CN: ISO 8583 authorization
+    CN->>IB: Validate card and funds
+    IB-->>CN: Approve and hold funds
+    CN-->>S: Authorization code
+    S-->>M: PaymentIntent confirmed
+    M-->>CH: Payment accepted
+    M->>S: Capture (auto or on fulfillment)
+    S->>CN: Capture confirmed
+    Note over CN,IB: End of day batch
+    IB-->>CN: Transfer funds minus interchange
+    CN-->>S: Transfer minus assessment fees
+    S-->>M: Payout minus Stripe fee
+`} />
+
+### Phase 1: Authorization (1–3 seconds)
+
+This is the synchronous path where the money is verified and reserved.
+
+Your backend creates a Stripe **PaymentIntent** to track the transaction lifecycle. That call returns a `client_secret` to the frontend. The customer then enters card details into **Stripe Elements**, which are secure iframes hosted by Stripe and loaded through Stripe.js. They look like part of your site, but the raw card number (the PAN, Primary Account Number) never touches your server. That single design choice drops your PCI scope to the lowest tier (SAQ A), which is a big reason to use a PSP in the first place.
+
+![Stripe Elements tokenization boundary](/assets/images/blogs/payment-backend-stripe-integration/tokenization-boundary.png)
+
+When the customer submits, Stripe tokenizes the card, formats an ISO 8583 authorization message, and sends it to the acquiring bank. The acquiring bank reads the BIN (the first 6 to 8 digits) to identify the card network and forwards the request. The network routes it to the issuing bank, which checks card validity, available funds, CVV/AVS match, and its own fraud models. The issuer returns a two-digit response code, approve or decline, back up the chain. On approval, a **hold** is placed on the cardholder's balance, but no money has moved yet. Mastercard reports an average network response time around 130 ms, and Visa's network is built to handle peaks of 56,000+ messages per second; the full round trip including every hop usually finishes in 1 to 3 seconds.
+
+#### A closer look at the PaymentIntent
+
+A PaymentIntent is a stateful object Stripe uses to track a single payment from start to finish. Think of it as the source of truth for one transaction. Older systems just fired a "charge" request and hoped. Modern payments are more involved because of two-factor steps like 3D Secure and fraud checks, so the PaymentIntent moves through states:
+
+- `requires_payment_method` — created, but the customer hasn't entered a card yet.
+- `requires_action` — the customer must verify in their bank app (3D Secure / SCA).
+- `processing` — Stripe is talking to the banks.
+- `succeeded` — the money is authorized or captured.
+- `canceled` — abandoned or explicitly canceled before completion.
+
+That `requires_action` state is one people underestimate. In the EU, Strong Customer Authentication (SCA) means a meaningful share of payments will bounce into a 3DS challenge, and your frontend and state machine both have to handle that gracefully rather than treating it as a failure.
+
+![3D Secure/SCA flow](/assets/images/blogs/payment-backend-stripe-integration/sca-challenge.png)
+
+### Phase 2: Capture (immediate or delayed)
+
+Capture is when the merchant tells the acquiring bank to finalize the authorized amount.
+
+For digital goods and subscriptions, you capture immediately. Stripe's default is `capture_method: automatic`. For physical goods, hotels, or ride-hailing, you delay capture until fulfillment. You can capture an amount less than or equal to what was authorized, but never more (partial capture releases the remainder of the hold).
+
+Here is the engineering risk that bites people. Authorization holds typically last 5 to 7 days (Visa allows up to 31 days for lodging). If you don't capture within the window, the issuing bank drops the hold, and your later capture call fails. Your state machine has to treat `AUTHORIZED` and `CAPTURED` as genuinely distinct states. If your system believes a payment is authorized but the bank has already released the hold, capture will fail and you have silently lost revenue. The fix is a background job that detects these stuck authorizations and marks them expired before they rot.
+
+### Phase 3: Clearing and settlement (T+1 to T+3)
+
+At the end of the business day, captured transactions are batched and sent to the network for clearing. The network computes fees and exchanges files overnight. Settlement is when money actually moves: the issuing bank sends funds (minus fees) to the network, which passes them to the acquiring bank, which deposits them into the merchant account. In banking, "T" is the transaction date, so T+2 means funds arrive two business days later. Stripe's US default is T+2, though new accounts usually sit behind an initial 7 to 14 day hold.
+
+![Transaction lifecycle timeline](/assets/images/blogs/payment-backend-stripe-integration/transaction-timeline.png)
+
+### Where the fee goes
+
+On a $100 US online transaction, the 2.9% + $0.30 fee (so $3.20) splits three ways.
+
+<MermaidDiagram chart={`
+pie showData
+    title Fee split on a 100 USD charge (3.20 total)
+    "Interchange to issuing bank" : 2.05
+    "Assessment to card network" : 0.16
+    "Markup kept by Stripe" : 0.99
+`} />
+
+- **Interchange (~$2.05)** goes to the issuing bank. This is the biggest slice; it covers the bank's risk and funds the customer's card rewards.
+- **Assessment (~$0.16)** goes to the card network for using their rails.
+- **Markup (~$0.99)** is what Stripe keeps for the API, fraud tooling (Radar), security, and infrastructure.
+
+Knowing this split matters the moment finance asks you to reconcile payouts against gross charges, because the number that lands in your bank account is never the number the customer paid. Your ledger has to model the fee as its own entry, which I'll come back to.
+
+### The events fired along the way
+
+Webhooks are how your backend learns what happened, and a single payment emits a handful of them. Knowing which event marks which transition keeps you from inventing state you don't need.
+
+| Phase | Key Stripe events | What the worker does |
+| --- | --- | --- |
+| Authorization | `payment_intent.created`, `payment_intent.requires_action`, `payment_intent.processing` | Create or advance the payment record; surface 3DS if needed |
+| Approved | `payment_intent.amount_capturable_updated`, `payment_intent.succeeded`, `charge.succeeded` | Move to `AUTHORIZED` or `CAPTURED`; write the ledger entries |
+| Declined | `payment_intent.payment_failed` | Move to `FAILED`, store the decline reason |
+| Capture | `charge.captured` | Confirm `CAPTURED` if you captured separately |
+| Refund | `charge.refunded`, `refund.updated` | Apply refund accounting |
+| Dispute | `charge.dispute.created`, `charge.dispute.closed` | Open or close the dispute workflow |
+
+---
+
+## Functional and Non-Functional Requirements
+
+For a mid-to-large platform, the functional requirements land in six buckets, and the non-functional ones are where payments diverge sharply from a normal backend.
+
+![Functional and non-functional requirements](/assets/images/blogs/payment-backend-stripe-integration/requirements-panel.png)
+
+**Functional:**
+
+1. One-time payments and saved payment methods for reuse.
+2. Accepting payments, including marketplace-style split payments.
+3. Refunds, full and partial, through a dedicated refund state machine.
+4. Subscriptions and recurring billing, with proration on plan changes, trials, and Stripe's Smart Retries for failed renewals.
+5. Reliable webhook processing, because webhooks are the source of truth for payment status.
+6. The whole lifecycle modeled as a finite-state machine with enforced transitions.
+
+**Non-functional** is where it gets interesting:
+
+- **Exactly-once processing** is the headline requirement. A double charge on a $1,000 purchase means money taken twice from a real person. True exactly-once delivery is impossible in distributed systems (the Two Generals Problem), so the practical answer is at-least-once delivery plus idempotent processing plus reconciliation.
+- **Extreme availability.** Stripe itself targets 99.999% API uptime, roughly five minutes of downtime per year.
+- **Idempotency at every layer** — client to backend, backend to Stripe, and webhook processing. Every retry must produce the same result as the original.
+- **Consistency over availability.** Payments are one of the few domains where CAP should tilt decisively toward consistency. A stale balance read or a lost write is far worse than brief unavailability. That is why Shopify, Uber, and Airbnb all use SQL databases with ACID guarantees for core payment data.
+
+**A note on scale.** A platform doing 100,000 payments a day generates roughly 500,000 to 1,000,000 webhook events daily, since each payment fires 5 to 10 events across its lifecycle. Stripe's default API limit is 100 requests/second per account, with individual endpoints capped lower (around 25 requests/second), and higher limits available by arrangement. Aim for end-to-end payment API latency under 5 seconds including the Stripe round trip, and internal service-to-service calls under 100 ms.
+
+---
+
+## High-Level Architecture
+
+The architecture splits into seven components. The whole point of the split is to isolate the synchronous, customer-facing path from asynchronous processing, and to keep webhook ingestion decoupled from business logic so a slow bank call never degrades checkout.
+
+<MermaidDiagram chart={`
+flowchart LR
+    FE["Frontend Client"]
+    subgraph SYNC["Synchronous Path"]
+        API["Payment API Service"]
+        ADP["Stripe Integration Layer"]
+    end
+    STRIPE["Stripe API"]
+    subgraph ASYNC["Asynchronous Path"]
+        WH["Webhook Receiver"]
+        MQ["Message Queue\nKafka / SQS"]
+        WK["Background Job Workers"]
+    end
+    subgraph DATA["Data Layer"]
+        DB[("Payment Database")]
+        LG[("Ledger")]
+    end
+    FE -->|payment request| API
+    API --> ADP
+    ADP -->|API calls| STRIPE
+    API -->|read and write| DB
+    STRIPE -.->|webhook events| WH
+    WH -->|enqueue| MQ
+    MQ -->|dequeue| WK
+    WK -->|state transitions| DB
+    DB --> LG
+`} />
+
+1. **Payment API Service** — the synchronous entry point. It validates input, checks idempotency keys against the database, creates or retrieves the payment record, creates a PaymentIntent, and returns the `client_secret` to the frontend. It never blocks on downstream work. It creates the record, dispatches, and returns.
+2. **Stripe Integration Layer (PSP adapter)** — every Stripe call sits behind one uniform interface. It maps Stripe error types to internal codes, attaches idempotency keys to every POST, and manages timeouts. Airbnb calls this the "PSP adapter." If you ever add a second provider like Adyen, only this layer changes.
+3. **Payment Database** — the system of record. A mutable `payments` table holds current state (optimized for queries), and an append-only `payment_events` table holds the immutable log of every state change (optimized for audit, debugging, reconciliation). Both live in the same SQL database and are written in the same transaction.
+4. **Webhook Receiver** — a lightweight endpoint that does exactly three things: verify the Stripe signature, store the raw event, and return 200 OK fast. Stripe times out around 20 seconds, so all real work happens asynchronously. The receiver just enqueues.
+5. **Message Queue** (Kafka, SQS, RabbitMQ) — decouples webhook receipt from processing and gives at-least-once delivery. Partition by `account_id` or `payment_id` so events for one customer are processed in strict order. Uber runs Kafka as the backbone of their payment platform.
+6. **Background Job Workers** — four flavors of async work: webhook event processing, retry workers with exponential backoff, a daily reconciliation worker, and a stuck-payment detector that alerts on payments stuck in intermediate states.
+7. **Ledger** — double-entry bookkeeping. Every money movement is a balanced pair of debit and credit entries. It is append-only: corrections are new reversing entries, never updates or deletes. Stripe's own ledger logs around 5 billion money-movement events a day.
+
+The architecture says what to build. The database design is where correctness is actually enforced or lost, so that is next.
+
+---
+
+## Database Schema for Correctness
+
+The storage strategy splits into a **stateful operational table** (fast current-status lookups) and an **append-only event log** (full history). Both write inside the same database transaction.
+
+```sql
+-- Enums for the state machine and currencies
+CREATE TYPE payment_status AS ENUM (
+    'REQUIRES_PAYMENT_METHOD',
+    'REQUIRES_ACTION',
+    'PROCESSING',
+    'AUTHORIZED',
+    'CAPTURED',
+    'FAILED',
+    'CANCELED',
+    'EXPIRED',
+    'PARTIALLY_REFUNDED',
+    'REFUNDED',
+    'DISPUTED'
+);
+
+CREATE TYPE currency_code AS ENUM ('USD', 'EUR', 'THB', 'SGD', 'JPY');
+
+-- Idempotency key registry
+CREATE TABLE idempotency_keys (
+    idempotency_key VARCHAR(255) PRIMARY KEY,
+    request_path    VARCHAR(255) NOT NULL,
+    request_hash    CHAR(64)     NOT NULL, -- SHA-256 of the payload, to catch mutated retries
+    status          VARCHAR(20)  NOT NULL DEFAULT 'IN_PROGRESS', -- IN_PROGRESS, COMPLETED
+    response_code   INT,
+    response_body   JSONB,
+    created_at      TIMESTAMPTZ  DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Payments operational table (stateful)
+CREATE TABLE payments (
+    id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    account_id               UUID NOT NULL,
+    authorized_amount_minor  BIGINT NOT NULL,        -- in minor units, never floats
+    captured_amount_minor    BIGINT NOT NULL DEFAULT 0,
+    refunded_amount_minor    BIGINT NOT NULL DEFAULT 0,
+    currency                 currency_code NOT NULL,
+    status                   payment_status NOT NULL DEFAULT 'REQUIRES_PAYMENT_METHOD',
+    stripe_payment_intent_id VARCHAR(255) UNIQUE,
+    idempotency_key          VARCHAR(255) REFERENCES idempotency_keys(idempotency_key),
+    version                  INT NOT NULL DEFAULT 1, -- optimistic locking
+    created_at               TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at               TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Payment events log (append-only)
+CREATE TABLE payment_events (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    payment_id      UUID NOT NULL REFERENCES payments(id),
+    from_status     payment_status,
+    to_status       payment_status NOT NULL,
+    stripe_event_id VARCHAR(255) UNIQUE,             -- the webhook dedup key
+    payload         JSONB NOT NULL,
+    created_at      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Double-entry ledger (immutable)
+CREATE TABLE ledger_entries (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    transfer_id   UUID NOT NULL,                     -- groups the balanced pair(s)
+    payment_id    UUID NOT NULL REFERENCES payments(id),
+    account       VARCHAR(40) NOT NULL,              -- e.g. stripe_balance, fees, revenue
+    entry_type    VARCHAR(10) CHECK (entry_type IN ('DEBIT', 'CREDIT')),
+    amount_minor  BIGINT NOT NULL CHECK (amount_minor > 0),
+    currency      currency_code NOT NULL,
+    created_at    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Transactional outbox
+CREATE TABLE transactional_outbox (
+    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    aggregate_type VARCHAR(255) NOT NULL,
+    aggregate_id   UUID NOT NULL,
+    event_type     VARCHAR(255) NOT NULL,
+    payload        JSONB NOT NULL,
+    status         VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- PENDING, PROCESSED, FAILED
+    created_at     TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_payments_stripe_id     ON payments(stripe_payment_intent_id);
+CREATE INDEX idx_payment_events_payment ON payment_events(payment_id);
+CREATE INDEX idx_ledger_transfer        ON ledger_entries(transfer_id);
+CREATE INDEX idx_ledger_account         ON ledger_entries(account);
+CREATE INDEX idx_outbox_pending         ON transactional_outbox(status) WHERE status = 'PENDING';
+```
+
+A few rules I would die on this hill for:
+
+- **Never use floats for money.** `10.53` is stored as `1053` in a `BIGINT`. Floating-point arithmetic introduces tiny rounding errors that compound over millions of operations and eventually break your ledger reconciliation. Integers only.
+- **Store minor units, but respect the currency exponent.** This is the gap I see skipped most often, and it bit me directly. The schema lists THB and SGD, both of which have two decimal places, so "multiply by 100" works. But **zero-decimal currencies break that assumption.** JPY and KRW have no minor unit at all, so ¥1000 is the integer `1000`, not `100000`. If you hardcode a "× 100" anywhere, you will overcharge Japanese customers by 100×. Drive the exponent off a per-currency table, and pass amounts to Stripe in the unit Stripe expects for that currency.
+- **Keep authorized, captured, and refunded amounts separate.** A single mutable `amount` column conflates "what was charged" with "what is still refundable," and you lose the original figure the moment anything partial happens. Three columns keep the audit trail intact and make the refund guard trivial.
+- **Optimistic concurrency control.** The `version` column is a guard. Every state update asserts the expected version, which neutralizes the race between an async webhook and a live user-driven checkout touching the same row.
+
+---
+
+## Designing the Ledger
+
+The `payments` table tells you the *state* of a payment. The ledger tells you the *money*, and those are not the same thing. A payment can be `CAPTURED` while the cash is split across your Stripe balance, a processing fee, and recognized revenue. If finance ever asks "where is this dollar," the answer has to come from the ledger, not from a status column.
+
+Double-entry bookkeeping means every money movement is recorded as a balanced set of debits and credits that sum to zero. For a single $100 capture with a $3.20 fee, the entries (grouped under one `transfer_id`) look like this:
+
+| Account | Debit (minor) | Credit (minor) |
+| --- | --- | --- |
+| `stripe_balance` (asset) | 9680 | |
+| `processing_fees` (expense) | 320 | |
+| `revenue` (income) | | 10000 |
+
+![Double-entry bookkeeping ledger](/assets/images/blogs/payment-backend-stripe-integration/double-entry-ledger.png)
+
+Total debits (9680 + 320) equal total credits (10000). That equality is the invariant: if a transaction ever tries to write an unbalanced set, you reject it. A refund is not an `UPDATE` of these rows — it is a *new* balanced set that moves money the other way, linked to the same payment. The ledger is append-only, so the history is permanent and auditable. Account balances are then just `SUM(credits) - SUM(debits)` per account, optionally snapshotted periodically so you don't sum billions of rows on every read.
+
+The reason to be this strict: an append-only ledger with a hard "debits equal credits" check is the one place in the system that can prove your books are internally consistent, independent of any bug in the application code above it.
+
+---
+
+## Idempotency at Every Layer
+
+True exactly-once is mathematically impossible over an unreliable network (the Two Generals Problem again), so we use at-least-once transport plus deterministic idempotent execution across three interfaces.
+
+![Idempotency checkpoints](/assets/images/blogs/payment-backend-stripe-integration/idempotency-checkpoints.png)
+
+**Layer 1 — Client to your backend.** Before sending a create request, the client generates a UUID v4 and sends it as an `X-Idempotency-Key` header. When the request lands, you look the key up in `idempotency_keys`. If you find a `COMPLETED` row, compute the SHA-256 of the incoming body and compare it to the stored `request_hash`. If they match, return the cached response without re-running anything. If the body changed under the same key, reject with `400 Bad Request` — that is a client bug or a tampering attempt, and silently processing it would be worse.
+
+There is a subtle race here that the simple version misses: two *concurrent* requests with the same key, not just a sequential retry. The fix is to insert the key row with a unique constraint and an `IN_PROGRESS` status before doing any work. The first request wins the insert; the second hits the unique-constraint violation, sees the in-flight row, and either waits and returns the eventual cached response or replies `409 Conflict`. Without this, a double-clicked checkout can slip two charges through in the gap before the first one finishes.
+
+**Layer 2 — Your backend to Stripe.** Stripe supports an `Idempotency-Key` header natively. The rule I want to underline: **never reuse the client's Layer 1 key as the Stripe key.** If a customer retries but your platform changed an internal fee or coupon in the meantime, reusing the raw client key makes Stripe hand you back a cached PaymentIntent for a *different amount*. Instead, use your internal `payments.id` (or a value derived from it) as the downstream key. Stripe retains idempotency keys for around 24 hours, which is plenty for retry windows but not a permanent dedup store.
+
+**Layer 3 — Webhook ingestion.** Stripe explicitly warns that webhooks can arrive out of order or more than once. Every event has a unique id (`evt_...`). Before processing, the consumer records that id under a unique constraint (the `stripe_event_id` column above) or takes a row lock. If the event id is already processed, discard the message and acknowledge success. Done.
+
+One production detail worth its own sentence: webhook signature verification is not just an HMAC check. Stripe signs with HMAC-SHA256 over a timestamp plus the payload, sent in the `Stripe-Signature` header. You should enforce a tolerance window (Stripe's default is 5 minutes) so an attacker cannot replay a captured webhook hours later. Verify the timestamp, not only the signature.
+
+**Don't forget the cleanup.** Idempotency keys accumulate forever if you let them. Run a job that deletes rows older than your retry window (24 to 48 hours is plenty), or the table quietly becomes one of your biggest and slowest.
+
+---
+
+## The Stripe Integration Layer in Depth
+
+This adapter is small but it earns its keep, because every flaky-network and rate-limit problem funnels through it. Three things it has to get right: error classification, retries, and API versioning.
+
+**Error classification.** Not every Stripe error should be retried. Retrying a hard decline just annoys the customer; not retrying a transient network blip drops a real payment. The Stripe SDK gives you typed errors, so map them deliberately:
+
+| Stripe error type | Retryable? | Handling |
+| --- | --- | --- |
+| `StripeCardError` | No | Terminal decline; surface the reason to the user |
+| `StripeRateLimitError` (429) | Yes | Back off with jitter; you are over the limit |
+| `StripeConnectionError` | Yes | Network failure; retry, then verify with a `GET` |
+| `StripeAPIError` (5xx) | Yes, cautiously | Stripe-side issue; retry with backoff, alert if persistent |
+| `StripeInvalidRequestError` | No | A bug in your code; alert, do not retry |
+| `StripeAuthenticationError` | No | Bad or revoked API key; page on-call |
+| `StripeIdempotencyError` | No | Key reused with different params; a bug to fix |
+
+**Retries with backoff and jitter.** For the retryable cases, exponential backoff with randomized jitter prevents a thundering herd where every failed request retries in lockstep and re-overloads the API. Cap the attempts, and after the cap, push to a dead-letter queue for a human rather than retrying forever. The critical pairing: a retry on a `POST` is only safe because the Layer 2 idempotency key guarantees Stripe won't double-charge. Backoff without idempotency is how you turn one timeout into two charges.
+
+**API version pinning.** Stripe versions its API, and both your SDK calls and your webhook payloads are tied to a version. Pin it explicitly (the `Stripe-Version` header, and the webhook endpoint's API version) so a Stripe-side upgrade never silently changes a field shape under you. Upgrade on your own schedule, in a branch, with the changelog open, not by surprise in production.
+
+---
+
+## The Asynchronous Webhook Pipeline
+
+If you run ledger logic, risk scoring, or external calls synchronously inside the webhook handler, the handler eventually blocks, breaches Stripe's ~20-second timeout, and triggers a cascade of webhook retries that makes everything worse. So the receiver is deliberately dumb:
+
+```text
+[ WEBHOOK INGEST ]
+  -> verify HMAC signature + timestamp tolerance
+  -> insert raw event into the ingest store (unique on event id)
+  -> publish to the message queue
+  -> return HTTP 200
+
+[ ASYNC PROCESSING ]
+  -> dedup on stripe_event_id (skip if already processed)
+  -> SELECT ... FOR UPDATE by payment_id   (concurrency lock)
+  -> validate the state transition
+       valid?  -> apply ledger + outbox write, mark event processed
+       invalid -> discard, log as out-of-order, ack success
+```
+
+A few operational details that matter once this is live:
+
+- **Endpoint secret and rotation.** Each webhook endpoint has its own signing secret (`whsec_...`). When you rotate it, Stripe lets both the old and new secret validate during a window, so verify against both until the old one is retired. Hard-cutting the secret drops every in-flight event.
+- **Unknown event types.** Stripe adds event types over time, and you'll have endpoints subscribed to more than you handle. Default to acknowledging and ignoring unrecognized types rather than erroring, or you'll spam Stripe's retry queue with 500s.
+- **Replays and thundering herds.** If your endpoint was down, Stripe retries with backoff for up to a few days, then can replay a backlog all at once. The queue in front of your workers is what absorbs that burst instead of melting your database.
+
+### Out-of-order events and the state machine
+
+Because the queue processes partitions concurrently, a `payment_intent.succeeded` can land in a worker *before* the `payment_intent.created` that logically precedes it. The defense is a rigid state machine with enforced transitions.
+
+<MermaidDiagram chart={`
+flowchart TD
+    RPM["REQUIRES_PAYMENT_METHOD"] --> RA["REQUIRES_ACTION (3DS / SCA)"]
+    RPM --> PR["PROCESSING"]
+    RA --> PR
+    RPM --> CAN["CANCELED"]
+    PR --> AUTH["AUTHORIZED"]
+    PR --> FAIL["FAILED"]
+    AUTH --> CAP["CAPTURED"]
+    AUTH --> EXP["EXPIRED (hold dropped)"]
+    AUTH --> CAN
+    CAP --> PREF["PARTIALLY_REFUNDED"]
+    CAP --> REF["REFUNDED"]
+    PREF --> REF
+    CAP --> DIS["DISPUTED"]
+`} />
+
+When a worker picks up a message, it locks the row first:
+
+```sql
+SELECT status, version FROM payments WHERE id = :payment_id FOR UPDATE;
+```
+
+Then it evaluates the guard. If the row is already `CAPTURED` (or further along) and the worker is holding an out-of-order `created` or `processing` event, it must **ignore the message and exit successfully.** Do not throw. Throwing makes the queue retry the message forever and stalls the whole partition. Recognize that the system has simply moved ahead of a lagging event, and move on.
+
+---
+
+## Saved Cards and Off-Session Payments
+
+"Save my card for next time" sounds trivial and is not, because charging a card when the customer is not sitting there has its own rules.
+
+To save a card without charging it immediately, you create a **SetupIntent** instead of a PaymentIntent. It runs the same Elements + 3DS flow, but the outcome is a reusable `payment_method` attached to a Stripe **Customer** object rather than a charge. Later, to charge that saved card while the customer is away (a renewal, a usage bill), you create a PaymentIntent with `off_session: true` and `confirm: true`.
+
+Two things people miss here:
+
+- **Merchant-initiated transactions (MIT) and SCA exemptions.** In Europe, off-session charges qualify for an SCA exemption *only* if the original on-session setup was authenticated and flagged as the start of a MIT agreement. Skip that, and the renewal gets declined with `authentication_required`, and now you're chasing the customer to re-authenticate a payment they thought was automatic.
+- **Network tokens.** Stripe can store a network token instead of the raw PAN, which keeps working when the customer's physical card is reissued with a new number. For any subscription business, this quietly rescues a meaningful slice of renewals that would otherwise fail on expired card details.
+
+---
+
+## Subscriptions and Recurring Billing
+
+This is the part where teams most often try to be clever and regret it. The trap is running subscription clocks inside your own timers and cron jobs. Don't. Delegate the billing timeline to Stripe Billing and treat your system as a reactor to its webhooks.
+
+Stripe models this with **Product** and **Price** objects, a **Subscription** that ties a customer to a price, and an **Invoice** generated each billing cycle. The subscription moves through its own lifecycle.
+
+<MermaidDiagram chart={`
+flowchart TD
+    INC["incomplete"] --> ACT["active"]
+    INC --> IE["incomplete_expired"]
+    TR["trialing"] --> ACT
+    ACT --> PD["past_due (Smart Retries)"]
+    PD --> ACT
+    PD --> CAN["canceled"]
+    PD --> UNP["unpaid"]
+    ACT --> CAN
+`} />
+
+The events you actually build against:
+
+| Event | Meaning | Typical reaction |
+| --- | --- | --- |
+| `customer.subscription.created` | New subscription, possibly trialing | Provision access, store the period end |
+| `invoice.paid` | A cycle was billed successfully | Extend access to the next period |
+| `invoice.payment_failed` | A renewal charge failed | Move to a soft `PAST_DUE`, start dunning |
+| `customer.subscription.updated` | Plan change, trial end, status change | Re-sync entitlements |
+| `customer.subscription.deleted` | The subscription truly ended | Revoke access |
+
+A handful of specifics worth getting right:
+
+- **Proration.** When a customer upgrades mid-cycle, Stripe prorates the difference and bills it immediately (or on the next invoice, depending on `proration_behavior`). Downgrades usually take effect at period end. Let Stripe do the proration math; don't reinvent it.
+- **Trials.** A `trial_period_days` (or an explicit trial end) starts the subscription in `trialing` with no charge. The `customer.subscription.trial_will_end` event is your hook to remind the customer before money moves.
+- **Dunning and Smart Retries.** When a renewal card declines, Stripe retries on an optimized schedule over several days and sends dunning emails. Map those days to a temporary `PAST_DUE` and **keep access on**. Only demote or cancel when `customer.subscription.deleted` or `invoice.voided` arrives. Killing access on the first soft decline is how you generate angry tickets from customers whose payment would have succeeded on retry two.
+- **Usage-based billing.** For metered plans, you report usage to Stripe (usage records / billing meters) and it computes the invoice. Make the reporting idempotent too, or a retried usage report double-bills.
+
+---
+
+## Refunds
+
+Refunds deserve their own small state machine because they fail in ways the happy path never shows.
+
+A Stripe **Refund** object has its own status: `pending`, `succeeded`, `failed`, or `canceled`. Most succeed instantly, but a refund to a closed or expired card can come back `failed`, in which case the money returns to your Stripe balance and you owe the customer through another channel. So "issued a refund" is not the same as "customer got the money," and your UI shouldn't claim otherwise until `refund.updated` confirms `succeeded`.
+
+On the accounting side, a refund is a new balanced ledger transfer that reverses the original direction, never an edit of the old rows. And the concurrency trap is real: a customer or agent clicking "refund" twice can over-refund. Let the database enforce the invariant atomically rather than your application code.
+
+```sql
+UPDATE payments
+SET refunded_amount_minor = refunded_amount_minor + :refund_amount,
+    status = CASE WHEN (refunded_amount_minor + :refund_amount) = captured_amount_minor
+                  THEN 'REFUNDED'::payment_status
+                  ELSE 'PARTIALLY_REFUNDED'::payment_status END,
+    version = version + 1
+WHERE id = :id
+  AND version = :expected_version
+  AND (refunded_amount_minor + :refund_amount) <= captured_amount_minor;
+```
+
+If the row no longer satisfies `refunded + new <= captured`, the update affects zero rows and the second refund never happens. The database is your concurrency referee. Keeping `captured_amount_minor` and `refunded_amount_minor` as separate columns (rather than decrementing one amount) is what makes this guard both correct and auditable.
+
+---
+
+## Disputes and Chargebacks
+
+Neither of my source materials covered this, and it is unavoidable in production. A dispute (chargeback) is the cardholder going to their bank to reverse a charge, and it has a clock, a cost, and a workflow.
+
+<MermaidDiagram chart={`
+flowchart TD
+    NR["needs_response (funds + fee held)"] --> UR["under_review (evidence submitted)"]
+    NR --> ACC["accepted (concede the chargeback)"]
+    UR --> WON["won (funds returned)"]
+    UR --> LOST["lost (debit becomes final)"]
+`} />
+
+When `charge.dispute.created` arrives, Stripe immediately debits the disputed amount **plus a dispute fee** (around $15) from your balance, and gives you a window to submit evidence (receipts, logs, proof of delivery). You either contest it by submitting evidence (representment) or accept it. The bank decides, and you find out via `charge.dispute.closed` with `won` or `lost`.
+
+The engineering consequence: funds you already counted as settled can be clawed back weeks later. If your ledger has no concept of a dispute, your internal balance silently drifts from Stripe's. Model the dispute as its own state and its own ledger transfer (debit on open, reversing entry if you win), exactly the way you model refunds. Also subscribe to `radar.early_fraud_warning.created` — it's an early signal that a dispute is likely, and proactively refunding a flagged charge is often cheaper than fighting the chargeback and eating the fee.
+
+---
+
+## Marketplace Payments with Stripe Connect
+
+If you're a platform that pays out to third parties (sellers, drivers, creators), you need split payments, and that means Stripe Connect rather than plain charges.
+
+<MermaidDiagram chart={`
+flowchart LR
+    CU["Customer pays 100"] --> PL["Platform balance (Stripe)"]
+    PL -->|transfer 90| SE["Seller connected account"]
+    PL -->|application fee 10| RV["Platform revenue"]
+    SE --> PO["Payout to seller bank"]
+`} />
+
+There are two main shapes:
+
+- **Destination charges** — the charge is created on your platform account with a `transfer_data.destination` pointing at the connected account, and an `application_fee_amount` you keep. Simplest model; the platform is the merchant of record.
+- **Separate charges and transfers** — you charge the customer, then issue independent transfers to one or more connected accounts later. More flexible for splitting one payment across several sellers, but you own more of the bookkeeping.
+
+The production reality Connect adds: each connected account has its own balance and payout schedule, refunds and disputes can pull money back out of a connected account that may already have paid out (negative balances), and your ledger now tracks money across many sub-accounts, not one. The `account.updated` webhook (onboarding status, capabilities, payout eligibility) becomes load-bearing, because you can't pay out to an account that hasn't finished verification.
+
+---
+
+## Reconciliation
+
+Everything above can be individually correct and your books can still drift, because distributed systems lose messages and humans poke at data. Reconciliation is the daily job that proves, or disproves, that your internal records match Stripe's.
+
+<MermaidDiagram chart={`
+flowchart LR
+    CR["Daily cron"] --> PULL["Pull Stripe balance transactions + payouts"]
+    PULL --> CMP{"Match internal ledger?"}
+    CMP -->|yes| OK["Mark reconciled"]
+    CMP -->|no| CLASS["Classify discrepancy"]
+    CLASS --> EXC["Write exception record + alert"]
+`} />
+
+The worker pulls Stripe's balance transactions and payouts for the day and compares them against your ledger, line by line: amount, fee, net, and status. Discrepancies fall into a few buckets — a charge in Stripe with no internal record (a missed webhook), an amount or fee mismatch, a status that drifted, or a payout that doesn't add up. Some are safe to auto-heal by treating Stripe as the source of truth and backfilling the missing ledger entry; anything involving a money difference should open an exception record and alert a human rather than self-correcting. Treat Stripe as authoritative for *what happened*, and your ledger as authoritative for *what you intended* — reconciliation is where those two meet.
+
+---
+
+## More Production Edge Cases
+
+The happy path is easy. These are the ones that leak money or wake you up.
+
+### A network timeout mid-request
+
+Your backend fires `POST /v1/payment_intents/pi_123/capture` and the socket drops while you wait. You have no idea whether Stripe received it. The wrong move is to guess, and the *really* wrong move is to mark it failed and move on. Instead, set the local state to `PROCESSING` and queue a verification job. The worker does an idempotent read against Stripe: `GET /v1/payment_intents/pi_123`. If Stripe already captured it, advance your state to `CAPTURED`. If Stripe never saw the request, re-issue the capture with your idempotency key. Read before you write; never assume.
+
+### Stale reads from a read replica
+
+Payment status is one of the few things you should *not* read from a lazy read replica. Right after a capture writes to the primary, a status check that hits a lagging replica can still say `AUTHORIZED`, and now a retry or a fulfillment check makes a wrong decision on stale data. Route payment-status reads to the primary, or use read-your-writes consistency. This is the CAP "tilt toward consistency" rule showing up in a very concrete way.
+
+### Payout failures
+
+Settlement is not the finish line. A payout to your (or a connected account's) bank can fail or get reversed (`payout.failed`), for example on a closed bank account. If you marked the money as "received" the moment you captured, your books now overstate cash. Track payout status as its own thing, and let reconciliation catch the mismatch.
+
+### Partial capture leftovers
+
+When you authorize $100 and capture $80, the remaining $20 hold should be released, not left dangling. If your code assumes capture always equals the authorized amount, you'll leave phantom holds on customer cards and generate "why is my balance still reserved" support tickets.
+
+---
+
+## Auditability via the Transactional Outbox
+
+One more correctness gap: if your DB write succeeds but the follow-up publish to Kafka fails, your workers never process the event and your systems drift apart permanently. The fix is to make the state change and the message publication a single atomic unit.
+
+![Transactional outbox pattern](/assets/images/blogs/payment-backend-stripe-integration/transactional-outbox.png)
+
+```text
+[ ONE POSTGRES ACID TRANSACTION ]
+  1. UPDATE payments SET status = 'CAPTURED' ...
+  2. INSERT INTO ledger_entries (DEBIT, CREDIT) ...
+  3. INSERT INTO transactional_outbox (payload) ...
+            |
+            v   (committed)
+[ Outbox relay: Debezium CDC or a polling worker ]
+  - scan PENDING rows
+  - publish to the message queue
+  - on ack, mark the row PROCESSED
+  - on failure, leave it PENDING and retry
+```
+
+The event lands in the outbox table in the *same* transaction that updates the payment and the ledger. A separate relay (a CDC tool like Debezium, or a simple polling daemon) reads `PENDING` rows and publishes them, marking each `PROCESSED` only after the queue acknowledges. If the publish fails, the row stays `PENDING` and gets retried, so a downstream ledger update is never lost. The one caveat: the relay is itself at-least-once, so it can publish a duplicate after a crash between "queue acked" and "row marked PROCESSED." That is fine, because Layer 3 webhook-style dedup on the consumer already handles duplicates. Idempotency everywhere is what lets every other layer relax.
+
+---
+
+## Observability, Testing, and Compliance
+
+A payment system you can't see into is a payment system you can't trust.
+
+**Observability.** Track the metrics that actually predict trouble: authorization success rate and decline reasons, capture latency, webhook lag (event-created to processed), reconciliation mismatch count, stuck-payment count by state, and dispute rate. Put SLOs on the ones customers feel (payment API latency, success rate) and alert on the ones that signal silent drift (reconciliation mismatches, payments stuck in an intermediate state past a threshold). Your `payment_events` table doubles as the audit log; never delete from it.
+
+**Testing.** Stripe's test mode plus the Stripe CLI make this genuinely testable. Use `stripe listen --forward-to` to pipe real webhook events at your local machine, and `stripe trigger` to fire specific events on demand. Use the documented test cards to force outcomes — successful charges, hard declines, and the `requires_action` 3DS path. For subscriptions, **test clocks** let you fast-forward time to watch a trial end, a renewal bill, and a dunning sequence play out in seconds instead of weeks. There is no excuse for shipping subscription logic you've only ever seen on the happy path.
+
+**Compliance and security.** Using Elements keeps you at PCI DSS SAQ A because the PAN never touches your servers — don't undo that by logging card data anywhere. Encrypt customer PII at rest (a KMS-backed key), use restricted API keys scoped to what each service needs, rotate webhook signing secrets on a schedule, and keep least-privilege on who can issue refunds or read the ledger. In payments, the blast radius of a leaked key is measured in real dollars.
+
+---
+
+## What I Took Away
+
+Three things stuck with me after reconstructing all of this.
+
+First, **payments are a correctness problem wearing a backend costume.** The hard parts are not throughput or features; they are what happens when a call times out, a webhook arrives twice, or two refunds race. If you design every component around "what breaks mid-transaction," the rest falls into place.
+
+Second, **idempotency is the load-bearing wall.** Client to backend, backend to Stripe, webhook to worker, usage reporting, and even the outbox relay — every hop assumes the one before it might retry. Once you accept at-least-once everywhere and make processing idempotent everywhere, exactly-once stops being a fantasy and becomes an emergent property.
+
+Third, **the gaps are where the money is.** The zero-decimal currency bug, the dropped authorization hold, the partial-refund race, the dispute you didn't model, the renewal that failed SCA, the payout that bounced — none of those are in the happy-path tutorial, and all of them cost real money. That is exactly why I wanted to write the production notes down rather than just the blueprint.
+
+If you are building payments and only remember one line from this: store money as integers in minor units, make everything idempotent, keep an append-only double-entry ledger, and let the database, not your application code, enforce the invariants.
+
+---
+
+_These are my study notes reconstructed from a payment-system newsletter plus my own production experience. If I got a detail wrong, I would genuinely like to know — that is how the notes get better._
