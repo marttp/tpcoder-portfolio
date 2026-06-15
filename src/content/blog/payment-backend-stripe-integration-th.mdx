@@ -494,7 +494,7 @@ SELECT status, version FROM payments WHERE id = :payment_id FOR UPDATE;
 
 ## Subscriptions and Recurring Billing
 
-นี่คือส่วนที่ทีมมักพยายามฉลาดเองแล้วมาเสียใจทีหลัง กับดักคือการรัน subscription clock ไว้ใน timer และ cron ของตัวเอง อย่าทำ ยก timeline ของ billing ให้ Stripe Billing แล้วให้ระบบคุณทำตัวเป็นตัว react กับ webhook ของมัน
+ส่วนนี้คือจุดที่ทีมมักพยายามฉลาดเองแล้วมาเสียใจทีหลัง กับดักคือการรัน subscription clock ไว้ใน timer และ cron ของตัวเอง อย่าทำ ยก timeline ของ billing ให้ Stripe Billing แล้วให้ระบบคุณทำตัวเป็นตัว react กับ webhook ของมัน
 
 Stripe model เรื่องนี้ด้วย **Product** กับ **Price** object, **Subscription** ที่ผูก customer เข้ากับ price และ **Invoice** ที่ถูกสร้างทุก billing cycle ตัว subscription วิ่งผ่าน lifecycle ของมันเอง
 
