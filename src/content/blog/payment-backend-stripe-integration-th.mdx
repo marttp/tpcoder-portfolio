@@ -595,7 +595,7 @@ flowchart LR
 - **Destination charges** — charge ถูกสร้างบน platform account ของคุณ พร้อม `transfer_data.destination` ชี้ไปที่ connected account และ `application_fee_amount` ที่คุณเก็บไว้ โมเดลง่ายสุด platform เป็น merchant of record
 - **Separate charges and transfers** — คุณ charge ลูกค้าก่อน แล้วค่อยออก transfer แยกไปยัง connected account หนึ่งหรือหลายตัวทีหลัง ยืดหยุ่นกว่าสำหรับการแบ่ง payment เดียวไปหลาย seller แต่คุณต้องดูแล bookkeeping เองมากขึ้น
 
-ความเป็นไปเชิง production ที่ Connect เพิ่มเข้ามา: connected account แต่ละตัวมี balance และ payout schedule ของตัวเอง, refund และ dispute ดึงเงินกลับออกจาก connected account ที่อาจ payout ออกไปแล้วได้ (negative balance) และ ledger ของคุณตอนนี้ track เงินข้ามหลาย sub-account ไม่ใช่บัญชีเดียว webhook `account.updated` (สถานะ onboarding, capability, สิทธิ์ payout) กลายเป็นตัวสำคัญ เพราะคุณ payout ไปยัง account ที่ยัง verify ไม่เสร็จไม่ได้
+พวก detail ตอนขึ้น production ที่ Connect เพิ่มเข้ามา: connected account แต่ละตัวมี balance และ payout schedule ของตัวเอง, refund และ dispute ดึงเงินกลับออกจาก connected account ที่อาจ payout ออกไปแล้วได้ (negative balance) และ ledger ของคุณตอนนี้ track เงินข้ามหลาย sub-account ไม่ใช่บัญชีเดียว webhook `account.updated` (สถานะ onboarding, capability, สิทธิ์ payout) กลายเป็นตัวสำคัญ เพราะคุณ payout ไปยัง account ที่ยัง verify ไม่เสร็จไม่ได้
 
 ---
 
