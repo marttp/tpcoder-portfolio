@@ -207,7 +207,7 @@ webhook คือทางที่ backend ของคุณรู้ว่า
 5. ประมวลผล webhook อย่างเชื่อถือได้ เพราะ webhook คือ source of truth ของสถานะ payment
 6. ทั้ง lifecycle ถูก model เป็น finite-state machine ที่ enforce transition
 
-**Non-functional** คือส่วนที่น่าสนใจ:
+**Non-functional** นี่คือส่วนที่สนุก:
 
 - **Exactly-once processing** คือ requirement ตัวพาดหัว charge ซ้ำบนยอด $1,000 แปลว่าเงินถูกหักจากคนคนหนึ่งสองรอบ ตัว exactly-once แบบสมบูรณ์เป็นไปไม่ได้ใน distributed system (Two Generals Problem) เพราะงั้นทางออกที่ใช้การได้คือ at-least-once delivery บวก idempotent processing บวก reconciliation
 - **availability สูงสุดขั้ว** Stripe เองตั้งเป้า API uptime ที่ 99.999% หรือราว ๆ downtime 5 นาทีต่อปี
