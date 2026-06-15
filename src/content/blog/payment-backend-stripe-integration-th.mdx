@@ -540,7 +540,7 @@ Stripe **Refund** object มี status ของมันเอง
 - `failed` — เช่นบัตรปิดหรือหมดอายุ เงินจะเด้งกลับเข้า Stripe balance ของคุณ แล้วคุณก็ติดหนี้ลูกค้าผ่านช่องทางอื่นแทน
 - `canceled` — refund ถูกยกเลิกไป
 
-ส่วนใหญ่สำเร็จทันที แต่เคส `failed` นี่แหละที่ทำให้ ออก refund แล้ว กับ ลูกค้าได้เงินแล้ว เป็นคนละเหตุการณ์กัน UI ของคุณก็เลยไม่ควรขึ้นว่าสำเร็จจนกว่า `refund.updated` จะ confirm `succeeded`
+ส่วนใหญ่สำเร็จทันที แต่เคส `failed` นี่แหละที่ทำให้ ออก refund แล้ว กับ ลูกค้าได้เงินแล้ว เป็นคนละเหตุการณ์กัน UI ก็เลยไม่ควรขึ้นว่าสำเร็จจนกว่า `refund.updated` จะ confirm `succeeded`
 
 ฝั่ง accounting refund คือ ledger transfer ชุดใหม่ที่ balance กันและขยับเงินกลับทางเดิม ไม่ใช่การแก้ row เก่า และกับดัก concurrency มีอยู่: ลูกค้าหรือ agent กดปุ่ม refund สองรอบ ทำให้ refund เกินได้ ปล่อยให้ database enforce invariant แบบ atomic แทน application code
 
