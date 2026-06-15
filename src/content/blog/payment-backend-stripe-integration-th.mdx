@@ -574,7 +574,7 @@ flowchart TD
 
 พอ `charge.dispute.created` มาถึง Stripe หักยอดที่ถูก dispute **บวกค่า dispute fee** (ราว $15) ออกจาก balance ของคุณทันที และให้ window มาเพื่อ submit evidence (ใบเสร็จ, log, หลักฐานการส่งของ) คุณจะสู้ด้วยการ submit evidence (representment) หรือยอมรับก็ได้ ธนาคารเป็นคนตัดสิน แล้วคุณรู้ผลผ่าน `charge.dispute.closed` ที่เป็น `won` หรือ `lost`
 
-ผลพวงเชิง engineering: เงินที่คุณนับว่า settle แล้ว ถูกดึงกลับได้ในอีกหลายสัปดาห์ ถ้า ledger ของคุณไม่มี concept ของ dispute balance ภายในจะ drift ห่างจากของ Stripe เงียบ ๆ model dispute เป็น state ของมันเองและ ledger transfer ของมันเอง (debit ตอนเปิด, reversing entry ถ้าคุณชนะ) แบบเดียวกับที่ model refund และ subscribe `radar.early_fraud_warning.created` ด้วย มันคือสัญญาณล่วงหน้าว่า dispute มีแนวโน้มจะมา และการรีบ refund charge ที่ถูก flag ไว้ มักถูกกว่าการไปสู้ chargeback แล้วโดนกิน fee
+ผลกระทบฝั่ง engineering: เงินที่คุณนับว่า settle แล้ว ถูกดึงกลับได้ในอีกหลายสัปดาห์ ถ้า ledger ของคุณไม่มี concept ของ dispute balance ภายในจะ drift ห่างจากของ Stripe เงียบ ๆ model dispute เป็น state ของมันเองและ ledger transfer ของมันเอง (debit ตอนเปิด, reversing entry ถ้าคุณชนะ) แบบเดียวกับที่ model refund และ subscribe `radar.early_fraud_warning.created` ด้วย มันคือสัญญาณล่วงหน้าว่า dispute มีแนวโน้มจะมา และการรีบ refund charge ที่ถูก flag ไว้ มักถูกกว่าการไปสู้ chargeback แล้วโดนกิน fee
 
 ---
 
