@@ -220,7 +220,7 @@ webhook คือทางที่ backend ของคุณรู้ว่า
 
 ## High-Level Architecture
 
-architecture แบ่งเป็น 7 component จุดประสงค์ทั้งหมดของการแบ่งคือแยก synchronous path ฝั่งที่คุยกับลูกค้า ออกจาก asynchronous processing และทำให้ webhook ingestion หลุดออกจาก business logic เพื่อให้ bank call ช้า ๆ ไม่ไปทำให้ checkout แย่
+ตัว architecture ผมแบ่งเป็น 7 component จุดประสงค์ทั้งหมดของการแบ่งคือแยก synchronous path ฝั่งที่คุยกับลูกค้า ออกจาก asynchronous processing และทำให้ webhook ingestion หลุดออกจาก business logic เพื่อให้ bank call ช้า ๆ ไม่ไปทำให้ checkout แย่
 
 <MermaidDiagram chart={`
 flowchart LR
