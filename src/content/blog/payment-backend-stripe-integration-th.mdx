@@ -481,7 +481,7 @@ SELECT status, version FROM payments WHERE id = :payment_id FOR UPDATE;
 
 ## Saved Cards and Off-Session Payments
 
-บันทึกบัตรไว้ใช้ครั้งหน้า ฟังดูเหมือนเรื่องเล็ก แต่ไม่เล็ก เพราะการ charge บัตรตอนที่ลูกค้าไม่ได้นั่งอยู่หน้าจอมีกฎของมันเอง
+เก็บบัตรไว้ใช้ครั้งหน้า ฟังดูเหมือนเรื่องเล็ก แต่ไม่เล็กเลย เพราะการ charge บัตรตอนที่ลูกค้าไม่ได้นั่งอยู่หน้าจอมีกฎของมันเอง
 
 ถ้าจะบันทึกบัตรโดยยังไม่ charge ทันที คุณสร้าง **SetupIntent** แทน PaymentIntent มันรัน flow แบบ Elements + 3DS เหมือนกัน แต่ผลลัพธ์คือ `payment_method` ที่เอากลับมาใช้ซ้ำได้ ผูกกับ Stripe **Customer** object แทนที่จะเป็น charge ทีหลังพอจะ charge บัตรที่บันทึกไว้ตอนลูกค้าไม่อยู่ (renewal, usage bill) คุณสร้าง PaymentIntent ด้วย `off_session: true` และ `confirm: true`
 
