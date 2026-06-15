@@ -29,11 +29,26 @@ Before any code, it helps to know the landscape. There are three broad strategie
 
 ![Three options for accepting payments](/assets/images/blogs/payment-backend-stripe-integration/three-options.png)
 
-**Option 1: Build your own payment processor.** You connect directly to card networks (Visa, Mastercard), acquire banking licenses, handle PCI DSS Level 1 compliance yourself (the highest tier, for companies processing more than 6 million transactions a year), build fraud detection, and manage relationships with issuing banks. The upside is lower per-transaction cost, and at massive scale shaving even 0.5% off each transaction adds up to hundreds of millions a year. Amazon, Uber, and Airbnb run parts of their stack this way. The downside is brutal: acquiring the licenses alone takes 12 to 24 months and millions of dollars, with ongoing regulatory obligations. This only makes sense once you process billions in annual volume. For everyone else it is premature optimization at its most extreme.
+**Option 1: Build your own payment processor.** Connect directly to the card networks and run the whole financial stack yourself.
 
-**Option 2: Integrate a payment service provider (PSP)** like Stripe, PayPal, Adyen, or Braintree. The PSP handles the whole chain on your behalf: card network integrations, banking relationships, fraud tooling, PCI compliance, and global payment methods. You pay a per-transaction fee, typically around 2.9% + $0.30 with Stripe, to skip building that infrastructure. This is the right call for almost everyone, from early-stage startups to large platforms. Even Shopify, which processes billions a year, built Shopify Payments on top of Stripe rather than wiring into card networks directly.
+- Lowest per-transaction cost — at massive scale, shaving even 0.5% per transaction is hundreds of millions a year.
+- Full control over the stack; Amazon, Uber, and Airbnb run parts of their payment systems this way.
+- Brutal cost of entry: banking licenses alone take 12 to 24 months and millions of dollars, plus PCI DSS Level 1 compliance and ongoing regulatory obligations.
+- Only worth it past billions in annual volume; for everyone else it is premature optimization at its most extreme.
 
-**Option 3: No-code hosted flows** such as Stripe Checkout or Payment Links. Stripe hosts the entire checkout page. You create a session, redirect the user to Stripe's page, and Stripe handles UI, payment method selection, and confirmation. This is the fastest path (live in hours), and it is great for selling a single product, collecting donations, or shipping a prototype. The trade-off is limited customization and little control over the experience. You cannot deeply embed it in your own UI, build custom subscription logic, or react to payment events with full control.
+**Option 2: Integrate a payment service provider (PSP)** like Stripe, PayPal, Adyen, or Braintree. The PSP runs the payment chain for you and you build on top.
+
+- Handles card-network integrations, banking relationships, fraud tooling, PCI compliance, and global payment methods.
+- You pay a per-transaction fee (around 2.9% + $0.30 with Stripe) instead of building that infrastructure.
+- The right call for almost everyone, from early-stage startups to large platforms.
+- Even Shopify (billions a year) built Shopify Payments on Stripe rather than wiring into card networks directly.
+
+**Option 3: No-code hosted flows** such as Stripe Checkout or Payment Links. Stripe hosts the whole checkout and you redirect to it.
+
+- Fastest path — live in hours with almost no backend.
+- Stripe owns the UI, payment method selection, and confirmation.
+- Great for a single product, donations, or a quick prototype.
+- Limited customization and little control: you can't deeply embed it, build custom subscription logic, or react to payment events on your own terms.
 
 The rest of this post assumes Option 2: you integrate Stripe as the PSP and own the backend around it. That is where the interesting engineering lives.
 
@@ -95,7 +110,15 @@ Your backend creates a Stripe **PaymentIntent** to track the transaction lifecyc
 
 ![Stripe Elements tokenization boundary](/assets/images/blogs/payment-backend-stripe-integration/tokenization-boundary.png)
 
-When the customer submits, Stripe tokenizes the card, formats an ISO 8583 authorization message, and sends it to the acquiring bank. The acquiring bank reads the BIN (the first 6 to 8 digits) to identify the card network and forwards the request. The network routes it to the issuing bank, which checks card validity, available funds, CVV/AVS match, and its own fraud models. The issuer returns a two-digit response code, approve or decline, back up the chain. On approval, a **hold** is placed on the cardholder's balance, but no money has moved yet. Mastercard reports an average network response time around 130 ms, and Visa's network is built to handle peaks of 56,000+ messages per second; the full round trip including every hop usually finishes in 1 to 3 seconds.
+When the customer submits, the authorization runs through the chain step by step:
+
+1. **Tokenize and format** — Stripe tokenizes the card, builds an ISO 8583 authorization message, and sends it to the acquiring bank.
+2. **Route by BIN** — the acquiring bank reads the BIN (the first 6 to 8 digits) to identify the card network and forwards the request.
+3. **Issuer checks** — the network routes it to the issuing bank, which checks card validity, available funds, CVV/AVS match, and its own fraud models.
+4. **Response code** — the issuer returns a two-digit response code (approve or decline) back up the chain.
+5. **Hold placed** — on approval, a **hold** is placed on the cardholder's balance, but no money has moved yet.
+
+Timing: Mastercard reports an average network response time around 130 ms, and Visa's network is built to handle peaks of 56,000+ messages per second; the full round trip including every hop usually finishes in 1 to 3 seconds.
 
 #### A closer look at the PaymentIntent
 
@@ -113,15 +136,27 @@ That `requires_action` state is one people underestimate. In the EU, Strong Cust
 
 ### Phase 2: Capture (immediate or delayed)
 
-Capture is when the merchant tells the acquiring bank to finalize the authorized amount.
+Capture is when the merchant tells the acquiring bank to finalize the authorized amount. When you capture depends on what you sell:
 
-For digital goods and subscriptions, you capture immediately. Stripe's default is `capture_method: automatic`. For physical goods, hotels, or ride-hailing, you delay capture until fulfillment. You can capture an amount less than or equal to what was authorized, but never more (partial capture releases the remainder of the hold).
+- **Immediate** — digital goods and subscriptions. Stripe's default is `capture_method: automatic`.
+- **Delayed** — physical goods, hotels, ride-hailing: authorize now, capture on fulfillment.
 
-Here is the engineering risk that bites people. Authorization holds typically last 5 to 7 days (Visa allows up to 31 days for lodging). If you don't capture within the window, the issuing bank drops the hold, and your later capture call fails. Your state machine has to treat `AUTHORIZED` and `CAPTURED` as genuinely distinct states. If your system believes a payment is authorized but the bank has already released the hold, capture will fail and you have silently lost revenue. The fix is a background job that detects these stuck authorizations and marks them expired before they rot.
+You can capture an amount less than or equal to what was authorized, but never more (a partial capture releases the remainder of the hold).
+
+**The risk that bites people:** authorization holds last only 5 to 7 days (Visa allows up to 31 for lodging). If you don't capture in time, the issuing bank drops the hold and your later capture call fails — silent lost revenue. Two defenses:
+
+- Treat `AUTHORIZED` and `CAPTURED` as genuinely distinct states, never one fuzzy "paid" flag.
+- Run a background job that finds stuck authorizations and marks them expired before they rot.
 
 ### Phase 3: Clearing and settlement (T+1 to T+3)
 
-At the end of the business day, captured transactions are batched and sent to the network for clearing. The network computes fees and exchanges files overnight. Settlement is when money actually moves: the issuing bank sends funds (minus fees) to the network, which passes them to the acquiring bank, which deposits them into the merchant account. In banking, "T" is the transaction date, so T+2 means funds arrive two business days later. Stripe's US default is T+2, though new accounts usually sit behind an initial 7 to 14 day hold.
+At the end of the business day, captured transactions are batched and sent to the network for clearing — the network computes fees and exchanges files overnight. Then settlement actually moves the money:
+
+1. The issuing bank sends the funds (minus fees) to the card network.
+2. The network passes them to the acquiring bank.
+3. The acquiring bank deposits them into the merchant account.
+
+In banking, "T" is the transaction date, so T+2 means funds arrive two business days later. Stripe's US default is T+2, though new accounts usually sit behind an initial 7 to 14 day hold.
 
 ![Transaction lifecycle timeline](/assets/images/blogs/payment-backend-stripe-integration/transaction-timeline.png)
 
@@ -499,7 +534,14 @@ A handful of specifics worth getting right:
 
 Refunds deserve their own small state machine because they fail in ways the happy path never shows.
 
-A Stripe **Refund** object has its own status: `pending`, `succeeded`, `failed`, or `canceled`. Most succeed instantly, but a refund to a closed or expired card can come back `failed`, in which case the money returns to your Stripe balance and you owe the customer through another channel. So "issued a refund" is not the same as "customer got the money," and your UI shouldn't claim otherwise until `refund.updated` confirms `succeeded`.
+A Stripe **Refund** object has its own status:
+
+- `pending` — in flight.
+- `succeeded` — the customer actually got the money back.
+- `failed` — e.g. a closed or expired card; the money returns to your Stripe balance and you owe the customer through another channel.
+- `canceled` — the refund was called off.
+
+Most succeed instantly, but a `failed` refund is why "issued a refund" and "customer got the money" are two different events. Your UI shouldn't claim success until `refund.updated` confirms `succeeded`.
 
 On the accounting side, a refund is a new balanced ledger transfer that reverses the original direction, never an edit of the old rows. And the concurrency trap is real: a customer or agent clicking "refund" twice can over-refund. Let the database enforce the invariant atomically rather than your application code.
 
@@ -571,7 +613,14 @@ flowchart LR
     CLASS --> EXC["Write exception record + alert"]
 `} />
 
-The worker pulls Stripe's balance transactions and payouts for the day and compares them against your ledger, line by line: amount, fee, net, and status. Discrepancies fall into a few buckets — a charge in Stripe with no internal record (a missed webhook), an amount or fee mismatch, a status that drifted, or a payout that doesn't add up. Some are safe to auto-heal by treating Stripe as the source of truth and backfilling the missing ledger entry; anything involving a money difference should open an exception record and alert a human rather than self-correcting. Treat Stripe as authoritative for *what happened*, and your ledger as authoritative for *what you intended* — reconciliation is where those two meet.
+The worker pulls Stripe's balance transactions and payouts for the day and compares them against your ledger line by line — amount, fee, net, and status. Discrepancies fall into a few buckets:
+
+- A charge in Stripe with no internal record (a missed webhook).
+- An amount or fee mismatch.
+- A status that drifted.
+- A payout that doesn't add up.
+
+Some are safe to auto-heal by treating Stripe as the source of truth and backfilling the missing ledger entry; anything involving a money difference should open an exception record and alert a human rather than self-correcting. Treat Stripe as authoritative for *what happened*, and your ledger as authoritative for *what you intended* — reconciliation is where those two meet.
 
 ---
 
@@ -625,11 +674,34 @@ The event lands in the outbox table in the *same* transaction that updates the p
 
 A payment system you can't see into is a payment system you can't trust.
 
-**Observability.** Track the metrics that actually predict trouble: authorization success rate and decline reasons, capture latency, webhook lag (event-created to processed), reconciliation mismatch count, stuck-payment count by state, and dispute rate. Put SLOs on the ones customers feel (payment API latency, success rate) and alert on the ones that signal silent drift (reconciliation mismatches, payments stuck in an intermediate state past a threshold). Your `payment_events` table doubles as the audit log; never delete from it.
+**Observability.** Track the metrics that actually predict trouble:
 
-**Testing.** Stripe's test mode plus the Stripe CLI make this genuinely testable. Use `stripe listen --forward-to` to pipe real webhook events at your local machine, and `stripe trigger` to fire specific events on demand. Use the documented test cards to force outcomes — successful charges, hard declines, and the `requires_action` 3DS path. For subscriptions, **test clocks** let you fast-forward time to watch a trial end, a renewal bill, and a dunning sequence play out in seconds instead of weeks. There is no excuse for shipping subscription logic you've only ever seen on the happy path.
+- authorization success rate and decline reasons
+- capture latency
+- webhook lag (event-created to processed)
+- reconciliation mismatch count
+- stuck-payment count by state
+- dispute rate
 
-**Compliance and security.** Using Elements keeps you at PCI DSS SAQ A because the PAN never touches your servers — don't undo that by logging card data anywhere. Encrypt customer PII at rest (a KMS-backed key), use restricted API keys scoped to what each service needs, rotate webhook signing secrets on a schedule, and keep least-privilege on who can issue refunds or read the ledger. In payments, the blast radius of a leaked key is measured in real dollars.
+Put SLOs on the ones customers feel (payment API latency, success rate) and alert on the ones that signal silent drift (reconciliation mismatches, payments stuck in an intermediate state past a threshold). Your `payment_events` table doubles as the audit log; never delete from it.
+
+**Testing.** Stripe's test mode plus the Stripe CLI make this genuinely testable:
+
+- `stripe listen --forward-to` pipes real webhook events at your local machine.
+- `stripe trigger` fires specific events on demand.
+- documented test cards force outcomes — success, hard decline, and the `requires_action` 3DS path.
+- **test clocks** fast-forward time so a trial end, a renewal bill, and a dunning sequence play out in seconds instead of weeks.
+
+There is no excuse for shipping subscription logic you've only ever seen on the happy path.
+
+**Compliance and security.** Using Elements keeps you at PCI DSS SAQ A because the PAN never touches your servers — don't undo that by logging card data anywhere. Beyond that:
+
+- encrypt customer PII at rest (a KMS-backed key)
+- use restricted API keys scoped to what each service needs
+- rotate webhook signing secrets on a schedule
+- keep least-privilege on who can issue refunds or read the ledger
+
+In payments, the blast radius of a leaked key is measured in real dollars.
 
 ---
 
