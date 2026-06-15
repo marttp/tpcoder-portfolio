@@ -104,7 +104,7 @@ sequenceDiagram
 
 ### Phase 1: Authorization (1–3 seconds)
 
-นี่คือ synchronous path ที่เงินถูก verify และถูกกันไว้
+อันนี้คือ synchronous path ที่เงินถูกเช็คและกันไว้
 
 backend ของคุณสร้าง Stripe **PaymentIntent** ขึ้นมาเพื่อ track lifecycle ของ transaction การเรียกครั้งนี้ return `client_secret` กลับไปให้ frontend จากนั้นลูกค้ากรอกข้อมูลบัตรลงใน **Stripe Elements** ซึ่งเป็น iframe ที่ Stripe host ไว้และโหลดผ่าน Stripe.js หน้าตามันเหมือนเป็นส่วนหนึ่งของเว็บคุณ แต่เลขบัตรดิบ (PAN, Primary Account Number) ไม่เคยแตะ server ของคุณเลย แค่ดีไซน์จุดนี้จุดเดียว PCI scope ของคุณก็ลงไปอยู่ tier ต่ำสุด (SAQ A) แล้ว นั่นก็เป็นเหตุผลใหญ่ที่คนเลือกใช้ PSP ตั้งแต่แรก
 
