@@ -258,7 +258,7 @@ flowchart LR
 6. **Background Job Workers** — งาน async 4 แบบ: process webhook event, retry worker ที่ใช้ exponential backoff, reconciliation worker รายวัน และ stuck-payment detector ที่ alert payment ที่ค้างใน intermediate state
 7. **Ledger** — double-entry bookkeeping ทุกการขยับของเงินคือคู่ debit กับ credit ที่ balance กัน มัน append-only การแก้ผิดคือใส่ reversing entry ใหม่ ไม่ใช่ update หรือ delete ledger ของ Stripe เองเก็บ money-movement event ราว 5 พันล้านตัวต่อวัน
 
-architecture บอกว่าจะสร้างอะไร แต่ database design คือที่ที่ correctness ถูก enforce หรือหลุดมือ เพราะงั้นต่อไปเรื่องนั้น
+architecture บอกว่าจะสร้างอะไร แต่ database design นี่คือที่ที่ correctness จะถูก enforce หรือหลุดมือ เพราะงั้นต่อไปเรื่องนั้น
 
 ---
 
