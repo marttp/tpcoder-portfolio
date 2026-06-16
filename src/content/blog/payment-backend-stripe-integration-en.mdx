@@ -56,7 +56,7 @@ The rest of this post assumes Option 2: you integrate Stripe as the PSP and own 
 
 ## How Money Actually Moves
 
-You cannot design a correct backend until you understand the transaction lifecycle end to end, because each phase has its own timing and its own failure modes. Six entities take part in every card transaction.
+Honestly, when I started I just wanted to jump straight to the code. Big mistake — almost every weird bug I've chased since traces back to not really getting this lifecycle. You can't design a correct backend until you understand the transaction flow end to end, because each phase has its own timing and its own way of failing. Six entities take part in every card transaction.
 
 <MermaidDiagram chart={`
 flowchart LR
@@ -383,7 +383,7 @@ The reason to be this strict: an append-only ledger with a hard "debits equal cr
 
 ## Idempotency at Every Layer
 
-True exactly-once is mathematically impossible over an unreliable network (the Two Generals Problem again), so we use at-least-once transport plus deterministic idempotent execution across three interfaces.
+This is the section that, early on, charged a customer twice on a $400 order because I got it wrong — and I never want that feeling again. True exactly-once is mathematically impossible over an unreliable network (the Two Generals Problem again), so the practical move is at-least-once transport plus deterministic idempotent execution across three interfaces.
 
 ![Idempotency checkpoints](/assets/images/blogs/payment-backend-stripe-integration/idempotency-checkpoints.png)
 
@@ -531,7 +531,7 @@ A handful of specifics worth getting right:
 
 ## Refunds
 
-Refunds deserve their own small state machine because they fail in ways the happy path never shows.
+Refunds look like the boring part — right up until one quietly fails, you've got a customer who was charged but never refunded, and support is pinging you about it. They deserve their own small state machine, because they fail in ways the happy path never shows you.
 
 A Stripe **Refund** object has its own status:
 
