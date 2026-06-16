@@ -485,6 +485,8 @@ SELECT status, version FROM payments WHERE id = :payment_id FOR UPDATE;
 
 ถ้าจะบันทึกบัตรโดยยังไม่ charge ทันที คุณสร้าง **SetupIntent** แทน PaymentIntent มันรัน flow แบบ Elements + 3DS เหมือนกัน แต่ผลลัพธ์คือ `payment_method` ที่เอากลับมาใช้ซ้ำได้ ผูกกับ Stripe **Customer** object แทนที่จะเป็น charge ทีหลังพอจะ charge บัตรที่บันทึกไว้ตอนลูกค้าไม่อยู่ (renewal, usage bill) คุณสร้าง PaymentIntent ด้วย `off_session: true` และ `confirm: true`
 
+**PCI scope ไม่ได้ขยับขึ้นเพราะอันนี้** บัตรถูกเก็บไว้ใน vault ของ Stripe ส่วนเราเก็บแค่ token `pm_…` / `cus_…` (ไม่ใช่เลขบัตร PAN) การ save card เลยอยู่ที่ SAQ A tier เดิม เท่ากับ one-time charge เพราะ token พวกนี้ไม่นับเป็น cardholder data สิ่งที่ดันให้ขึ้นไป SAQ A-EP/D คือการที่เราไปแตะเลข PAN ดิบเอง การ save card เฉย ๆ ไม่ได้ทำให้ scope โตขึ้น
+
 สองอย่างที่คนมักพลาด:
 
 - **Merchant-initiated transaction (MIT) และ SCA exemption** ในยุโรป off-session charge จะได้ SCA exemption **ก็ต่อเมื่อ** การ setup ครั้งแรกแบบ on-session ถูก authenticate และ flag ว่าเป็นจุดเริ่มของข้อตกลง MIT ถ้าข้ามจุดนั้น renewal จะโดน decline ด้วย `authentication_required` แล้วตอนนี้คุณต้องไปไล่ตามลูกค้าให้มา re-authenticate payment ที่เขานึกว่ามันอัตโนมัติ
