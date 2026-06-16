@@ -510,7 +510,7 @@ flowchart TD
     ACT --> CAN
 `} />
 
-event ที่คุณ build ตามได้เลย:
+event ที่เรา build ตามได้เลย:
 
 | Event | ความหมาย | สิ่งที่ควรทำ |
 | --- | --- | --- |
@@ -522,10 +522,10 @@ event ที่คุณ build ตามได้เลย:
 
 จุดเฉพาะไม่กี่อย่างที่ควรทำให้ถูก:
 
-- **Proration** ตอนลูกค้า upgrade กลางรอบ Stripe จะ prorate ส่วนต่างแล้ว bill ทันที (หรือใน invoice รอบถัดไป ขึ้นกับ `proration_behavior`) ส่วน downgrade มักมีผลตอนจบ period ปล่อยให้ Stripe คำนวณ proration อย่าไปคิดเอง
-- **Trial** `trial_period_days` (หรือกำหนด trial end ชัด ๆ) ทำให้ subscription เริ่มที่ `trialing` โดยยังไม่ charge event `customer.subscription.trial_will_end` คือ hook ให้คุณเตือนลูกค้าก่อนเงินขยับ
-- **Dunning และ Smart Retries** ตอนบัตร renewal decline Stripe retry ตามตารางที่ optimize ไว้หลายวันและส่ง dunning email map วันพวกนั้นเป็น `PAST_DUE` ชั่วคราว แล้ว **เปิด access ไว้** demote หรือ cancel ก็ต่อเมื่อ `customer.subscription.deleted` หรือ `invoice.voided` มาถึง การตัด access ตั้งแต่ decline อ่อน ๆ ครั้งแรก คือวิธีสร้าง ticket โกรธ ๆ จากลูกค้าที่ payment เขาน่าจะผ่านตอน retry รอบสอง
-- **Usage-based billing** สำหรับ plan แบบ metered คุณรายงาน usage ให้ Stripe (usage record / billing meter) แล้วมันคำนวณ invoice ทำให้การรายงานนั้น idempotent ด้วย ไม่งั้น usage report ที่ถูก retry จะ bill ซ้ำ
+- **Proration** ตอนลูกค้า upgrade กลางรอบ Stripe จะ prorate ส่วนต่างให้แล้ว bill ทันที (หรือไปออกใน invoice รอบถัดไป ขึ้นกับ `proration_behavior`) ส่วน downgrade มักมีผลตอนจบ period ปล่อยให้ Stripe คำนวณ proration เถอะ อย่าไปคิดเอง
+- **Trial** `trial_period_days` (หรือกำหนด trial end ไปเลย) ทำให้ subscription เริ่มที่ `trialing` โดยยังไม่ charge แล้ว event `customer.subscription.trial_will_end` ก็เป็น hook ให้เราเตือนลูกค้าก่อนเงินจะขยับ
+- **Dunning และ Smart Retries** พอบัตร renewal decline Stripe จะ retry ตามตารางที่ optimize ไว้หลายวันแล้วส่ง dunning email ให้ map วันพวกนั้นเป็น `PAST_DUE` ชั่วคราว แล้ว **เปิด access ไว้ก่อน** จะ demote หรือ cancel ก็ต่อเมื่อ `customer.subscription.deleted` หรือ `invoice.voided` มาถึง การไปตัด access ตั้งแต่ decline อ่อน ๆ ครั้งแรก คือสูตรสร้าง ticket โกรธ ๆ จากลูกค้าที่ payment เขาน่าจะผ่านตอน retry รอบสองอยู่แล้ว
+- **Usage-based billing** สำหรับ plan แบบ metered เรารายงาน usage ให้ Stripe (usage record / billing meter) แล้วมันไปคำนวณ invoice เอง ทำให้การรายงานนั้น idempotent ด้วยนะ ไม่งั้น usage report ที่โดน retry มันจะ bill ซ้ำ
 
 ---
 
