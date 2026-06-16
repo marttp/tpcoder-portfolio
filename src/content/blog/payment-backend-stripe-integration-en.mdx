@@ -56,7 +56,7 @@ The rest of this post assumes Option 2: you integrate Stripe as the PSP and own 
 
 ## How Money Actually Moves
 
-Honestly, when I started I just wanted to jump straight to the code. Big mistake — almost every weird bug I've chased since traces back to not really getting this lifecycle. You can't design a correct backend until you understand the transaction flow end to end, because each phase has its own timing and its own way of failing. Six entities take part in every card transaction.
+It's tempting to jump straight to the code, but it's worth slowing down here — a surprising number of payment bugs trace back to not really understanding this lifecycle. You can't design a correct backend until you understand the transaction flow end to end, because each phase has its own timing and its own way of failing. Six entities take part in every card transaction.
 
 <MermaidDiagram chart={`
 flowchart LR
@@ -143,7 +143,7 @@ Capture is when the merchant tells the acquiring bank to finalize the authorized
 
 You can capture an amount less than or equal to what was authorized, but never more (a partial capture releases the remainder of the hold).
 
-**The risk that bit me:** authorization holds last only 5 to 7 days (Visa allows up to 31 for lodging). The first time I hit this, a payment sat in `AUTHORIZED` over a long weekend, the bank quietly dropped the hold, and Monday's capture call just failed — revenue gone, no error thrown, nobody noticed until reconciliation. Two defenses:
+**The risk that bites teams here:** authorization holds last only 5 to 7 days (Visa allows up to 31 for lodging). A common failure looks like this: a payment sits in `AUTHORIZED` over a long weekend, the bank quietly drops the hold, and the later capture call just fails — revenue gone, no error thrown, nobody notices until reconciliation. Two defenses:
 
 - Treat `AUTHORIZED` and `CAPTURED` as genuinely distinct states, never one fuzzy "paid" flag.
 - Run a background job that finds stuck authorizations and marks them expired before they rot.
@@ -363,7 +363,7 @@ A few rules I would die on this hill for:
 
 ## Designing the Ledger
 
-The `payments` table tells you the *state* of a payment. It does not tell you where the money is — and those turn out to be two very different questions. A payment can sit at `CAPTURED` while the actual cash is scattered across your Stripe balance, a processing fee, and recognized revenue. The day someone from finance walked over and asked me "where did this dollar go," opening the status column got me exactly nowhere. The answer lives in the ledger.
+The `payments` table tells you the *state* of a payment. It does not tell you where the money is — and those turn out to be two very different questions. A payment can sit at `CAPTURED` while the actual cash is scattered across your Stripe balance, a processing fee, and recognized revenue. So when finance asks "where did this dollar go," the status column can't answer it — the answer lives in the ledger.
 
 Double-entry bookkeeping means every money movement is recorded as a balanced set of debits and credits that sum to zero. For a single $100 capture with a $3.20 fee, the entries (grouped under one `transfer_id`) look like this:
 
@@ -383,7 +383,7 @@ The reason to be this strict: an append-only ledger with a hard "debits equal cr
 
 ## Idempotency at Every Layer
 
-This is the section that, early on, charged a customer twice on a $400 order because I got it wrong — and I never want that feeling again. True exactly-once is mathematically impossible over an unreliable network (the Two Generals Problem again), so the practical move is at-least-once transport plus deterministic idempotent execution across three interfaces.
+This is the section that, done wrong, double-charges customers — the classic case being a retried request that slips through and runs twice. True exactly-once is mathematically impossible over an unreliable network (the Two Generals Problem again), so the practical move is at-least-once transport plus deterministic idempotent execution across three interfaces.
 
 ![Idempotency checkpoints](/assets/images/blogs/payment-backend-stripe-integration/idempotency-checkpoints.png)
 
@@ -574,7 +574,7 @@ flowchart TD
 
 When `charge.dispute.created` arrives, Stripe immediately debits the disputed amount **plus a dispute fee** (around $15) from your balance, and gives you a window to submit evidence (receipts, logs, proof of delivery). You either contest it by submitting evidence (representment) or accept it. The bank decides, and you find out via `charge.dispute.closed` with `won` or `lost`.
 
-The engineering consequence is the nasty one: money you already booked as settled can get yanked back weeks later. If your ledger has no concept of a dispute, your internal balance just quietly drifts away from Stripe's, and you won't notice until reconciliation screams. Model the dispute as its own state and its own ledger transfer (debit on open, reversing entry if you win), exactly the way you model refunds. One more tip I wish I'd known sooner: subscribe to `radar.early_fraud_warning.created` — it's an early heads-up that a dispute is probably coming, and proactively refunding a flagged charge is usually cheaper than fighting the chargeback and eating the fee on top.
+The engineering consequence is the nasty one: money you already booked as settled can get yanked back weeks later. If your ledger has no concept of a dispute, your internal balance just quietly drifts away from Stripe's, and you won't notice until reconciliation screams. Model the dispute as its own state and its own ledger transfer (debit on open, reversing entry if you win), exactly the way you model refunds. One more thing worth wiring up: subscribe to `radar.early_fraud_warning.created` — it's an early heads-up that a dispute is probably coming, and proactively refunding a flagged charge is usually cheaper than fighting the chargeback and eating the fee on top.
 
 ---
 
