@@ -262,7 +262,7 @@ architecture บอกว่าจะสร้างอะไร แต่ datab
 
 ## Database Schema for Correctness
 
-เรื่อง storage แบ่งเป็น **stateful operational table** (lookup สถานะปัจจุบันได้ไว) กับ **append-only event log** (เก็บประวัติเต็ม) ทั้งคู่เขียนใน database transaction เดียวกัน
+มาถึง schema กันบ้าง อันนี้แหละหัวใจ เรื่อง storage ผมแบ่งเป็น **stateful operational table** (lookup สถานะปัจจุบันได้ไว) กับ **append-only event log** (เก็บประวัติเต็ม) ทั้งคู่เขียนใน database transaction เดียวกัน
 
 ```sql
 -- Enums for the state machine and currencies
