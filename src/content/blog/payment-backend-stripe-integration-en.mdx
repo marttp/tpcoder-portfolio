@@ -15,11 +15,9 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 
 I work on payment systems in my day job, so when I saw a newsletter promising "the complete engineering blueprint for a Stripe-integrated payment backend," I wanted to read it. I also didn't want to subscribe right this minute (engineer budget problems, you know how it is), so I did the next best thing: I reconstructed the blueprint from the public portion, then filled in the gaps with the production realities I keep running into at work.
 
-So treat this as my study notes rather than a textbook. The goal is that I learn by writing it down, and you get something useful out of it too. I let it run long on purpose, because the parts that get cut from a tidy tutorial are exactly the parts that cost money in production.
+So think of this as my study notes more than a textbook — I learn by writing it out, and you'll hopefully grab a few useful bits along the way. And yeah, I made it long on purpose. That's the whole point: to be something other than another cookie-cutter tutorial.
 
-The one idea worth holding onto before anything else: a payment backend is one of the few systems where a bug doesn't just cause a bad user experience, it makes real money disappear from someone's account. That single property changes how you design everything. The core challenge is not performance or feature richness. It is **correctness under failure**. Every decision, from the database engine to the retry policy, has to answer one question: what happens when this component dies mid-transaction?
-
-Let's build it up from there.
+Before we get into it, one thing to plant up front: with a payment backend, a bug doesn't stop at ugly UX — it makes money vanish into thin air. Could be the customer's money, the company's, or honestly even yours when you get charged for it (kidding... mostly). That property is what retunes how you design everything. Fast? Nice. Slick UX? Also nice. But is it *correct*? For this kind of system, **correctness under failure** is the single most critical factor.
 
 ---
 
@@ -56,7 +54,7 @@ The rest of this post assumes Option 2: you integrate Stripe as the PSP and own 
 
 ## How Money Actually Moves
 
-It's tempting to jump straight to the code, but it's worth slowing down here — a surprising number of payment bugs trace back to not really understanding this lifecycle. You can't design a correct backend until you understand the transaction flow end to end, because each phase has its own timing and its own way of failing. Six entities take part in every card transaction.
+Tempting to jump straight to the code — I get it. But hang on here for a minute, because a surprising number of payment bugs trace right back to not really getting this lifecycle. You can't design a correct backend until you can see the whole transaction flow end to end: each phase has its own timing, and its own way of breaking. One card transaction, six players involved.
 
 <MermaidDiagram chart={`
 flowchart LR
