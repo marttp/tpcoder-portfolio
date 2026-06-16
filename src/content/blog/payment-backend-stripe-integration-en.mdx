@@ -102,7 +102,7 @@ sequenceDiagram
 
 ### Phase 1: Authorization (1–3 seconds)
 
-This is the synchronous path where the money is verified and reserved.
+This is the synchronous path — the few seconds right after the customer hits pay, where the money gets checked and reserved.
 
 Your backend creates a Stripe **PaymentIntent** to track the transaction lifecycle. That call returns a `client_secret` to the frontend. The customer then enters card details into **Stripe Elements**, which are secure iframes hosted by Stripe and loaded through Stripe.js. They look like part of your site, but the raw card number (the PAN, Primary Account Number) never touches your server. That single design choice drops your PCI scope to the lowest tier (SAQ A), which is a big reason to use a PSP in the first place.
 
