@@ -708,8 +708,6 @@ In payments, the blast radius of a leaked key is measured in real dollars.
 
 ## What I Took Away
 
-Three things stuck with me after reconstructing all of this.
-
 First, **payments are a correctness problem wearing a backend costume.** The hard parts are not throughput or features; they are what happens when a call times out, a webhook arrives twice, or two refunds race. If you design every component around "what breaks mid-transaction," the rest falls into place.
 
 Second, **idempotency is the load-bearing wall.** Client to backend, backend to Stripe, webhook to worker, usage reporting, and even the outbox relay — every hop assumes the one before it might retry. Once you accept at-least-once everywhere and make processing idempotent everywhere, exactly-once stops being a fantasy and becomes an emergent property.
