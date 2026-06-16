@@ -262,7 +262,7 @@ The architecture says what to build. The database design is where correctness is
 
 ## Database Schema for Correctness
 
-The storage strategy splits into a **stateful operational table** (fast current-status lookups) and an **append-only event log** (full history). Both write inside the same database transaction.
+Onto the schema — this is the heart of it. The storage strategy splits into a **stateful operational table** (fast current-status lookups) and an **append-only event log** (full history), and both write inside the same database transaction.
 
 ```sql
 -- Enums for the state machine and currencies
