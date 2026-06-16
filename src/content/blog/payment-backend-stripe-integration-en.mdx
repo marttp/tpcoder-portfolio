@@ -143,7 +143,7 @@ Capture is when the merchant tells the acquiring bank to finalize the authorized
 
 You can capture an amount less than or equal to what was authorized, but never more (a partial capture releases the remainder of the hold).
 
-**The risk that bites people:** authorization holds last only 5 to 7 days (Visa allows up to 31 for lodging). If you don't capture in time, the issuing bank drops the hold and your later capture call fails — silent lost revenue. Two defenses:
+**The risk that bit me:** authorization holds last only 5 to 7 days (Visa allows up to 31 for lodging). The first time I hit this, a payment sat in `AUTHORIZED` over a long weekend, the bank quietly dropped the hold, and Monday's capture call just failed — revenue gone, no error thrown, nobody noticed until reconciliation. Two defenses:
 
 - Treat `AUTHORIZED` and `CAPTURED` as genuinely distinct states, never one fuzzy "paid" flag.
 - Run a background job that finds stuck authorizations and marks them expired before they rot.
@@ -363,7 +363,7 @@ A few rules I would die on this hill for:
 
 ## Designing the Ledger
 
-The `payments` table tells you the *state* of a payment. The ledger tells you the *money*, and those are not the same thing. A payment can be `CAPTURED` while the cash is split across your Stripe balance, a processing fee, and recognized revenue. If finance ever asks "where is this dollar," the answer has to come from the ledger, not from a status column.
+The `payments` table tells you the *state* of a payment. It does not tell you where the money is — and those turn out to be two very different questions. A payment can sit at `CAPTURED` while the actual cash is scattered across your Stripe balance, a processing fee, and recognized revenue. The day someone from finance walked over and asked me "where did this dollar go," opening the status column got me exactly nowhere. The answer lives in the ledger.
 
 Double-entry bookkeeping means every money movement is recorded as a balanced set of debits and credits that sum to zero. For a single $100 capture with a $3.20 fee, the entries (grouped under one `transfer_id`) look like this:
 
@@ -562,7 +562,7 @@ If the row no longer satisfies `refunded + new <= captured`, the update affects 
 
 ## Disputes and Chargebacks
 
-Neither of my source materials covered this, and it is unavoidable in production. A dispute (chargeback) is the cardholder going to their bank to reverse a charge, and it has a clock, a cost, and a workflow.
+Neither of my source materials covered this, which is funny because in production it's the part that actually hurts. A dispute (chargeback) is the cardholder going to their bank to reverse a charge — and unlike a refund you control, this one comes with a clock, a fee, and a fight you might lose.
 
 <MermaidDiagram chart={`
 flowchart TD
@@ -574,7 +574,7 @@ flowchart TD
 
 When `charge.dispute.created` arrives, Stripe immediately debits the disputed amount **plus a dispute fee** (around $15) from your balance, and gives you a window to submit evidence (receipts, logs, proof of delivery). You either contest it by submitting evidence (representment) or accept it. The bank decides, and you find out via `charge.dispute.closed` with `won` or `lost`.
 
-The engineering consequence: funds you already counted as settled can be clawed back weeks later. If your ledger has no concept of a dispute, your internal balance silently drifts from Stripe's. Model the dispute as its own state and its own ledger transfer (debit on open, reversing entry if you win), exactly the way you model refunds. Also subscribe to `radar.early_fraud_warning.created` — it's an early signal that a dispute is likely, and proactively refunding a flagged charge is often cheaper than fighting the chargeback and eating the fee.
+The engineering consequence is the nasty one: money you already booked as settled can get yanked back weeks later. If your ledger has no concept of a dispute, your internal balance just quietly drifts away from Stripe's, and you won't notice until reconciliation screams. Model the dispute as its own state and its own ledger transfer (debit on open, reversing entry if you win), exactly the way you model refunds. One more tip I wish I'd known sooner: subscribe to `radar.early_fraud_warning.created` — it's an early heads-up that a dispute is probably coming, and proactively refunding a flagged charge is usually cheaper than fighting the chargeback and eating the fee on top.
 
 ---
 
