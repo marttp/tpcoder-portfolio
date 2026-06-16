@@ -198,12 +198,12 @@ webhook คือทางที่ backend รู้ว่าเกิดอะ
 
 **Functional:**
 
-1. payment แบบ one-time และ saved payment method ที่เอากลับมาใช้ซ้ำได้
-2. รับ payment รวมถึง split payment แบบ marketplace
-3. refund ทั้งเต็มและบางส่วน ผ่าน refund state machine ที่แยกออกมา
-4. subscription และ recurring billing พร้อม proration ตอนเปลี่ยน plan, trial และ Smart Retries ของ Stripe สำหรับ renewal ที่ fail
-5. ประมวลผล webhook อย่างเชื่อถือได้ เพราะ webhook คือ source of truth ของสถานะ payment
-6. ทั้ง lifecycle ถูก model เป็น finite-state machine ที่ enforce transition
+1. รับ payment แบบ one-time ได้ แล้วก็ save payment method ไว้ใช้ซ้ำรอบหน้าได้ด้วย
+2. รับ payment ได้ รวมถึง split payment แบบ marketplace
+3. refund ได้ทั้งเต็มก้อนและบางส่วน ผ่าน refund state machine ที่แยกออกมาต่างหาก
+4. ทำ subscription กับ recurring billing ได้ มี proration ตอนเปลี่ยน plan, มี trial แล้วก็ Smart Retries ของ Stripe เวลา renewal fail
+5. process webhook ได้แบบเชื่อถือได้ เพราะ webhook คือ source of truth ของสถานะ payment
+6. ทั้ง lifecycle ถูก model เป็น finite-state machine ที่ enforce transition ชัด ๆ
 
 **Non-functional** นี่คือส่วนที่สนุก:
 
