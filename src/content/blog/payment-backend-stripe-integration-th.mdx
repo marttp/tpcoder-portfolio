@@ -27,28 +27,28 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 
 ![Three options for accepting payments](/assets/images/blogs/payment-backend-stripe-integration/three-options.png)
 
-**ทางเลือกที่ 1: สร้าง payment processor เอง** เชื่อมเข้า card network เองและรันทั้ง financial stack ด้วยตัวเอง
+**ทางเลือกที่ 1: ทำ payment processor เอง** ต่อเข้า card network เอง แล้วรันทั้ง financial stack ด้วยตัวเองหมดทุกอย่าง
 
-- cost ต่อ transaction ต่ำสุด พอ scale ใหญ่มาก ๆ ประหยัดแค่ 0.5% ต่อ transaction ก็รวมเป็นหลายร้อยล้านต่อปี
-- คุมทั้ง stack ได้เต็มที่ เจ้าอย่าง Amazon, Uber, Airbnb ก็ทำบางส่วนของ payment system แบบนี้
-- ต้นทุนเริ่มต้นโหดมาก แค่ขอ banking license ก็ใช้เวลา 12 ถึง 24 เดือน บวกเงินหลายล้าน บวก PCI DSS Level 1 compliance และภาระ regulatory ต่อเนื่อง
-- คุ้มก็ต่อเมื่อทำ volume ระดับพันล้านต่อปีแล้ว ถ้ายังไม่ถึงจุดนั้น มันคือ premature optimization ขั้นสุด
+- cost ต่อ transaction ถูกสุด พอ scale ใหญ่ ๆ แค่ประหยัด 0.5% ต่อ transaction ก็รวมกันเป็นหลายร้อยล้านต่อปีแล้ว
+- คุมทั้ง stack ได้เองเต็ม ๆ เจ้าใหญ่อย่าง Amazon, Uber, Airbnb ก็ทำบาง part ของ payment system แบบนี้
+- แต่ต้นทุนเริ่มต้นโหดมาก ลำพังขอ banking license ก็ปาไป 12–24 เดือน บวกเงินอีกหลายล้าน บวก PCI DSS Level 1 compliance แล้วก็ภาระ regulatory ที่ตามมาเรื่อย ๆ
+- จะคุ้มก็ต่อเมื่อ volume แตะระดับพันล้านต่อปีแล้วเท่านั้น ถ้ายังไม่ถึงจุดนั้น มันคือ premature optimization แบบสุด ๆ
 
-**ทางเลือกที่ 2: ใช้ payment service provider (PSP)** อย่าง Stripe, PayPal, Adyen หรือ Braintree ตัว PSP รัน payment chain ให้คุณ แล้วคุณ build ต่อบนมัน
+**ทางเลือกที่ 2: ใช้ payment service provider (PSP)** เช่น Stripe, PayPal, Adyen, Braintree ตัว PSP จะรัน payment chain ให้เราทั้งเส้น แล้วเราก็ build ต่อยอดอยู่ข้างบน
 
-- จัดการ card-network integration, ความสัมพันธ์กับธนาคาร, fraud tooling, PCI compliance และ payment method ทั่วโลกให้
-- คุณจ่าย fee ต่อ transaction (ราว 2.9% + $0.30 กับ Stripe) แทนการสร้าง infrastructure พวกนั้นเอง
-- เป็นทางเลือกที่เหมาะกับเกือบทุกคน ตั้งแต่ startup ระยะแรกไปจนถึง platform ขนาดใหญ่
-- ขนาด Shopify (volume พันล้านต่อปี) ยังสร้าง Shopify Payments บน Stripe แทนที่จะต่อ card network เองเลย
+- เขาจัดการให้หมด ทั้ง card-network integration, ดีลกับธนาคาร, fraud tooling, PCI compliance แล้วก็ payment method ทั่วโลก
+- เราแค่จ่าย fee ต่อ transaction (ราว ๆ 2.9% + $0.30 ถ้าเป็น Stripe) แลกกับการไม่ต้องไปสร้าง infrastructure พวกนั้นเอง
+- เหมาะกับเกือบทุกคน ตั้งแต่ startup เพิ่งเริ่ม ยัน platform ใหญ่ ๆ
+- ขนาด Shopify (volume ระดับพันล้านต่อปี) ก็ยังเลือก build Shopify Payments บน Stripe แทนที่จะไปต่อ card network เอง
 
-**ทางเลือกที่ 3: ใช้ no-code hosted flow** อย่าง Stripe Checkout หรือ Payment Links Stripe host หน้า checkout ทั้งหน้าให้ แล้วคุณแค่ redirect ไปหามัน
+**ทางเลือกที่ 3: ใช้ no-code hosted flow** เช่น Stripe Checkout หรือ Payment Links Stripe จะ host หน้า checkout ให้ทั้งหน้า เราแค่ redirect ลูกค้าไปหาเขา
 
-- เร็วสุด ขึ้นได้ในไม่กี่ชั่วโมงโดยแทบไม่ต้องมี backend
-- Stripe คุมทั้ง UI, การเลือก payment method และการ confirm
-- เหมาะกับการขายของชิ้นเดียว, รับบริจาค หรือทำ prototype เร็ว ๆ
-- customize ได้จำกัดและคุมได้น้อย คุณฝังลงใน UI ของตัวเองแบบลึก ๆ ไม่ได้, สร้าง subscription logic เองไม่ได้ และ react กับ payment event แบบคุมเองทั้งหมดไม่ได้
+- เร็วสุด ขึ้นได้ในไม่กี่ชั่วโมง แทบไม่ต้องแตะ backend เลย
+- Stripe คุมให้หมด ทั้ง UI, การเลือก payment method แล้วก็ขั้นตอน confirm
+- เหมาะกับขายของชิ้นเดียว, รับบริจาค หรือทำ prototype เร็ว ๆ
+- แต่ก็แลกมากับการ customize ได้น้อยและคุมได้จำกัด จะฝังเข้า UI ตัวเองลึก ๆ ก็ไม่ได้, เขียน subscription logic เองก็ไม่ได้ แล้วก็ react กับ payment event แบบคุมเองทั้งหมดก็ไม่ได้
 
-ส่วนที่เหลือของโพสต์นี้ขอสมมติว่าเลือกทางเลือกที่ 2 คือคุณ integrate Stripe เป็น PSP แล้ว own backend รอบ ๆ มันเอง เพราะจุดนั้นคือที่ที่ engineering สนุก
+ที่เหลือของโพสต์นี้ ขอสมมติว่าเราเลือกทางที่ 2 คือ integrate Stripe เป็น PSP แล้ว own backend รอบ ๆ มันเอง เพราะจุดนั้นแหละคือที่ที่ engineering มันสนุก
 
 ---
 
