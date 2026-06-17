@@ -256,6 +256,33 @@ flowchart LR
 6. **Background Job Workers** — four flavors of async work: webhook event processing, retry workers with exponential backoff, a daily reconciliation worker, and a stuck-payment detector that alerts on payments stuck in intermediate states.
 7. **Ledger** — double-entry bookkeeping. Every money movement is a balanced pair of debit and credit entries. It is append-only: corrections are new reversing entries, never updates or deletes. Stripe's own ledger logs around 5 billion money-movement events a day.
 
+Two zoom-ins, so the input and output of each path are easier to see.
+
+**Synchronous path (checkout):** the client sends a request, you hand back a `client_secret`.
+
+<MermaidDiagram chart={`
+flowchart LR
+    FE["Frontend"] -->|"payment request (in)"| API["Payment API Service"]
+    API -->|"create PaymentIntent"| ADP["Stripe Integration Layer"]
+    ADP -->|"API call"| S["Stripe API"]
+    S -->|"client_secret"| ADP
+    ADP --> API
+    API -->|"client_secret (out)"| FE
+    API -->|"create / read record"| DB[("Payment DB")]
+`} size="medium" />
+
+**Asynchronous path (incoming webhooks):** input is the event from Stripe, output is the state transition plus ledger writes.
+
+<MermaidDiagram chart={`
+flowchart LR
+    S["Stripe API"] -.->|"webhook event (in)"| WH["Webhook Receiver"]
+    WH -->|"200 OK"| S
+    WH -->|"enqueue"| MQ["Message Queue"]
+    MQ -->|"dequeue"| WK["Background Worker"]
+    WK -->|"state transition (out)"| DB[("Payment DB")]
+    WK -->|"write entries (out)"| LG[("Ledger")]
+`} size="medium" />
+
 The architecture says what to build. The database design is where correctness is actually enforced or lost, so that is next.
 
 ---
