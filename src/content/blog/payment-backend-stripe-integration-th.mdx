@@ -609,6 +609,8 @@ flowchart TD
 
 ผลกระทบฝั่ง engineering อันนี้แสบ: เงินที่เรานับว่า settle ไปแล้ว ถูกดึงกลับได้ในอีกหลายสัปดาห์ ถ้า ledger ไม่มี concept ของ dispute เลย balance ภายในมันจะค่อย ๆ เพี้ยนห่างจากของ Stripe แบบเงียบ ๆ กว่าจะรู้ก็ตอน reconcile ร้อง ทางที่ดีคือ model dispute เป็น state ของมันเองและ ledger transfer ของมันเอง (debit ตอนเปิด, ใส่ reversing entry ถ้าเราชนะ) แบบเดียวกับที่ทำกับ refund อีกอันที่ควรต่อไว้ด้วยคือ subscribe `radar.early_fraud_warning.created` มันเป็นสัญญาณเตือนล่วงหน้าว่า dispute น่าจะกำลังมา แล้วการรีบ refund charge ที่ถูก flag ไว้ มักจะถูกกว่าไปสู้ chargeback แล้วโดนกิน fee ซ้ำ
 
+เสริมอีกนิด — เรื่อง chargeback นี่เป็น project สุดท้ายของผมตอนอยู่ญี่ปุ่น เลยพอมี context อยู่บ้าง ข่าวดีคือระบบ chargeback ไม่ต้อง scale อะไรมากมาย (ขอแยกให้ชัดว่าคนละเรื่องกับ Fraud นะ อันนั้นต่างหากที่ต้อง scale หนัก) ส่วนข่าวร้ายคือ ถ้าวันไหน traffic ของ chargeback พุ่งจนต้องการ RPS สูง ๆ สิ่งที่ควรไปเช็คคือ business ของเราเอง ไม่ใช่ระบบ chargeback 😂 เพราะมันชวนให้ถามว่า ทำไมเราถึงมี chargeback request เยอะขนาดนั้น?
+
 ---
 
 ## Marketplace Payments with Stripe Connect
