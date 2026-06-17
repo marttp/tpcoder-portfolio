@@ -514,7 +514,9 @@ SELECT status, version FROM payments WHERE id = :payment_id FOR UPDATE;
 
 ถ้าจะบันทึกบัตรโดยยังไม่ charge ทันที คุณสร้าง **SetupIntent** แทน PaymentIntent มันรัน flow แบบ Elements + 3DS เหมือนกัน แต่ผลลัพธ์คือ `payment_method` ที่เอากลับมาใช้ซ้ำได้ ผูกกับ Stripe **Customer** object แทนที่จะเป็น charge ทีหลังพอจะ charge บัตรที่บันทึกไว้ตอนลูกค้าไม่อยู่ (renewal, usage bill) คุณสร้าง PaymentIntent ด้วย `off_session: true` และ `confirm: true`
 
-**PCI scope ไม่ได้ขยับขึ้นเพราะอันนี้** บัตรถูกเก็บไว้ใน vault ของ Stripe ส่วนเราเก็บแค่ token `pm_…` / `cus_…` (ไม่ใช่เลขบัตร PAN) การ save card เลยอยู่ที่ SAQ A tier เดิม เท่ากับ one-time charge เพราะ token พวกนี้ไม่นับเป็น cardholder data สิ่งที่ดันให้ขึ้นไป SAQ A-EP/D คือการที่เราไปแตะเลข PAN ดิบเอง การ save card เฉย ๆ ไม่ได้ทำให้ scope โตขึ้น
+**PCI scope ไม่ได้ขยับขึ้นเพราะอันนี้** บัตรถูกเก็บไว้ใน vault ของ Stripe ส่วนเราเก็บแค่ token `pm_…` / `cus_…` (ไม่ใช่เลขบัตร PAN) การ save card เลยอยู่ที่ SAQ A tier เดิม เท่ากับ one-time charge เพราะ token พวกนี้ไม่นับเป็น cardholder data สิ่งที่ดันให้ขึ้นไป SAQ A-EP/D คือการที่เราไปแตะเลข PAN ดิบเอง แล้ว save ลง Vault ของตัวเอง นั่นแหละ งานงอกเพิ่มเลย ส่วนการ save card ผ่าน Stripe เฉย ๆ ไม่ได้ทำให้ scope โตขึ้น
+
+พูดถึงเรื่องนี้ทีไรก็นึกถึงตอนที่ผมเคยทำ delete processor ไว้คอยลบ saved card ที่ถูก soft-delete แบบ near-real-time เพื่อให้ระบบยัง compliance อยู่ 😂
 
 สองอย่างที่คนมักพลาด:
 
