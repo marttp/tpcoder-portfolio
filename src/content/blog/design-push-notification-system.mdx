@@ -4,6 +4,7 @@ description: "A backend system design walkthrough: evolve a push notification se
 pubDate: "2026-06-17"
 tags:
   ["Software Architecture", "Software Engineering", "Backend"]
+heroImage: "/assets/images/blogs/design-push-notification-system/hero-pipeline.png"
 language: "en"
 ---
 
@@ -19,7 +20,7 @@ The important part of each version below is the **problem statement first**. Non
 
 > Series — *Backend System Design (start simple → evolve)*. This is **#1**. Next up: a multi-channel Delivery System, then a Webhook Callback System.
 
-[IMAGE_PLACEHOLDER: A clean dark-background architecture diagram (developer-blog aesthetic, teal/green accents, ~16:9) showing the END-STATE push pipeline we build toward, so readers see the destination up front. Left to right: Caller (API + internal events) → Load Balancer → Send Notification Service → Kafka topic (partitioned by user_id) → Pre-Delivery Worker (user info, device info, validator, preference checker, template parser, batcher) reading a Relational DB → Kafka topic (ready-to-send) → Delivery Worker (with a Redis dedupe store beside it) → Push Handler fanning out to FCM / APNs / Web Push → Devices. Also show a delivery-result queue → Delivery Track Aggregator → Columnar DB (analytics), and a Retry Delivery Worker that re-queues failed payloads with a max-attempt counter. Label the in/out arrows.]
+![End-state push notification pipeline architecture](/assets/images/blogs/design-push-notification-system/hero-pipeline.png)
 
 ---
 
@@ -167,7 +168,7 @@ This is the shape of the real thing. But "at-least-once" delivery (Kafka redeliv
 
 **The problem:** every reliable hop in this pipeline is at-least-once. Kafka redelivers after a consumer restart. A delivery worker that crashes *after* calling the provider but *before* committing its offset will reprocess and send again. Retries (next version) add even more chances. The result is the thing users hate most about push: the same notification buzzing twice.
 
-[IMAGE_PLACEHOLDER: A simple, slightly humorous illustration of the "double-buzz" problem — a phone lock screen showing the exact same push notification delivered twice in a row (two identical stacked notification cards, same title and body). Minimal dark UI, developer-blog style. Conveys "duplicate delivery is the thing users actually notice."]
+![The double-buzz problem: duplicate push notifications](/assets/images/blogs/design-push-notification-system/double-buzz.png)
 
 True exactly-once across a network is a fantasy (it's the Two Generals Problem — same one from my [payment backend post](/blog/payment-backend-stripe-integration-en/)). The practical answer is the same: **at-least-once transport + idempotent delivery**.
 
@@ -230,19 +231,43 @@ This is the architecture that actually ran. What's left isn't infra — it's mak
 
 **The fix:** this is what the **template parser** and **user-preference checker** in the Pre-Delivery Worker are really for. Before a notification is ever queued for delivery, it passes through a content-and-consent gate:
 
-- **Preference check** — is this user opted in to this category? Are we inside their quiet hours (in *their* timezone)? Have we already hit the frequency cap for today? If any of these fail, drop or defer the notification *here*, before it costs a send.
+- **Preference check** — is this user opted in to this category? Are we inside their quiet hours (in *their* timezone)? If either fails, drop or defer the notification *here*, before it costs a send.
 - **Template render** — resolve the template per user: locale/language, and merge fields like name, amount, or order status.
 - **Personalization** — choose *which* content this user should get, which is where this pipeline plugs into an audience/segmentation service (a later post in this series).
 
 <MermaidDiagram chart={`
 flowchart TD
-    EV["Notify user X"] --> PREF{"Opted in?\nWithin quiet hours?\nUnder frequency cap?"}
+    EV["Notify user X"] --> PREF{"Opted in?\nWithin quiet hours?"}
     PREF -->|"no"| DROP["Drop / defer"]
     PREF -->|"yes"| TMPL["Render template\n(locale + merge fields)"]
     TMPL --> READY["Ready-to-send payload"]
 `} />
 
 Doing this in the **pre-delivery** stage is deliberate: a notification that shouldn't be sent should die before it touches a provider, a rate budget, or a dedupe key. Consent and relevance are cheapest to enforce at the front.
+
+---
+
+## Not all notifications are equal — type, priority, and frequency caps
+
+**The problem:** treating a 2FA code, a "payment received", and a "50% off this weekend" the same way. If every marketing campaign goes out at full priority with no ceiling, two things break. Users mute the app — and once they do, your *transactional* notifications, the ones they actually need, die right along with the promos. And low-urgency campaigns end up competing with genuinely urgent alerts for the same delivery budget.
+
+**The fix:** classify every notification by **type**, and let the type drive priority and limits.
+
+- **Transactional / activity** (2FA, payment confirmation, someone messaged you) — high priority, sent right away. On APNs that's `apns-priority: 10`; on FCM the high-priority flag. These also benefit from **collapsing**: a stale "balance updated" should be *replaced* by the newer one, not stacked — `collapse-id` (APNs) / `collapse_key` (FCM) so the user sees the latest state, not a pile of five.
+- **Marketing / campaign** — lower priority (`apns-priority: 5`, which is battery-friendly and lets the OS batch it), and subject to a **frequency cap**. Over the cap → drop or defer.
+
+On the cap: keep it a **global policy for now** — say, at most N marketing pushes per user per day, the same N for everyone. It's a cheap counter: a per-user key in Redis with a daily TTL, `INCR` and check it in the pre-delivery stage. You *can* make the cap per-user or per-segment later, but that's tuning you don't need on day one — a single global cap already removes the worst behavior (relentless spam) for almost no complexity.
+
+<MermaidDiagram chart={`
+flowchart TD
+    N["Notification"] --> T{"Type?"}
+    T -->|"transactional / activity"| HI["High priority\ncollapse stale"]
+    T -->|"marketing"| CAP{"Under daily cap?"}
+    CAP -->|"no"| DROP["Drop / defer"]
+    CAP -->|"yes"| LO["Low priority"]
+`} />
+
+Note how this is a different axis from the previous section. Per-user **consent** (opt-in, quiet hours) is personalization — about *this user's* wishes. **Type-based priority and the global cap** are platform policy — about how the system treats a whole *class* of notification, regardless of who's receiving it. Both live in the pre-delivery stage, but they're answering different questions.
 
 ---
 
@@ -257,6 +282,7 @@ We started with a loop that called FCM inside the request, and ended with a part
 5. **Dedupe** so at-least-once transport doesn't become double-buzz.
 6. **Rate-limit, track, and retry with a ceiling** so you survive provider limits, can see what happened, and never loop forever.
 7. **Gate on consent and relevance** so the thing you reliably deliver is worth delivering.
+8. **Treat notifications by type** — high priority and collapse for transactional, a global frequency cap for marketing, so promos never drown the alerts that matter.
 
 The meta-point: **nobody should build the final version on day one.** Every box earned its place by solving a problem the previous version created. If you start simple and let real constraints push you, you tend to arrive somewhere close to this — and you'll understand every piece, because you felt the pain that added it.
 
