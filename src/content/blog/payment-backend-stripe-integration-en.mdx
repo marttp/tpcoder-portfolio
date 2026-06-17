@@ -564,7 +564,7 @@ A handful of specifics worth getting right:
 
 ## Refunds
 
-Refunds look like the boring part — right up until one quietly fails, you've got a customer who was charged but never refunded, and support is pinging you about it. They deserve their own small state machine, because they fail in ways the happy path never shows you.
+A refund sounds like "just undo the charge," but it's really its own async flow — with its own statuses, and its own ways to fail. When one does fail, you're left with a customer who was charged but never refunded, and support chasing you. That's why a refund earns its own small state machine, separate from the payment.
 
 A Stripe **Refund** object has its own status:
 
