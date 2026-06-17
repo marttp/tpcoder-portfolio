@@ -126,3 +126,37 @@ The non-obvious part is **partial failure**. A multicast of 500 doesn't succeed 
 Batching makes a single big send efficient. The next wall is the pipeline itself: one worker doing lookups, preference checks, templating, *and* sending can't scale those stages independently — and we have no ordering or replay.
 
 ---
+
+## v5: Split the work — a two-stage Kafka pipeline
+
+**The problem:** our single worker now does a lot — load user info, load device info, validate, check preferences, render the template, batch, and send. Those have wildly different costs. A slow DB lookup blocks a worker that could be sending. You can't scale "enrichment" separately from "delivery." And a plain queue gives you no ordering and no replay — if a worker crashes mid-batch, you're guessing what happened.
+
+**The fix:** split into **two stages** with a durable log (Kafka) between them, and **partition by user ID**.
+
+- **Pre-Delivery Worker** (the enrichment stage): user information, device information, a validator, the notification batcher, a user-preference checker, and a template parser. It turns a raw "notify user X" event into a fully-resolved, ready-to-send payload, then publishes to the next topic.
+- **Delivery Worker** (the send stage): consumes ready payloads and does nothing but talk to providers via the Push Handler.
+
+<MermaidDiagram chart={`
+flowchart LR
+    CALLER["Caller"] --> SVC["Send Notification Service"]
+    SVC --> Q1["Kafka topic 1\n(partition by user_id)"]
+    subgraph PRE["Pre-Delivery Worker"]
+        ENR["user / device info\nvalidator\npreference checker\ntemplate parser\nbatcher"]
+    end
+    Q1 --> PRE
+    PRE --> DB[("Relational DB")]
+    PRE --> Q2["Kafka topic 2\n(ready-to-send)"]
+    Q2 --> DEL["Delivery Worker"]
+    DEL --> PH["Push Handler"]
+    PH --> DEV["Devices"]
+`} />
+
+Why Kafka specifically, and why partition by `user_id`:
+
+- **Independent scaling.** Enrichment is DB-bound, delivery is network-bound — now each scales on its own consumer group.
+- **Ordering where it matters.** All events for one user land on the same partition, so they're processed in order (you don't want a "your order shipped" overtaking "your order is being packed").
+- **Replay and durability.** A crashed consumer resumes from its offset. If a downstream bug corrupts something, you can reset the offset and reprocess — a plain queue can't do that.
+
+This is the shape of the real thing. But "at-least-once" delivery (Kafka redelivery + provider retries) means the same push can fire twice. At low volume you shrug. At our volume, users notice.
+
+---
