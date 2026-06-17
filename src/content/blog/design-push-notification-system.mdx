@@ -73,3 +73,31 @@ This is the single highest-leverage change in the whole post. Almost everything 
 But now we've assumed every device speaks FCM. They don't.
 
 ---
+
+## v3: Not every device is Android — multi-platform abstraction
+
+**The problem:** the worker calls `fcm.send()` directly. The moment you have iOS users you need **APNs**, web users need the **Web Push** protocol, and each provider has its own auth, payload shape, and error codes. If you keep hardcoding FCM, every new platform means surgery on the worker, and the worker starts to know far too much about each provider's quirks.
+
+**The fix:** put a **Push Handler** in front of the providers — one internal interface, one adapter per provider. The worker looks up the device's platform (from device info) and hands off to the right adapter. Classic Strategy pattern; the worker stops caring *how* a push is sent.
+
+<MermaidDiagram chart={`
+flowchart LR
+    WK["Delivery Worker"] --> PH["Push Handler"]
+    PH -->|"Android"| FCM["FCM adapter"]
+    PH -->|"iOS"| APNS["APNs adapter"]
+    PH -->|"Web"| WEB["Web Push adapter"]
+    FCM --> DEV["Devices"]
+    APNS --> DEV
+    WEB --> DEV
+`} />
+
+Two things this buys:
+
+- **Adding a platform is a new adapter, not a worker rewrite.** The internal contract (`send(deviceToken, renderedPayload)`) stays stable.
+- **Provider-specific error mapping lives in one place.** "Invalid token", "rate limited", "retryable 5xx" get normalized to internal codes the worker understands — which matters a lot once we add retry.
+
+To route correctly we need to know each device's platform and current token, so this is also where **device information** (token, platform, app version, last-seen) becomes a first-class lookup.
+
+This works great until one notification has to reach a lot of devices at once — and we're back to one HTTP call per token.
+
+---
