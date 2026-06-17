@@ -116,7 +116,7 @@ When the customer submits, the authorization runs through the chain step by step
 4. **Response code** — the issuer returns a two-digit response code (approve or decline) back up the chain.
 5. **Hold placed** — on approval, a **hold** is placed on the cardholder's balance, but no money has moved yet.
 
-Timing: Mastercard reports an average network response time around 130 ms, and Visa's network is built to handle peaks of 56,000+ messages per second; the full round trip including every hop usually finishes in 1 to 3 seconds.
+Mastercard reports an average network response time around 130 ms, and Visa's network is built to handle peaks of 56,000+ messages per second; the full round trip across every hop usually finishes in 1 to 3 seconds — though it can stretch to 5 to 10 seconds depending on the network layer or your own internal system design.
 
 #### A closer look at the PaymentIntent
 
