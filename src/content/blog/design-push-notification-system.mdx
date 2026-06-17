@@ -19,6 +19,8 @@ The important part of each version below is the **problem statement first**. Non
 
 > Series — *Backend System Design (start simple → evolve)*. This is **#1**. Next up: a multi-channel Delivery System, then a Webhook Callback System.
 
+[IMAGE_PLACEHOLDER: A clean dark-background architecture diagram (developer-blog aesthetic, teal/green accents, ~16:9) showing the END-STATE push pipeline we build toward, so readers see the destination up front. Left to right: Caller (API + internal events) → Load Balancer → Send Notification Service → Kafka topic (partitioned by user_id) → Pre-Delivery Worker (user info, device info, validator, preference checker, template parser, batcher) reading a Relational DB → Kafka topic (ready-to-send) → Delivery Worker (with a Redis dedupe store beside it) → Push Handler fanning out to FCM / APNs / Web Push → Devices. Also show a delivery-result queue → Delivery Track Aggregator → Columnar DB (analytics), and a Retry Delivery Worker that re-queues failed payloads with a max-attempt counter. Label the in/out arrows.]
+
 ---
 
 ## v1: The naive version — call FCM directly
@@ -91,7 +93,7 @@ flowchart LR
     WEB --> DEV
 `} />
 
-Two things this buys:
+Two things we get from this:
 
 - **Adding a platform is a new adapter, not a worker rewrite.** The internal contract (`send(deviceToken, renderedPayload)`) stays stable.
 - **Provider-specific error mapping lives in one place.** "Invalid token", "rate limited", "retryable 5xx" get normalized to internal codes the worker understands — which matters a lot once we add retry.
@@ -158,5 +160,33 @@ Why Kafka specifically, and why partition by `user_id`:
 - **Replay and durability.** A crashed consumer resumes from its offset. If a downstream bug corrupts something, you can reset the offset and reprocess — a plain queue can't do that.
 
 This is the shape of the real thing. But "at-least-once" delivery (Kafka redelivery + provider retries) means the same push can fire twice. At low volume you shrug. At our volume, users notice.
+
+---
+
+## v6: Stop the double-buzz — a dedupe processor
+
+**The problem:** every reliable hop in this pipeline is at-least-once. Kafka redelivers after a consumer restart. A delivery worker that crashes *after* calling the provider but *before* committing its offset will reprocess and send again. Retries (next version) add even more chances. The result is the thing users hate most about push: the same notification buzzing twice.
+
+[IMAGE_PLACEHOLDER: A simple, slightly humorous illustration of the "double-buzz" problem — a phone lock screen showing the exact same push notification delivered twice in a row (two identical stacked notification cards, same title and body). Minimal dark UI, developer-blog style. Conveys "duplicate delivery is the thing users actually notice."]
+
+True exactly-once across a network is a fantasy (it's the Two Generals Problem — same one from my [payment backend post](/blog/payment-backend-stripe-integration-en/)). The practical answer is the same: **at-least-once transport + idempotent delivery**.
+
+**The fix:** give every notification a stable **idempotency key** (e.g. `notificationId:deviceToken`) and check it against a fast store — Redis — right before sending. First time through, claim the key with a TTL and send. If the key already exists, it's a duplicate: skip it.
+
+<MermaidDiagram chart={`
+flowchart LR
+    Q2["Kafka topic 2"] --> DEL["Delivery Worker"]
+    DEL <-->|"SETNX notif:device (TTL)"| REDIS["Redis (dedupe)"]
+    DEL -->|"first time only"| PH["Push Handler"]
+    PH --> DEV["Devices"]
+`} />
+
+A few things that matter in practice:
+
+- **Claim before send, not after.** Use an atomic `SETNX`-style claim so two workers racing the same key can't both win.
+- **TTL sized to your retry window.** The key only needs to outlive the period in which a duplicate could realistically arrive (hours, not forever) — otherwise Redis becomes your biggest, most expensive table.
+- **It's a best-effort guard, not a ledger.** Dedupe trims the duplicates that come from retries and redelivery; it's not an accounting system. (For money, you'd reconcile — but a missed-by-a-hair duplicate push is not worth a distributed transaction.)
+
+Now sends are idempotent. The next questions are the ones a 120M/day system forces on you: how do we not get throttled into oblivion, and how do we even *know* what got delivered?
 
 ---
