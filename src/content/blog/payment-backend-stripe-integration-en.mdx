@@ -514,7 +514,9 @@ Then it evaluates the guard. If the row is already `CAPTURED` (or further along)
 
 To save a card without charging it immediately, you create a **SetupIntent** instead of a PaymentIntent. It runs the same Elements + 3DS flow, but the outcome is a reusable `payment_method` attached to a Stripe **Customer** object rather than a charge. Later, to charge that saved card while the customer is away (a renewal, a usage bill), you create a PaymentIntent with `off_session: true` and `confirm: true`.
 
-**PCI scope doesn't change here.** Because the card is vaulted by Stripe and you only persist the `pm_…` / `cus_…` tokens (never the PAN), saving a card keeps you at the same SAQ A tier as a one-time charge — those tokens aren't cardholder data. What pushes you up to SAQ A-EP/D is handling the raw PAN yourself; saving cards on its own doesn't.
+**PCI scope doesn't change here.** Because the card is vaulted by Stripe and you only persist the `pm_…` / `cus_…` tokens (never the PAN), saving a card keeps you at the same SAQ A tier as a one-time charge — those tokens aren't cardholder data. What pushes you up to SAQ A-EP/D is touching the raw PAN and storing it in your own vault — that's where the extra work piles on. Saving cards through Stripe on its own doesn't.
+
+This one's personal for me — I once built a delete processor that wipes soft-deleted saved cards in near-real-time, purely to keep things compliant 😂
 
 Two things people miss here:
 
