@@ -198,12 +198,12 @@ Before the details, here's the lay of the requirements. For a mid-to-large platf
 
 **Functional:**
 
-1. One-time payments and saved payment methods for reuse.
-2. Accepting payments, including marketplace-style split payments.
-3. Refunds, full and partial, through a dedicated refund state machine.
-4. Subscriptions and recurring billing, with proration on plan changes, trials, and Stripe's Smart Retries for failed renewals.
-5. Reliable webhook processing, because webhooks are the source of truth for payment status.
-6. The whole lifecycle modeled as a finite-state machine with enforced transitions.
+1. Take one-time payments, and let customers save a card to reuse next time.
+2. Accept payments, including marketplace-style split payments.
+3. Do refunds — full and partial — through their own dedicated state machine.
+4. Run subscriptions and recurring billing, with proration on plan changes, trials, and Stripe's Smart Retries when a renewal fails.
+5. Process webhooks reliably, since webhooks are the source of truth for payment status.
+6. Model the whole lifecycle as a finite-state machine with enforced transitions.
 
 **Non-functional** is where it gets interesting:
 
