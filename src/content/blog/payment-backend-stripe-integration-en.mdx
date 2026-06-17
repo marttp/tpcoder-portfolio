@@ -682,7 +682,7 @@ When you authorize $100 and capture $80, the remaining $20 hold should be releas
 
 ## Auditability via the Transactional Outbox
 
-One more correctness gap: if your DB write succeeds but the follow-up publish to Kafka fails, your workers never process the event and your systems drift apart permanently. The fix is to make the state change and the message publication a single atomic unit.
+If your DB write succeeds but the follow-up publish to Kafka fails, your workers never process the event and your systems drift apart permanently. The fix is to make the state change and the message publication a single atomic unit.
 
 ![Transactional outbox pattern](/assets/images/blogs/payment-backend-stripe-integration/transactional-outbox.png)
 
