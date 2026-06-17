@@ -47,3 +47,29 @@ And honestly? For a side project or an internal tool, this is fine. It works, it
 But notice what we've quietly coupled: **the caller's request now blocks on the push provider.** That's the crack everything else widens.
 
 ---
+
+## v2: Stop blocking the caller — async worker + queue
+
+**The problem:** FCM is a network call to someone else's system. When it's slow, *your* API is slow. When it times out, *your* caller eats the timeout. And a notification spike (say, a big event fanning out to a lot of users) means a pile of synchronous HTTP calls holding your request threads hostage. You also can't retry a failed send without making the caller wait for the retry.
+
+**The fix:** make the API do almost nothing — validate the request, drop it on a queue, and return `202 Accepted` immediately. A separate background worker pulls from the queue and does the actual FCM call.
+
+<MermaidDiagram chart={`
+flowchart LR
+    CALLER["Caller"] --> SVC["Notification Service"]
+    SVC -->|"enqueue, return 202"| Q["Message Broker (Queue)"]
+    Q --> WK["Delivery Worker"]
+    WK -->|"send"| FCM["FCM"]
+    FCM --> DEV["Device"]
+`} />
+
+Two things we get almost for free:
+
+- **The caller is decoupled from the provider.** The API responds in milliseconds; provider latency is now the worker's problem, not the caller's.
+- **Workers scale independently.** A spike fills the queue instead of melting the API — and we add workers to drain it.
+
+This is the single highest-leverage change in the whole post. Almost everything later is a refinement of "do the work asynchronously, off a durable queue."
+
+But now we've assumed every device speaks FCM. They don't.
+
+---
