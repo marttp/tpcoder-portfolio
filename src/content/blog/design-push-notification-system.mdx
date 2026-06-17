@@ -23,7 +23,7 @@ The important part of each version below is the **problem statement first**. Non
 
 ---
 
-## v1: The naive version — call FCM directly
+## The naive version — call FCM directly
 
 You have to start somewhere, and the honest starting point is: when something happens, look up the user's device tokens and call the push provider right there in the request.
 
@@ -50,7 +50,7 @@ But notice what we've quietly coupled: **the caller's request now blocks on the 
 
 ---
 
-## v2: Stop blocking the caller — async worker + queue
+## Stop blocking the caller — async worker + queue
 
 **The problem:** FCM is a network call to someone else's system. When it's slow, *your* API is slow. When it times out, *your* caller eats the timeout. And a notification spike (say, a big event fanning out to a lot of users) means a pile of synchronous HTTP calls holding your request threads hostage. You also can't retry a failed send without making the caller wait for the retry.
 
@@ -76,7 +76,7 @@ But now we've assumed every device speaks FCM. They don't.
 
 ---
 
-## v3: Not every device is Android — multi-platform abstraction
+## Not every device is Android — multi-platform abstraction
 
 **The problem:** the worker calls `fcm.send()` directly. The moment you have iOS users you need **APNs**, web users need the **Web Push** protocol, and each provider has its own auth, payload shape, and error codes. If you keep hardcoding FCM, every new platform means surgery on the worker, and the worker starts to know far too much about each provider's quirks.
 
@@ -104,7 +104,7 @@ This works great until one notification has to reach a lot of devices at once �
 
 ---
 
-## v4: One HTTP call per token doesn't scale — batching
+## One HTTP call per token doesn't scale — batching
 
 **The problem:** "new feature launched, tell everyone" fans out to millions of tokens. At one HTTP request per token you pay the round-trip overhead millions of times, you burn through provider connections, and you hit rate limits fast. The send itself becomes the bottleneck.
 
@@ -129,7 +129,7 @@ Batching makes a single big send efficient. The next wall is the pipeline itself
 
 ---
 
-## v5: Split the work — a two-stage Kafka pipeline
+## Split the work — a two-stage Kafka pipeline
 
 **The problem:** our single worker now does a lot — load user info, load device info, validate, check preferences, render the template, batch, and send. Those have wildly different costs. A slow DB lookup blocks a worker that could be sending. You can't scale "enrichment" separately from "delivery." And a plain queue gives you no ordering and no replay — if a worker crashes mid-batch, you're guessing what happened.
 
@@ -163,7 +163,7 @@ This is the shape of the real thing. But "at-least-once" delivery (Kafka redeliv
 
 ---
 
-## v6: Stop the double-buzz — a dedupe processor
+## Stop the double-buzz — a dedupe processor
 
 **The problem:** every reliable hop in this pipeline is at-least-once. Kafka redelivers after a consumer restart. A delivery worker that crashes *after* calling the provider but *before* committing its offset will reprocess and send again. Retries (next version) add even more chances. The result is the thing users hate most about push: the same notification buzzing twice.
 
@@ -191,7 +191,7 @@ Now sends are idempotent. The next questions are the ones a 120M/day system forc
 
 ---
 
-## v7: Surviving 120M+ a day — rate limits, tracking, and bounded retry
+## Surviving 120M+ a day — rate limits, tracking, and bounded retry
 
 **The problem:** at this volume three things stop being optional.
 
@@ -224,7 +224,7 @@ This is the architecture that actually ran. What's left isn't infra — it's mak
 
 ---
 
-## v8: Make it worth sending — templating + personalization
+## Make it worth sending — templating + personalization
 
 **The problem:** a pipeline that flawlessly delivers the *same* text to everyone is still a mediocre product. Blast identical, irrelevant pushes and people mute the app or uninstall. Send at 3am local time and you lose them faster. Hit the same user five times in an hour and you've trained them to swipe you away. Reliability got the message *out*; relevance decides whether it should have gone at all.
 
@@ -258,7 +258,7 @@ We started with a loop that called FCM inside the request, and ended with a part
 6. **Rate-limit, track, and retry with a ceiling** so you survive provider limits, can see what happened, and never loop forever.
 7. **Gate on consent and relevance** so the thing you reliably deliver is worth delivering.
 
-The meta-point: **nobody should build v7 on day one.** Every box earned its place by solving a problem the previous version created. If you start simple and let real constraints push you, you tend to arrive somewhere close to this — and you'll understand every piece, because you felt the pain that added it.
+The meta-point: **nobody should build the final version on day one.** Every box earned its place by solving a problem the previous version created. If you start simple and let real constraints push you, you tend to arrive somewhere close to this — and you'll understand every piece, because you felt the pain that added it.
 
 Next in the series: generalizing this from push-only into a **multi-channel Delivery System** (email, SMS, in-app inbox) — where the provider abstraction and preference gate get a lot more interesting.
 
