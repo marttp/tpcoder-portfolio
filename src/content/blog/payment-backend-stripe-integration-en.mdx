@@ -527,7 +527,7 @@ Two things people miss here:
 
 ## Subscriptions and Recurring Billing
 
-This is the part where teams most often try to be clever and regret it. The trap is running subscription clocks inside your own timers and cron jobs. Don't. Delegate the billing timeline to Stripe Billing and treat your system as a reactor to its webhooks.
+You can just let Stripe handle subscriptions and billing — plenty of SaaS use it to, well, take your money lol. But if you'd rather build your own distributed cron for it, go for it… and you'll find out the hard way how hard that actually is.
 
 Stripe models this with **Product** and **Price** objects, a **Subscription** that ties a customer to a price, and an **Invoice** generated each billing cycle. The subscription moves through its own lifecycle.
 
