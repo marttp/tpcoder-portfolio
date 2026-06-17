@@ -595,7 +595,7 @@ WHERE id = :id
 
 ## Disputes and Chargebacks
 
-source ทั้งสองที่ผมอ่านมาไม่พูดเรื่องนี้เลย ซึ่งตลกดี เพราะพอขึ้น production แล้วนี่คือส่วนที่เจ็บสุด dispute (chargeback) คือการที่ cardholder เดินไปหาธนาคารตัวเองเพื่อขอ reverse charge และต่างจาก refund ที่เราคุมเอง ตัวนี้มันมาพร้อมนาฬิกานับถอยหลัง มีค่าปรับ แล้วก็มีโอกาสแพ้ด้วย
+เริ่มที่ dispute (chargeback) คือการที่ cardholder เดินไปหาธนาคารหรือ card issuer ของตัวเองเพื่อขอ reverse charge โดยข้ามเราไปเลย และไม่เหมือน refund ที่เราคุมได้ ตัวนี้มันมาพร้อมนาฬิกานับถอยหลัง มีค่าปรับ แล้วก็มีโอกาสแพ้ด้วย
 
 <MermaidDiagram chart={`
 flowchart TD
