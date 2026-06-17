@@ -377,12 +377,12 @@ CREATE INDEX idx_ledger_account         ON ledger_entries(account);
 CREATE INDEX idx_outbox_pending         ON transactional_outbox(status) WHERE status = 'PENDING';
 ```
 
-กฎไม่กี่ข้อที่ผมยึด:
+สิ่งที่ต้องคำนึงถึง:
 
-- **ห้ามใช้ float กับเงินเด็ดขาด** `10.53` ถูกเก็บเป็น `1053` ใน `BIGINT` floating-point arithmetic ทำให้เกิด rounding error เล็ก ๆ ที่สะสมทบกันตลอดหลายล้าน operation แล้วในที่สุดทำให้ ledger reconciliation พัง ใช้ integer เท่านั้น
-- **เก็บเป็น minor unit แต่เคารพ currency exponent ด้วย** อันนี้คือช่องว่างที่ผมเห็นคนข้ามบ่อยสุด และมันกัดผมมาเองกับมือ schema ด้านบนมี THB กับ SGD ซึ่งทั้งคู่มีทศนิยมสองตำแหน่ง เพราะงั้น คูณด้วย 100 ใช้ได้ แต่ **zero-decimal currency ทำให้สมมติฐานนั้นพัง** JPY กับ KRW ไม่มี minor unit เลย เพราะงั้น ¥1000 คือ integer `1000` ไม่ใช่ `100000` ถ้า hardcode คูณ 100 ไว้ที่ไหน จะเก็บเงินลูกค้าญี่ปุ่นเกินไป 100 เท่า ให้ดึง exponent มาจาก per-currency table แล้วส่งยอดให้ Stripe ใน unit ที่ Stripe คาดหวังสำหรับ currency นั้น
-- **แยก authorized, captured และ refunded ออกจากกัน** column `amount` ตัวเดียวที่ mutable มันปนกันระหว่าง ยอดที่ charge ไป กับ ยอดที่ยัง refund ได้ และคุณจะสูญตัวเลขตั้งต้นทันทีที่มีอะไรเกิดแบบ partial สาม column ช่วยรักษา audit trail ไว้และทำให้ refund guard ง่ายลง
-- **optimistic concurrency control** column `version` คือ guard ทุกการ update state ต้อง assert version ที่คาดไว้ ซึ่งกัน race ระหว่าง webhook ฝั่ง async กับ checkout ฝั่ง user ที่แตะ row เดียวกัน
+- **Never use floats for money.** `10.53` ถูกเก็บเป็น `1053` ใน `BIGINT` floating-point arithmetic ทำให้เกิด rounding error เล็ก ๆ ที่สะสมทบกันตลอดหลายล้าน operation แล้วในที่สุดทำให้ ledger reconciliation พัง ใช้ integer เท่านั้น
+- **Store minor units, but respect the currency exponent.** schema ด้านบนมี THB กับ SGD ซึ่งทั้งคู่มีทศนิยมสองตำแหน่ง เพราะงั้น คูณด้วย 100 ใช้ได้ แต่ **zero-decimal currency ทำให้สมมติฐานนั้นพัง** JPY กับ KRW ไม่มี minor unit เลย เพราะงั้น ¥1000 คือ integer `1000` ไม่ใช่ `100000` ถ้า hardcode คูณ 100 ไว้ที่ไหน จะเก็บเงินลูกค้าญี่ปุ่นเกินไป 100 เท่า ให้ดึง exponent มาจาก per-currency table แล้วส่งยอดให้ Stripe ใน unit ที่ Stripe คาดหวังสำหรับ currency นั้น
+- **Keep authorized, captured, and refunded amounts separate.** column `amount` ตัวเดียวที่ mutable มันปนกันระหว่าง ยอดที่ charge ไป กับ ยอดที่ยัง refund ได้ และคุณจะสูญตัวเลขตั้งต้นทันทีที่มีอะไรเกิดแบบ partial สาม column ช่วยรักษา audit trail ไว้และทำให้ refund guard ง่ายลง
+- **Optimistic concurrency control.** column `version` คือ guard ทุกการ update state ต้อง assert version ที่คาดไว้ ซึ่งกัน race ระหว่าง webhook ฝั่ง async กับ checkout ฝั่ง user ที่แตะ row เดียวกัน
 
 ---
 
