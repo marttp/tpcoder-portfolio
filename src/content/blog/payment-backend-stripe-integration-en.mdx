@@ -609,6 +609,8 @@ When `charge.dispute.created` arrives, Stripe immediately debits the disputed am
 
 The engineering consequence is the nasty one: money you already booked as settled can get yanked back weeks later. If your ledger has no concept of a dispute, your internal balance just quietly drifts away from Stripe's, and you won't notice until reconciliation screams. Model the dispute as its own state and its own ledger transfer (debit on open, reversing entry if you win), exactly the way you model refunds. One more thing worth wiring up: subscribe to `radar.early_fraud_warning.created` — it's an early heads-up that a dispute is probably coming, and proactively refunding a flagged charge is usually cheaper than fighting the chargeback and eating the fee on top.
 
+One more note — chargebacks were my last project back in Japan, so I've got some real context here. Good news: a chargeback system doesn't need to scale much (and to be clear, that's different from fraud — fraud is the one that needs the scale). Bad news: if your chargeback traffic ever needs high RPS, the thing to check is your business, not your chargeback system 😂 — because it begs the question, why are there that many chargebacks in the first place?
+
 ---
 
 ## Marketplace Payments with Stripe Connect
