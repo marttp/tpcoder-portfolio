@@ -555,7 +555,7 @@ The events you actually build against:
 
 A handful of specifics worth getting right:
 
-- **Proration.** When a customer upgrades mid-cycle, Stripe prorates the difference and bills it immediately (or on the next invoice, depending on `proration_behavior`). Downgrades usually take effect at period end. Let Stripe do the proration math; don't reinvent it.
+- **Proration** — in plain words, charging proportionally for the slice of a billing period actually used. When a customer upgrades mid-cycle, Stripe prorates the difference and bills it immediately (or on the next invoice, depending on `proration_behavior`). Downgrades usually take effect at period end. Let Stripe do the proration math; don't reinvent it.
 - **Trials.** A `trial_period_days` (or an explicit trial end) starts the subscription in `trialing` with no charge. The `customer.subscription.trial_will_end` event is your hook to remind the customer before money moves.
 - **Dunning and Smart Retries.** When a renewal card declines, Stripe retries on an optimized schedule over several days and sends dunning emails. Map those days to a temporary `PAST_DUE` and **keep access on**. Only demote or cancel when `customer.subscription.deleted` or `invoice.voided` arrives. Killing access on the first soft decline is how you generate angry tickets from customers whose payment would have succeeded on retry two.
 - **Usage-based billing.** For metered plans, you report usage to Stripe (usage records / billing meters) and it computes the invoice. Make the reporting idempotent too, or a retried usage report double-bills.
