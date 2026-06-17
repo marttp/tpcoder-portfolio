@@ -101,3 +101,28 @@ To route correctly we need to know each device's platform and current token, so 
 This works great until one notification has to reach a lot of devices at once — and we're back to one HTTP call per token.
 
 ---
+
+## v4: One HTTP call per token doesn't scale — batching
+
+**The problem:** "new feature launched, tell everyone" fans out to millions of tokens. At one HTTP request per token you pay the round-trip overhead millions of times, you burn through provider connections, and you hit rate limits fast. The send itself becomes the bottleneck.
+
+**The fix:** stop sending one at a time. Providers give you bulk primitives — use them:
+
+- **FCM multicast** takes up to 500 tokens per request (and topics/device groups for true fan-out).
+- **APNs** keeps a long-lived HTTP/2 connection and lets you stream many pushes over it.
+
+So we add a **Notification Batcher**: it groups tokens — by platform, and by anything else that lets a single call do more work — and hands batches to the Push Handler instead of single tokens.
+
+<MermaidDiagram chart={`
+flowchart LR
+    WK["Delivery Worker"] --> NB["Notification Batcher"]
+    NB -->|"batch of tokens"| PH["Push Handler"]
+    PH -->|"multicast (≤500)"| FCM["FCM"]
+    PH -->|"HTTP/2 stream"| APNS["APNs"]
+`} />
+
+The non-obvious part is **partial failure**. A multicast of 500 doesn't succeed or fail as one unit — it comes back with a per-token result list: some delivered, some failed, some with an *invalid token* you should delete. So the batcher can't just check a 200; it has to fan the response back out and decide what to retry, what to drop, and which tokens to prune. Keep that in mind — it's the reason delivery tracking later isn't optional.
+
+Batching makes a single big send efficient. The next wall is the pipeline itself: one worker doing lookups, preference checks, templating, *and* sending can't scale those stages independently — and we have no ordering or replay.
+
+---
