@@ -190,3 +190,36 @@ A few things that matter in practice:
 Now sends are idempotent. The next questions are the ones a 120M/day system forces on you: how do we not get throttled into oblivion, and how do we even *know* what got delivered?
 
 ---
+
+## v7: Surviving 120M+ a day — rate limits, tracking, and bounded retry
+
+**The problem:** at this volume three things stop being optional.
+
+1. **Providers throttle you.** FCM and APNs have per-project/connection limits. Blast past them and they start returning 429s and dropping you — so we have to pace ourselves, not just fan out as fast as workers allow.
+2. **You're flying blind.** With millions of sends, "did it work?" can't be a log line you grep. You need delivery results as data — delivered / failed / invalid-token — to debug, to report, and to prune dead tokens.
+3. **Failures need a *bounded* retry.** A transient 5xx or network blip should be retried. But retrying forever is how you build an accidental infinite loop that hammers a provider and never drains.
+
+**The fix** — the right-hand half of the real architecture:
+
+- **Rate limiting + sharding.** Workers respect a per-provider rate budget (token bucket), and the pipeline shards by partition so we scale horizontally without any single consumer becoming the hot spot.
+- **Delivery tracking.** Every send emits a result (success/fail + reason) onto a result queue. A **Delivery Track Aggregator** consumes those and writes them to a **columnar DB** for analytics/reporting (and updates state in the relational DB). This is also where invalid-token results turn into token cleanup.
+- **Retry Delivery Worker.** Failed payloads go to a retry path that re-queues them with **exponential backoff and a max-attempt counter**. Once a payload crosses the attempt threshold, it stops (and lands in a dead-letter store for inspection) instead of looping forever.
+
+<MermaidDiagram chart={`
+flowchart LR
+    DEL["Delivery Worker"] -->|"rate-limited send"| PH["Push Handler"]
+    PH --> DEV["Devices"]
+    DEL -->|"result (success / fail)"| RQ["Result Queue"]
+    RQ --> AGG["Delivery Track Aggregator"]
+    AGG --> COL[("Columnar DB\n(analytics)")]
+    AGG --> RDB[("Relational DB\n(state)")]
+    DEL -->|"failed payload"| RETRY["Retry Delivery Worker"]
+    RETRY -->|"backoff + attempt < max"| DEL
+    RETRY -->|"attempt >= max"| DLQ[("Dead letter")]
+`} />
+
+The detail I'd underline from real life: **the max-attempt counter is the safety valve.** Without it, one persistently-failing payload (a bad token, a broken template, a provider outage) becomes a worker that retries forever, burns budget, and clogs the partition behind it. "Retry, but with a ceiling" is the whole game.
+
+This is the architecture that actually ran. What's left isn't infra — it's making the notifications worth sending at all.
+
+---
