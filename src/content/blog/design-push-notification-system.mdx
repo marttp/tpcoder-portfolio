@@ -223,3 +223,46 @@ The detail I'd underline from real life: **the max-attempt counter is the safety
 This is the architecture that actually ran. What's left isn't infra — it's making the notifications worth sending at all.
 
 ---
+
+## v8: Make it worth sending — templating + personalization
+
+**The problem:** a pipeline that flawlessly delivers the *same* text to everyone is still a mediocre product. Blast identical, irrelevant pushes and people mute the app or uninstall. Send at 3am local time and you lose them faster. Hit the same user five times in an hour and you've trained them to swipe you away. Reliability got the message *out*; relevance decides whether it should have gone at all.
+
+**The fix:** this is what the **template parser** and **user-preference checker** in the Pre-Delivery Worker are really for. Before a notification is ever queued for delivery, it passes through a content-and-consent gate:
+
+- **Preference check** — is this user opted in to this category? Are we inside their quiet hours (in *their* timezone)? Have we already hit the frequency cap for today? If any of these fail, drop or defer the notification *here*, before it costs a send.
+- **Template render** — resolve the template per user: locale/language, and merge fields like name, amount, or order status.
+- **Personalization** — choose *which* content this user should get, which is where this pipeline plugs into an audience/segmentation service (a later post in this series).
+
+<MermaidDiagram chart={`
+flowchart TD
+    EV["Notify user X"] --> PREF{"Opted in?\nWithin quiet hours?\nUnder frequency cap?"}
+    PREF -->|"no"| DROP["Drop / defer"]
+    PREF -->|"yes"| TMPL["Render template\n(locale + merge fields)"]
+    TMPL --> READY["Ready-to-send payload"]
+`} />
+
+Doing this in the **pre-delivery** stage is deliberate: a notification that shouldn't be sent should die before it touches a provider, a rate budget, or a dedupe key. Consent and relevance are cheapest to enforce at the front.
+
+---
+
+## Wrapping up
+
+We started with a loop that called FCM inside the request, and ended with a partitioned, two-stage pipeline doing 120M+ a day. The path, in order:
+
+1. **Go async off a durable log** — the one change everything else builds on.
+2. **Abstract the providers** so platforms are adapters, not rewrites.
+3. **Batch** so one big send isn't a million HTTP calls.
+4. **Split into stages and partition** so enrichment and delivery scale independently, with ordering and replay.
+5. **Dedupe** so at-least-once transport doesn't become double-buzz.
+6. **Rate-limit, track, and retry with a ceiling** so you survive provider limits, can see what happened, and never loop forever.
+7. **Gate on consent and relevance** so the thing you reliably deliver is worth delivering.
+
+The meta-point: **nobody should build v7 on day one.** Every box earned its place by solving a problem the previous version created. If you start simple and let real constraints push you, you tend to arrive somewhere close to this — and you'll understand every piece, because you felt the pain that added it.
+
+Next in the series: generalizing this from push-only into a **multi-channel Delivery System** (email, SMS, in-app inbox) — where the provider abstraction and preference gate get a lot more interesting.
+
+---
+
+_These are notes from building this for real, simplified for a blog. If I got something wrong or you'd shape it differently, I'd genuinely like to hear it._
+
