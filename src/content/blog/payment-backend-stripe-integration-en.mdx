@@ -208,7 +208,7 @@ Before the details, here's the lay of the requirements. For a mid-to-large platf
 **Non-functional** is where it gets interesting:
 
 - **Exactly-once processing** is the headline requirement. A double charge on a $1,000 purchase means money taken twice from a real person. True exactly-once delivery is impossible in distributed systems (the Two Generals Problem), so the practical answer is at-least-once delivery plus idempotent processing plus reconciliation.
-- **Extreme availability.** Stripe itself targets 99.999% API uptime, roughly five minutes of downtime per year.
+- **Availability has to be high.** Stripe itself targets 99.999% API uptime — roughly five minutes of downtime per year. You can set your own SLA, but keep in mind this payment system should sit higher than your other internal systems.
 - **Idempotency at every layer** — client to backend, backend to Stripe, and webhook processing. Every retry must produce the same result as the original.
 - **Consistency over availability.** Payments are one of the few domains where CAP should tilt decisively toward consistency. A stale balance read or a lost write is far worse than brief unavailability. That is why Shopify, Uber, and Airbnb all use SQL databases with ACID guarantees for core payment data.
 
