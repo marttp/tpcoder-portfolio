@@ -410,6 +410,8 @@ The reason to be this strict: an append-only ledger with a hard "debits equal cr
 
 This is the section that, done wrong, double-charges customers — the classic case being a retried request that slips through and runs twice. True exactly-once is mathematically impossible over an unreliable network (the Two Generals Problem again), so the practical move is at-least-once transport plus deterministic idempotent execution across three interfaces.
 
+Stripe's own [writeup on idempotency](https://stripe.com/blog/idempotency) is worth a read.
+
 ![Idempotency checkpoints](/assets/images/blogs/payment-backend-stripe-integration/idempotency-checkpoints.png)
 
 **Layer 1 — Client to your backend.** Before sending a create request, the client generates a UUID v4 and sends it as an `X-Idempotency-Key` header. When the request lands, you look the key up in `idempotency_keys`. If you find a `COMPLETED` row, compute the SHA-256 of the incoming body and compare it to the stored `request_hash`. If they match, return the cached response without re-running anything. If the body changed under the same key, reject with `400 Bad Request` — that is a client bug or a tampering attempt, and silently processing it would be worse.
