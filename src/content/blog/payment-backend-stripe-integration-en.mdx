@@ -452,6 +452,8 @@ This adapter is small but it earns its keep, because every flaky-network and rat
 
 ## The Asynchronous Webhook Pipeline
 
+New to Stripe webhooks? The [Stripe webhooks docs](https://docs.stripe.com/webhooks) are a good primer.
+
 If you run ledger logic, risk scoring, or external calls synchronously inside the webhook handler, the handler eventually blocks, breaches Stripe's ~20-second timeout, and triggers a cascade of webhook retries that makes everything worse. So the receiver is deliberately dumb:
 
 ```text
