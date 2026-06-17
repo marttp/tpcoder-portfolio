@@ -1,0 +1,49 @@
+---
+title: "Designing a Push Notification System (Start Simple, Then Evolve)"
+description: "A backend system design walkthrough: evolve a push notification service from a single direct FCM call into a partitioned, two-stage pipeline that handles 120M+ notifications a day — async workers, multi-platform, batching, dedup, delivery tracking, and bounded retry. Each version starts with the problem that broke the last one."
+pubDate: "2026-06-17"
+tags:
+  ["Software Architecture", "Software Engineering", "Backend"]
+language: "en"
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+## Introduction
+
+This is the first post in a backend system design series. The format is simple: I take one system, start with the most naive thing that works, and then add real-world constraints one at a time — until it grows into the kind of multi-service architecture you actually run in production.
+
+I'm opening with push notifications because I spent a good chunk of my time in Japan on exactly this — a push pipeline that ended up sending **120M+ notifications a day**. So this is less "here's the textbook answer" and more "here's the path that got us there, and why each step was forced on us."
+
+The important part of each version below is the **problem statement first**. None of these boxes exist because they look nice on a diagram — every one of them got added because something hurt. If you ever build this, you'll likely walk the same road, so I'll point out where the pain comes from before showing the fix.
+
+> Series — *Backend System Design (start simple → evolve)*. This is **#1**. Next up: a multi-channel Delivery System, then a Webhook Callback System.
+
+---
+
+## v1: The naive version — call FCM directly
+
+You have to start somewhere, and the honest starting point is: when something happens, look up the user's device tokens and call the push provider right there in the request.
+
+<MermaidDiagram chart={`
+flowchart LR
+    CALLER["Caller\n(API / internal event)"] --> SVC["Notification Service"]
+    SVC -->|"for each device token"| FCM["FCM"]
+    FCM --> DEV["Device"]
+`} />
+
+In code it's basically a loop:
+
+```text
+on event:
+  tokens = lookup_device_tokens(user_id)
+  for token in tokens:
+      fcm.send(token, payload)   # synchronous HTTP call
+  return 200
+```
+
+And honestly? For a side project or an internal tool, this is fine. It works, it's one file, you ship it in an afternoon. Don't over-engineer before you have to.
+
+But notice what we've quietly coupled: **the caller's request now blocks on the push provider.** That's the crack everything else widens.
+
+---
