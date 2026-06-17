@@ -8,7 +8,7 @@ Reference post: `payment-backend-stripe-integration-en.mdx` (~650 lines)
 
 | # | Post | Status | EN | TH |
 |---|------|--------|----|----|
-| 1 | Push Notification System | Not started | - | - |
+| 1 | Push Notification System | Draft (EN) | drafted, not pushed | - |
 | 2 | Delivery System (Multi-channel) | Not started | - | - |
 | 3 | Webhook Callback System | Not started | - | - |
 | 4 | Icon Management / Segmentation | Not started | - | - |
@@ -35,13 +35,16 @@ Each post follows this narrative arc:
 
 File: `design-push-notification-system.mdx` / `-th.mdx`
 
-- [ ] v1: Direct FCM call per device
-- [ ] v2: Async background worker + queue
-- [ ] v3: Multi-platform (FCM + APNs) abstraction
-- [ ] v4: Batching (FCM multicast, token grouping)
-- [ ] v5: Kafka pipeline, partitioned by user ID
-- [ ] v6: Scale to 120M+ daily (sharding, rate limiting)
-- [ ] v7: Templating + personalization
+- [x] v1: Direct FCM call per device
+- [x] v2: Async background worker + queue
+- [x] v3: Multi-platform (FCM + APNs) abstraction
+- [x] v4: Batching (FCM multicast, token grouping)
+- [x] v5: Kafka pipeline
+- [x] v6: Dedupe processor
+- [x] v7: Scale to 120M+ daily
+- [x] v8: Templating + personalization
+
+EN draft complete (not pushed). 2 IMAGE_PLACEHOLDER prompts (hero end-state diagram, double-buzz concept). TH pending.
 
 Key experience: PayPay push notification service (120M+ daily notifications)
 
