@@ -739,11 +739,9 @@ There is no excuse for shipping subscription logic you've only ever seen on the 
 
 ## What I Took Away
 
-First, **payments are a correctness problem wearing a backend costume.** The hard parts are not throughput or features; they are what happens when a call times out, a webhook arrives twice, or two refunds race. If you design every component around "what breaks mid-transaction," the rest falls into place.
-
-Second, **idempotency is the load-bearing wall.** Client to backend, backend to Stripe, webhook to worker, usage reporting, and even the outbox relay — every hop assumes the one before it might retry. Once you accept at-least-once everywhere and make processing idempotent everywhere, exactly-once stops being a fantasy and becomes an emergent property.
-
-Third, **the gaps are where the money is.** The zero-decimal currency bug, the dropped authorization hold, the partial-refund race, the dispute you didn't model, the renewal that failed SCA, the payout that bounced — none of those are in the happy-path tutorial, and all of them cost real money. That is exactly why I wanted to write the production notes down rather than just the blueprint.
+1. **Payments are a correctness problem wearing a backend costume.** The hard parts are not throughput or features; they are what happens when a call times out, a webhook arrives twice, or two refunds race. If you design every component around "what breaks mid-transaction," the rest falls into place.
+2. **Idempotency is the load-bearing wall.** Client to backend, backend to Stripe, webhook to worker, usage reporting, and even the outbox relay — every hop assumes the one before it might retry. Once you accept at-least-once everywhere and make processing idempotent everywhere, exactly-once stops being a fantasy and becomes an emergent property.
+3. **The gaps are where the money is.** The zero-decimal currency bug, the dropped authorization hold, the partial-refund race, the dispute you didn't model, the renewal that failed SCA, the payout that bounced — none of those are in the happy-path tutorial, and all of them cost real money. That is exactly why I wanted to write the production notes down rather than just the blueprint.
 
 If you are building payments and only remember one line from this: store money as integers in minor units, make everything idempotent, keep an append-only double-entry ledger, and let the database, not your application code, enforce the invariants.
 
