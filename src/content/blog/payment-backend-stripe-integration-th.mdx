@@ -256,6 +256,33 @@ flowchart LR
 6. **Background Job Workers** — งาน async 4 แบบ: process webhook event, retry worker ที่ใช้ exponential backoff, reconciliation worker รายวัน และ stuck-payment detector ที่ alert payment ที่ค้างใน intermediate state
 7. **Ledger** — double-entry bookkeeping ทุกการขยับของเงินคือคู่ debit กับ credit ที่ balance กัน มัน append-only การแก้ผิดคือใส่ reversing entry ใหม่ ไม่ใช่ update หรือ delete ledger ของ Stripe เองเก็บ money-movement event ราว 5 พันล้านตัวต่อวัน
 
+ขอ zoom เข้าไปดูทีละ path แบบแยกกันหน่อย จะได้เห็น input/output ชัดขึ้น
+
+**Synchronous path (ตอน checkout):** ลูกค้ายิง request เข้ามา เราตอบกลับด้วย `client_secret`
+
+<MermaidDiagram chart={`
+flowchart LR
+    FE["Frontend"] -->|"payment request (in)"| API["Payment API Service"]
+    API -->|"create PaymentIntent"| ADP["Stripe Integration Layer"]
+    ADP -->|"API call"| S["Stripe API"]
+    S -->|"client_secret"| ADP
+    ADP --> API
+    API -->|"client_secret (out)"| FE
+    API -->|"create / read record"| DB[("Payment DB")]
+`} size="medium" />
+
+**Asynchronous path (ตอน webhook เข้ามา):** input คือ event จาก Stripe, output คือ state transition + ledger write
+
+<MermaidDiagram chart={`
+flowchart LR
+    S["Stripe API"] -.->|"webhook event (in)"| WH["Webhook Receiver"]
+    WH -->|"200 OK"| S
+    WH -->|"enqueue"| MQ["Message Queue"]
+    MQ -->|"dequeue"| WK["Background Worker"]
+    WK -->|"state transition (out)"| DB[("Payment DB")]
+    WK -->|"write entries (out)"| LG[("Ledger")]
+`} size="medium" />
+
 architecture บอกว่าจะสร้างอะไร แต่ database design นี่คือที่ที่ correctness จะถูก enforce หรือหลุดมือ เพราะงั้นต่อไปเรื่องนั้น
 
 ---
