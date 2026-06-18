@@ -59,7 +59,7 @@ on event:
   return 200
 ```
 
-And honestly? For a side project or an internal tool, this is fine. It works, it's one file, you ship it in an afternoon. Don't over-engineer before you have to.
+And honestly? For a side project or an internal tool, this is fine. It works, it's one file, you ship it in an afternoon. Don't over-engineer before you have to. A lot of real software never leaves this box — if your volume is modest and a few hundred milliseconds of blocking hurts no one, this is a perfectly respectable place to stop.
 
 But notice what we've quietly coupled: **the caller's request now blocks on the push provider.** That's the crack everything else widens.
 
@@ -86,6 +86,8 @@ Two things we get almost for free:
 - **Workers scale independently.** A spike fills the queue instead of melting the API — and we add workers to drain it.
 
 This is the single highest-leverage change in the whole post. Almost everything later is a refinement of "do the work asynchronously, off a durable queue."
+
+And for most applications, this is already the finish line. A queue and a worker covers the overwhelming majority of products that will ever ship — everything below is the smaller set of cases where sheer volume, multiple platforms, or strict reliability force more structure. If that's not you, you can stop right here with a clear conscience.
 
 But now we've assumed every device speaks FCM. They don't.
 
