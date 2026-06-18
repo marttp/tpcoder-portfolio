@@ -22,7 +22,7 @@ It's a long road, so here's the map — each step forced by the one before it: a
 
 > Series — *Backend System Design (start simple → evolve)*. This is **#1**. Next up: a multi-channel Delivery System, then a Webhook Callback System.
 
-{/* IMAGE PROMPT (hero-pipeline.png): Wide banner hero, clean modern architecture illustration on a light background. Left-to-right push pipeline: API / internal source → load balancer → Send Notification Service → message queue → Pre-Delivery Worker (enrichment: user/device info, validator, preference checker, template parser, batcher) → message queue → Delivery Worker → Push Handler → providers (FCM / APNs / Web Push) → phones. Side branch: result queue → Delivery Track Aggregator → columnar + relational DB; a retry worker with a dead-letter box. Flat vector, soft shadows, tech-blog aesthetic, 2–3 accent colors, labeled boxes, no photorealism. */}
+{/* IMAGE PROMPT (hero-pipeline.png): Wide banner hero, clean modern architecture illustration on a light background. SINGLE left-to-right flow with NO duplicated boxes — exactly one of each component. Flow: Caller (API & events) → Load Balancer → Send Notification Service → Kafka topic (partitioned by user_id) → Pre-Delivery Worker (validation, DB read, preference check, template parser, batcher) → Kafka topic (ready-to-send) → Delivery Worker → Push Handler → providers FCM / APNs / Web Push → Devices. One Redis Dedupe Store attached to the PUSH HANDLER (the send boundary), not the Delivery Worker. One side branch off the Delivery Worker: result queue → one Delivery Track Aggregator → two stores side by side, Columnar DB (analytics) and Relational DB (state). One Retry Delivery Worker that loops failed payloads back into the Delivery Worker, plus a small Dead-letter box for exhausted retries. Flat vector, soft shadows, tech-blog aesthetic, 2–3 accent colors, labeled boxes, no photorealism. */}
 
 ![End-state push notification pipeline architecture](/assets/images/blogs/design-push-notification-system/hero-pipeline.png)
 
@@ -203,14 +203,17 @@ This is also where *priority* starts to matter — a 60M marketing blast and a s
 
 True exactly-once across a network is a fantasy (it's the Two Generals Problem — same one from my [payment backend post](/blog/payment-backend-stripe-integration-en/)). The practical answer is the same: **at-least-once transport + idempotent delivery**.
 
-**The fix:** give every notification a stable **idempotency key** (e.g. `notificationId:deviceToken`) and check it against a fast store — Redis — right before sending. First time through, claim the key with a TTL and send. If the key already exists, it's a duplicate: skip it.
+**The fix:** give every notification a stable **idempotency key** (e.g. `notificationId:deviceToken`) and check it against a fast store — Redis — right before the provider call. First time through, claim the key with a TTL and send. If the key already exists, it's a duplicate: skip it.
+
+The placement matters: the check lives **at the Push Handler**, not the Delivery Worker. The key is per *device token*, and batching happened upstream — so by the time a payload reaches delivery it may be a batch of tokens. You want the per-token claim after the batch is unpacked, at the last gate before the external send, where it catches duplicates from *every* path (Kafka redelivery, the retry loop, batch expansion) at exactly the right granularity.
 
 <MermaidDiagram chart={`
 flowchart LR
     Q2["Kafka topic 2"] --> DEL["Delivery Worker"]
-    DEL <-->|"SETNX notif:device (TTL)"| REDIS["Redis (dedupe)"]
-    DEL -->|"first time only"| PH["Push Handler"]
-    PH --> DEV["Devices"]
+    DEL --> PH["Push Handler"]
+    PH <-->|"SETNX notif:device (TTL)"| REDIS["Redis (dedupe)"]
+    PH -->|"first send only"| PROV["FCM / APNs / Web Push"]
+    PROV --> DEV["Devices"]
 `} />
 
 A few things that matter in practice:
