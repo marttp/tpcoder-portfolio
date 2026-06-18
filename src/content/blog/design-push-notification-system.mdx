@@ -214,7 +214,7 @@ What this gets us:
 
 - **Bounded queue depth.** The broker holds a working set — a few chunks — not the entire campaign. Other traffic keeps flowing.
 - **Backpressure for free.** Slow consumers just mean we page slower; the audience cursor waits instead of the broker overflowing.
-- **A pause/cancel switch that actually works.** Because most of the audience hasn't been enqueued yet, stopping a campaign is "stop advancing the cursor," not "hunt down 60M messages already on the broker."
+- **A pause/cancel switch that actually works.** Someone spots a typo in the copy, or marketing decides mid-blast to pull the campaign — and because most of the audience hasn't been enqueued yet, stopping it is just "stop advancing the cursor," not "hunt down 60M messages already on the broker." Whatever's already gone out is gone, but you cap the blast radius instead of finishing a send you know is wrong.
 
 This is also where *priority* starts to matter — a 60M marketing blast and a single 2FA code should not be queued as equals — but we'll come back to that. First: at this volume, every hop is at-least-once, and the same push can fire twice. At low volume you shrug; here, users notice.
 
