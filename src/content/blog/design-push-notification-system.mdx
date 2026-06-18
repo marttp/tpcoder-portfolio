@@ -21,8 +21,8 @@ The important part of each version below is the **problem statement first**. Non
 It's a long road, so here's the map — each step forced by the one before it:
 
 1. A **direct provider call**
-2. Move it **off the request onto a queue**
-3. A **provider abstraction** for iOS and web
+2. A **provider abstraction** for iOS and web (one FCM gateway, per-platform config)
+3. Move it **off the request onto a queue**
 4. **Batching**
 5. A **two-stage, partitioned pipeline**
 6. **Lazy fan-out** for huge campaigns
@@ -61,7 +61,35 @@ on event:
 
 And honestly? For a side project or an internal tool, this is fine. It works, it's one file, you ship it in an afternoon. Don't over-engineer before you have to. A lot of real software never leaves this box — if your volume is modest and a few hundred milliseconds of blocking hurts no one, this is a perfectly respectable place to stop.
 
-But notice what we've quietly coupled: **the caller's request now blocks on the push provider.** That's the crack everything else widens.
+But this assumes every user is on Android. They're not — and there's a second crack too: **the caller's request blocks on the push provider.** We'll fix the blocking next; the more basic gap comes first.
+
+---
+
+## Not every device is Android — multi-platform from the start
+
+**The problem:** you call `fcm.send()` with one hardcoded payload, aimed at one platform. As soon as real users show up you've got iOS and web too — and while FCM *can* reach all three, "send to everyone" isn't automatic. iOS only delivers once you've uploaded your Apple **APNs auth key** into Firebase; web needs **VAPID** keys; and each platform wants a different payload shape (sound and badge on iOS, notification vs data on Android, actions on web). Hardcode a single path and you're rewriting it the day the second platform lands. And this isn't advanced territory — most real apps need iOS and Android from day one; the only question is whether you build for it cleanly.
+
+**The fix:** keep **FCM as a single gateway** — it sends to Android directly, to iOS by relaying to APNs (that uploaded key), and to web over Web Push — and put a thin **Push Handler** in front whose only job is to build the right per-platform config from your internal notification model. You hand it a platform-neutral notification; it fills in FCM's `android` / `apns` / `webpush` blocks and makes the call. It's the Strategy pattern, but the strategy is *payload-shaping per platform*, not a different provider per platform.
+
+<MermaidDiagram chart={`
+flowchart LR
+    SVC["Notification Service"] --> PH["Push Handler\n(build per-platform config)"]
+    PH --> FCM["FCM"]
+    FCM -->|"Android (direct)"| AND["Android"]
+    FCM -->|"iOS (relayed to APNs)"| IOS["iOS"]
+    FCM -->|"Web (Web Push)"| WEB["Web"]
+`} />
+
+Two things we get from this:
+
+- **One integration, not three.** You configure each platform once (APNs key, VAPID); you don't build and operate separate APNs and Web Push clients.
+- **Per-platform quirks live in one place.** The Push Handler owns the "iOS needs this, web needs that" logic and normalizes provider error codes — invalid token, rate limited, retryable 5xx — into internal codes your sender understands, which matters once we add retry.
+
+There *is* another route: a **separate worker (or direct client) per provider** — talk to APNs and Web Push yourself instead of going through FCM. You'd reach for it to be independent of Google, or for finer control and lower latency at very high volume. It's more to build and operate, so my default is FCM-for-everything until something concrete forces the split.
+
+Either way, you need each device's platform and current token to do this, so this is also where **device information** (token, platform, app version, last-seen) becomes a first-class lookup.
+
+Now you reach every platform — but we still haven't touched that first crack: every send happens **inline, in the caller's request.**
 
 ---
 
@@ -69,14 +97,15 @@ But notice what we've quietly coupled: **the caller's request now blocks on the 
 
 **The problem:** FCM is a network call to someone else's system. When it's slow, *your* API is slow. When it times out, *your* caller eats the timeout. And a notification spike (say, a big event fanning out to a lot of users) means a pile of synchronous HTTP calls holding your request threads hostage. You also can't retry a failed send without making the caller wait for the retry.
 
-**The fix:** make the API do almost nothing — validate the request, drop it on a queue, and return `202 Accepted` immediately. A separate background worker pulls from the queue and does the actual FCM call.
+**The fix:** make the API do almost nothing — validate the request, drop it on a queue, and return `202 Accepted` immediately. A separate background worker pulls from the queue and runs the Push Handler.
 
 <MermaidDiagram chart={`
 flowchart LR
     CALLER["Caller"] --> SVC["Notification Service"]
     SVC -->|"enqueue, return 202"| Q["Message Broker (Queue)"]
     Q --> WK["Delivery Worker"]
-    WK -->|"send"| FCM["FCM"]
+    WK --> PH["Push Handler"]
+    PH -->|"send"| FCM["FCM"]
     FCM --> DEV["Device"]
 `} />
 
@@ -87,37 +116,9 @@ Two things we get almost for free:
 
 This is the single highest-leverage change in the whole post. Almost everything later is a refinement of "do the work asynchronously, off a durable queue."
 
-And for most applications, this is already the finish line. A queue and a worker covers the overwhelming majority of products that will ever ship — everything below is the smaller set of cases where sheer volume, multiple platforms, or strict reliability force more structure. If that's not you, you can stop right here with a clear conscience.
+And for most applications, this is already the finish line. Naive, plus multi-platform config, plus a queue and a worker covers the overwhelming majority of products that will ever ship — everything below is the smaller set of cases where sheer volume or strict reliability force more structure. If that's not you, you can stop right here with a clear conscience.
 
-But so far the worker fires one hardcoded payload at one platform. Real users are on iOS and web too.
-
----
-
-## Not every device is Android — multi-platform abstraction
-
-**The problem:** the worker calls `fcm.send()` with one hardcoded payload. As soon as real users show up you've got iOS and web too — and while FCM *can* reach all three, "send to everyone" isn't automatic. iOS only delivers once you've uploaded your Apple **APNs auth key** into Firebase; web needs **VAPID** keys; and each platform wants a different payload shape (sound and badge on iOS, notification vs data on Android, actions on web). Hardcode a single path in the worker and you're rewriting it the day the second platform lands.
-
-**The fix:** keep **FCM as a single gateway** — it sends to Android directly, to iOS by relaying to APNs (that uploaded key), and to web over Web Push — and put a thin **Push Handler** in front whose only job is to build the right per-platform config from your internal notification model. The worker hands over a platform-neutral notification; the handler fills in FCM's `android` / `apns` / `webpush` blocks and makes the call. It's the Strategy pattern, but the strategy is *payload-shaping per platform*, not a different provider per platform.
-
-<MermaidDiagram chart={`
-flowchart LR
-    WK["Delivery Worker"] --> PH["Push Handler\n(build per-platform config)"]
-    PH --> FCM["FCM"]
-    FCM -->|"Android (direct)"| AND["Android"]
-    FCM -->|"iOS (relayed to APNs)"| IOS["iOS"]
-    FCM -->|"Web (Web Push)"| WEB["Web"]
-`} />
-
-Two things we get from this:
-
-- **One integration, not three.** You configure each platform once (APNs key, VAPID); you don't build and operate separate APNs and Web Push clients.
-- **Per-platform quirks live in one place.** The handler owns the "iOS needs this, web needs that" logic and normalizes provider error codes — invalid token, rate limited, retryable 5xx — into internal codes the worker understands, which matters once we add retry.
-
-There *is* another route: a **separate worker (or direct client) per provider** — talk to APNs and Web Push yourself instead of going through FCM. You'd reach for it to be independent of Google, or for finer control and lower latency at very high volume. It's more to build and operate, so my default is FCM-for-everything until something concrete forces the split.
-
-Either way, you need each device's platform and current token to do this, so this is also where **device information** (token, platform, app version, last-seen) becomes a first-class lookup.
-
-This works great until one notification has to reach a lot of devices at once — and we're back to one call per token.
+But one send per token — even off a worker — falls apart the moment a single notification has to reach a lot of devices at once.
 
 ---
 
@@ -384,8 +385,8 @@ flowchart LR
 
 We started with a loop that called FCM inside the request, and ended with a partitioned, two-stage pipeline doing 120M+ a day. The path, in order:
 
-1. **Go async off a durable log** — the one change everything else builds on.
-2. **Reach every platform through FCM** — one gateway plus per-platform config, not a client per provider.
+1. **Reach every platform through FCM** — one gateway plus per-platform config, not a client per provider. Table stakes, not a scaling step.
+2. **Go async off a durable log** — the one change everything else builds on.
 3. **Batch and pool connections** so a big send runs as concurrent requests over a reused HTTP client, not a fresh handshake per token.
 4. **Split into stages and partition** so enrichment and delivery scale independently, with ordering and replay.
 5. **Fan out lazily** so a 60M-recipient campaign expands in chunks instead of flooding the queue.
