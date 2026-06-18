@@ -319,7 +319,7 @@ flowchart LR
 - **Cleanup จาก delivery result** อันนี้คือผลตอบแทนของการทำ delivery tracking: พอ FCM บอกว่า token ตายแล้ว (`UNREGISTERED` / `registration-token-not-registered`) result นั้นก็ลอยไปบน result queue เดียวกันเข้าสู่ aggregator ซึ่งจะ **prune token ตายตัวนั้น** ออกจาก registry ระบบมันค่อย ๆ รักษาตัวเองทีละนิดทุกครั้งที่ส่ง
 - **key ด้วย (user, device) ไม่ใช่ raw token** user คนนึงมีหลายเครื่อง แล้วเครื่องนึงก็ re-register ด้วย token ใหม่ได้ก่อนตัวเก่าจะหมดอายุ การ key ด้วย device กันเราไม่ให้เด้งหาเครื่องเดียวกันซ้ำสองทีจาก row เก่าสองแถว
 
-การเปลี่ยน mindset: token ไม่ใช่ค่าที่เราเก็บไว้ครั้งเดียวจบ มันคือ **lease ที่ต้องต่ออายุ** — แล้ว delivery failure ของเราเองนั่นแหละคือ signal ที่บอกว่า lease ตัวไหนหมดอายุไปแล้ว
+สรุปคือต้องปรับมุมคิดใหม่: token ไม่ใช่ค่าที่เก็บไว้ครั้งเดียวแล้วจบ มันคือ **lease ที่ต้องคอยต่ออายุ** ต่างหาก — แล้ว delivery failure ของเราเองนั่นแหละคือ signal ที่คอยบอกว่า lease ตัวไหนหมดอายุไปแล้ว
 
 พอ token ตายมัน prune ตัวเองได้แล้ว ฝั่ง infrastructure ก็ถือว่าเสร็จสมบูรณ์ ที่เหลือไม่ใช่เรื่อง infra แล้ว — มันคือการทำให้ notification มันคุ้มค่าพอที่จะส่งออกไปต่างหาก
 
@@ -329,7 +329,7 @@ flowchart LR
 
 **ปัญหา:** pipeline ที่ส่ง text เดียวกันเป๊ะหาทุกคนได้แบบไร้ที่ติ มันก็ยังเป็น product ที่กลาง ๆ อยู่ดี ยิง push ที่เหมือนกันหมดแล้วไม่เกี่ยวกับคนรับ คนก็ปิดเสียง mute แอปหรือ uninstall ทิ้ง ส่งตอนตีสามตามเวลาท้องถิ่นก็ยิ่งเสียเขาไว เด้งหา user คนเดิมห้าครั้งในชั่วโมงเดียวก็เท่ากับฝึกให้เขาปัดเราทิ้ง เรื่อง reliability ทำให้ message **ออกไป**ได้ ส่วน relevance เป็นตัวตัดสินว่ามันควรออกไปตั้งแต่แรกมั้ย
 
-**วิธีแก้:** นี่แหละคือเหตุผลที่แท้ ๆ ว่าทำไมเราถึงมี **template parser** กับ **user-preference checker** ใน Pre-Delivery Worker ก่อนที่ notification จะถูกต่อคิวไปส่ง มันจะวิ่งผ่านด่าน content-กับ-consent ก่อน:
+**วิธีแก้:** เจ้า **template parser** กับ **user-preference checker** ใน Pre-Delivery Worker เนี่ยแหละที่มีไว้เพื่อเรื่องนี้เลย ก่อนที่ notification จะถูกต่อคิวไปส่ง มันต้องวิ่งผ่านด่าน content-กับ-consent ก่อน:
 
 - **Preference check** — user คนนี้ opt-in หมวดนี้ไว้มั้ย? ตอนนี้อยู่ในช่วง quiet hours ของเขา (ตาม timezone ของเขา) รึเปล่า? ถ้าอันใดอันนึงไม่ผ่าน ก็ drop หรือ defer notification ทิ้งที่จุดนี้เลย ก่อนที่มันจะเปลือง send
 - **Template render** — resolve template ราย user: locale/ภาษา, แล้วก็ merge field อย่างชื่อ, ยอดเงิน, หรือ status ของ order
