@@ -291,7 +291,7 @@ flowchart LR
 
 ส่วนที่ยากกว่าที่เห็นคือ rate limiting จุดนี้มันเป็น **budget แบบกระจาย** quota ของ provider ก้อนเดียว — ของ FCM แบบราย project (หรือ limit ราย connection/stream ของ APNs ถ้าไปทาง direct) — ถูกแชร์ข้าม delivery worker **ทุกตัว** ถ้าให้ worker แต่ละตัวมี token bucket ของตัวเองแบบ local เราจะติดหล่ม: หาร quota ด้วยจำนวน worker เราก็ใช้มันได้น้อยกว่าที่ควรแบบน่าเสียดาย หรือถ้าให้แต่ละตัวคิดว่ามี budget เต็มก้อน เราก็จะรวมกันทะลุเพดานแล้วโดน 429 เพราะงั้น bucket มันอยากเป็นแบบ **แชร์กัน** — token bucket กลางใน Redis ที่ worker มาดึงไปใช้ — หรือมี coordinator คอยแบ่ง slice ให้แต่ละ worker แบบยุติธรรมแล้วก็ rebalance ได้ แล้วก็ทำให้มัน **adaptive** ด้วย: พอ provider เริ่มตอบ 429 พร้อม `Retry-After` มา การตอบสนองที่ถูกคือ **ลด refill rate ลง** ไม่ใช่กระหน่ำต่อที่เพดานที่เราเดาเอาเอง
 
-รายละเอียดที่เราอยากขีดเส้นใต้จากของที่เจอมาเอง: **ตัวนับ max-attempt คือวาล์วนิรภัย** ถ้าไม่มีมัน payload ตัวเดียวที่ fail ดื้อ ๆ (token เสีย, template พัง, provider ล่ม) ก็จะกลายเป็น worker ที่ retry ไม่จบ เผา budget ทิ้ง แล้วก็อุดตัน partition ที่ต่อแถวอยู่ข้างหลัง หลักการ `retry ได้ แต่ต้องมีเพดาน` คือหัวใจทั้งหมดเลย
+รายละเอียดที่ผมอยากขีดเส้นใต้จากที่เจอมาเอง: **ตัวนับ max-attempt คือวาล์วนิรภัย** ถ้าไม่มีมัน payload ตัวเดียวที่ fail ดื้อ ๆ (token เสีย, template พัง, provider ล่ม) ก็จะกลายเป็น worker ที่ retry ไม่จบ เผา budget ทิ้ง แล้วก็อุดตัน partition ที่ต่อแถวอยู่ข้างหลัง หลักการ `retry ได้ แต่ต้องมีเพดาน` คือหัวใจทั้งหมดเลย
 
 ขอแปะ caveat แบบเปิดอกอันนึงเรื่องคำว่า **delivered** result ที่ provider ส่งกลับมาแปลว่า **provider รับ push ไว้แล้ว** — ไม่ได้แปลว่ามันถึงเครื่อง แล้วก็ไม่ได้แปลว่ามีใครเห็นมันแน่ ๆ ทั้ง APNs แล้วก็ FCM ไม่ได้การันตี last mile ให้ เพราะงั้นสิ่งที่เราวัดได้เองมันเป็น funnel ที่แต่ละชั้นมีรั่ว:
 
@@ -344,3 +344,65 @@ flowchart TD
 ที่ทำเรื่องนี้ในสเตจ **pre-delivery** เป็นความตั้งใจ: notification ที่ไม่ควรถูกส่ง ควรตายก่อนที่มันจะไปแตะ provider, rate budget, หรือ dedupe key เรื่อง consent กับ relevance มันบังคับใช้ได้ถูกที่สุดตั้งแต่หน้าด่าน
 
 ---
+
+## Not all notifications are equal — type, priority, and frequency caps
+
+**ปัญหา:** ปฏิบัติกับ MFA code, `payment received`, แล้วก็ `ลด 50% สุดสัปดาห์นี้` แบบเหมือนกันหมด ถ้าทุก marketing campaign ออกไปด้วย priority เต็มแบบไม่มีเพดาน มันจะมีของพังสองอย่าง อย่างแรกคือ user ปิดเสียงแอปทิ้ง — แล้วพอเขาปิดปุ๊บ transactional notification ที่เขาต้องการมันก็ตายไปพร้อม promo ด้วย อย่างที่สองคือ campaign ที่ไม่ได้ด่วนอะไรก็ไปแย่ง delivery budget ก้อนเดียวกันกับ alert ที่ด่วนแบบเป็นเรื่องเป็นราว
+
+**วิธีแก้:** จัดประเภท notification ทุกตัวตาม **type** แล้วให้ type นี่แหละเป็นตัวกำหนด priority กับ limit
+
+- **Transactional / activity** (MFA, ยืนยัน payment, มีคนทักมา) — priority สูง ส่งทันที ใน FCM เราเซ็ตอันนี้ผ่าน block ราย platform — `apns-priority: 10` ใน header ของ `apns`, แล้วก็ตั้ง priority สูงใน block `android` พวกนี้ได้ประโยชน์จากการ **collapse** ด้วย: `balance updated` อันเก่าที่ค้างอยู่ ควรถูก **แทนที่** ด้วยอันใหม่ ไม่ใช่กองทับ ๆ กัน — ใช้ `apns-collapse-id` ฝั่ง iOS, `collapse_key` ฝั่ง Android — user จะได้เห็น state ล่าสุด ไม่ใช่กองห้าอันซ้อนกัน
+- **Marketing / campaign** — priority ต่ำลงมา (`apns-priority: 5` ใน block `apns` — ถนอมแบต แล้วก็เปิดให้ OS จับ batch ได้) แล้วก็โดน **frequency cap** คุมไว้ เกิน cap เมื่อไหร่ → drop หรือ defer
+
+เรื่อง cap เนี่ย ตอนนี้เก็บเป็น **global policy ไปก่อนเถอะ** — เช่น อย่างมาก N marketing push ต่อ user ต่อวัน ใช้ N เดียวกันหมดทุกคน มันคือ counter ถูก ๆ ตัวนึง: key ราย user ใน Redis ที่มี TTL รายวัน, `INCR` แล้วก็เช็คในสเตจ pre-delivery จะทำ cap เป็นราย user หรือราย segment ทีหลังก็ได้ แต่นั่นมันคือการ tune ที่ยังไม่ต้องมีตั้งแต่วันแรกหรอก แค่ global cap ตัวเดียวก็ตัดพฤติกรรมที่แย่ที่สุด (spam รัว ๆ ไม่หยุด) ออกไปได้แล้ว โดยแทบไม่เพิ่มความซับซ้อนเลย
+
+<MermaidDiagram chart={`
+flowchart TD
+    N["Notification"] --> T{"Type?"}
+    T -->|"transactional / activity"| HI["High priority\ncollapse stale"]
+    T -->|"marketing"| CAP{"Under daily cap?"}
+    CAP -->|"no"| DROP["Drop / defer"]
+    CAP -->|"yes"| LO["Low priority"]
+`} />
+
+สังเกตว่าอันนี้มันคนละแกนกับหัวข้อก่อนหน้านะ consent ราย user (opt-in, quiet hours) คือ personalization — มันว่าด้วยความต้องการของ user คนนี้ ส่วน priority ตาม type กับ global cap คือ platform policy — มันว่าด้วยว่าระบบจะปฏิบัติกับ notification ทั้ง **class** ยังไง โดยไม่สนว่าใครเป็นคนรับ ทั้งคู่อยู่ในสเตจ pre-delivery เหมือนกัน แต่มันตอบคนละคำถามกัน
+
+**ก้าวถัดไปของเรื่องนี้ — แยก lane** ตอนแรกแค่ติด **type tag** บน pipeline ที่ใช้ร่วมกันก็พอแล้ว แต่พอ volume ของ marketing เริ่มใหญ่ — campaign 60–70M พวกนั้น — แค่ tag มันไม่พอแล้ว เพราะ campaign กับ MFA code ยังใช้ topic แล้วก็ worker ร่วมกันอยู่ blast เลยไป head-of-line-block ตัว code ได้ วิธีแก้คือแยก lane ออกจากกันทางกายภาพไปเลย: **transactional lane** ที่มี topic กับ delivery worker ของตัวเอง จัดทรัพยากรให้แบบเหลือเฟือแล้วก็ไม่โดน throttle, กับ **bulk/marketing lane** ที่มี pool ของตัวเอง โดน rate-limit แล้วก็ frequency-cap ตอนรันที่ scale ระดับนั้น อันนี้คือสิ่งที่เราทำกันมาเป๊ะ ๆ เลย — notification ฝั่ง payment กับ transactional เดินคนละเส้นกับ campaign blast เพราะงั้นต่อให้ marketing พุ่งขึ้นมา มันก็ไปกอง queue ของตัวเองได้ โดยไม่หน่วง push ที่ user กำลังนั่งรออยู่เลยสักนิด
+
+<MermaidDiagram chart={`
+flowchart LR
+    IN["Notification"] --> CLASS{"Type?"}
+    CLASS -->|"transactional"| TLANE["Transactional lane\nown topics + workers\nnot throttled"]
+    CLASS -->|"marketing"| MLANE["Marketing lane\nown pool, rate-limited\nfrequency-capped"]
+    TLANE --> PH["Push Handler"]
+    MLANE --> PH
+    PH --> DEV["Devices"]
+`} />
+
+---
+
+## Wrapping up
+
+เราเริ่มจาก loop ที่เรียก FCM อยู่ใน request แล้วมาจบที่ pipeline สองสเตจที่ partition แล้ว รับงานระดับ 120M+ ต่อวัน เส้นทางทั้งหมด เรียงตามลำดับ:
+
+1. **ยิงให้ถึงทุก platform ผ่าน FCM** — gateway เดียวบวก config ราย platform ไม่ใช่ client แยกราย provider เป็นของพื้นฐานที่ต้องมี ไม่ใช่ step ของการ scale
+2. **ทำให้เป็น async โดยอิง durable log** — การเปลี่ยนอันเดียวที่ทุกอย่างหลังจากนี้สร้างต่อยอดอยู่บนมัน
+3. **Batch แล้วก็ pool connection** เพื่อให้การ send ก้อนใหญ่วิ่งเป็น request แบบ concurrent บน HTTP client ที่ reuse ไม่ใช่ handshake ใหม่ทุก token
+4. **ผ่าเป็นสเตจแล้วก็ partition** เพื่อให้ enrichment กับ delivery scale แยกกันได้ พร้อมทั้ง ordering แล้วก็ replay
+5. **Fan out แบบ lazy** เพื่อให้ campaign 60M คน กางออกเป็น chunk แทนที่จะท่วม queue
+6. **Dedupe** เพื่อไม่ให้ transport แบบ at-least-once กลายเป็น double-buzz
+7. **Rate-limit, track, แล้วก็ retry แบบมีเพดาน** — แล้วก็ยอมรับกันแบบเปิดอกว่าถ้าไม่มี client ack เราวัดได้แค่ acceptance ไม่ใช่ delivery
+8. **ทำให้ token registry รักษาตัวเองได้** ด้วยการให้ delivery failure คอย prune token ที่ตายแล้วออก
+9. **มีด่าน consent กับ relevance** เพื่อให้ของที่เราส่งถึงอย่างมั่นใจ มันคุ้มค่าพอที่จะส่ง
+10. **ปฏิบัติกับ notification ตาม type** — priority กับ collapse สำหรับ transactional, frequency cap สำหรับ marketing, แล้วก็แยก lane พอ volume เรียกร้อง เพื่อไม่ให้ promo ไปกลบ alert ที่สำคัญ
+
+ประเด็นใหญ่ที่อยากฝากไว้: **ไม่มีใครควร build เวอร์ชันสุดท้ายตั้งแต่วันแรกหรอก** ทุกกล่องมันได้ที่ทางของมันมาจากการแก้ปัญหาที่เวอร์ชันก่อนหน้าสร้างขึ้น ถ้าเราเริ่มจากง่าย ๆ แล้วปล่อยให้ข้อจำกัดหน้างานมันคอยผลักเราไปทีละสเตป สุดท้ายเราก็มักจะมาโผล่ที่ใกล้ ๆ จุดนี้แหละ — แล้วเราจะเข้าใจทุกชิ้นส่วน เพราะเรารู้สึกถึงความเจ็บที่ทำให้มันถูกเพิ่มเข้ามาด้วยตัวเอง
+
+---
+
+## Fun fact: my favorite feedback loop
+
+ขอเล่าเรื่อง love–hate ของการทำงานกับ push หน่อย: มันเป็นหนึ่งในไม่กี่ระบบที่ให้ feedback loop กับผมแบบเกือบ ๆ **ทันที** หลัง deploy ผม deploy ของลงไป แล้วก็เดินไปเป็น user ซะเอง — สั่งของออนไลน์สักอย่าง — แล้วก็นั่งรอเสียงเด้ง notification เด้งมามั้ย? เยี่ยมเลย เงียบกริบเหรอ? จบเห่ แล้วก็รู้ทันทีเลยว่าวันที่เหลือของผมจะเป็นยังไงต่อ
+
+ตอนที่ย้าย FCM integration ไปใช้ SDK ตัวใหม่ ผมเทสต์ทุกเส้นทางเท่าที่เทสต์ได้ในโค้ดเลยนะ… แล้วสุดท้ายก็ยังเดินไป 7-11 หัวมุมถนน กดซื้อของขึ้นมาซะงั้น เพื่อจะดูว่า transactional push มันเด้งเข้ามือถือตัวเองมั้ย ก่อนจะกล้าเชื่อใจมัน automated test มันก็ดีงามแหละ — แต่ไม่มีอะไรทำให้ใจผมนิ่งลงได้เท่ากับใบเสร็จตัวเป็น ๆ ที่เด้งอยู่ในกระเป๋าหรอก 😅
+
