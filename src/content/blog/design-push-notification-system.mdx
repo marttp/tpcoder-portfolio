@@ -18,6 +18,8 @@ I'm opening with push notifications because I spent a good chunk of my time in J
 
 The important part of each version below is the **problem statement first**. None of these boxes exist because they look nice on a diagram — every one of them got added because something hurt. If you ever build this, you'll likely walk the same road, so I'll point out where the pain comes from before showing the fix.
 
+It's a long road, so here's the map — each step forced by the one before it: a **direct provider call** → move it **off the request onto a queue** → a **provider abstraction** for iOS and web → **batching** → a **two-stage, partitioned pipeline** → **lazy fan-out** for huge campaigns → **dedupe** → **rate limiting, delivery tracking, and bounded retry** → **token cleanup**. Then the product layer that decides whether any of it was worth sending: **templating, personalization, and treating notifications by type**.
+
 > Series — *Backend System Design (start simple → evolve)*. This is **#1**. Next up: a multi-channel Delivery System, then a Webhook Callback System.
 
 {/* IMAGE PROMPT (hero-pipeline.png): Wide banner hero, clean modern architecture illustration on a light background. Left-to-right push pipeline: API / internal source → load balancer → Send Notification Service → message queue → Pre-Delivery Worker (enrichment: user/device info, validator, preference checker, template parser, batcher) → message queue → Delivery Worker → Push Handler → providers (FCM / APNs / Web Push) → phones. Side branch: result queue → Delivery Track Aggregator → columnar + relational DB; a retry worker with a dead-letter box. Flat vector, soft shadows, tech-blog aesthetic, 2–3 accent colors, labeled boxes, no photorealism. */}
@@ -113,8 +115,8 @@ This works great until one notification has to reach a lot of devices at once �
 
 **The fix:** stop sending one at a time. Providers give you bulk primitives — use them:
 
-- **FCM multicast** takes up to 500 tokens per request (and topics/device groups for true fan-out).
-- **APNs** keeps a long-lived HTTP/2 connection and lets you stream many pushes over it.
+- **FCM** takes up to 500 tokens per multicast request — so a million tokens become ~2,000 calls instead of a million (and topics/device groups exist for true broadcast).
+- **APNs** has no batch endpoint at all; instead you hold one long-lived HTTP/2 connection and multiplex hundreds of concurrent request streams over it, reusing the connection rather than paying a handshake per push.
 
 So we add a **Notification Batcher**: it groups tokens — by platform, and by anything else that lets a single call do more work — and hands batches to the Push Handler instead of single tokens.
 
@@ -127,6 +129,11 @@ flowchart LR
 `} />
 
 The non-obvious part is **partial failure**. A multicast of 500 doesn't succeed or fail as one unit — it comes back with a per-token result list: some delivered, some failed, some with an *invalid token* you should delete. So the batcher can't just check a 200; it has to fan the response back out and decide what to retry, what to drop, and which tokens to prune. Keep that in mind — it's the reason delivery tracking later isn't optional.
+
+Two mechanics make batching actually behave:
+
+- **Chunk, then bound the concurrency.** Split the token list into 500-token chunks for FCM (or N concurrent streams for APNs) — but don't fire all chunks at once, or you've just moved the rate-limit problem from "per token" to "per chunk." A bounded worker pool drains chunks at a pace the provider tolerates.
+- **Map every per-token result to an action.** `Unavailable` / 5xx → retry; `TooManyRequests` → back off the whole chunk; `NotRegistered` / `InvalidRegistration` → prune the token. That per-token mapping is exactly the signal that feeds token cleanup later — the batch response is where dead tokens first reveal themselves.
 
 Batching makes a single big send efficient. The next wall is the pipeline itself: one worker doing lookups, preference checks, templating, *and* sending can't scale those stages independently — and we have no ordering or replay.
 
@@ -212,6 +219,11 @@ A few things that matter in practice:
 - **TTL sized to your retry window.** The key only needs to outlive the period in which a duplicate could realistically arrive (hours, not forever) — otherwise Redis becomes your biggest, most expensive table.
 - **It's a best-effort guard, not a ledger.** Dedupe trims the duplicates that come from retries and redelivery; it's not an accounting system. (For money, you'd reconcile — but a missed-by-a-hair duplicate push is not worth a distributed transaction.)
 
+Two more things that bite if you skip them:
+
+- **The key has to be deterministic.** `notificationId` must be assigned at ingestion and carried through every retry — generate it per attempt and dedupe does literally nothing. And scope it per device (`notificationId:deviceToken`), so the same logical notification to a user's phone *and* tablet isn't collapsed into a single buzz.
+- **Claim-before-send has a sharp edge.** If you claim the key and the send then fails — or the worker dies right after claiming — the key now blocks the legitimate retry, and a duplicate you prevented becomes a notification you *lost*. The fix: only let the key permanently win on a confirmed success; on a known failure, release it so the bounded-retry path can re-claim. The TTL is the backstop — long enough that a late redelivery can't re-send something that already succeeded, short enough that Redis doesn't turn into a graveyard.
+
 Now sends are idempotent. The next questions are the ones a 120M/day system forces on you: how do we not get throttled into oblivion, and how do we even *know* what got delivered?
 
 ---
@@ -242,6 +254,8 @@ flowchart LR
     RETRY -->|"backoff + attempt < max"| DEL
     RETRY -->|"attempt >= max"| DLQ[("Dead letter")]
 `} />
+
+The part that's trickier than it looks is that rate limiting here is a **distributed budget**. One provider quota (FCM is per-project; APNs is bound to your connections/streams) is shared across *every* delivery worker. Give each worker its own local token bucket and you're stuck: divide the quota by worker count and you under-use it badly, or let each worker assume the full budget and you collectively blow past it and eat 429s. So the bucket wants to be **shared** — a central token bucket in Redis the workers draw from — or a coordinator that hands each worker a fair, rebalancing slice. And make it **adaptive**: when the provider starts returning 429s with `Retry-After`, the correct response is to *lower the refill rate*, not keep hammering at whatever limit you guessed.
 
 The detail I'd underline from real life: **the max-attempt counter is the safety valve.** Without it, one persistently-failing payload (a bad token, a broken template, a provider outage) becomes a worker that retries forever, burns budget, and clogs the partition behind it. "Retry, but with a ceiling" is the whole game.
 
