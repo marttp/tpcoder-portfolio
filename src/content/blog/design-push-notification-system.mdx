@@ -1,6 +1,6 @@
 ---
 title: "Designing a Push Notification System (Start Simple, Then Evolve)"
-description: "A backend system design walkthrough: evolve a push notification service from a single direct FCM call into a partitioned, two-stage pipeline that handles 120M+ notifications a day — async workers, multi-platform, batching, dedup, delivery tracking, and bounded retry. Each version starts with the problem that broke the last one."
+description: "A backend system design walkthrough: evolve a push notification service from a single direct FCM call into a partitioned, two-stage pipeline that handles 120M+ notifications a day — async workers, multi-platform, batching, audience fan-out, dedup, delivery tracking, token cleanup, bounded retry, and priority lanes. Each version starts with the problem that broke the last one."
 pubDate: "2026-06-17"
 tags:
   ["Software Architecture", "Software Engineering", "Backend"]
@@ -19,6 +19,8 @@ I'm opening with push notifications because I spent a good chunk of my time in J
 The important part of each version below is the **problem statement first**. None of these boxes exist because they look nice on a diagram — every one of them got added because something hurt. If you ever build this, you'll likely walk the same road, so I'll point out where the pain comes from before showing the fix.
 
 > Series — *Backend System Design (start simple → evolve)*. This is **#1**. Next up: a multi-channel Delivery System, then a Webhook Callback System.
+
+{/* IMAGE PROMPT (hero-pipeline.png): Wide banner hero, clean modern architecture illustration on a light background. Left-to-right push pipeline: API / internal source → load balancer → Send Notification Service → message queue → Pre-Delivery Worker (enrichment: user/device info, validator, preference checker, template parser, batcher) → message queue → Delivery Worker → Push Handler → providers (FCM / APNs / Web Push) → phones. Side branch: result queue → Delivery Track Aggregator → columnar + relational DB; a retry worker with a dead-letter box. Flat vector, soft shadows, tech-blog aesthetic, 2–3 accent colors, labeled boxes, no photorealism. */}
 
 ![End-state push notification pipeline architecture](/assets/images/blogs/design-push-notification-system/hero-pipeline.png)
 
@@ -160,13 +162,35 @@ Why Kafka specifically, and why partition by `user_id`:
 - **Ordering where it matters.** All events for one user land on the same partition, so they're processed in order (you don't want a "your order shipped" overtaking "your order is being packed").
 - **Replay and durability.** A crashed consumer resumes from its offset. If a downstream bug corrupts something, you can reset the offset and reprocess — a plain queue can't do that.
 
-This is the shape of the real thing. But "at-least-once" delivery (Kafka redelivery + provider retries) means the same push can fire twice. At low volume you shrug. At our volume, users notice.
+This is the shape of the real thing — and it holds up right until a single campaign tries to reach most of your user base in one shot.
+
+---
+
+## One campaign, 60M recipients — fan-out without flooding the queue
+
+**The problem:** marketing wants a campaign sent to the whole active base — at peak that was **60–70M recipients in a single blast**. The naive move is to expand that into 60–70M individual notification events and dump them all on the broker at once. That floods the queue, starves everything else (your 2FA codes are now stuck behind 60M promos), and if someone cancels the campaign halfway, you've got tens of millions of in-flight messages you can't easily recall.
+
+**The fix:** don't materialize the whole audience up front. Store the **campaign definition + an audience query**, and let the pipeline **expand it lazily** — page through recipients in chunks: enqueue a chunk, let it drain, fetch the next. A dedicated fan-out step (a producer sitting in front of the pre-delivery stage) walks the audience a page at a time instead of exploding it into the broker in one shot.
+
+{/* IMAGE PROMPT (fan-out.png): Clean, modern conceptual illustration on a light background. Left: a single labeled card "Campaign + audience query (60M users)". A small "fan-out worker" reads it with a cursor/pointer and emits a few small batches (chunks) into a queue — show only 3–4 chunks in flight, NOT millions, to convey lazy/bounded expansion. Contrast visual (faded/ghosted, crossed out) above it: the naive version where one campaign explodes directly into a massive wall of 60M tiny message dots flooding the queue. Minimal flat vector style, soft shadows, 2–3 accent colors, no photorealism. */}
+
+![Lazy audience fan-out: a campaign expanded in bounded chunks instead of all at once](/assets/images/blogs/design-push-notification-system/fan-out.png)
+
+What this gets us:
+
+- **Bounded queue depth.** The broker holds a working set — a few chunks — not the entire campaign. Other traffic keeps flowing.
+- **Backpressure for free.** Slow consumers just mean we page slower; the audience cursor waits instead of the broker overflowing.
+- **A pause/cancel switch that actually works.** Because most of the audience hasn't been enqueued yet, stopping a campaign is "stop advancing the cursor," not "hunt down 60M messages already on the broker."
+
+This is also where *priority* starts to matter — a 60M marketing blast and a single 2FA code should not be queued as equals — but we'll come back to that. First: at this volume, every hop is at-least-once, and the same push can fire twice. At low volume you shrug; here, users notice.
 
 ---
 
 ## Stop the double-buzz — a dedupe processor
 
 **The problem:** every reliable hop in this pipeline is at-least-once. Kafka redelivers after a consumer restart. A delivery worker that crashes *after* calling the provider but *before* committing its offset will reprocess and send again. Retries (next version) add even more chances. The result is the thing users hate most about push: the same notification buzzing twice.
+
+{/* IMAGE PROMPT (double-buzz.png): Conceptual illustration on a light background — a smartphone lock screen showing the SAME push notification appearing twice (two identical banner cards stacked), conveying an annoying duplicate "double buzz". Subtle vibration/motion lines on the phone, optional small frustrated reaction. Flat vector, soft shadows, clean tech-blog style, 2–3 accent colors, no photorealism. */}
 
 ![The double-buzz problem: duplicate push notifications](/assets/images/blogs/design-push-notification-system/double-buzz.png)
 
@@ -221,7 +245,37 @@ flowchart LR
 
 The detail I'd underline from real life: **the max-attempt counter is the safety valve.** Without it, one persistently-failing payload (a bad token, a broken template, a provider outage) becomes a worker that retries forever, burns budget, and clogs the partition behind it. "Retry, but with a ceiling" is the whole game.
 
-This is the architecture that actually ran. What's left isn't infra — it's making the notifications worth sending at all.
+One honest caveat on the word **"delivered."** The result a provider hands back means *the provider accepted the push* — not that it reached the device, and definitely not that anyone saw it. APNs and FCM don't promise the last mile. So what you can actually measure is a funnel, and each stage leaks:
+
+{/* IMAGE PROMPT (delivery-funnel.png): Clean modern funnel diagram on a light background, three descending stages with drop-off shown between them. Stage 1 (widest) "Accepted by provider — measured directly". Stage 2 "Delivered to device — only if the client reports back". Stage 3 (narrowest) "Opened — needs a client callback". Show shrinking width + small "leak" arrows falling away between stages (network drops, app killed, notifications disabled). Flat vector, soft shadows, 2–3 accent colors, label each stage clearly, no photorealism. */}
+
+![Delivery funnel: accepted by provider vs delivered to device vs opened, leaking at each stage](/assets/images/blogs/design-push-notification-system/delivery-funnel.png)
+
+- **Accepted** — the provider took it. You measure this directly from the send result.
+- **Delivered** — it reached the device. You only know this if the device/SDK reports back; silent network drops, force-quit apps, and disabled notifications all vanish here.
+- **Opened** — the user tapped it. Needs a client-side callback into your tracking.
+
+The design implication is uncomfortable but worth saying out loud: unless you add a client ack channel, your "delivery tracking" is really *acceptance* tracking. A lot of dashboards quietly report acceptance rate and call it delivery rate. For the real engagement funnel you instrument the client and feed those events back into the same aggregator.
+
+---
+
+## Tokens rot — device registry and cleanup
+
+**The problem:** device tokens aren't stable. They rotate when the OS feels like it, they change on reinstall, and they die the moment a user uninstalls or revokes notifications — and nobody tells you proactively. A token store that only ever *adds* slowly fills with corpses. Every campaign then wastes a slice of its sends on tokens that can never deliver, and — worse — those dead tokens inflate your "sent" count and quietly poison every delivery metric you report.
+
+**The fix:** treat the token store as a living **registry** with a feedback loop, not an append-only list.
+
+{/* IMAGE PROMPT (token-lifecycle.png): Clean conceptual cycle/loop illustration on a light background showing a device token's lifecycle. Nodes around a loop: "Client registers token" → "Stored in registry (user + device)" → "Used to send" → "Provider returns InvalidToken / Unregistered" → "Pruned from registry" arrow back to start. Center: a database/registry icon labeled "Token registry" staying healthy. Emphasize the feedback arrow from delivery failure back to cleanup. Flat vector, soft shadows, 2–3 accent colors, clear labels, no photorealism. */}
+
+![Device token lifecycle: registration, use, and a self-healing cleanup loop driven by delivery failures](/assets/images/blogs/design-push-notification-system/token-lifecycle.png)
+
+- **Registration / refresh.** The client SDK hands you a token on install and a *new* one whenever it rotates; you upsert it against the user + device and keep `last_seen` / app version so stale entries can be aged out.
+- **Cleanup from delivery results.** This is the payoff of delivery tracking: when a provider returns `Unregistered` (APNs) or `NotRegistered` / `InvalidRegistration` (FCM), that result rides the same result queue into the aggregator, which **prunes the dead token** from the registry. The system heals a little every time it sends.
+- **Key on (user, device), not raw token.** One user has many devices, and a device can re-register under a new token before the old one expires. Keying on the device keeps you from buzzing the same phone twice from two stale rows.
+
+The mindset shift: a token isn't a value you stored once, it's a *lease* that needs renewing — and your own delivery failures are the signal telling you which leases expired.
+
+With dead tokens pruning themselves, the infrastructure side is genuinely done. What's left isn't infra — it's making the notifications worth sending at all.
 
 ---
 
@@ -269,6 +323,18 @@ flowchart TD
 
 Note how this is a different axis from the previous section. Per-user **consent** (opt-in, quiet hours) is personalization — about *this user's* wishes. **Type-based priority and the global cap** are platform policy — about how the system treats a whole *class* of notification, regardless of who's receiving it. Both live in the pre-delivery stage, but they're answering different questions.
 
+**Where this goes next — separate lanes.** A type *tag* on a shared pipeline is enough at first. But once marketing volume gets big — those 60–70M campaigns — a tag isn't enough, because a campaign and a 2FA code still share the same topics and workers, so the blast can head-of-line-block the code. The fix is to physically split the lanes: a **transactional lane** with its own topics and delivery workers, generously provisioned and never throttled, and a **bulk/marketing lane** with its own pool, rate-limited and frequency-capped. At real scale this is exactly what we ran — payment and transactional notifications went down a separate path from campaign blasts, so a marketing surge could back up its own queue without ever delaying the push a user is actively waiting on.
+
+<MermaidDiagram chart={`
+flowchart LR
+    IN["Notification"] --> CLASS{"Type?"}
+    CLASS -->|"transactional"| TLANE["Transactional lane\nown topics + workers\nnot throttled"]
+    CLASS -->|"marketing"| MLANE["Marketing lane\nown pool, rate-limited\nfrequency-capped"]
+    TLANE --> PH["Push Handler"]
+    MLANE --> PH
+    PH --> DEV["Devices"]
+`} />
+
 ---
 
 ## Wrapping up
@@ -279,10 +345,12 @@ We started with a loop that called FCM inside the request, and ended with a part
 2. **Abstract the providers** so platforms are adapters, not rewrites.
 3. **Batch** so one big send isn't a million HTTP calls.
 4. **Split into stages and partition** so enrichment and delivery scale independently, with ordering and replay.
-5. **Dedupe** so at-least-once transport doesn't become double-buzz.
-6. **Rate-limit, track, and retry with a ceiling** so you survive provider limits, can see what happened, and never loop forever.
-7. **Gate on consent and relevance** so the thing you reliably deliver is worth delivering.
-8. **Treat notifications by type** — high priority and collapse for transactional, a global frequency cap for marketing, so promos never drown the alerts that matter.
+5. **Fan out lazily** so a 60M-recipient campaign expands in chunks instead of flooding the queue.
+6. **Dedupe** so at-least-once transport doesn't become double-buzz.
+7. **Rate-limit, track, and retry with a ceiling** — and be honest that you measure *acceptance*, not delivery, without a client ack.
+8. **Keep the token registry self-healing** by letting delivery failures prune dead tokens.
+9. **Gate on consent and relevance** so the thing you reliably deliver is worth delivering.
+10. **Treat notifications by type** — priority and collapse for transactional, a frequency cap for marketing, and separate lanes once volume demands it, so promos never drown the alerts that matter.
 
 The meta-point: **nobody should build the final version on day one.** Every box earned its place by solving a problem the previous version created. If you start simple and let real constraints push you, you tend to arrive somewhere close to this — and you'll understand every piece, because you felt the pain that added it.
 
