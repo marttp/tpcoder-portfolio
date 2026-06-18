@@ -213,7 +213,7 @@ This is the shape of the real thing — and it holds up right until a single cam
 
 ## One campaign, 60M recipients — fan-out without flooding the queue
 
-**The problem:** marketing wants a campaign sent to the whole active base — at peak that was **60–70M recipients in a single blast**. This is the *campaign* fan-out — one message to millions of users, the bigger sibling of the per-user device fan-out from the pipeline. The naive move is to expand that into 60–70M individual notification events and dump them all on the broker at once. That floods the queue, starves everything else (your 2FA codes are now stuck behind 60M promos), and if someone cancels the campaign halfway, you've got tens of millions of in-flight messages you can't easily recall.
+**The problem:** marketing wants a campaign sent to the whole active base — at peak that was **60–70M recipients in a single blast**. This is the *campaign* fan-out — one message to millions of users, the bigger sibling of the per-user device fan-out from the pipeline. The naive move is to expand that into 60–70M individual notification events and dump them all on the broker at once. That floods the queue, starves everything else (your MFA codes are now stuck behind 60M promos), and if someone cancels the campaign halfway, you've got tens of millions of in-flight messages you can't easily recall.
 
 **The fix:** don't materialize the whole audience up front. Store the **campaign definition + an audience query**, and let the pipeline **expand it lazily** — page through recipients in chunks: enqueue a chunk, let it drain, fetch the next. A dedicated fan-out step (a producer sitting in front of the pre-delivery stage) walks the audience a page at a time instead of exploding it into the broker in one shot.
 
@@ -227,7 +227,7 @@ What this gets us:
 - **Backpressure for free.** Slow consumers just mean we page slower; the audience cursor waits instead of the broker overflowing.
 - **A pause/cancel switch that actually works.** Someone spots a typo in the copy, or marketing decides mid-blast to pull the campaign — and because most of the audience hasn't been enqueued yet, stopping it is just "stop advancing the cursor," not "hunt down 60M messages already on the broker." Whatever's already gone out is gone, but you cap the blast radius instead of finishing a send you know is wrong.
 
-This is also where *priority* starts to matter — a 60M marketing blast and a single 2FA code should not be queued as equals — but we'll come back to that. First: at this volume, every hop is at-least-once, and the same push can fire twice. At low volume you shrug; here, users notice.
+This is also where *priority* starts to matter — a 60M marketing blast and a single MFA code should not be queued as equals — but we'll come back to that. First: at this volume, every hop is at-least-once, and the same push can fire twice. At low volume you shrug; here, users notice.
 
 ---
 
@@ -358,11 +358,11 @@ Doing this in the **pre-delivery** stage is deliberate: a notification that shou
 
 ## Not all notifications are equal — type, priority, and frequency caps
 
-**The problem:** treating a 2FA code, a "payment received", and a "50% off this weekend" the same way. If every marketing campaign goes out at full priority with no ceiling, two things break. Users mute the app — and once they do, your *transactional* notifications, the ones they actually need, die right along with the promos. And low-urgency campaigns end up competing with genuinely urgent alerts for the same delivery budget.
+**The problem:** treating a MFA code, a "payment received", and a "50% off this weekend" the same way. If every marketing campaign goes out at full priority with no ceiling, two things break. Users mute the app — and once they do, your *transactional* notifications, the ones they actually need, die right along with the promos. And low-urgency campaigns end up competing with genuinely urgent alerts for the same delivery budget.
 
 **The fix:** classify every notification by **type**, and let the type drive priority and limits.
 
-- **Transactional / activity** (2FA, payment confirmation, someone messaged you) — high priority, sent right away. In FCM you set this through the per-platform blocks — `apns-priority: 10` in the `apns` headers, high priority in the `android` block. They also benefit from **collapsing**: a stale "balance updated" should be *replaced* by the newer one, not stacked — `apns-collapse-id` for iOS, `collapse_key` for Android — so the user sees the latest state, not a pile of five.
+- **Transactional / activity** (MFA, payment confirmation, someone messaged you) — high priority, sent right away. In FCM you set this through the per-platform blocks — `apns-priority: 10` in the `apns` headers, high priority in the `android` block. They also benefit from **collapsing**: a stale "balance updated" should be *replaced* by the newer one, not stacked — `apns-collapse-id` for iOS, `collapse_key` for Android — so the user sees the latest state, not a pile of five.
 - **Marketing / campaign** — lower priority (`apns-priority: 5` in the `apns` block — battery-friendly, and it lets the OS batch it), and subject to a **frequency cap**. Over the cap → drop or defer.
 
 On the cap: keep it a **global policy for now** — say, at most N marketing pushes per user per day, the same N for everyone. It's a cheap counter: a per-user key in Redis with a daily TTL, `INCR` and check it in the pre-delivery stage. You *can* make the cap per-user or per-segment later, but that's tuning you don't need on day one — a single global cap already removes the worst behavior (relentless spam) for almost no complexity.
@@ -378,7 +378,7 @@ flowchart TD
 
 Note how this is a different axis from the previous section. Per-user **consent** (opt-in, quiet hours) is personalization — about *this user's* wishes. **Type-based priority and the global cap** are platform policy — about how the system treats a whole *class* of notification, regardless of who's receiving it. Both live in the pre-delivery stage, but they're answering different questions.
 
-**Where this goes next — separate lanes.** A type *tag* on a shared pipeline is enough at first. But once marketing volume gets big — those 60–70M campaigns — a tag isn't enough, because a campaign and a 2FA code still share the same topics and workers, so the blast can head-of-line-block the code. The fix is to physically split the lanes: a **transactional lane** with its own topics and delivery workers, generously provisioned and never throttled, and a **bulk/marketing lane** with its own pool, rate-limited and frequency-capped. At real scale this is exactly what we ran — payment and transactional notifications went down a separate path from campaign blasts, so a marketing surge could back up its own queue without ever delaying the push a user is actively waiting on.
+**Where this goes next — separate lanes.** A type *tag* on a shared pipeline is enough at first. But once marketing volume gets big — those 60–70M campaigns — a tag isn't enough, because a campaign and a MFA code still share the same topics and workers, so the blast can head-of-line-block the code. The fix is to physically split the lanes: a **transactional lane** with its own topics and delivery workers, generously provisioned and never throttled, and a **bulk/marketing lane** with its own pool, rate-limited and frequency-capped. At real scale this is exactly what we ran — payment and transactional notifications went down a separate path from campaign blasts, so a marketing surge could back up its own queue without ever delaying the push a user is actively waiting on.
 
 <MermaidDiagram chart={`
 flowchart LR
