@@ -261,3 +261,46 @@ flowchart LR
 ทีนี้การ send ก็ idempotent แล้ว คำถามถัดไปคือคำถามที่ระบบระดับ 120M/วันบังคับให้เราต้องตอบ: เราจะไม่โดน throttle จนวอดวายได้ยังไง แล้วเราจะรู้ได้ยังไงด้วยซ้ำว่าอะไรส่งถึงบ้างแล้ว?
 
 ---
+
+## Surviving 120M+ a day — rate limits, tracking, and bounded retry
+
+**ปัญหา:** ที่ volume ระดับนี้ สามอย่างนี้เลิกเป็นของ optional ทันที
+
+1. **provider throttle เรา** FCM มี send limit ของมันเอง (แล้ว capacity ของ APNs ที่มัน relay ผ่านก็ไม่ได้ไม่มีที่สิ้นสุดเหมือนกัน) ยิงทะลุเพดานเมื่อไหร่ก็เจอ 429 แล้วก็ message โดน drop — เพราะงั้นเราต้องคุมจังหวะตัวเอง ไม่ใช่ fan out ให้เร็วที่สุดเท่าที่ worker จะไหว
+2. **เราบินตาบอด** ด้วยการส่งระดับหลักล้าน คำถามว่า `มันส่งสำเร็จมั้ย` มันเป็น log line ที่นั่ง grep เอาไม่ได้แล้ว เราต้องการ delivery result ในรูปของ data — delivered / failed / invalid-token — ไว้ debug, ไว้ทำ report, แล้วก็ไว้ prune token ที่ตายแล้ว
+3. **failure ต้องมี retry แบบมีขอบเขต** 5xx ชั่วคราวหรือ network สะดุดแว้บนึง ควรถูก retry แต่การ retry ไปเรื่อย ๆ ไม่จบ คือวิธีสร้าง infinite loop โดยไม่ตั้งใจ ที่กระหน่ำ provider แล้วก็ไม่มีวันระบายหมด
+
+**วิธีแก้** — ครึ่งขวาของ architecture ตัวเต็ม:
+
+- **rate limiting + sharding** worker เคารพ rate budget ราย provider (token bucket) แล้ว pipeline ก็ shard ตาม partition เพื่อให้เรา scale แนวนอนได้โดยไม่มี consumer ตัวไหนกลายเป็นจุด hot spot
+- **delivery tracking** ทุกการส่งจะปล่อย result (success/fail + เหตุผล) ลงไปบน result queue ตัว **Delivery Track Aggregator** ก็ consume พวกนั้นแล้วเขียนลง **columnar DB** ไว้ทำ analytics/report (แล้วก็ update state ลง operational DB) จุดนี้ก็เป็นที่ที่ result แบบ invalid-token กลายร่างเป็น token cleanup ด้วย
+- **Retry Delivery Worker** payload ที่ fail จะไหลไปเส้น retry ที่ re-queue มันด้วย **exponential backoff แล้วก็ตัวนับ max-attempt** พอ payload ข้าม threshold จำนวนครั้งไปเมื่อไหร่ มันก็หยุด (แล้วไปตกที่ dead-letter store ไว้ให้มาส่อง) แทนที่จะวน loop ไปไม่จบ
+
+<MermaidDiagram chart={`
+flowchart LR
+    DEL["Delivery Worker"] -->|"rate-limited send"| PH["Push Handler"]
+    PH --> DEV["Devices"]
+    DEL -->|"result (success / fail)"| RQ["Result Queue"]
+    RQ --> AGG["Delivery Track Aggregator"]
+    AGG --> COL[("Columnar DB\n(analytics)")]
+    AGG --> RDB[("DB\n(state)")]
+    DEL -->|"failed payload"| RETRY["Retry Delivery Worker"]
+    RETRY -->|"backoff + attempt < max"| DEL
+    RETRY -->|"attempt >= max"| DLQ[("Dead letter")]
+`} />
+
+ส่วนที่ยากกว่าที่เห็นคือ rate limiting จุดนี้มันเป็น **budget แบบกระจาย** quota ของ provider ก้อนเดียว — ของ FCM แบบราย project (หรือ limit ราย connection/stream ของ APNs ถ้าไปทาง direct) — ถูกแชร์ข้าม delivery worker **ทุกตัว** ถ้าให้ worker แต่ละตัวมี token bucket ของตัวเองแบบ local เราจะติดหล่ม: หาร quota ด้วยจำนวน worker เราก็ใช้มันได้น้อยกว่าที่ควรแบบน่าเสียดาย หรือถ้าให้แต่ละตัวคิดว่ามี budget เต็มก้อน เราก็จะรวมกันทะลุเพดานแล้วโดน 429 เพราะงั้น bucket มันอยากเป็นแบบ **แชร์กัน** — token bucket กลางใน Redis ที่ worker มาดึงไปใช้ — หรือมี coordinator คอยแบ่ง slice ให้แต่ละ worker แบบยุติธรรมแล้วก็ rebalance ได้ แล้วก็ทำให้มัน **adaptive** ด้วย: พอ provider เริ่มตอบ 429 พร้อม `Retry-After` มา การตอบสนองที่ถูกคือ **ลด refill rate ลง** ไม่ใช่กระหน่ำต่อที่เพดานที่เราเดาเอาเอง
+
+รายละเอียดที่เราอยากขีดเส้นใต้จากของที่เจอมาเอง: **ตัวนับ max-attempt คือวาล์วนิรภัย** ถ้าไม่มีมัน payload ตัวเดียวที่ fail ดื้อ ๆ (token เสีย, template พัง, provider ล่ม) ก็จะกลายเป็น worker ที่ retry ไม่จบ เผา budget ทิ้ง แล้วก็อุดตัน partition ที่ต่อแถวอยู่ข้างหลัง หลักการ `retry ได้ แต่ต้องมีเพดาน` คือหัวใจทั้งหมดเลย
+
+ขอแปะ caveat แบบเปิดอกอันนึงเรื่องคำว่า **delivered** result ที่ provider ส่งกลับมาแปลว่า **provider รับ push ไว้แล้ว** — ไม่ได้แปลว่ามันถึงเครื่อง แล้วก็ไม่ได้แปลว่ามีใครเห็นมันแน่ ๆ ทั้ง APNs แล้วก็ FCM ไม่ได้การันตี last mile ให้ เพราะงั้นสิ่งที่เราวัดได้เองมันเป็น funnel ที่แต่ละชั้นมีรั่ว:
+
+![funnel ของ delivery: accepted กับ delivered กับ opened ที่รั่วในแต่ละชั้น](/assets/images/blogs/design-push-notification-system/delivery-funnel.png)
+
+- **Accepted** — provider รับไป เราวัดอันนี้ได้เลยจาก send result
+- **Delivered** — มันถึงเครื่อง เราจะรู้อันนี้ก็ต่อเมื่อ device/SDK รายงานกลับมาเท่านั้น ส่วน network ที่ drop เงียบ ๆ, แอปที่โดน force-quit, แล้วก็ notification ที่ถูกปิด หายวับไปจุดนี้หมด
+- **Opened** — user กดมัน อันนี้ต้องมี callback ฝั่ง client ยิงกลับเข้า tracking ของเรา
+
+นัยเชิง design มันฟังดูไม่ค่อยสบายใจแต่ก็ควรพูดออกมาดัง ๆ: ถ้าเราไม่ใส่ channel สำหรับ client ack เข้าไป `delivery tracking` ของเราแท้ ๆ แล้วมันคือ **acceptance tracking** ต่างหาก dashboard หลาย ๆ อันรายงาน acceptance rate เงียบ ๆ แล้วเรียกมันว่า delivery rate ถ้าอยากได้ engagement funnel ตัวเต็ม เราต้องไป instrument ฝั่ง client แล้วป้อน event พวกนั้นกลับเข้า aggregator ตัวเดิม
+
+---
