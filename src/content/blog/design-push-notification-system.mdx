@@ -40,7 +40,18 @@ Then the product layer that decides whether any of it was worth sending: **templ
 
 ## The naive version — call FCM directly
 
-You have to start somewhere, and the honest starting point is: when something happens, look up the user's device tokens and call the push provider right there in the request.
+Before any send, the backend has to *have* the tokens — and they don't come from the backend. A push token is generated **on the device** by the platform SDK (FCM). So the simplest setup is: the app reads its token from the SDK, and after the user logs in, the client registers it — a plain `POST /devices` carrying the token, platform, and app version — and the backend **upserts** it against `(user, device)` (one user can have many devices, and you never duplicate one).
+
+<MermaidDiagram chart={`
+flowchart LR
+    SDK["FCM SDK\n(on device)"] -->|"generate token"| APP["App"]
+    APP -->|"after login: POST /devices\n(token, platform, app version)"| BE["Backend"]
+    BE -->|"upsert by (user, device)"| STORE[("Token store")]
+`} />
+
+Tokens rotate and expire too, but that's a problem for later — for now, registration is enough to have something to send to.
+
+With the tokens on hand, the honest starting point for the *send* is: when something happens, look up that user's device tokens and call the push provider right there in the request.
 
 <MermaidDiagram chart={`
 flowchart LR
