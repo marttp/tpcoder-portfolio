@@ -32,7 +32,7 @@ It's a long road, so here's the map — each step forced by the one before it:
 
 Then the product layer that decides whether any of it was worth sending: **templating, personalization, and treating notifications by type**.
 
-{/* IMAGE PROMPT (hero-pipeline.png): Wide banner hero, clean modern architecture illustration on a light background. SINGLE left-to-right flow with NO duplicated boxes — exactly one of each component. Flow: Caller (API & events) → Load Balancer → Send Notification Service → Kafka topic (partitioned by user_id) → Pre-Delivery Worker (validation, device/token enrichment resolving user → device tokens, preference check, template parser, batcher) → Kafka topic (ready-to-send) → Delivery Worker → Push Handler → FCM (the single push provider) → Devices, where FCM fans out to Android (direct), iOS (relayed to APNs), and Web (Web Push). One Redis Dedupe Store with a CLEAR connector line to the PUSH HANDLER (the send boundary), not to FCM and not to the Delivery Worker. One side branch off the Delivery Worker: result queue → one Delivery Track Aggregator → two stores side by side, Columnar DB (analytics) and Relational DB (state). One Retry Delivery Worker with TWO visible arrows: a return arrow looping failed payloads BACK into the Delivery Worker, and a separate arrow to a small Dead-letter box for exhausted retries. STRICT REQUIREMENTS: this is a PUSH-only system — absolutely NO envelope / mail / email icons anywhere. NO decorative gear, cloud, chip, or circuit icons. Spell every label exactly as written here (especially "Ready-to-send", not "Ready-te-send"). Every box is a plain labeled rectangle; arrows must clearly connect the components described. Flat vector, soft shadows, tech-blog aesthetic, 2–3 accent colors, no photorealism. */}
+{/* IMAGE PROMPT (hero-pipeline.png): Wide banner hero, clean modern architecture illustration on a light background. SINGLE left-to-right flow with NO duplicated boxes — exactly one of each component. Flow: Caller (API & events) → Load Balancer → Send Notification Service → Kafka topic (partitioned by user_id) → Pre-Delivery Worker (validation, device/token enrichment resolving user → device tokens, preference check, template parser, batcher) → Kafka topic (ready-to-send) → Delivery Worker → Push Handler → FCM (the single push provider) → Devices, where FCM fans out to Android (direct), iOS (relayed to APNs), and Web (Web Push). One Redis Dedupe Store with a CLEAR connector line to the PUSH HANDLER (the send boundary), not to FCM and not to the Delivery Worker. One side branch off the Delivery Worker: result queue → one Delivery Track Aggregator → two stores side by side, Columnar DB (analytics) and DB (state). One Retry Delivery Worker with TWO visible arrows: a return arrow looping failed payloads BACK into the Delivery Worker, and a separate arrow to a small Dead-letter box for exhausted retries. STRICT REQUIREMENTS: this is a PUSH-only system — absolutely NO envelope / mail / email icons anywhere. NO decorative gear, cloud, chip, or circuit icons. Spell every label exactly as written here (especially "Ready-to-send", not "Ready-te-send"). Every box is a plain labeled rectangle; arrows must clearly connect the components described. Flat vector, soft shadows, tech-blog aesthetic, 2–3 accent colors, no photorealism. */}
 
 ![End-state push notification pipeline architecture](/assets/images/blogs/design-push-notification-system/hero-pipeline.png)
 
@@ -171,7 +171,7 @@ flowchart LR
         ENR["user info\ndevice/token enrichment\n(user → device tokens)\nvalidator\npreference checker\ntemplate parser\nbatcher"]
     end
     Q1 --> PRE
-    PRE --> DB[("Relational DB")]
+    PRE --> DB[("DB")]
     PRE --> Q2["Kafka topic 2\n(ready-to-send)"]
     Q2 --> DEL["Delivery Worker"]
     DEL --> PH["Push Handler"]
@@ -269,7 +269,7 @@ Now sends are idempotent. The next questions are the ones a 120M/day system forc
 **The fix** — the right-hand half of the real architecture:
 
 - **Rate limiting + sharding.** Workers respect a per-provider rate budget (token bucket), and the pipeline shards by partition so we scale horizontally without any single consumer becoming the hot spot.
-- **Delivery tracking.** Every send emits a result (success/fail + reason) onto a result queue. A **Delivery Track Aggregator** consumes those and writes them to a **columnar DB** for analytics/reporting (and updates state in the relational DB). This is also where invalid-token results turn into token cleanup.
+- **Delivery tracking.** Every send emits a result (success/fail + reason) onto a result queue. A **Delivery Track Aggregator** consumes those and writes them to a **columnar DB** for analytics/reporting (and updates state in the operational DB). This is also where invalid-token results turn into token cleanup.
 - **Retry Delivery Worker.** Failed payloads go to a retry path that re-queues them with **exponential backoff and a max-attempt counter**. Once a payload crosses the attempt threshold, it stops (and lands in a dead-letter store for inspection) instead of looping forever.
 
 <MermaidDiagram chart={`
@@ -279,7 +279,7 @@ flowchart LR
     DEL -->|"result (success / fail)"| RQ["Result Queue"]
     RQ --> AGG["Delivery Track Aggregator"]
     AGG --> COL[("Columnar DB\n(analytics)")]
-    AGG --> RDB[("Relational DB\n(state)")]
+    AGG --> RDB[("DB\n(state)")]
     DEL -->|"failed payload"| RETRY["Retry Delivery Worker"]
     RETRY -->|"backoff + attempt < max"| DEL
     RETRY -->|"attempt >= max"| DLQ[("Dead letter")]
