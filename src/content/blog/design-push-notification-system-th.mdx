@@ -304,3 +304,21 @@ flowchart LR
 นัยเชิง design มันฟังดูไม่ค่อยสบายใจแต่ก็ควรพูดออกมาดัง ๆ: ถ้าเราไม่ใส่ channel สำหรับ client ack เข้าไป `delivery tracking` ของเราแท้ ๆ แล้วมันคือ **acceptance tracking** ต่างหาก dashboard หลาย ๆ อันรายงาน acceptance rate เงียบ ๆ แล้วเรียกมันว่า delivery rate ถ้าอยากได้ engagement funnel ตัวเต็ม เราต้องไป instrument ฝั่ง client แล้วป้อน event พวกนั้นกลับเข้า aggregator ตัวเดิม
 
 ---
+
+## Tokens rot — device registry and cleanup
+
+**ปัญหา:** device token มันไม่นิ่ง มันหมุนเวียนตอนที่ OS อยากจะหมุน, เปลี่ยนตอน reinstall, แล้วก็ตายทันทีที่ user uninstall หรือปิด notification — แล้วไม่มีใครมาบอกเราล่วงหน้าเลย token store ที่เอาแต่ **เพิ่ม** อย่างเดียวก็จะค่อย ๆ เต็มไปด้วยศพ ทุก campaign ก็เลยเปลือง send ส่วนนึงไปกับ token ที่ส่งยังไงก็ไม่มีวันถึง แล้วที่แย่กว่านั้น token ตาย ๆ พวกนี้ทำให้ตัวเลข `sent` ของเราพองโตผิดส่วน แล้วก็ค่อย ๆ วางยา delivery metric ทุกตัวที่เรา report
+
+**วิธีแก้:** มอง token store เป็น **registry ที่มีชีวิต** ที่มี feedback loop ไม่ใช่ list ที่เอาแต่ append อย่างเดียว
+
+![lifecycle ของ device token: register, ใช้งาน, แล้วก็ loop cleanup ที่รักษาตัวเองจาก delivery failure](/assets/images/blogs/design-push-notification-system/token-lifecycle.png)
+
+- **Registration / refresh** client SDK ส่ง token ให้เราตอน install แล้วก็ส่งตัวใหม่ทุกครั้งที่มันหมุน เราก็ upsert มันเข้ากับ user + device แล้วเก็บ `last_seen` / app version ไว้ เพื่อให้ entry เก่า ๆ ถูกปลดตามอายุได้
+- **Cleanup จาก delivery result** อันนี้คือผลตอบแทนของการทำ delivery tracking: พอ FCM บอกว่า token ตายแล้ว (`UNREGISTERED` / `registration-token-not-registered`) result นั้นก็ลอยไปบน result queue เดียวกันเข้าสู่ aggregator ซึ่งจะ **prune token ตายตัวนั้น** ออกจาก registry ระบบมันค่อย ๆ รักษาตัวเองทีละนิดทุกครั้งที่ส่ง
+- **key ด้วย (user, device) ไม่ใช่ raw token** user คนนึงมีหลายเครื่อง แล้วเครื่องนึงก็ re-register ด้วย token ใหม่ได้ก่อนตัวเก่าจะหมดอายุ การ key ด้วย device กันเราไม่ให้เด้งหาเครื่องเดียวกันซ้ำสองทีจาก row เก่าสองแถว
+
+การเปลี่ยน mindset: token ไม่ใช่ค่าที่เราเก็บไว้ครั้งเดียวจบ มันคือ **lease ที่ต้องต่ออายุ** — แล้ว delivery failure ของเราเองนั่นแหละคือ signal ที่บอกว่า lease ตัวไหนหมดอายุไปแล้ว
+
+พอ token ตายมัน prune ตัวเองได้แล้ว ฝั่ง infrastructure ก็ถือว่าเสร็จสมบูรณ์ ที่เหลือไม่ใช่เรื่อง infra แล้ว — มันคือการทำให้ notification มันคุ้มค่าพอที่จะส่งออกไปต่างหาก
+
+---
