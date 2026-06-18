@@ -32,7 +32,7 @@ It's a long road, so here's the map — each step forced by the one before it:
 
 Then the product layer that decides whether any of it was worth sending: **templating, personalization, and treating notifications by type**.
 
-{/* IMAGE PROMPT (hero-pipeline.png): Wide banner hero, clean modern architecture illustration on a light background. SINGLE left-to-right flow with NO duplicated boxes — exactly one of each component. Flow: Caller (API & events) → Load Balancer → Send Notification Service → Kafka topic (partitioned by user_id) → Pre-Delivery Worker (validation, device/token enrichment resolving user → device tokens, preference check, template parser, batcher) → Kafka topic (ready-to-send) → Delivery Worker → Push Handler → providers FCM / APNs / Web Push → Devices. One Redis Dedupe Store attached to the PUSH HANDLER (the send boundary), not the Delivery Worker. One side branch off the Delivery Worker: result queue → one Delivery Track Aggregator → two stores side by side, Columnar DB (analytics) and Relational DB (state). One Retry Delivery Worker that loops failed payloads back into the Delivery Worker, plus a small Dead-letter box for exhausted retries. Flat vector, soft shadows, tech-blog aesthetic, 2–3 accent colors, labeled boxes, no photorealism. */}
+{/* IMAGE PROMPT (hero-pipeline.png): Wide banner hero, clean modern architecture illustration on a light background. SINGLE left-to-right flow with NO duplicated boxes — exactly one of each component. Flow: Caller (API & events) → Load Balancer → Send Notification Service → Kafka topic (partitioned by user_id) → Pre-Delivery Worker (validation, device/token enrichment resolving user → device tokens, preference check, template parser, batcher) → Kafka topic (ready-to-send) → Delivery Worker → Push Handler → FCM (the single push provider) → Devices, where FCM fans out to Android (direct), iOS (relayed to APNs), and Web (Web Push). One Redis Dedupe Store attached to the PUSH HANDLER (the send boundary), not the Delivery Worker. One side branch off the Delivery Worker: result queue → one Delivery Track Aggregator → two stores side by side, Columnar DB (analytics) and Relational DB (state). One Retry Delivery Worker that loops failed payloads back into the Delivery Worker, plus a small Dead-letter box for exhausted retries. Flat vector, soft shadows, tech-blog aesthetic, 2–3 accent colors, labeled boxes, no photorealism. */}
 
 ![End-state push notification pipeline architecture](/assets/images/blogs/design-push-notification-system/hero-pipeline.png)
 
@@ -89,35 +89,35 @@ This is the single highest-leverage change in the whole post. Almost everything 
 
 And for most applications, this is already the finish line. A queue and a worker covers the overwhelming majority of products that will ever ship — everything below is the smaller set of cases where sheer volume, multiple platforms, or strict reliability force more structure. If that's not you, you can stop right here with a clear conscience.
 
-But now we've assumed every device speaks FCM. They don't.
+But so far the worker fires one hardcoded payload at one platform. Real users are on iOS and web too.
 
 ---
 
 ## Not every device is Android — multi-platform abstraction
 
-**The problem:** the worker calls `fcm.send()` directly. The moment you have iOS users you need **APNs**, web users need the **Web Push** protocol, and each provider has its own auth, payload shape, and error codes. If you keep hardcoding FCM, every new platform means surgery on the worker, and the worker starts to know far too much about each provider's quirks.
+**The problem:** the worker calls `fcm.send()` with one hardcoded payload. As soon as real users show up you've got iOS and web too — and while FCM *can* reach all three, "send to everyone" isn't automatic. iOS only delivers once you've uploaded your Apple **APNs auth key** into Firebase; web needs **VAPID** keys; and each platform wants a different payload shape (sound and badge on iOS, notification vs data on Android, actions on web). Hardcode a single path in the worker and you're rewriting it the day the second platform lands.
 
-**The fix:** put a **Push Handler** in front of the providers — one internal interface, one adapter per provider. The worker looks up the device's platform (from device info) and hands off to the right adapter. Classic Strategy pattern; the worker stops caring *how* a push is sent.
+**The fix:** keep **FCM as a single gateway** — it sends to Android directly, to iOS by relaying to APNs (that uploaded key), and to web over Web Push — and put a thin **Push Handler** in front whose only job is to build the right per-platform config from your internal notification model. The worker hands over a platform-neutral notification; the handler fills in FCM's `android` / `apns` / `webpush` blocks and makes the call. It's the Strategy pattern, but the strategy is *payload-shaping per platform*, not a different provider per platform.
 
 <MermaidDiagram chart={`
 flowchart LR
-    WK["Delivery Worker"] --> PH["Push Handler"]
-    PH -->|"Android"| FCM["FCM adapter"]
-    PH -->|"iOS"| APNS["APNs adapter"]
-    PH -->|"Web"| WEB["Web Push adapter"]
-    FCM --> DEV["Devices"]
-    APNS --> DEV
-    WEB --> DEV
+    WK["Delivery Worker"] --> PH["Push Handler\n(build per-platform config)"]
+    PH --> FCM["FCM"]
+    FCM -->|"Android (direct)"| AND["Android"]
+    FCM -->|"iOS (relayed to APNs)"| IOS["iOS"]
+    FCM -->|"Web (Web Push)"| WEB["Web"]
 `} />
 
 Two things we get from this:
 
-- **Adding a platform is a new adapter, not a worker rewrite.** The internal contract (`send(deviceToken, renderedPayload)`) stays stable.
-- **Provider-specific error mapping lives in one place.** "Invalid token", "rate limited", "retryable 5xx" get normalized to internal codes the worker understands — which matters a lot once we add retry.
+- **One integration, not three.** You configure each platform once (APNs key, VAPID); you don't build and operate separate APNs and Web Push clients.
+- **Per-platform quirks live in one place.** The handler owns the "iOS needs this, web needs that" logic and normalizes provider error codes — invalid token, rate limited, retryable 5xx — into internal codes the worker understands, which matters once we add retry.
 
-To route correctly we need to know each device's platform and current token, so this is also where **device information** (token, platform, app version, last-seen) becomes a first-class lookup.
+There *is* another route: a **separate worker (or direct client) per provider** — talk to APNs and Web Push yourself instead of going through FCM. You'd reach for it to be independent of Google, or for finer control and lower latency at very high volume. It's more to build and operate, so my default is FCM-for-everything until something concrete forces the split.
 
-This works great until one notification has to reach a lot of devices at once — and we're back to one HTTP call per token.
+Either way, you need each device's platform and current token to do this, so this is also where **device information** (token, platform, app version, last-seen) becomes a first-class lookup.
+
+This works great until one notification has to reach a lot of devices at once — and we're back to one call per token.
 
 ---
 
@@ -125,26 +125,23 @@ This works great until one notification has to reach a lot of devices at once �
 
 **The problem:** "new feature launched, tell everyone" fans out to millions of tokens. At one HTTP request per token you pay the round-trip overhead millions of times, you burn through provider connections, and you hit rate limits fast. The send itself becomes the bottleneck.
 
-**The fix:** stop sending one at a time. Providers give you bulk primitives — use them:
-
-- **FCM** takes up to 500 tokens per multicast request — so a million tokens become ~2,000 calls instead of a million (and topics/device groups exist for true broadcast).
-- **APNs** has no batch endpoint at all; instead you hold one long-lived HTTP/2 connection and multiplex hundreds of concurrent request streams over it, reusing the connection rather than paying a handshake per push.
+**The fix:** stop sending one at a time. FCM gives you a batch primitive — one request carries up to **500 tokens**, so a million tokens become ~2,000 calls instead of a million (topics and device groups exist for true broadcast on top of that). (If you took the direct-provider route, the equivalent is APNs' HTTP/2 connection: no batch endpoint, but you multiplex hundreds of concurrent streams over one reused connection. Same idea — stop paying a round-trip per token.)
 
 So we add a **Notification Batcher**: it groups tokens — by platform, and by anything else that lets a single call do more work — and hands batches to the Push Handler instead of single tokens.
 
 <MermaidDiagram chart={`
 flowchart LR
     WK["Delivery Worker"] --> NB["Notification Batcher"]
-    NB -->|"batch of tokens"| PH["Push Handler"]
-    PH -->|"multicast (≤500)"| FCM["FCM"]
-    PH -->|"HTTP/2 stream"| APNS["APNs"]
+    NB -->|"batch of ≤500 tokens"| PH["Push Handler"]
+    PH -->|"FCM batch send"| FCM["FCM"]
+    FCM --> DEV["Devices"]
 `} />
 
 The non-obvious part is **partial failure**. A multicast of 500 doesn't succeed or fail as one unit — it comes back with a per-token result list: some delivered, some failed, some with an *invalid token* you should delete. So the batcher can't just check a 200; it has to fan the response back out and decide what to retry, what to drop, and which tokens to prune. Keep that in mind — it's the reason delivery tracking later isn't optional.
 
 Two mechanics make batching actually behave:
 
-- **Chunk, then bound the concurrency.** Split the token list into 500-token chunks for FCM (or N concurrent streams for APNs) — but don't fire all chunks at once, or you've just moved the rate-limit problem from "per token" to "per chunk." A bounded worker pool drains chunks at a pace the provider tolerates.
+- **Chunk, then bound the concurrency.** Split the token list into 500-token chunks for FCM (or N concurrent streams if you went direct to APNs) — but don't fire all chunks at once, or you've just moved the rate-limit problem from "per token" to "per chunk." A bounded worker pool drains chunks at a pace the provider tolerates.
 - **Map every per-token result to an action.** `Unavailable` / 5xx → retry; `TooManyRequests` → back off the whole chunk; `NotRegistered` / `InvalidRegistration` → prune the token. That per-token mapping is exactly the signal that feeds token cleanup later — the batch response is where dead tokens first reveal themselves.
 
 Batching makes a single big send efficient. The next wall is the pipeline itself: one worker doing lookups, preference checks, templating, *and* sending can't scale those stages independently — and we have no ordering or replay.
@@ -158,7 +155,7 @@ Batching makes a single big send efficient. The next wall is the pipeline itself
 **The fix:** split into **two stages** with a durable log (Kafka) between them, and **partition by user ID**.
 
 - **Pre-Delivery Worker** (the enrichment stage): user information, **device/token enrichment** (resolving the user to their device tokens + platform), a validator, the notification batcher, a user-preference checker, and a template parser. It turns a raw "notify user X" event into a fully-resolved, ready-to-send payload, then publishes to the next topic.
-- **Delivery Worker** (the send stage): consumes ready payloads and does nothing but talk to providers via the Push Handler.
+- **Delivery Worker** (the send stage): consumes ready payloads and does nothing but hand off to FCM via the Push Handler.
 
 <MermaidDiagram chart={`
 flowchart LR
@@ -183,12 +180,12 @@ Why Kafka specifically, and why partition by `user_id`:
 
 One piece is worth pulling out of that enrichment stage: the **device/token enricher**. A caller says "notify user X" — but you never push to a *user*, you push to *devices*. This is the step that resolves `user_id` into the real targets: every active `(device_token, platform, locale)` the user has. It quietly does three jobs:
 
-{/* IMAGE PROMPT (two-fan-outs.png): Clean conceptual illustration on a light background contrasting TWO kinds of fan-out, side by side. Left panel labeled "Audience fan-out": one "Campaign" node expanding into many user icons (millions of users). Right panel labeled "Device fan-out": one "User" node expanding into a few device icons (phone, tablet, laptop/browser), each tagged with a platform (APNs, FCM, Web Push). Make it obvious the left is one→many users and the right is one→few devices. Flat vector, soft shadows, 2–3 accent colors, clear labels, no photorealism. */}
+{/* IMAGE PROMPT (two-fan-outs.png): Clean conceptual illustration on a light background contrasting TWO kinds of fan-out, side by side. Left panel labeled "Audience fan-out": one "Campaign" node expanding into many user icons (millions of users). Right panel labeled "Device fan-out": one "User" node expanding into a few device icons (phone, tablet, laptop/browser), each tagged with a platform (iOS, Android, Web). Make it obvious the left is one→many users and the right is one→few devices. Flat vector, soft shadows, 2–3 accent colors, clear labels, no photorealism. */}
 
 ![The two fan-outs: a campaign expands to many users, while one user expands to their devices](/assets/images/blogs/design-push-notification-system/two-fan-outs.png)
 
 - **It's the second fan-out.** A campaign fans one message out to millions of *users*; this fans one user out to their *N devices*. "One notification" becomes "N provider sends" right here — a separate fan-out layered on top of the campaign one.
-- **It attaches the platform**, which is the only thing the Push Handler can switch on downstream — no platform tag, no FCM-vs-APNs-vs-Web-Push routing.
+- **It attaches the platform**, which is the only thing the Push Handler can switch on downstream — no platform tag, no way to build the right iOS / Android / web payload.
 - **It drops dead devices at read time** — skip tokens whose `last_seen` is ancient before you waste a send. That's the read-side companion to the token cleanup further down.
 
 So that unassuming "device info" box is really a token enricher: the boundary where user-centric events turn into device-centric sends.
@@ -236,8 +233,8 @@ flowchart LR
     Q2["Kafka topic 2"] --> DEL["Delivery Worker"]
     DEL --> PH["Push Handler"]
     PH <-->|"SETNX notif:device (TTL)"| REDIS["Redis (dedupe)"]
-    PH -->|"first send only"| PROV["FCM / APNs / Web Push"]
-    PROV --> DEV["Devices"]
+    PH -->|"first send only"| FCM["FCM"]
+    FCM --> DEV["Devices\n(Android / iOS / Web)"]
 `} />
 
 A few things that matter in practice:
@@ -259,7 +256,7 @@ Now sends are idempotent. The next questions are the ones a 120M/day system forc
 
 **The problem:** at this volume three things stop being optional.
 
-1. **Providers throttle you.** FCM and APNs have per-project/connection limits. Blast past them and they start returning 429s and dropping you — so we have to pace ourselves, not just fan out as fast as workers allow.
+1. **The provider throttles you.** FCM has its own send limits (and the APNs capacity it relays through isn't infinite either). Blast past them and you get 429s and dropped messages — so we pace ourselves, not just fan out as fast as workers allow.
 2. **You're flying blind.** With millions of sends, "did it work?" can't be a log line you grep. You need delivery results as data — delivered / failed / invalid-token — to debug, to report, and to prune dead tokens.
 3. **Failures need a *bounded* retry.** A transient 5xx or network blip should be retried. But retrying forever is how you build an accidental infinite loop that hammers a provider and never drains.
 
@@ -282,7 +279,7 @@ flowchart LR
     RETRY -->|"attempt >= max"| DLQ[("Dead letter")]
 `} />
 
-The part that's trickier than it looks is that rate limiting here is a **distributed budget**. One provider quota (FCM is per-project; APNs is bound to your connections/streams) is shared across *every* delivery worker. Give each worker its own local token bucket and you're stuck: divide the quota by worker count and you under-use it badly, or let each worker assume the full budget and you collectively blow past it and eat 429s. So the bucket wants to be **shared** — a central token bucket in Redis the workers draw from — or a coordinator that hands each worker a fair, rebalancing slice. And make it **adaptive**: when the provider starts returning 429s with `Retry-After`, the correct response is to *lower the refill rate*, not keep hammering at whatever limit you guessed.
+The part that's trickier than it looks is that rate limiting here is a **distributed budget**. One provider quota — FCM's, per project (or APNs' connection/stream limits if you went direct) — is shared across *every* delivery worker. Give each worker its own local token bucket and you're stuck: divide the quota by worker count and you under-use it badly, or let each worker assume the full budget and you collectively blow past it and eat 429s. So the bucket wants to be **shared** — a central token bucket in Redis the workers draw from — or a coordinator that hands each worker a fair, rebalancing slice. And make it **adaptive**: when the provider starts returning 429s with `Retry-After`, the correct response is to *lower the refill rate*, not keep hammering at whatever limit you guessed.
 
 The detail I'd underline from real life: **the max-attempt counter is the safety valve.** Without it, one persistently-failing payload (a bad token, a broken template, a provider outage) becomes a worker that retries forever, burns budget, and clogs the partition behind it. "Retry, but with a ceiling" is the whole game.
 
@@ -311,7 +308,7 @@ The design implication is uncomfortable but worth saying out loud: unless you ad
 ![Device token lifecycle: registration, use, and a self-healing cleanup loop driven by delivery failures](/assets/images/blogs/design-push-notification-system/token-lifecycle.png)
 
 - **Registration / refresh.** The client SDK hands you a token on install and a *new* one whenever it rotates; you upsert it against the user + device and keep `last_seen` / app version so stale entries can be aged out.
-- **Cleanup from delivery results.** This is the payoff of delivery tracking: when a provider returns `Unregistered` (APNs) or `NotRegistered` / `InvalidRegistration` (FCM), that result rides the same result queue into the aggregator, which **prunes the dead token** from the registry. The system heals a little every time it sends.
+- **Cleanup from delivery results.** This is the payoff of delivery tracking: when FCM reports a token is dead (`UNREGISTERED` / `registration-token-not-registered`), that result rides the same result queue into the aggregator, which **prunes the dead token** from the registry. The system heals a little every time it sends.
 - **Key on (user, device), not raw token.** One user has many devices, and a device can re-register under a new token before the old one expires. Keying on the device keeps you from buzzing the same phone twice from two stale rows.
 
 The mindset shift: a token isn't a value you stored once, it's a *lease* that needs renewing — and your own delivery failures are the signal telling you which leases expired.
@@ -348,8 +345,8 @@ Doing this in the **pre-delivery** stage is deliberate: a notification that shou
 
 **The fix:** classify every notification by **type**, and let the type drive priority and limits.
 
-- **Transactional / activity** (2FA, payment confirmation, someone messaged you) — high priority, sent right away. On APNs that's `apns-priority: 10`; on FCM the high-priority flag. These also benefit from **collapsing**: a stale "balance updated" should be *replaced* by the newer one, not stacked — `collapse-id` (APNs) / `collapse_key` (FCM) so the user sees the latest state, not a pile of five.
-- **Marketing / campaign** — lower priority (`apns-priority: 5`, which is battery-friendly and lets the OS batch it), and subject to a **frequency cap**. Over the cap → drop or defer.
+- **Transactional / activity** (2FA, payment confirmation, someone messaged you) — high priority, sent right away. In FCM you set this through the per-platform blocks — `apns-priority: 10` in the `apns` headers, high priority in the `android` block. They also benefit from **collapsing**: a stale "balance updated" should be *replaced* by the newer one, not stacked — `apns-collapse-id` for iOS, `collapse_key` for Android — so the user sees the latest state, not a pile of five.
+- **Marketing / campaign** — lower priority (`apns-priority: 5` in the `apns` block — battery-friendly, and it lets the OS batch it), and subject to a **frequency cap**. Over the cap → drop or defer.
 
 On the cap: keep it a **global policy for now** — say, at most N marketing pushes per user per day, the same N for everyone. It's a cheap counter: a per-user key in Redis with a daily TTL, `INCR` and check it in the pre-delivery stage. You *can* make the cap per-user or per-segment later, but that's tuning you don't need on day one — a single global cap already removes the worst behavior (relentless spam) for almost no complexity.
 
@@ -383,7 +380,7 @@ flowchart LR
 We started with a loop that called FCM inside the request, and ended with a partitioned, two-stage pipeline doing 120M+ a day. The path, in order:
 
 1. **Go async off a durable log** — the one change everything else builds on.
-2. **Abstract the providers** so platforms are adapters, not rewrites.
+2. **Reach every platform through FCM** — one gateway plus per-platform config, not a client per provider.
 3. **Batch** so one big send isn't a million HTTP calls.
 4. **Split into stages and partition** so enrichment and delivery scale independently, with ordering and replay.
 5. **Fan out lazily** so a 60M-recipient campaign expands in chunks instead of flooding the queue.
