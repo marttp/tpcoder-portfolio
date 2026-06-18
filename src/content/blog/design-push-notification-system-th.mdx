@@ -322,3 +322,25 @@ flowchart LR
 พอ token ตายมัน prune ตัวเองได้แล้ว ฝั่ง infrastructure ก็ถือว่าเสร็จสมบูรณ์ ที่เหลือไม่ใช่เรื่อง infra แล้ว — มันคือการทำให้ notification มันคุ้มค่าพอที่จะส่งออกไปต่างหาก
 
 ---
+
+## Make it worth sending — templating + personalization
+
+**ปัญหา:** pipeline ที่ส่ง text เดียวกันเป๊ะหาทุกคนได้แบบไร้ที่ติ มันก็ยังเป็น product ที่กลาง ๆ อยู่ดี ยิง push ที่เหมือนกันหมดแล้วไม่เกี่ยวกับคนรับ คนก็ปิดเสียง mute แอปหรือ uninstall ทิ้ง ส่งตอนตีสามตามเวลาท้องถิ่นก็ยิ่งเสียเขาไว เด้งหา user คนเดิมห้าครั้งในชั่วโมงเดียวก็เท่ากับฝึกให้เขาปัดเราทิ้ง เรื่อง reliability ทำให้ message **ออกไป**ได้ ส่วน relevance เป็นตัวตัดสินว่ามันควรออกไปตั้งแต่แรกมั้ย
+
+**วิธีแก้:** นี่แหละคือเหตุผลที่แท้ ๆ ว่าทำไมเราถึงมี **template parser** กับ **user-preference checker** ใน Pre-Delivery Worker ก่อนที่ notification จะถูกต่อคิวไปส่ง มันจะวิ่งผ่านด่าน content-กับ-consent ก่อน:
+
+- **Preference check** — user คนนี้ opt-in หมวดนี้ไว้มั้ย? ตอนนี้อยู่ในช่วง quiet hours ของเขา (ตาม timezone ของเขา) รึเปล่า? ถ้าอันใดอันนึงไม่ผ่าน ก็ drop หรือ defer notification ทิ้งที่จุดนี้เลย ก่อนที่มันจะเปลือง send
+- **Template render** — resolve template ราย user: locale/ภาษา, แล้วก็ merge field อย่างชื่อ, ยอดเงิน, หรือ status ของ order
+- **Personalization** — เลือกว่า user คนนี้ควรได้ content **อันไหน** ซึ่งเป็นจุดที่ pipeline นี้ไปต่อกับ audience/segmentation service — เรื่องนี้ใหญ่พอที่จะแยกไปเป็นหัวข้อของมันเองได้เลย
+
+<MermaidDiagram chart={`
+flowchart TD
+    EV["Notify user X"] --> PREF{"Opted in?\nWithin quiet hours?"}
+    PREF -->|"no"| DROP["Drop / defer"]
+    PREF -->|"yes"| TMPL["Render template\n(locale + merge fields)"]
+    TMPL --> READY["Ready-to-send payload"]
+`} />
+
+ที่ทำเรื่องนี้ในสเตจ **pre-delivery** เป็นความตั้งใจ: notification ที่ไม่ควรถูกส่ง ควรตายก่อนที่มันจะไปแตะ provider, rate budget, หรือ dedupe key เรื่อง consent กับ relevance มันบังคับใช้ได้ถูกที่สุดตั้งแต่หน้าด่าน
+
+---
