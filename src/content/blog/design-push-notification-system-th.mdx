@@ -1,0 +1,227 @@
+---
+title: "การออกแบบ Push Notification System แบบเริ่มจากง่าย แล้วค่อย evolve"
+description: "พาเดินทุก step ของการ design push notification service ตั้งแต่ยิงเข้า FCM แบบ direct ใน request เดียว ไปจนเป็น pipeline สองสเตจที่ partition แล้วรับโหลดระดับ 120M+ notification ต่อวัน — async worker, multi-platform, batching, audience fan-out, dedupe, delivery tracking, token cleanup, bounded retry แล้วก็ priority lane โดยแต่ละเวอร์ชันเริ่มจากปัญหาที่เวอร์ชันก่อนหน้าทำพัง"
+pubDate: "2026-06-17"
+tags:
+  ["Software Architecture", "Software Engineering", "Backend"]
+heroImage: "/assets/images/blogs/design-push-notification-system/hero-pipeline.png"
+language: "th"
+translationSlug: "design-push-notification-system"
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+## Introduction
+
+โพสต์นี้เป็นตัวเปิดของซีรีส์ backend system design วิธีเล่าของเราเรียบ ๆ คือหยิบระบบนึงขึ้นมา เริ่มจากของที่ทื่อที่สุดเท่าที่จะ work ได้ แล้วค่อย ๆ ใส่ข้อจำกัดจากหน้างานเข้าไปทีละอย่าง จนมันค่อย ๆ โตเป็น multi-service architecture แบบที่เรารันกันใน production
+
+ที่เปิดด้วย push notification เพราะตอนอยู่ญี่ปุ่นเราหมดเวลาไปกับเรื่องนี้เยอะมาก — push pipeline ตัวนึงที่สุดท้ายยิงไปถึงระดับ **120M+ notification ต่อวัน** เพราะงั้นโพสต์นี้เลยออกแนวบันทึกว่าเราเดินมายังไงกว่าจะถึงจุดนั้น แล้วทำไมแต่ละ step ถึงโดนบังคับให้ต้องเกิด มากกว่าจะเป็น textbook ที่บอกคำตอบสำเร็จรูป
+
+ของสำคัญในแต่ละเวอร์ชันข้างล่างคือ **ปัญหาต้องมาก่อน** ทุก ๆ กล่องใน diagram โผล่มาเพราะมีบางอย่างมันเจ็บ ไม่ได้โผล่เพราะวาดในรูปแล้วดูดี ถ้าวันนึงเราต้อง build ของแบบนี้เอง เราก็น่าจะเดินเส้นทางเดียวกันนี่แหละ เพราะงั้นเดี๋ยวเราจะชี้ก่อนเลยว่าความเจ็บมันมาจากไหน ก่อนจะโชว์วิธีแก้
+
+มันเป็นเส้นทางที่ยาวอยู่ เลยขอวาง map ไว้ก่อน แต่ละ step ถูกบังคับด้วย step ก่อนหน้ามันเอง:
+
+1. ยิงเข้า provider แบบ **direct call**
+2. ทำ **provider abstraction** ให้รองรับ iOS กับ web (ใช้ FCM เป็น gateway เดียว แล้ว config แยกราย platform)
+3. ย้ายงาน **ออกจาก request ไปไว้บน queue**
+4. **Batching**
+5. **pipeline สองสเตจที่ partition แล้ว**
+6. **Lazy fan-out** สำหรับ campaign ก้อนใหญ่ ๆ
+7. **Dedupe**
+8. **Rate limiting, delivery tracking แล้วก็ bounded retry**
+9. **Token cleanup**
+
+แล้วปิดท้ายด้วย product layer ที่เป็นตัวตัดสินว่าที่ส่งไปมันคุ้มมั้ย: **templating, personalization แล้วก็การแยกประเภท notification ตาม type**
+
+![ภาพรวม architecture ของ push notification pipeline ตัวเต็ม](/assets/images/blogs/design-push-notification-system/hero-pipeline.png)
+
+---
+
+## The naive version — call FCM directly
+
+ก่อนจะส่งอะไรได้ ฝั่ง backend ต้อง **มี token อยู่ในมือ** ก่อน แล้ว token พวกนี้ก็ไม่ได้เกิดจาก backend นะ — push token มันถูก generate ขึ้นมา **บนเครื่อง** โดย SDK ของ platform (FCM) เพราะงั้น setup ที่ง่ายที่สุดคือ แอปอ่าน token ของตัวเองจาก SDK แล้วพอ user login เสร็จ ฝั่ง client ก็เอา token ไป register — ยิง `POST /devices` ธรรมดา ๆ พก token, platform แล้วก็ app version ไปด้วย — จากนั้น backend ก็ **upsert** มันเข้ากับ `(user, device)` (user คนนึงมีได้หลายเครื่อง แล้วก็ไม่ต้องกลัวว่าจะซ้ำ)
+
+<MermaidDiagram chart={`
+flowchart LR
+    SDK["FCM SDK\n(on device)"] -->|"generate token"| APP["App"]
+    APP -->|"after login: POST /devices\n(token, platform, app version)"| BE["Backend"]
+    BE -->|"upsert by (user, device)"| STORE[("Token store")]
+`} />
+
+token มันหมุนเวียนแล้วก็หมดอายุได้เหมือนกัน แต่อันนั้นเดี๋ยวค่อยว่ากันทีหลัง — ตอนนี้แค่ register ได้ ก็พอมีของให้ส่งแล้ว
+
+พอมี token อยู่ในมือแล้ว จุดเริ่มแบบซื่อ ๆ ของฝั่ง **send** ก็คือ พอมี event อะไรเกิดขึ้น ก็ไป lookup device token ของ user คนนั้น แล้วเรียก push provider เข้าไปใน request นั้นเลย
+
+<MermaidDiagram chart={`
+flowchart LR
+    CALLER["Caller\n(API / internal event)"] --> SVC["Notification Service"]
+    SVC -->|"for each device token"| FCM["FCM"]
+    FCM --> DEV["Device"]
+`} />
+
+เขียนเป็นโค้ดมันก็คือ loop ง่าย ๆ นี่แหละ:
+
+```text
+on event:
+  tokens = lookup_device_tokens(user_id)
+  for token in tokens:
+      fcm.send(token, payload)   # synchronous HTTP call
+  return 200
+```
+
+แล้วก็บอกเลยนะว่า ถ้าเป็น side project หรือ internal tool แบบนี้ก็พอแล้ว มัน work ไฟล์เดียวจบ เขียนบ่ายเดียวก็ขึ้นได้ ยังไม่ต้องไป over-engineer ก่อนถึงเวลา ซอฟต์แวร์หลาย ๆ ตัวบนโลกนี้ก็อยู่แค่กล่องนี้ไปตลอดเลยด้วยซ้ำ — ถ้า volume ไม่ได้เยอะ แล้วการ block ไปสักไม่กี่ร้อย ms ไม่ได้ทำให้ใครเดือดร้อน จุดนี้ก็เป็นที่หยุดที่โอเคมาก ๆ
+
+แต่แบบนี้มันแอบ assume ว่า user ทุกคนใช้ Android ซึ่งมันไม่ใช่ — แล้วก็ยังมีรอยร้าวอันที่สองอีก: **request ของคนเรียกมันถูก block ค้างอยู่กับ push provider** เดี๋ยวเรื่อง block ค่อยแก้ทีหลัง ขอเก็บรอยร้าวที่พื้นฐานกว่าก่อน
+
+---
+
+## Not every device is Android — multi-platform from the start
+
+**ปัญหา:** ตอนนี้เราเรียก `fcm.send()` ด้วย payload ที่ hardcode ไว้ก้อนเดียว เล็งไปที่ platform เดียว พอมี user แบบเต็มสนามเข้ามา เราก็มีทั้ง iOS แล้วก็ web ด้วย — แล้วถึง FCM มันจะยิงได้ครบทั้งสาม platform แต่การ `send หาทุกคน` มันไม่ได้เกิดเองอัตโนมัตินะ ฝั่ง iOS จะส่งได้ต่อเมื่อเรา upload **APNs auth key** ของ Apple เข้า Firebase ก่อน, ฝั่ง web ก็ต้องมี **VAPID** key, แล้วแต่ละ platform ก็อยากได้ payload คนละทรง (iOS มี sound กับ badge, Android มี notification กับ data, web มี actions) ถ้า hardcode ทางเดียวไว้ วันที่ platform ที่สองมาถึงเราก็ได้นั่งเขียนใหม่ แล้วเรื่องนี้ไม่ใช่ของ advanced อะไรเลยนะ — แอปส่วนใหญ่หน้างานต้องการทั้ง iOS แล้วก็ Android ตั้งแต่วันแรกอยู่แล้ว คำถามมีแค่ว่าเราจะ build รับมันมาแบบสะอาด ๆ รึเปล่าเท่านั้นเอง
+
+**วิธีแก้:** ใช้ **FCM เป็น gateway เดียว** ไปเลย — มันยิงเข้า Android ได้ทันที, ยิงเข้า iOS ด้วยการ relay ต่อไปที่ APNs (ด้วย key ที่เรา upload ไว้), แล้วก็ยิง web ผ่าน Web Push — จากนั้นวาง **Push Handler** บาง ๆ ไว้ข้างหน้า หน้าที่เดียวของมันคือประกอบ config ของแต่ละ platform ให้ถูกจาก notification model ภายในของเรา เราแค่ส่ง notification ที่เป็นกลาง ๆ ไม่ผูก platform ให้มัน แล้วมันก็ไปเติม block `android` / `apns` / `webpush` ของ FCM ให้เอง แล้วค่อยยิง มันคือ Strategy pattern แหละ แต่ strategy ที่ว่าคือการ **ขึ้นรูป payload ตาม platform** ไม่ใช่การเปลี่ยน provider ตาม platform
+
+<MermaidDiagram chart={`
+flowchart LR
+    SVC["Notification Service"] --> PH["Push Handler\n(build per-platform config)"]
+    PH --> FCM["FCM"]
+    FCM -->|"Android (direct)"| AND["Android"]
+    FCM -->|"iOS (relayed to APNs)"| IOS["iOS"]
+    FCM -->|"Web (Web Push)"| WEB["Web"]
+`} />
+
+สิ่งที่เราได้จากจุดนี้มีสองอย่าง:
+
+- **integrate ที่เดียว ไม่ใช่สามที่** เรา config แต่ละ platform ครั้งเดียว (APNs key, VAPID) ไม่ต้องไปสร้างแล้วดูแล client ของ APNs กับ Web Push แยกกันเอง
+- **ความจุกจิกของแต่ละ platform อยู่ที่เดียว** Push Handler เป็นเจ้าของ logic แบบ `iOS ต้องการอันนี้ web ต้องการอันนั้น` แล้วก็แปลง error code ของ provider — invalid token, rate limited, retryable 5xx — ให้เป็น code ภายในที่ฝั่ง sender ของเราเข้าใจ ซึ่งเรื่องนี้สำคัญมากตอนที่เราเริ่มใส่ retry
+
+มันมีอีกทางนึงนะ: แยก worker (หรือ client แบบ direct) ต่อ provider ไปเลย — คุยกับ APNs กับ Web Push เองโดยไม่ผ่าน FCM เราจะหยิบทางนี้มาใช้ตอนที่อยากเป็นอิสระจาก Google หรืออยากได้ control ที่ละเอียดกว่าแล้วก็ latency ที่ต่ำกว่าตอน volume สูงมาก ๆ แต่มันก็ของที่ต้อง build แล้วก็ดูแลเพิ่ม เพราะงั้น default ของเราคือใช้ FCM ทำทุกอย่างไปก่อน จนกว่าจะมีอะไรเป็นรูปธรรมมาบังคับให้ต้องแยก
+
+ไม่ว่าทางไหน เราก็ต้องรู้ platform กับ token ปัจจุบันของแต่ละเครื่องอยู่ดี เพราะงั้นจุดนี้แหละที่ **device information** (token, platform, app version, last-seen) กลายเป็น lookup ระดับพระเอก
+
+ทีนี้เราก็ยิงครบทุก platform แล้ว — แต่รอยร้าวอันแรกเรายังไม่ได้แตะเลยนะ: ทุกการส่งมันยังเกิดแบบ **inline อยู่ใน request ของคนเรียก**
+
+---
+
+## Stop blocking the caller — async worker + queue
+
+**ปัญหา:** FCM มันคือ network call ไปหาระบบของคนอื่น พอมันช้า API ของ**เรา**ก็ช้าตาม พอมัน timeout คนที่เรียก**เรา**ก็กิน timeout นั้นไปเต็ม ๆ แล้วพอมี notification spike (เช่น event ใหญ่ ๆ ที่ fan out ไปหา user เยอะ ๆ) มันก็กลายเป็นกอง synchronous HTTP call ที่จับ request thread ของเราไว้เป็นตัวประกัน แถมเวลา send fail เราก็ retry ไม่ได้เลยถ้าไม่ทำให้คนเรียกต้องรอ retry ไปด้วย
+
+**วิธีแก้:** ทำให้ API แทบไม่ทำอะไรเลย — validate request, โยนลง queue, แล้ว return `202 Accepted` กลับไปทันที จากนั้นมี background worker แยกอีกตัวคอยดึงงานจาก queue มารัน Push Handler
+
+<MermaidDiagram chart={`
+flowchart LR
+    CALLER["Caller"] --> SVC["Notification Service"]
+    SVC -->|"enqueue, return 202"| Q["Message Broker (Queue)"]
+    Q --> WK["Delivery Worker"]
+    WK --> PH["Push Handler"]
+    PH -->|"send"| FCM["FCM"]
+    FCM --> DEV["Device"]
+`} />
+
+ของที่เราได้มาแบบแทบฟรีมีสองอย่าง:
+
+- **คนเรียกหลุดออกจาก provider แล้ว** API ตอบกลับในระดับ millisecond ส่วน latency ของ provider กลายเป็นปัญหาของ worker ไม่ใช่ของคนเรียกอีกต่อไป
+- **worker scale แยกของมันเองได้** พอมี spike มันไปกอง queue แทนที่จะทำ API ละลาย — แล้วเราก็แค่เพิ่ม worker มาช่วยระบาย
+
+อันนี้เป็นการเปลี่ยนที่ leverage สูงที่สุดในโพสต์นี้เลย เกือบทุกอย่างหลังจากนี้คือการขัดเกลาไอเดีย `ทำงานแบบ async โดยอิงกับ durable queue` ให้เนียนขึ้นเฉย ๆ
+
+แล้วสำหรับแอปส่วนใหญ่ จุดนี้คือเส้นชัยแล้วนะ ของ naive บวก config แบบ multi-platform บวก queue กับ worker ก็ครอบคลุม product ส่วนใหญ่บนโลกนี้ได้แล้ว — ที่เหลือข้างล่างคือกลุ่มเคสที่เล็กกว่า ที่ volume มันมหาศาลแบบสุด ๆ หรือต้องการ reliability เข้มข้นจนบังคับให้ต้องมี structure เพิ่ม ถ้านั่นไม่ใช่เรา ก็หยุดจุดนี้ได้เลยแบบสบายใจ
+
+แต่การส่งทีละ token — ต่อให้ย้ายมาไว้บน worker แล้วก็เถอะ — มันพังทันทีที่ notification ก้อนเดียวต้องไปให้ถึงเครื่องเป็นจำนวนเยอะ ๆ พร้อมกัน
+
+---
+
+## One HTTP call per token doesn't scale — batching
+
+**ปัญหา:** พอมีงานแบบ `feature ใหม่ออกแล้ว บอกทุกคนเลย` มันก็ fan out ไปเป็น token หลักล้าน ถ้ายิงทีละ HTTP request ต่อ token เราก็จ่ายค่า round-trip overhead เป็นล้านรอบ, เปลือง connection ของ provider, แล้วก็ชน rate limit เร็วมาก ตัวการ send เองนี่แหละกลายเป็น bottleneck
+
+**วิธีแก้:** เลิกส่งทีละอันแบบทื่อ ๆ ซะ — แต่ต้องเข้าใจก่อนว่า `batching` มันช่วยอะไรเรากันแน่ ตัว batch helper ของ FCM (`sendEachForMulticast`, สูงสุด 500 token) มันก็สะดวกอยู่ แต่ลึก ๆ ข้างใต้มันไม่ได้ยุบ 500 token ให้เหลือ network call เดียวนะ — มันยังยิงทีละ token เป็น request ของใครของมันอยู่ดี แค่ทำแบบ concurrent บน HTTP client ตัวเดียวกันเฉย ๆ เพราะงั้นมันก็มีดีไซน์อยู่สองแบบที่ค่าเท่ากัน:
+
+- **ใช้ batch helper ของ SDK** — มันจัดการ fan-out ทีละ token กับเรื่อง concurrency ให้เราเอง
+- **วน loop ส่งเอง** — ผลลัพธ์เหมือนกัน แต่เราคุม control ได้มากกว่าว่าจะ group token ยังไง แล้วจะยิงทีละกี่ตัว
+
+ใช้ได้ทั้งคู่แหละ แต่ตัวที่ตัดสินว่ามันจะ **stable** รึเปล่าคือ **connection pool ของ HTTP client** ต่างหาก: reuse connection (keep-alive), จำกัด max connection, ตั้ง timeout ให้สมเหตุสมผล ไม่ว่าจะเลือกทางไหน pool ที่ tune มาดีคือสิ่งที่กันเราไม่ให้ไปนั่ง thrash TCP/TLS handshake แล้วก็ socket หมดตอนโหลดหนัก ๆ — ถ้าพลาดจุดนี้ไป ไม่ว่าจะ SDK หรือ loop ที่เขียนเองก็ช่วยไม่ได้ (ถ้าไปทาง direct-to-APNs หลักการเดียวกันนี้จะออกมาในรูปของ HTTP/2 connection ตัวเดียวที่อยู่ยาว ๆ แล้วยิงหลาย stream แบบ multiplex บนนั้น)
+
+เพราะงั้นเราเลยใส่ **Notification Batcher** เข้ามา: มันจัดกลุ่ม token — ตาม platform แล้วก็ตามอะไรก็ตามที่ควรจับกลุ่ม — แล้วส่ง batch ไปให้ Push Handler ซึ่งจะยิงออกไปแบบ concurrent บน client ที่ pool ไว้
+
+<MermaidDiagram chart={`
+flowchart LR
+    WK["Delivery Worker"] --> NB["Notification Batcher"]
+    NB -->|"batch of ≤500 tokens"| PH["Push Handler"]
+    PH -->|"per-token sends,\npooled HTTP client"| FCM["FCM"]
+    FCM --> DEV["Devices"]
+`} />
+
+ส่วนที่ไม่ค่อยมีใครนึกถึงคือ **partial failure** การ multicast 500 ตัวมันไม่ได้สำเร็จหรือ fail เป็นก้อนเดียว — มันตอบกลับมาเป็น list ผลลัพธ์รายตัว: บางตัว delivered, บางตัว failed, บางตัวเป็น invalid token ที่เราควรลบทิ้ง เพราะงั้น batcher จะมาเช็คแค่ status 200 เฉย ๆ ไม่ได้ มันต้องกาง response ออกมาแล้วตัดสินว่าตัวไหน retry, ตัวไหนทิ้ง, ตัวไหน prune ออก จำจุดนี้ไว้ดี ๆ — เพราะมันคือเหตุผลว่าทำไม delivery tracking ทีหลังถึงไม่ใช่ของ optional
+
+มีกลไกสองอย่างที่ทำให้ batching มันอยู่ในร่องในรอย:
+
+- **ซอยเป็น chunk แล้วคุม concurrency** ซอย token list เป็น chunk ละ 500 ตัวสำหรับ FCM (หรือ N stream แบบ concurrent ถ้าไปทาง direct-to-APNs) — แต่อย่ายิงทุก chunk พร้อมกันทีเดียว ไม่งั้นเราก็แค่ย้ายปัญหา rate-limit จาก `ราย token` ไปเป็น `ราย chunk` เฉย ๆ ใช้ worker pool ที่มีลิมิตคอยระบาย chunk ในจังหวะที่ provider รับไหว
+- **map ผลลัพธ์รายตัวให้เป็น action ทุกตัว** `Unavailable` / 5xx → retry; `TooManyRequests` → ถอย back off ทั้ง chunk; `NotRegistered` / `InvalidRegistration` → prune token ตัวนั้นทิ้ง การ map รายตัวแบบนี้แหละคือ signal ที่ไปป้อน token cleanup ทีหลัง — response ของ batch คือที่แรกที่ token ตาย ๆ จะโผล่ตัวออกมาให้เห็น
+
+Batching ทำให้การ send ก้อนใหญ่ก้อนเดียวมันมีประสิทธิภาพ กำแพงถัดไปคือตัว pipeline เองแล้ว: worker ตัวเดียวที่ทำทั้ง lookup, เช็ค preference, ทำ template แล้วก็ส่ง มัน scale แต่ละสเตจแยกกันไม่ได้ — แถมเราไม่มีทั้ง ordering แล้วก็ replay
+
+---
+
+## Split the work — a two-stage Kafka pipeline
+
+**ปัญหา:** ตอนนี้ worker ตัวเดียวของเราทำงานเยอะมาก — โหลด user info, โหลด device info, validate, เช็ค preference, render template, batch, แล้วก็ส่ง งานพวกนี้ต้นทุนต่างกันลิบเลย DB lookup ที่ช้า ๆ ตัวเดียวก็ block worker ที่ควรจะได้ส่งงานอยู่ เราแยก scale `enrichment` ออกจาก `delivery` ไม่ได้ แล้ว queue ธรรมดาก็ไม่ให้ทั้ง ordering แล้วก็ replay — ถ้า worker crash กลาง batch เราก็ได้แต่เดาว่าเกิดอะไรขึ้น
+
+**วิธีแก้:** ผ่ามันเป็น **สองสเตจ** โดยมี durable log (Kafka) มาคั่นระหว่างสองสเตจ แล้วก็ **partition ด้วย user ID**
+
+- **Pre-Delivery Worker** (สเตจ enrichment): user information, **device/token enrichment** (แปลง user ให้กลายเป็น device token + platform ของเขา), validator, notification batcher, user-preference checker, แล้วก็ template parser มันเปลี่ยน event ดิบ ๆ แบบ `notify user X` ให้กลายเป็น payload ที่ resolve ครบพร้อมส่ง แล้วค่อย publish ไป topic ถัดไป
+- **Delivery Worker** (สเตจ send): consume payload ที่พร้อมแล้ว แล้วไม่ทำอะไรเลยนอกจากส่งต่อให้ FCM ผ่าน Push Handler
+
+<MermaidDiagram chart={`
+flowchart LR
+    CALLER["Caller"] --> SVC["Send Notification Service"]
+    SVC --> Q1["Kafka topic 1\n(partition by user_id)"]
+    subgraph PRE["Pre-Delivery Worker"]
+        ENR["user info\ndevice/token enrichment\n(user → device tokens)\nvalidator\npreference checker\ntemplate parser\nbatcher"]
+    end
+    Q1 --> PRE
+    PRE --> DB[("DB")]
+    PRE --> Q2["Kafka topic 2\n(ready-to-send)"]
+    Q2 --> DEL["Delivery Worker"]
+    DEL --> PH["Push Handler"]
+    PH --> DEV["Devices"]
+`} />
+
+ทำไมต้อง Kafka แล้วทำไมต้อง partition ด้วย `user_id`:
+
+- **scale แยกกันได้** enrichment ติดที่ DB ส่วน delivery ติดที่ network — ทีนี้แต่ละฝั่ง scale บน consumer group ของตัวเองได้เลย
+- **ordering ในจุดที่มันสำคัญ** event ทั้งหมดของ user คนนึงจะตกลงไปที่ partition เดียวกัน เลยถูกประมวลผลตามลำดับ (เราคงไม่อยากให้ `order ของคุณจัดส่งแล้ว` มันแซง `order ของคุณกำลังแพ็คอยู่` หรอก)
+- **replay แล้วก็ durability** consumer ที่ crash ไปก็กลับมาทำต่อจาก offset เดิมได้ ถ้ามี bug ปลายน้ำทำข้อมูลพัง เราก็ reset offset แล้ว reprocess ใหม่ได้ — queue ธรรมดาทำแบบนี้ไม่ได้
+
+มีชิ้นนึงในสเตจ enrichment ที่ควรดึงออกมาพูดหน่อย: ตัว **device/token enricher** คนเรียกบอกว่า `notify user X` — แต่เราไม่เคยส่ง push หา **user** เราส่งหา **device** ต่างหาก step นี้แหละคือตัวที่แปลง `user_id` ให้กลายเป็นเป้าหมายที่ยิงได้: ทุก `(device_token, platform, locale)` ที่ user คนนั้นยัง active อยู่ มันแอบทำงานอยู่สามอย่างเงียบ ๆ:
+
+![fan-out สองแบบ: campaign กระจายไปหา user หลายคน ส่วน user คนนึงกระจายไปหา device ของตัวเอง](/assets/images/blogs/design-push-notification-system/two-fan-outs.png)
+
+- **มันคือ fan-out อันที่สอง** campaign จะกระจาย message นึงออกไปหา **user** เป็นล้าน ส่วนอันนี้กระจาย user คนนึงออกไปหา **N device** ของเขา `notification หนึ่งอัน` กลายเป็น `การส่ง N ครั้งไปที่ provider` ก็จุดนี้แหละ — เป็น fan-out อีกชั้นที่ซ้อนทับอยู่บน fan-out ของ campaign อีกที
+- **มันแปะ platform ให้** ซึ่งเป็นสิ่งเดียวที่ Push Handler ปลายน้ำเอาไปใช้ตัดสินใจได้ — ไม่มี platform tag ก็ประกอบ payload ของ iOS / Android / web ให้ถูกไม่ได้
+- **มันคัด device ที่ตายแล้วทิ้งตั้งแต่ตอน read** ข้าม token ที่ `last_seen` เก่าเก็บไปก่อนที่จะเปลือง send ฟรี ๆ อันนี้เป็นคู่หูฝั่ง read ของ token cleanup ที่อยู่ถัดลงไปข้างล่าง
+
+เพราะงั้นกล่อง `device info` ที่ดูเรียบ ๆ นั่น แท้ ๆ แล้วมันคือ token enricher: เส้นแบ่งที่ event ซึ่งมองเป็น user เปลี่ยนร่างเป็นการส่งที่มองเป็น device
+
+นี่แหละคือรูปร่างของระบบตัวเต็ม — แล้วมันก็เอาอยู่ ไปจนถึงวันที่ campaign ก้อนเดียวพยายามยิงให้ถึง user เกือบทั้ง base ในช็อตเดียว
+
+---
+
+## One campaign, 60M recipients — fan-out without flooding the queue
+
+**ปัญหา:** ฝั่ง marketing อยากยิง campaign ไปหา active base ทั้งหมด — ตอน peak คือ **60–70M คนในช็อตเดียว** อันนี้คือ fan-out ระดับ **campaign** — message เดียวไปหา user เป็นล้าน เป็นพี่ใหญ่ของ device fan-out รายคนจาก pipeline เมื่อกี้ ท่าแบบ naive คือกาง 60–70M นั่นออกเป็น notification event รายตัว แล้วเทลง broker ทีเดียวหมด ซึ่งมันทำให้ queue ท่วม, อย่างอื่นอดตายหมด (MFA code ของเราตอนนี้ติดอยู่หลัง promo 60M ตัว) แล้วถ้ามีใคร cancel campaign กลางคัน เราก็มี message ค้างใน flight อยู่หลายสิบล้านที่เรียกคืนกลับมาง่าย ๆ ไม่ได้
+
+**วิธีแก้:** อย่าเพิ่งกาง audience ทั้งก้อนออกมาตั้งแต่แรก เก็บเป็น **campaign definition + audience query** ไว้ แล้วให้ pipeline **ค่อย ๆ กางมันแบบ lazy** — ไล่ page ผู้รับทีละ chunk: enqueue chunk นึง, ปล่อยให้มันระบายจนหมด, แล้วค่อยดึง chunk ถัดไป มี fan-out step เฉพาะของมัน (producer ที่นั่งอยู่หน้าสเตจ pre-delivery) คอยเดิน audience ทีละ page แทนที่จะระเบิดมันลง broker ในช็อตเดียว
+
+![lazy audience fan-out: กาง campaign เป็น chunk ทีละก้อนแทนที่จะเทหมดทีเดียว](/assets/images/blogs/design-push-notification-system/fan-out.png)
+
+สิ่งที่เราได้:
+
+- **queue depth มีขอบเขต** broker ถือแค่ working set — ไม่กี่ chunk — ไม่ใช่ทั้ง campaign traffic อื่น ๆ ก็ไหลต่อได้เรื่อย ๆ
+- **ได้ backpressure มาฟรี ๆ** consumer ช้าก็แค่แปลว่าเรา page ช้าลง ตัว cursor ของ audience รอแทนที่จะปล่อยให้ broker ล้น
+- **ปุ่ม pause/cancel ที่กดแล้วเอาอยู่** สมมติมีคนเจอ typo ใน copy หรือ marketing ตัดสินใจกลางทางว่าจะดึง campaign กลับ — แล้วเพราะ audience ส่วนใหญ่ยังไม่ได้ถูก enqueue การหยุดมันก็แค่ `หยุดเลื่อน cursor` ไม่ใช่ `ไล่ตามล่า message 60M ตัวที่อยู่บน broker ไปแล้ว` อันไหนที่ยิงออกไปแล้วก็เลยตามเลย แต่เราจำกัดรัศมีความเสียหายได้ แทนที่จะปล่อยให้ send ที่รู้อยู่ว่าผิดมันวิ่งจนจบ
+
+แล้วจุดนี้แหละที่เรื่อง **priority** เริ่มสำคัญ — marketing blast 60M ตัว กับ MFA code อันเดียว ไม่ควรถูกต่อคิวแบบเท่ากัน — แต่เดี๋ยวเราจะวกกลับมาเรื่องนี้ทีหลัง ก่อนอื่น: ที่ volume ระดับนี้ ทุก hop มันเป็น at-least-once หมด แล้ว push ตัวเดียวกันก็ยิงซ้ำได้สองรอบ ตอน volume น้อย ๆ เราก็แค่ยักไหล่ แต่จุดนี้ user สังเกตเห็นแน่นอน
+
+---
