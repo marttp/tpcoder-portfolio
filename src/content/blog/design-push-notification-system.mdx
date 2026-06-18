@@ -125,15 +125,20 @@ This works great until one notification has to reach a lot of devices at once �
 
 **The problem:** "new feature launched, tell everyone" fans out to millions of tokens. At one HTTP request per token you pay the round-trip overhead millions of times, you burn through provider connections, and you hit rate limits fast. The send itself becomes the bottleneck.
 
-**The fix:** stop sending one at a time. FCM gives you a batch primitive — one request carries up to **500 tokens**, so a million tokens become ~2,000 calls instead of a million (topics and device groups exist for true broadcast on top of that). (If you took the direct-provider route, the equivalent is APNs' HTTP/2 connection: no batch endpoint, but you multiplex hundreds of concurrent streams over one reused connection. Same idea — stop paying a round-trip per token.)
+**The fix:** stop doing it naively one at a time — but know what "batching" actually buys you. FCM's batch helper (`sendEachForMulticast`, up to 500 tokens) is convenient, but under the hood it doesn't collapse 500 tokens into one network call — it still sends each token as its own request, just concurrently over a shared HTTP client. So you really have two equivalent designs:
 
-So we add a **Notification Batcher**: it groups tokens — by platform, and by anything else that lets a single call do more work — and hands batches to the Push Handler instead of single tokens.
+- **Use the SDK's batch helper** — it manages the per-token fan-out and concurrency for you.
+- **Iterate and send yourself** — same outcome, more control over how you group tokens and how many you fire at once.
+
+Both work. What actually decides whether this is *stable* is the **HTTP client connection pool**: reuse connections (keep-alive), cap max connections, set sane timeouts. Whichever route you pick, a tuned pool is what keeps you from thrashing TCP/TLS handshakes and exhausting sockets under load — get that wrong and neither the SDK nor your own loop saves you. (On the direct-to-APNs route the same principle shows up as one long-lived HTTP/2 connection with many multiplexed streams.)
+
+So we add a **Notification Batcher**: it groups tokens — by platform, and by anything else worth grouping — and hands batches to the Push Handler, which sends them concurrently over that pooled client.
 
 <MermaidDiagram chart={`
 flowchart LR
     WK["Delivery Worker"] --> NB["Notification Batcher"]
     NB -->|"batch of ≤500 tokens"| PH["Push Handler"]
-    PH -->|"FCM batch send"| FCM["FCM"]
+    PH -->|"per-token sends,\npooled HTTP client"| FCM["FCM"]
     FCM --> DEV["Devices"]
 `} />
 
@@ -381,7 +386,7 @@ We started with a loop that called FCM inside the request, and ended with a part
 
 1. **Go async off a durable log** — the one change everything else builds on.
 2. **Reach every platform through FCM** — one gateway plus per-platform config, not a client per provider.
-3. **Batch** so one big send isn't a million HTTP calls.
+3. **Batch and pool connections** so a big send runs as concurrent requests over a reused HTTP client, not a fresh handshake per token.
 4. **Split into stages and partition** so enrichment and delivery scale independently, with ordering and replay.
 5. **Fan out lazily** so a 60M-recipient campaign expands in chunks instead of flooding the queue.
 6. **Dedupe** so at-least-once transport doesn't become double-buzz.
