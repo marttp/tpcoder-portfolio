@@ -18,11 +18,21 @@ I'm opening with push notifications because I spent a good chunk of my time in J
 
 The important part of each version below is the **problem statement first**. None of these boxes exist because they look nice on a diagram — every one of them got added because something hurt. If you ever build this, you'll likely walk the same road, so I'll point out where the pain comes from before showing the fix.
 
-It's a long road, so here's the map — each step forced by the one before it: a **direct provider call** → move it **off the request onto a queue** → a **provider abstraction** for iOS and web → **batching** → a **two-stage, partitioned pipeline** → **lazy fan-out** for huge campaigns → **dedupe** → **rate limiting, delivery tracking, and bounded retry** → **token cleanup**. Then the product layer that decides whether any of it was worth sending: **templating, personalization, and treating notifications by type**.
+It's a long road, so here's the map — each step forced by the one before it:
 
-> Series — *Backend System Design (start simple → evolve)*. This is **#1**. Next up: a multi-channel Delivery System, then a Webhook Callback System.
+1. A **direct provider call**
+2. Move it **off the request onto a queue**
+3. A **provider abstraction** for iOS and web
+4. **Batching**
+5. A **two-stage, partitioned pipeline**
+6. **Lazy fan-out** for huge campaigns
+7. **Dedupe**
+8. **Rate limiting, delivery tracking, and bounded retry**
+9. **Token cleanup**
 
-{/* IMAGE PROMPT (hero-pipeline.png): Wide banner hero, clean modern architecture illustration on a light background. SINGLE left-to-right flow with NO duplicated boxes — exactly one of each component. Flow: Caller (API & events) → Load Balancer → Send Notification Service → Kafka topic (partitioned by user_id) → Pre-Delivery Worker (validation, DB read, preference check, template parser, batcher) → Kafka topic (ready-to-send) → Delivery Worker → Push Handler → providers FCM / APNs / Web Push → Devices. One Redis Dedupe Store attached to the PUSH HANDLER (the send boundary), not the Delivery Worker. One side branch off the Delivery Worker: result queue → one Delivery Track Aggregator → two stores side by side, Columnar DB (analytics) and Relational DB (state). One Retry Delivery Worker that loops failed payloads back into the Delivery Worker, plus a small Dead-letter box for exhausted retries. Flat vector, soft shadows, tech-blog aesthetic, 2–3 accent colors, labeled boxes, no photorealism. */}
+Then the product layer that decides whether any of it was worth sending: **templating, personalization, and treating notifications by type**.
+
+{/* IMAGE PROMPT (hero-pipeline.png): Wide banner hero, clean modern architecture illustration on a light background. SINGLE left-to-right flow with NO duplicated boxes — exactly one of each component. Flow: Caller (API & events) → Load Balancer → Send Notification Service → Kafka topic (partitioned by user_id) → Pre-Delivery Worker (validation, device/token enrichment resolving user → device tokens, preference check, template parser, batcher) → Kafka topic (ready-to-send) → Delivery Worker → Push Handler → providers FCM / APNs / Web Push → Devices. One Redis Dedupe Store attached to the PUSH HANDLER (the send boundary), not the Delivery Worker. One side branch off the Delivery Worker: result queue → one Delivery Track Aggregator → two stores side by side, Columnar DB (analytics) and Relational DB (state). One Retry Delivery Worker that loops failed payloads back into the Delivery Worker, plus a small Dead-letter box for exhausted retries. Flat vector, soft shadows, tech-blog aesthetic, 2–3 accent colors, labeled boxes, no photorealism. */}
 
 ![End-state push notification pipeline architecture](/assets/images/blogs/design-push-notification-system/hero-pipeline.png)
 
@@ -145,7 +155,7 @@ Batching makes a single big send efficient. The next wall is the pipeline itself
 
 **The fix:** split into **two stages** with a durable log (Kafka) between them, and **partition by user ID**.
 
-- **Pre-Delivery Worker** (the enrichment stage): user information, device information, a validator, the notification batcher, a user-preference checker, and a template parser. It turns a raw "notify user X" event into a fully-resolved, ready-to-send payload, then publishes to the next topic.
+- **Pre-Delivery Worker** (the enrichment stage): user information, **device/token enrichment** (resolving the user to their device tokens + platform), a validator, the notification batcher, a user-preference checker, and a template parser. It turns a raw "notify user X" event into a fully-resolved, ready-to-send payload, then publishes to the next topic.
 - **Delivery Worker** (the send stage): consumes ready payloads and does nothing but talk to providers via the Push Handler.
 
 <MermaidDiagram chart={`
@@ -153,7 +163,7 @@ flowchart LR
     CALLER["Caller"] --> SVC["Send Notification Service"]
     SVC --> Q1["Kafka topic 1\n(partition by user_id)"]
     subgraph PRE["Pre-Delivery Worker"]
-        ENR["user / device info\nvalidator\npreference checker\ntemplate parser\nbatcher"]
+        ENR["user info\ndevice/token enrichment\n(user → device tokens)\nvalidator\npreference checker\ntemplate parser\nbatcher"]
     end
     Q1 --> PRE
     PRE --> DB[("Relational DB")]
@@ -169,13 +179,25 @@ Why Kafka specifically, and why partition by `user_id`:
 - **Ordering where it matters.** All events for one user land on the same partition, so they're processed in order (you don't want a "your order shipped" overtaking "your order is being packed").
 - **Replay and durability.** A crashed consumer resumes from its offset. If a downstream bug corrupts something, you can reset the offset and reprocess — a plain queue can't do that.
 
+One piece is worth pulling out of that enrichment stage: the **device/token enricher**. A caller says "notify user X" — but you never push to a *user*, you push to *devices*. This is the step that resolves `user_id` into the real targets: every active `(device_token, platform, locale)` the user has. It quietly does three jobs:
+
+{/* IMAGE PROMPT (two-fan-outs.png): Clean conceptual illustration on a light background contrasting TWO kinds of fan-out, side by side. Left panel labeled "Audience fan-out": one "Campaign" node expanding into many user icons (millions of users). Right panel labeled "Device fan-out": one "User" node expanding into a few device icons (phone, tablet, laptop/browser), each tagged with a platform (APNs, FCM, Web Push). Make it obvious the left is one→many users and the right is one→few devices. Flat vector, soft shadows, 2–3 accent colors, clear labels, no photorealism. */}
+
+![The two fan-outs: a campaign expands to many users, while one user expands to their devices](/assets/images/blogs/design-push-notification-system/two-fan-outs.png)
+
+- **It's the second fan-out.** A campaign fans one message out to millions of *users*; this fans one user out to their *N devices*. "One notification" becomes "N provider sends" right here — a separate fan-out layered on top of the campaign one.
+- **It attaches the platform**, which is the only thing the Push Handler can switch on downstream — no platform tag, no FCM-vs-APNs-vs-Web-Push routing.
+- **It drops dead devices at read time** — skip tokens whose `last_seen` is ancient before you waste a send. That's the read-side companion to the token cleanup further down.
+
+So that unassuming "device info" box is really a token enricher: the boundary where user-centric events turn into device-centric sends.
+
 This is the shape of the real thing — and it holds up right until a single campaign tries to reach most of your user base in one shot.
 
 ---
 
 ## One campaign, 60M recipients — fan-out without flooding the queue
 
-**The problem:** marketing wants a campaign sent to the whole active base — at peak that was **60–70M recipients in a single blast**. The naive move is to expand that into 60–70M individual notification events and dump them all on the broker at once. That floods the queue, starves everything else (your 2FA codes are now stuck behind 60M promos), and if someone cancels the campaign halfway, you've got tens of millions of in-flight messages you can't easily recall.
+**The problem:** marketing wants a campaign sent to the whole active base — at peak that was **60–70M recipients in a single blast**. This is the *campaign* fan-out — one message to millions of users, the bigger sibling of the per-user device fan-out from the pipeline. The naive move is to expand that into 60–70M individual notification events and dump them all on the broker at once. That floods the queue, starves everything else (your 2FA codes are now stuck behind 60M promos), and if someone cancels the campaign halfway, you've got tens of millions of in-flight messages you can't easily recall.
 
 **The fix:** don't materialize the whole audience up front. Store the **campaign definition + an audience query**, and let the pipeline **expand it lazily** — page through recipients in chunks: enqueue a chunk, let it drain, fetch the next. A dedicated fan-out step (a producer sitting in front of the pre-delivery stage) walks the audience a page at a time instead of exploding it into the broker in one shot.
 
@@ -304,7 +326,7 @@ With dead tokens pruning themselves, the infrastructure side is genuinely done. 
 
 - **Preference check** — is this user opted in to this category? Are we inside their quiet hours (in *their* timezone)? If either fails, drop or defer the notification *here*, before it costs a send.
 - **Template render** — resolve the template per user: locale/language, and merge fields like name, amount, or order status.
-- **Personalization** — choose *which* content this user should get, which is where this pipeline plugs into an audience/segmentation service (a later post in this series).
+- **Personalization** — choose *which* content this user should get, which is where this pipeline plugs into an audience/segmentation service — a topic big enough to stand on its own.
 
 <MermaidDiagram chart={`
 flowchart TD
@@ -370,10 +392,4 @@ We started with a loop that called FCM inside the request, and ended with a part
 10. **Treat notifications by type** — priority and collapse for transactional, a frequency cap for marketing, and separate lanes once volume demands it, so promos never drown the alerts that matter.
 
 The meta-point: **nobody should build the final version on day one.** Every box earned its place by solving a problem the previous version created. If you start simple and let real constraints push you, you tend to arrive somewhere close to this — and you'll understand every piece, because you felt the pain that added it.
-
-Next in the series: generalizing this from push-only into a **multi-channel Delivery System** (email, SMS, in-app inbox) — where the provider abstraction and preference gate get a lot more interesting.
-
----
-
-_These are notes from building this for real, simplified for a blog. If I got something wrong or you'd shape it differently, I'd genuinely like to hear it._
 
