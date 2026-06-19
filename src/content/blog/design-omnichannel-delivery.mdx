@@ -67,3 +67,106 @@ flowchart LR
 Two things this gets us. The scheduler is **durable** — a crash doesn't lose the 9am fire, because it's a persisted entry, not an in-memory timer. And the work is **horizontally drainable** — N chunks across M workers, with no single process owning 60M rows.
 
 But where do those chunks actually come from? That's the next question — and the answer is deliberately *not* "query them right here."
+
+---
+
+## Consume a prepared audience — don't query it here
+
+**The problem:** the obvious move is to let the delivery job run the audience query itself at fire time — `SELECT ... WHERE eligible`. At 60M that's a monster query competing with everything else, it's slow, and it welds delivery to the segmentation logic. Worst of all you're running it under time pressure — the campaign is firing *now* — which is the worst possible moment to hammer the database.
+
+**The fix:** separate *who* from *deliver to them*. An upstream system prepares the audience ahead of time — segments it, materializes the recipient list, and writes it out as **chunks** (a chunk being a bounded slice of recipients, sized so one worker can chew through it). When the schedule fires, the delivery side queries nothing — it just **reads chunk by chunk and sends**.
+
+<MermaidDiagram chart={`
+flowchart LR
+    PREP["Audience prep\n(upstream, ahead of time)"] --> STORE[("Prepared audience\n(chunks)")]
+    SCHED["Scheduler fires"] --> WK["Delivery workers"]
+    STORE -->|"read chunk"| WK
+    WK --> SEND["Send"]
+`} />
+
+This is exactly what I ran: the audience was prepared and chunked well ahead of time, and the delivery side's whole job was to read its chunk and push it out. Two wins fall out of it — the heavy segmentation work happens off the critical path (not while the campaign is firing), and delivery scales by simply adding workers that each grab the next unread chunk.
+
+How the audience actually gets built and chunked — the segmentation, the ETL behind it — is a system of its own, and a post of its own later in this series. Here it's enough that the chunks show up ready to read.
+
+So far, though, everything's still gone out on one channel. "Reach the customer" almost never means only push.
+
+---
+
+## Reach more than one channel — omnichannel dispatch
+
+**The problem:** push alone misses people — notifications are switched off, the app's been uninstalled, or the message matters enough that you want email or SMS as backup. "Deliver to the customer" really means meeting them on whatever channel actually reaches them.
+
+**The fix:** the backbone reads a chunk and, per recipient, **dispatches to one or more channels**. Each channel sits behind a common interface (the same Strategy idea as the push handler from last post) — but the part that bites is that **the channels aren't symmetric**. A quick tour of what makes each one its own animal:
+
+- **Push** — the system from the last post; the backbone just calls it. Fast and cheap, but ephemeral.
+- **Email** — asynchronous and slow; you hand it to a provider (SES, SendGrid) and live with bounces, spam reputation, and the gap between "accepted" and "actually in the inbox."
+- **SMS** — the expensive one. You pay per message, carriers rate-limit you, and you're boxed in by a hard length limit — so SMS is usually a deliberate *fallback*, not a default.
+- **Inbox** — and this one isn't a "send" at all (more on that next).
+
+<MermaidDiagram chart={`
+flowchart LR
+    WK["Delivery worker"] --> DISP{"Dispatch per recipient"}
+    DISP -->|"push"| PUSH["Push system (post #2)"]
+    DISP -->|"email"| EMAIL["Email provider"]
+    DISP -->|"SMS"| SMS["SMS / carrier"]
+    DISP -.->|"write item"| INBOX["Inbox service"]
+`} />
+
+**The inbox is a neighbour service, not a channel you fire-and-forget.** "Delivering" to it means writing a record into a per-user feed — the bell-icon timeline — that the user pulls up later. Items are grouped (promotion / system / customer support), each one an image-optional card plus a message that deeplinks into the app or out to the web. Crucially it owns a whole **read side** the fire-and-forget channels don't have: pagination, read/unread state, the unread badge count. The backbone just hands it an item to store; everything after that is the inbox service's job. (Often you do both — fire a push *and* write the inbox item — so tapping the push lands the user right on the stored item.)
+
+---
+
+## A delivery workflow, not a single send — fallback
+
+**The problem:** dispatching to a channel isn't the finish line. A push comes back "device unregistered," an SMS fails at the carrier — and for a message that matters you don't want to just shrug. You want to try the next channel. That's no longer a single send; it's a small **workflow** per recipient, with state.
+
+**The fix:** model per-recipient delivery as a workflow with explicit steps and a **fallback chain** — try push, and if it doesn't land within a window, fall back to SMS or email, recording the outcome at each step. Every step is idempotent and tracked, so a retry or a crash neither double-sends nor loses its place.
+
+<MermaidDiagram chart={`
+flowchart LR
+    START["Recipient in chunk"] --> P["Try push"]
+    P -->|"delivered"| DONE["Done"]
+    P -->|"failed / no signal"| F["Fallback: SMS or email"]
+    F -->|"delivered"| DONE
+    F -->|"failed"| DLQ["Give up + record"]
+`} />
+
+In practice I ran this on **Cadence** — Uber's durable workflow engine (Temporal is the better-known fork of it). This is squarely what a workflow engine is for: the per-recipient flow is durable workflow code, the fallback window is just a workflow timer, retries come built in, and a crashed worker resumes mid-flow instead of double-sending or losing its place. You stop hand-rolling the state machine, the timers, and the retry bookkeeping — the engine owns all three. (Its durable timers also cover the scheduled fire from earlier: the 9am blast is just a workflow that starts on a timer.)
+
+The honest caveat is the same one from the push post: a push "delivered" only means the provider accepted it, so "fall back if not delivered" leans on the **client-side delivery signal** from last time. Without that signal, fallback really means "fall back only if the provider outright rejected it" — which is weaker. Pick your fallback trigger knowing which signal you actually have.
+
+---
+
+## Cross-channel dedupe, frequency caps, and cost
+
+**The problem:** the moment one person is reachable on several channels, three fresh ways to annoy them — or overspend — appear. The same campaign can hit them on push *and* email *and* SMS (cross-channel triple-buzz). The daily frequency cap from the push post was per-channel, so the *total* touches across channels can quietly blow past what you meant. And SMS costs real money per message, so routing blindly is a budget leak.
+
+**The fix:** lift all three up to the backbone, the one place that can see every channel at once:
+
+- **Cross-channel dedupe.** The idempotency key isn't per-channel — it's per (campaign/event, recipient). Once the message lands on *any* channel, the others stand down. Same event-identity key idea as the push dedupe, just scoped across channels.
+- **Frequency cap across channels.** Count touches per recipient across *every* channel, not per channel. The cap is a property of the *person*, not the pipe.
+- **Cost-aware routing.** Prefer the cheap, high-reach channels (push, inbox) and treat SMS as a fallback you actually chose to pay for. This is where the real money hides: every push that lands is an SMS you never had to send.
+
+<MermaidDiagram chart={`
+flowchart LR
+    REC["Recipient"] --> GATE{"Backbone (sees all channels)"}
+    GATE -->|"already delivered elsewhere?"| DROP["Skip"]
+    GATE -->|"over the per-person cap?"| DROP
+    GATE -->|"ok — cheapest reaching channel"| DISP["Dispatch"]
+`} />
+
+---
+
+## Wrapping up
+
+We started with a cron job that loops a list and sends on one channel, and ended with a backbone that fires on a schedule, reads a prepared audience chunk by chunk, and drives each recipient through an omnichannel workflow. The path, in order:
+
+1. **Split scheduling from sending** so a campaign fires reliably and the work is drainable in chunks.
+2. **Consume a prepared, chunked audience** instead of querying 60M rows while the campaign is firing.
+3. **Dispatch across channels** — push, email, SMS — behind one interface, respecting that they're not symmetric.
+4. **Treat the inbox as a neighbour service** you write to, not a channel you fire.
+5. **Make delivery a workflow with fallback**, not a single send.
+6. **Pull dedupe, frequency caps, and cost up to the backbone** so they're reasoned about per person, across all channels.
+
+The meta-point holds from the last two posts: **nobody needs this on day one.** Most apps are a single `send()` on one channel, fired from a job — and that's completely fine. This backbone only earns its keep once you're running *scheduled, multi-channel campaigns to a large, prepared audience*. Don't build the conductor before you have an orchestra to conduct.
+
