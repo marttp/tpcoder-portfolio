@@ -2,19 +2,19 @@
 
 Format: Each post starts with a single-service design that works, then adds real-world constraints until it evolves into a multi-service architecture.
 
-Reference post: `payment-backend-stripe-integration-en.mdx` (~650 lines)
+Reference posts: `payment-backend-stripe-integration-en.mdx` (~750 lines), `design-push-notification-system.mdx` (~570 lines)
 
 ## Series Overview
 
 | # | Post | Status | EN | TH |
 |---|------|--------|----|----|
-| 1 | Push Notification System | Draft (EN) | drafted, not pushed | - |
-| 2 | Delivery System (Multi-channel) | Not started | - | - |
-| 3 | Webhook Callback System | Not started | - | - |
-| 4 | Icon Management / Segmentation | Not started | - | - |
-| 5 | Audience Platform (ETL Pipeline) | Not started | - | - |
-| 6 | Campaign Management Platform | Not started | - | - |
-| 7 | Cashback System | Not started | - | - |
+| 1 | Payment Backend with Stripe Integration | Published | pubDate 2026-06-13 | published |
+| 2 | Push Notification System | Published | pubDate 2026-06-17 | published |
+| 3 | Delivery System (Multi-channel) | Not started | - | - |
+| 4 | Webhook Callback System | Not started | - | - |
+| 5 | Icon Management / Segmentation | Not started | - | - |
+| 6 | Audience Platform (ETL Pipeline) | Not started | - | - |
+| 7 | Campaign Management Platform | Not started | - | - |
 
 ## Evolution Template (per post)
 
@@ -31,26 +31,49 @@ Each post follows this narrative arc:
 
 ## Per-Post Outlines
 
-### 1. Push Notification System
+### 1. Payment Backend with Stripe Integration
+
+File: `payment-backend-stripe-integration-en.mdx` / `-th.mdx`
+
+Reverse-engineered from the published post (750 lines):
+
+- [x] v1: Payment lifecycle foundations (money flow, auth -> capture -> settlement, PSP vs build-your-own vs no-code)
+- [x] v2: Synchronous charge path (PaymentIntent, Stripe Elements, 3DS/SCA challenge)
+- [x] v3: Async webhook pipeline (dumb receiver + message queue + background workers)
+- [x] v4: Idempotency at every layer (client -> backend -> Stripe -> webhook, concurrent key race)
+- [x] v5: Database for correctness (minor units, zero-decimal currencies, state machine, optimistic locking)
+- [x] v6: Double-entry ledger (balanced debits/credits, append-only, hard invariant check)
+- [x] v7: Out-of-order events + enforced state transitions (SELECT FOR UPDATE, row lock)
+- [x] v8: Saved cards, subscriptions, refunds, disputes (each with own state machine)
+- [x] v9: Stripe Connect (marketplace split payments, connected accounts)
+- [x] v10: Reconciliation + transactional outbox + production edge cases (timeout, stale reads, payout failures, partial capture leftovers)
+
+Key experience: PayPay Card (chargeback system), Coda (authorize/capture separation, PCI-DSS, vault service)
+
+---
+
+### 2. Push Notification System
 
 File: `design-push-notification-system.mdx` / `-th.mdx`
 
-- [x] v1: Direct FCM call per device
-- [x] v2: Async background worker + queue
-- [x] v3: Multi-platform (FCM + APNs) abstraction
-- [x] v4: Batching (FCM multicast, token grouping)
-- [x] v5: Kafka pipeline
-- [x] v6: Dedupe processor
-- [x] v7: Scale to 120M+ daily
-- [x] v8: Templating + personalization
+Reverse-engineered from the published post (570 lines):
 
-EN draft complete (not pushed). 2 IMAGE_PLACEHOLDER prompts (hero end-state diagram, double-buzz concept). TH pending.
+- [x] v1: Direct FCM call per device
+- [x] v2: Multi-platform (FCM + APNs) abstraction
+- [x] v3: Async background worker + queue
+- [x] v4: Batching (FCM multicast, token grouping)
+- [x] v5: Two-stage Kafka pipeline
+- [x] v6: Fan-out (one campaign -> 60M recipients without flooding the queue)
+- [x] v7: Dedupe processor (stop the double-buzz)
+- [x] v8: Rate limits, delivery tracking, bounded retry (survive 120M+ daily)
+- [x] v9: Token cleanup + device registry
+- [x] v10: Templating + personalization + type/priority/frequency caps
 
 Key experience: PayPay push notification service (120M+ daily notifications)
 
 ---
 
-### 2. Delivery System (Multi-channel)
+### 3. Delivery System (Multi-channel)
 
 File: `design-delivery-system.mdx` / `-th.mdx`
 
@@ -66,7 +89,7 @@ Key experience: PayPay timeline notification system
 
 ---
 
-### 3. Webhook Callback System
+### 4. Webhook Callback System
 
 File: `design-webhook-callback-system.mdx` / `-th.mdx`
 
@@ -82,7 +105,7 @@ Key experience: Coda webhook model (batch GET -> real-time POST with SQS retries
 
 ---
 
-### 4. Icon Management / Segmentation
+### 5. Icon Management / Segmentation
 
 File: `design-icon-management-segmentation.mdx` / `-th.mdx`
 
@@ -97,7 +120,7 @@ Key experience: PayPay personalized asset delivery (Akka -> Spring Boot Kotlin, 
 
 ---
 
-### 5. Audience Platform (ETL Pipeline)
+### 6. Audience Platform (ETL Pipeline)
 
 File: `design-audience-platform.mdx` / `-th.mdx`
 
@@ -112,7 +135,7 @@ Key experience: PayPay Spark-Scala ETL jobs, audience grouping, data lake migrat
 
 ---
 
-### 6. Campaign Management Platform
+### 7. Campaign Management Platform
 
 File: `design-campaign-management-platform.mdx` / `-th.mdx`
 
@@ -127,22 +150,6 @@ Key experience: PayPay campaign management platform (3M yen SMS savings)
 
 ---
 
-### 7. Cashback System
-
-File: `design-cashback-system.mdx` / `-th.mdx`
-
-- [ ] v1: Balance column (add/subtract)
-- [ ] v2: Transaction log (append-only)
-- [ ] v3: Idempotency keys for dedup
-- [ ] v4: Expiry + scheduled jobs
-- [ ] v5: Double-entry ledger (debit/credit)
-- [ ] v6: Reconciliation against payment system
-- [ ] v7: Scale (partitioning, reporting)
-
-Key experience: Payment processing background, ledger experience from PayPay/Coda
-
----
-
 ## Cross-Linking Strategy
 
 - Each post references the others where relevant
@@ -153,18 +160,18 @@ Key experience: Payment processing background, ledger experience from PayPay/Cod
 
 | Post | EN file | TH file |
 |------|---------|---------|
-| 1 | design-push-notification-system.mdx | design-push-notification-system-th.mdx |
-| 2 | design-delivery-system.mdx | design-delivery-system-th.mdx |
-| 3 | design-webhook-callback-system.mdx | design-webhook-callback-system-th.mdx |
-| 4 | design-icon-management-segmentation.mdx | design-icon-management-segmentation-th.mdx |
-| 5 | design-audience-platform.mdx | design-audience-platform-th.mdx |
-| 6 | design-campaign-management-platform.mdx | design-campaign-management-platform-th.mdx |
-| 7 | design-cashback-system.mdx | design-cashback-system-th.mdx |
+| 1 | payment-backend-stripe-integration-en.mdx | payment-backend-stripe-integration-th.mdx |
+| 2 | design-push-notification-system.mdx | design-push-notification-system-th.mdx |
+| 3 | design-delivery-system.mdx | design-delivery-system-th.mdx |
+| 4 | design-webhook-callback-system.mdx | design-webhook-callback-system-th.mdx |
+| 5 | design-icon-management-segmentation.mdx | design-icon-management-segmentation-th.mdx |
+| 6 | design-audience-platform.mdx | design-audience-platform-th.mdx |
+| 7 | design-campaign-management-platform.mdx | design-campaign-management-platform-th.mdx |
 
 ## Tags
 
-- Posts 1-6: Software Architecture, Software Engineering, Backend
-- Post 7 (Cashback): Software Architecture, Software Engineering, Backend, FinTech
+- All posts: Software Architecture, Software Engineering, Backend
+- Post 1 (Payment): add FinTech
 
 ## Writing Guidelines
 
@@ -173,4 +180,4 @@ Key experience: Payment processing background, ledger experience from PayPay/Cod
 - No banned Thai keywords (จริง, ชัดเจน, เปลี่ยนเกม, เอาแบบตรง ๆ, เล่าให้ฟัง, ไม่ใช่แค่...แต่)
 - No ___ in content
 - MermaidDiagram component at `../../components/blog/MermaidDiagram.astro`
-- Target depth: 500-700 lines per post (similar to Stripe integration reference)
+- Target depth: 500-750 lines per post (matching the two published reference posts)
