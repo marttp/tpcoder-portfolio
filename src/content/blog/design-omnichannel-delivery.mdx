@@ -131,7 +131,14 @@ flowchart LR
     F -->|"failed"| DLQ["Give up + record"]
 `} />
 
-In practice I ran this on **Cadence** — Uber's durable workflow engine (Temporal is the better-known fork of it). This is squarely what a workflow engine is for: the per-recipient flow is durable workflow code, the fallback window is just a workflow timer, retries come built in, and a crashed worker resumes mid-flow instead of double-sending or losing its place. You stop hand-rolling the state machine, the timers, and the retry bookkeeping — the engine owns all three. (Its durable timers also cover the scheduled fire from earlier: the 9am blast is just a workflow that starts on a timer.)
+How you *build* this workflow follows the same rule as everything else in the series — start from the constraint, not the tool — so climb this ladder only as far as something actually forces you:
+
+- **Just send + retry, nothing to wait on?** Plain **cron + queue + stateless workers**, the same shape as the push pipeline. Hand-roll the retry; there's nothing to orchestrate yet.
+- **Chunk processing that has to restart cleanly after a crash?** **Spring Batch** — read → process → write in chunks, restartable, partitionable. Built for exactly "read the chunk and send."
+- **Mostly scheduling + retried background jobs?** **JobRunr** or **Quartz** give durable scheduling and retries (with a dashboard) without standing up a workflow cluster.
+- **A per-recipient flow that's genuinely stateful *and* timed** — fire push, *wait* for a signal, then fall back? *Now* a workflow engine — **Cadence/Temporal**, or managed **Step Functions** — earns its weight, because durable timers + state + retries are the whole reason it exists.
+
+I landed on **Cadence** (Uber's durable workflow engine; Temporal is the fork of it) because that last case was mine: the timed fallback made the per-recipient step genuinely stateful, so letting the engine own the timers, state, and retries beat hand-rolling them — and its durable timers cover the scheduled fire too (the 9am blast is just a workflow that starts on a timer). But if your delivery is only ever send-and-retry, reaching for an orchestrator is precisely the over-engineering this series keeps warning about. The machinery has to be pulled in by the problem, not the other way around.
 
 The honest caveat is the same one from the push post: a push "delivered" only means the provider accepted it, so "fall back if not delivered" leans on the **client-side delivery signal** from last time. Without that signal, fallback really means "fall back only if the provider outright rejected it" — which is weaker. Pick your fallback trigger knowing which signal you actually have.
 
