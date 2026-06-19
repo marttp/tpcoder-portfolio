@@ -345,6 +345,34 @@ flowchart LR
 
 ---
 
+## Did the user even see it? — client-side metrics
+
+**ปัญหา:** ทุกอย่างที่เรา track มาจนถึงตอนนี้ มันอยู่ฝั่ง **เรา** หมดเลย — accepted, delivered (มั้งนะ), retried แต่ตัวเลขที่ฝั่ง product อยากรู้มากที่สุด — notification มันโผล่ขึ้นมามั้ย, user มองข้ามมันไปรึเปล่า, เขากดมั้ย — พวกนี้มันเกิดบน **เครื่องของ user** ทั้งนั้น ซึ่งเป็นที่ที่ backend มองไม่เห็นเลย ตัว receipt จาก provider มันหยุดอยู่แค่ `accepted` เลยจุดนั้นไปมีแค่ฝั่ง client เท่านั้นที่รู้
+
+**วิธีแก้:** ก็ต้องไป instrument ฝั่ง client แล้วให้มันรายงานกลับมา พอ push เด้งเข้ามา ตัว notification handler ของแอป — ซึ่งส่วนใหญ่เป็น background job ที่รันได้แม้ตอนแอปปิดอยู่ — ก็จะยิง event เล็ก ๆ ออกมาทุกครั้งที่มีอะไรเกิดขึ้น:
+
+- **shown** — notification มันขึ้นมาบนจอแล้ว
+- **hidden** — user ปัดมันทิ้งไปโดยไม่เปิด
+- **tap to open** — user กดมัน แล้วแอปก็เด้งขึ้นมา foreground
+
+แต่ละอันคือ signal **push activity** เล็ก ๆ ที่เครื่องยิงกลับมาที่ ingestion endpoint แล้วมันก็ไหลเข้า metrics pipeline ตัวเดิม — Delivery Track Aggregator ที่เราทำไว้ก่อนหน้านี่แหละ ทีนี้ funnel ของเราก็มีชั้นที่ backend วัดเองไม่ได้ครบซะที: delivered → shown → opened
+
+<MermaidDiagram chart={`
+flowchart LR
+    PUSH["Incoming push"] --> DEV["Device"]
+    DEV --> BG["Background job\n(notification handler)"]
+    BG -->|"shown"| ACT["Push activity event"]
+    BG -->|"hidden (dismissed)"| ACT
+    BG -->|"tap to open"| ACT
+    ACT --> ING["Ingestion endpoint"]
+    ING --> AGG["Delivery Track Aggregator"]
+    AGG --> COL[("Columnar DB\n(analytics)")]
+`} />
+
+ขอแปะ caveat แบบเปิดอกอันนึง: signal ฝั่ง client พวกนี้มันก็เป็น best-effort เหมือนกันนะ เครื่องที่ offline อยู่ก็เก็บ event ไว้แล้วค่อยส่งทีหลัง บางอันก็ไม่มาเลย (โดน force-quit, OS กดไว้, หรือ user ปิด notification ทิ้ง) เพราะงั้นมอง open rate เป็นแค่ตัวเลขชี้ทิศทางพอ อย่าไปเชื่อว่ามันเป๊ะ — แล้วก็อย่าลืมว่าช่องว่างระหว่าง delivered กับ shown มันเองก็เป็น signal อย่างนึง (ส่วนใหญ่คือ user ปิด notification ของเราไว้นั่นแหละ)
+
+---
+
 ## Tokens rot — device registry and cleanup
 
 **ปัญหา:** เรื่องของ device token คือมันเปลี่ยนได้ตลอดเวลา — user reinstall หรือ uninstall แอปทีนึง token ก็เปลี่ยนแล้ว หรือบางทีมันก็เปลี่ยนเงียบ ๆ อยู่เบื้องหลังเองโดยที่ user ไม่รู้ตัวด้วยซ้ำ ผลคือ user คนนั้นหลุดจากการรับ notification ไปเลยทั้ง ๆ ที่ยังใช้แอปอยู่ดี ๆ ส่วนฝั่งเรา token store ที่เอาแต่ **เพิ่ม** อย่างเดียวก็จะค่อย ๆ เต็มไปด้วย token ที่ตายไปแล้ว ทุก campaign เลยเปลือง send ส่วนนึงไปกับ token ที่ยิงยังไงก็ไม่มีวันถึง แล้วที่แย่กว่านั้น พวก token ตาย ๆ เนี่ยมันทำให้ตัวเลข `sent` ของเราพองโตผิดส่วน แล้วก็ค่อย ๆ วางยา delivery metric ทุกตัวที่เรา report

@@ -353,6 +353,34 @@ The design implication is uncomfortable but worth saying out loud: unless you ad
 
 ---
 
+## Did the user even see it? — client-side metrics
+
+**The problem:** everything we've tracked so far lives on *our* side of the wire — accepted, delivered (maybe), retried. But the numbers the product actually cares about — did the notification show up, did the user ignore it, did they tap it — all happen on the *device*, where the backend simply can't see. The provider receipt stops at "accepted." Past that line, only the client knows.
+
+**The fix:** instrument the client and let it report back. When a push arrives, the app's notification handler — often a background job that runs even with the app closed — emits a small event for each thing that happens:
+
+- **shown** — the notification actually rendered on screen.
+- **hidden** — the user swiped it away without opening.
+- **tap to open** — the user tapped it and the app came to the foreground.
+
+Each one is a tiny *push activity* signal the device sends back to an ingestion endpoint, which feeds the same metrics pipeline — the Delivery Track Aggregator from before. Now the funnel finally has the stages the backend could never measure on its own: delivered → shown → opened.
+
+<MermaidDiagram chart={`
+flowchart LR
+    PUSH["Incoming push"] --> DEV["Device"]
+    DEV --> BG["Background job\n(notification handler)"]
+    BG -->|"shown"| ACT["Push activity event"]
+    BG -->|"hidden (dismissed)"| ACT
+    BG -->|"tap to open"| ACT
+    ACT --> ING["Ingestion endpoint"]
+    ING --> AGG["Delivery Track Aggregator"]
+    AGG --> COL[("Columnar DB\n(analytics)")]
+`} />
+
+One honest caveat: these client signals are best-effort too. An offline device batches them and sends later; some never arrive at all (force-quit, OS suppression, notifications turned off). So treat open rate as *directional*, not exact — and remember the gap between delivered and shown is itself a signal: the user probably has your notifications switched off.
+
+---
+
 ## Tokens rot — device registry and cleanup
 
 **The problem:** device tokens aren't stable. They rotate when the OS feels like it, they change on reinstall, and they die the moment a user uninstalls or revokes notifications — and nobody tells you proactively. A token store that only ever *adds* slowly fills with corpses. Every campaign then wastes a slice of its sends on tokens that can never deliver, and — worse — those dead tokens inflate your "sent" count and quietly poison every delivery metric you report.
