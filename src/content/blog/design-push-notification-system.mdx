@@ -395,6 +395,31 @@ Doing this in the **pre-delivery** stage is deliberate: a notification that shou
 - **Let the upstream send the whole payload.** When some *other* service owns data that changes per event — transaction activity, where the contents are dynamic — it's often simpler to let that service build the full notification and hand it over ready-made. You pay for it with a bigger payload on the wire, but enriching it centrally would just mean round-tripping back to that service anyway.
 - **Template id + optional enrichment.** For repetitive content — campaigns, abandoned-cart nudges — don't ship the same body over and over. Register a `templateId` once, and let the upstream pass only the handful of fields needed to fill it. Enrichment becomes optional and minimal: small payload, and the upstream owns both the template and the merge data.
 
+To make the contrast concrete:
+
+```json
+// transaction activity — dynamic content, upstream builds the whole body
+{
+  "userId": "u_123",
+  "type": "payment_completed",
+  "eventId": "9813789127398173921",
+  "notification": {
+    "title": "Payment complete",
+    "body": "245 THB at Store XXXXX (txn 9813789127398173921)"
+  }
+}
+```
+
+```json
+// campaign / abandoned cart — register templateId once, send only the fields to fill
+{
+  "userId": "u_123",
+  "type": "abandoned_cart",
+  "templateId": "cart_reminder_v3",
+  "data": { "item": "Sony WH-1000XM5", "price": "13,990 THB" }
+}
+```
+
 ---
 
 ## Not all notifications are equal — type, priority, and frequency caps

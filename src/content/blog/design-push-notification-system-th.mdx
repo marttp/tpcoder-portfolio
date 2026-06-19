@@ -385,6 +385,31 @@ flowchart TD
 - **ปล่อยให้ upstream ส่ง payload มาทั้งก้อนเลย** ในเคสที่ service **อื่น** เป็นเจ้าของข้อมูลที่เปลี่ยนไปทุก event — อย่างพวก transaction activity ที่เนื้อหามันเป็น dynamic — บางทีปล่อยให้ service นั้นปั้น notification มาทั้งก้อนแบบพร้อมส่งเลยมันง่ายกว่า เราแลกมากับ payload ที่ใหญ่ขึ้นบนสาย แต่ก็คุ้ม เพราะถ้าจะมานั่ง enrich เองที่ส่วนกลาง สุดท้ายมันก็ต้องวิ่งกลับไปถาม service นั้นอยู่ดี
 - **ใช้ template id แล้วให้ enrich เป็น optional** ส่วนพวก content ที่ซ้ำ ๆ — campaign, เตือน abandoned cart — อย่าไปขน body เดิม ๆ ส่งซ้ำไปซ้ำมา ลงทะเบียน `templateId` ไว้ตัวนึง แล้วให้ upstream ส่งมาแค่ไม่กี่ field ที่จำเป็นต้องเอาไปเติมในช่องว่างก็พอ การ enrich ก็จะกลายเป็นแค่ option แล้วก็ทำน้อย ๆ: payload เล็ก แล้ว upstream ก็เป็นเจ้าของทั้ง template แล้วก็ข้อมูลที่เอามา merge
 
+ขอยกตัวอย่างให้เห็นภาพความต่างของสองแบบนี้:
+
+```json
+// transaction activity — เนื้อหา dynamic, upstream ปั้น body มาทั้งก้อน
+{
+  "userId": "u_123",
+  "type": "payment_completed",
+  "eventId": "9813789127398173921",
+  "notification": {
+    "title": "Payment complete",
+    "body": "245 THB at Store XXXXX (txn 9813789127398173921)"
+  }
+}
+```
+
+```json
+// campaign / abandoned cart — ลงทะเบียน templateId ไว้ครั้งเดียว ส่งมาแค่ field ที่ต้องเติม
+{
+  "userId": "u_123",
+  "type": "abandoned_cart",
+  "templateId": "cart_reminder_v3",
+  "data": { "item": "Sony WH-1000XM5", "price": "13,990 THB" }
+}
+```
+
 ---
 
 ## Not all notifications are equal — type, priority, and frequency caps
