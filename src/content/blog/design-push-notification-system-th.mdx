@@ -96,13 +96,16 @@ flowchart LR
 {
   "message": {
     "token": "<device-token>",
-    "notification": { "title": "Payment complete", "body": "245 THB at Store XXXXX" },
+    "notification": {
+      "title": "Payment complete",
+      "body": "TxnId: txn_9f2c8a71b4\nStore: FamilyMart\nAmount: 245 THB"
+    },
     "android": {
       "priority": "high",
       "notification": { "channel_id": "transactions" }
     },
     "apns": {
-      "headers": { "apns-priority": "10", "apns-collapse-id": "txn-9813789127398173921" },
+      "headers": { "apns-priority": "10", "apns-collapse-id": "txn_9f2c8a71b4" },
       "payload": { "aps": { "sound": "default", "badge": 1 } }
     },
     "webpush": {
@@ -385,29 +388,52 @@ flowchart TD
 - **ปล่อยให้ upstream ส่ง payload มาทั้งก้อนเลย** ในเคสที่ service **อื่น** เป็นเจ้าของข้อมูลที่เปลี่ยนไปทุก event — อย่างพวก transaction activity ที่เนื้อหามันเป็น dynamic — บางทีปล่อยให้ service นั้นปั้น notification มาทั้งก้อนแบบพร้อมส่งเลยมันง่ายกว่า เราแลกมากับ payload ที่ใหญ่ขึ้นบนสาย แต่ก็คุ้ม เพราะถ้าจะมานั่ง enrich เองที่ส่วนกลาง สุดท้ายมันก็ต้องวิ่งกลับไปถาม service นั้นอยู่ดี
 - **ใช้ template id แล้วให้ enrich เป็น optional** ส่วนพวก content ที่ซ้ำ ๆ — campaign, เตือน abandoned cart — อย่าไปขน body เดิม ๆ ส่งซ้ำไปซ้ำมา ลงทะเบียน `templateId` ไว้ตัวนึง แล้วให้ upstream ส่งมาแค่ไม่กี่ field ที่จำเป็นต้องเอาไปเติมในช่องว่างก็พอ การ enrich ก็จะกลายเป็นแค่ option แล้วก็ทำน้อย ๆ: payload เล็ก แล้ว upstream ก็เป็นเจ้าของทั้ง template แล้วก็ข้อมูลที่เอามา merge
 
-ขอยกตัวอย่างให้เห็นภาพความต่างของสองแบบนี้:
+ขอยกตัวอย่างให้เห็นภาพ — เริ่มจากแบบ **upstream ส่งมาทั้งก้อน** (เคส dynamic) ก่อน:
 
 ```json
-// transaction activity — เนื้อหา dynamic, upstream ปั้น body มาทั้งก้อน
+// transaction — upstream ปั้น notification มาเต็ม ๆ แล้วส่งมาเลย
 {
   "userId": "u_123",
   "type": "payment_completed",
-  "eventId": "9813789127398173921",
+  "eventId": "txn_9f2c8a71b4",
   "notification": {
     "title": "Payment complete",
-    "body": "245 THB at Store XXXXX (txn 9813789127398173921)"
+    "body": "TxnId: txn_9f2c8a71b4\nStore: FamilyMart\nAmount: 245 THB"
   }
 }
 ```
 
+ส่วนแบบ **enrich** — สังเกตว่าโครงสร้าง payload มันเหมือนกันเลยนะ ไม่ว่าจะเป็น campaign หรือ transaction ต่างกันแค่ `templateId` กับ field ใน `data` เท่านั้นเอง:
+
 ```json
-// campaign / abandoned cart — ลงทะเบียน templateId ไว้ครั้งเดียว ส่งมาแค่ field ที่ต้องเติม
+// campaign / abandoned cart
 {
   "userId": "u_123",
   "type": "abandoned_cart",
+  "eventId": "cart_2406191534",
   "templateId": "cart_reminder_v3",
   "data": { "item": "Sony WH-1000XM5", "price": "13,990 THB" }
 }
+```
+
+```json
+// transaction — ขนาด transaction ก็ใช้ template แทนการส่ง body เต็ม ๆ ได้เหมือนกัน
+{
+  "userId": "u_123",
+  "type": "payment_completed",
+  "eventId": "txn_9f2c8a71b4",
+  "templateId": "payment_complete_v2",
+  "data": { "txnId": "txn_9f2c8a71b4", "store": "FamilyMart", "amount": "245 THB" }
+}
+```
+
+สุดท้ายไม่ว่าจะมาทางไหน สิ่งที่เด้งขึ้นบนเครื่อง user ก็หน้าตาเหมือนกัน:
+
+```text
+Payment complete
+TxnId: txn_9f2c8a71b4
+Store: FamilyMart
+Amount: 245 THB
 ```
 
 ---

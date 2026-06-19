@@ -98,13 +98,16 @@ Concretely, one FCM message carries a common `notification` plus per-platform ov
 {
   "message": {
     "token": "<device-token>",
-    "notification": { "title": "Payment complete", "body": "245 THB at Store XXXXX" },
+    "notification": {
+      "title": "Payment complete",
+      "body": "TxnId: txn_9f2c8a71b4\nStore: FamilyMart\nAmount: 245 THB"
+    },
     "android": {
       "priority": "high",
       "notification": { "channel_id": "transactions" }
     },
     "apns": {
-      "headers": { "apns-priority": "10", "apns-collapse-id": "txn-9813789127398173921" },
+      "headers": { "apns-priority": "10", "apns-collapse-id": "txn_9f2c8a71b4" },
       "payload": { "aps": { "sound": "default", "badge": 1 } }
     },
     "webpush": {
@@ -395,29 +398,52 @@ Doing this in the **pre-delivery** stage is deliberate: a notification that shou
 - **Let the upstream send the whole payload.** When some *other* service owns data that changes per event — transaction activity, where the contents are dynamic — it's often simpler to let that service build the full notification and hand it over ready-made. You pay for it with a bigger payload on the wire, but enriching it centrally would just mean round-tripping back to that service anyway.
 - **Template id + optional enrichment.** For repetitive content — campaigns, abandoned-cart nudges — don't ship the same body over and over. Register a `templateId` once, and let the upstream pass only the handful of fields needed to fill it. Enrichment becomes optional and minimal: small payload, and the upstream owns both the template and the merge data.
 
-To make the contrast concrete:
+To make the contrast concrete — first the **full-payload** case, where the upstream builds and sends the whole thing (the dynamic one):
 
 ```json
-// transaction activity — dynamic content, upstream builds the whole body
+// transaction — upstream builds the full notification and sends it as-is
 {
   "userId": "u_123",
   "type": "payment_completed",
-  "eventId": "9813789127398173921",
+  "eventId": "txn_9f2c8a71b4",
   "notification": {
     "title": "Payment complete",
-    "body": "245 THB at Store XXXXX (txn 9813789127398173921)"
+    "body": "TxnId: txn_9f2c8a71b4\nStore: FamilyMart\nAmount: 245 THB"
   }
 }
 ```
 
+And the **enrich** path — notice the payload shape is identical whether it's a campaign or a transaction; only `templateId` and the `data` fields change:
+
 ```json
-// campaign / abandoned cart — register templateId once, send only the fields to fill
+// campaign / abandoned cart
 {
   "userId": "u_123",
   "type": "abandoned_cart",
+  "eventId": "cart_2406191534",
   "templateId": "cart_reminder_v3",
   "data": { "item": "Sony WH-1000XM5", "price": "13,990 THB" }
 }
+```
+
+```json
+// transaction — even a transaction can ride a template instead of a full body
+{
+  "userId": "u_123",
+  "type": "payment_completed",
+  "eventId": "txn_9f2c8a71b4",
+  "templateId": "payment_complete_v2",
+  "data": { "txnId": "txn_9f2c8a71b4", "store": "FamilyMart", "amount": "245 THB" }
+}
+```
+
+Either way, what lands on the user's phone is the same:
+
+```text
+Payment complete
+TxnId: txn_9f2c8a71b4
+Store: FamilyMart
+Amount: 245 THB
 ```
 
 ---
