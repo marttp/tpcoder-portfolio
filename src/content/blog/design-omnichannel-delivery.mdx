@@ -1,0 +1,69 @@
+---
+title: "Designing an Omnichannel Delivery Backbone (Start Simple, Then Evolve)"
+description: "A backend system design walkthrough: evolve a single campaign-send job into an omnichannel delivery backbone — scheduling, chunked audiences, channel dispatch across push/email/SMS plus the inbox service, a delivery workflow with fallback, and cross-channel dedupe, frequency caps, and cost-aware routing. Each version starts with the problem that broke the last one."
+pubDate: "2026-06-19"
+tags:
+  ["Software Architecture", "Software Engineering", "Backend"]
+language: "en"
+translationSlug: "design-omnichannel-delivery-th"
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+## Introduction
+
+This is the third post in the backend system design series — same format as always: start with the most naive thing that works, then let real-world constraints push it into shape.
+
+Last time I built a [push notification system](/blog/design-push-notification-system/) — one channel, taken from a direct FCM call all the way to a 120M-a-day pipeline. This post zooms out a level: the **omnichannel delivery backbone** — the thing that, when a campaign fires, takes a prepared audience and drives it out across **push, email, and SMS**, and writes into the in-app **inbox**. The push system from last post becomes just one of the channels this backbone calls.
+
+One scoping note up front: *building* the audience — segmenting 120M users, working out who's eligible — is its own system (a later post). Here I'll assume the audience already arrives **prepared and chunked**, and focus on what the backbone does once a schedule hits.
+
+The road, each step forced by the one before it:
+
+1. A **campaign job** that loops recipients and sends
+2. **Fire on a schedule**, wake per chunk
+3. **Consume a prepared, chunked audience** instead of querying it yourself
+4. **Reach more than one channel** — push, email, SMS (and the inbox service)
+5. A **delivery workflow** with fallback
+6. **Cross-channel dedupe, frequency caps, and cost-aware routing**
+
+---
+
+## The naive version — a job that loops and sends
+
+You have to start somewhere, and the honest start is: a campaign is a row in a table, a cron job wakes up, loads its recipients, and sends each one a message on a single channel.
+
+```text
+on schedule:
+  recipients = load_recipients(campaign_id)
+  for r in recipients:
+      send(r, message)      # one channel, inline
+```
+
+<MermaidDiagram chart={`
+flowchart LR
+    CRON["Cron job"] --> LOAD["Load recipients"]
+    LOAD --> LOOP["For each recipient"]
+    LOOP --> SEND["send() — one channel"]
+`} />
+
+For a few thousand recipients on one channel, this is genuinely fine — ship it. But two things break the moment it grows. The job loads *everything* into one process, and one slow send stalls the whole campaign — the same flooding problem from the push post. And "send" quietly assumes one channel forever. Real campaigns want to reach people wherever they actually are — and to fire at a planned time, not whenever the cron happens to wake up.
+
+---
+
+## Fire on a schedule, wake per chunk
+
+**The problem:** one cron job that loads 60M recipients and loops is the flooding problem all over again — it holds the whole audience in one process, and a single worker owns the entire send. And timing genuinely matters here: marketing schedules a blast for 9am, and it has to fire at 9am — even if the box that set it up is long gone.
+
+**The fix:** split *when* from *doing*. A **scheduler** owns the schedule — a durable entry that fires at the right time — and when it triggers, it doesn't send anything itself. It hands the campaign off to be processed in **chunks**, where each chunk is a slice of the audience a worker can pick up on its own.
+
+<MermaidDiagram chart={`
+flowchart LR
+    SCHED["Scheduler\n(durable schedule)"] -->|"trigger at fire time"| ENQ["Enqueue campaign"]
+    ENQ --> CHUNKS["Chunk 1..N\n(slices of the audience)"]
+    CHUNKS --> WK["Delivery workers\n(one chunk at a time)"]
+`} />
+
+Two things this gets us. The scheduler is **durable** — a crash doesn't lose the 9am fire, because it's a persisted entry, not an in-memory timer. And the work is **horizontally drainable** — N chunks across M workers, with no single process owning 60M rows.
+
+But where do those chunks actually come from? That's the next question — and the answer is deliberately *not* "query them right here."

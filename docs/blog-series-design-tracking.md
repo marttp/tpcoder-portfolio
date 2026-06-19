@@ -10,7 +10,7 @@ Reference posts: `payment-backend-stripe-integration-en.mdx` (~750 lines), `desi
 |---|------|--------|----|----|
 | 1 | Payment Backend with Stripe Integration | Published | pubDate 2026-06-13 | published |
 | 2 | Push Notification System | Published | pubDate 2026-06-17 | published |
-| 3 | Delivery System (Multi-channel) | Not started | - | - |
+| 3 | Omnichannel Delivery Backbone | Drafting (EN) | - | - |
 | 4 | Webhook Callback System | Not started | - | - |
 | 5 | Icon Management / Segmentation | Not started | - | - |
 | 6 | Audience Platform (ETL Pipeline) | Not started | - | - |
@@ -73,19 +73,27 @@ Key experience: PayPay push notification service (120M+ daily notifications)
 
 ---
 
-### 3. Delivery System (Multi-channel)
+### 3. Omnichannel Delivery Backbone
 
-File: `design-delivery-system.mdx` / `-th.mdx`
+File: `design-omnichannel-delivery.mdx` / `-th.mdx`
 
-- [ ] v1: Monolithic send() function
-- [ ] v2: Channel abstraction (Strategy pattern)
-- [ ] v3: Template engine
-- [ ] v4: User preferences (opt-in/opt-out)
-- [ ] v5: Deduplication across channels
-- [ ] v6: Rate limiting + frequency caps
-- [ ] v7: Event-driven architecture
+The orchestration layer *above* the channels: a schedule fires, prepared audience chunks get picked up, and a delivery workflow drives each chunk out across push + email + SMS, plus writing into the inbox service. Sits above #2 (push is one channel it calls) and below #6 (audience is built/chunked upstream).
 
-Key experience: PayPay timeline notification system
+- [ ] v1: Naive — a campaign job loops recipients and sends (one channel)
+- [ ] v2: Fire on a schedule, wake per chunk (scheduler ≠ sender)
+- [ ] v3: Consume a prepared/chunked audience (don't re-derive it — that's #6)
+- [ ] v4: Omnichannel dispatch — pick channel(s) per recipient; *brief* per-channel notes (push = #2, email = async/bounce/reputation, SMS = cost/carrier/length) + inbox as a SEPARATE write-target service (feed/category/read-badge/deeplink owned by it, not the backbone)
+- [ ] v5: Delivery workflow + fallback (push → SMS/email; per-step state)
+- [ ] v6: Cross-channel dedupe, frequency cap, cost-aware routing
+- [ ] v7: End-state — backbone driving #2, writing to the inbox service, consuming #6
+
+Depth: keep the focus on the **backbone**; each channel gets only its one distinguishing gotcha, not a deep dive.
+
+Ownership note (avoid overlap): **#6** builds & chunks the audience (*who*) · **#3** schedules & delivers chunks omnichannel (*when/where/how*) · **#2** is the push channel's internal pipeline. **Inbox** is a neighbour service the backbone *writes to*, not a dispatch channel — kept brief (could be its own post later).
+
+Inbox = the in-app timeline feed (bell icon): grouped by promotion / system / customer support, each item an image-optional card + message, tap → deeplink or web; persistent + read/unread badge (a read side the fire-and-forget channels don't have).
+
+Key experience: PayPay timeline / omnichannel delivery system
 
 ---
 
@@ -162,7 +170,7 @@ Key experience: PayPay campaign management platform (3M yen SMS savings)
 |------|---------|---------|
 | 1 | payment-backend-stripe-integration-en.mdx | payment-backend-stripe-integration-th.mdx |
 | 2 | design-push-notification-system.mdx | design-push-notification-system-th.mdx |
-| 3 | design-delivery-system.mdx | design-delivery-system-th.mdx |
+| 3 | design-omnichannel-delivery.mdx | design-omnichannel-delivery-th.mdx |
 | 4 | design-webhook-callback-system.mdx | design-webhook-callback-system-th.mdx |
 | 5 | design-icon-management-segmentation.mdx | design-icon-management-segmentation-th.mdx |
 | 6 | design-audience-platform.mdx | design-audience-platform-th.mdx |
