@@ -355,6 +355,11 @@ flowchart TD
 
 Doing this in the **pre-delivery** stage is deliberate: a notification that shouldn't be sent should die before it touches a provider, a rate budget, or a dedupe key. Consent and relevance are cheapest to enforce at the front.
 
+**One more design choice — who builds the payload?** Everything above assumes the Pre-Delivery Worker enriches: it looks up the data and renders the template, so what travels on the wire stays small. Good default, but not the only option — it comes down to who owns the data:
+
+- **Let the upstream send the whole payload.** When some *other* service owns data that changes per event — transaction activity, where the contents are dynamic — it's often simpler to let that service build the full notification and hand it over ready-made. You pay for it with a bigger payload on the wire, but enriching it centrally would just mean round-tripping back to that service anyway.
+- **Template id + optional enrichment.** For repetitive content — campaigns, abandoned-cart nudges — don't ship the same body over and over. Register a `templateId` once, and let the upstream pass only the handful of fields needed to fill it. Enrichment becomes optional and minimal: small payload, and the upstream owns both the template and the merge data.
+
 ---
 
 ## Not all notifications are equal — type, priority, and frequency caps

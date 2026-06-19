@@ -345,6 +345,11 @@ flowchart TD
 
 ที่ทำเรื่องนี้ในสเตจ **pre-delivery** เป็นความตั้งใจ: notification ที่ไม่ควรถูกส่ง ควรตายก่อนที่มันจะไปแตะ provider, rate budget, หรือ dedupe key เรื่อง consent กับ relevance มันบังคับใช้ได้ถูกที่สุดตั้งแต่หน้าด่าน
 
+**อีกทางเลือกนึงในการออกแบบ — ตกลงใครเป็นคนปั้น payload?** ทั้งหมดข้างบนมันตั้งอยู่บนสมมติฐานว่า Pre-Delivery Worker เป็นคน enrich เอง คือไป lookup ข้อมูลแล้วก็ render template ให้ ของที่วิ่งอยู่บนสายเลยมีขนาดเล็ก ซึ่งเป็น default ที่ดีนะ แต่มันไม่ใช่ทางเดียว แล้วจะเลือกทางไหนมันก็ขึ้นกับว่า ใครเป็นเจ้าของข้อมูล:
+
+- **ปล่อยให้ upstream ส่ง payload มาทั้งก้อนเลย** ในเคสที่ service **อื่น** เป็นเจ้าของข้อมูลที่เปลี่ยนไปทุก event — อย่างพวก transaction activity ที่เนื้อหามันเป็น dynamic — บางทีปล่อยให้ service นั้นปั้น notification มาทั้งก้อนแบบพร้อมส่งเลยมันง่ายกว่า เราแลกมากับ payload ที่ใหญ่ขึ้นบนสาย แต่ก็คุ้ม เพราะถ้าจะมานั่ง enrich เองที่ส่วนกลาง สุดท้ายมันก็ต้องวิ่งกลับไปถาม service นั้นอยู่ดี
+- **ใช้ template id แล้วให้ enrich เป็น optional** ส่วนพวก content ที่ซ้ำ ๆ — campaign, เตือน abandoned cart — อย่าไปขน body เดิม ๆ ส่งซ้ำไปซ้ำมา ลงทะเบียน `templateId` ไว้ตัวนึง แล้วให้ upstream ส่งมาแค่ไม่กี่ field ที่จำเป็นต้องเอาไปเติมในช่องว่างก็พอ การ enrich ก็จะกลายเป็นแค่ option แล้วก็ทำน้อย ๆ: payload เล็ก แล้ว upstream ก็เป็นเจ้าของทั้ง template แล้วก็ข้อมูลที่เอามา merge
+
 ---
 
 ## Not all notifications are equal — type, priority, and frequency caps
