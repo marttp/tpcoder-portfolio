@@ -436,6 +436,33 @@ Store: FamilyMart
 Amount: 245 THB
 ```
 
+**ข้อควรระวัง — ไม่ใช่ทุกอันที่ต้อง enrich** ก่อนจะคว้า `data` + ขั้นตอน render มาใช้ ลองถามตัวเองก่อนว่ามีอะไรที่มัน **เปลี่ยน** บ้าง อย่าง discount blast แบบครั้งเดียวจบ มันก็เหมือนกันหมดทุกคนอยู่แล้ว เลยไม่มีอะไรต้อง enrich เลย — ตัด `data` ทิ้งไปได้เลย แล้วให้ `templateId` ชี้ไปที่ message ที่เสร็จแล้ว:
+
+```json
+// one-time discount blast — เหมือนกันหมดทุกคน ไม่มีอะไรต้อง merge
+{
+  "userId": "u_123",
+  "type": "promo_blast",
+  "eventId": "promo_blackfriday_2026",
+  "templateId": "blackfriday_50off"
+}
+```
+
+แล้วก็อย่าไป over-build ส่วนที่มันเปลี่ยนด้วย เราไม่ต้องมี enrichment service เฉพาะทางสำหรับทุก ๆ message หรอก สรุปแล้วมันมีอยู่แค่สองโหมดง่าย ๆ:
+
+- **ส่ง message ที่เสร็จแล้วไปเลย** ในเคสที่ upstream มี text สุดท้ายอยู่ในมือแล้ว (ก็คือเคส full-payload ข้างบนนั่นแหละ)
+- **ใช้ template + placeholder token ที่รู้กันอยู่แล้ว** ในเคสที่มีไม่กี่ค่าที่เปลี่ยน ลงทะเบียน template พร้อม placeholder ที่ template library มาตรฐานมันเข้าใจ แล้วก็ส่งมาแค่ field พวกนั้นใน `data`:
+
+```text
+# template "payment_complete_v2" — template library จะเอาค่าจาก `data` มาเติมใน token {{...}}
+Payment complete
+TxnId: {{txnId}}
+Store: {{store}}
+Amount: {{amount}}
+```
+
+ส่วนใหญ่มันก็เท่านี้แหละ — ไม่ message แบบ static ไปเลย ก็ template library ทำ string replacement ให้ ส่วนการ enrich แบบเต็มตัว (ที่ต้องไป lookup ข้อมูลเอง) ค่อยงัดมาใช้เฉพาะตอนที่ข้อมูลมันไม่ได้ติดมาใน payload เท่านั้นแหละ
+
 ---
 
 ## Not all notifications are equal — type, priority, and frequency caps

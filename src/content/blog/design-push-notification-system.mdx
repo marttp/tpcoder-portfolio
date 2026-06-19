@@ -446,6 +446,33 @@ Store: FamilyMart
 Amount: 245 THB
 ```
 
+**The catch — not everything needs enriching.** Before you reach for `data` + a render step, ask what actually *varies*. A one-time discount blast is identical for everyone, so there's nothing to enrich at all — drop `data` entirely and let `templateId` point at a finished message:
+
+```json
+// one-time discount blast — same for everyone, nothing to merge
+{
+  "userId": "u_123",
+  "type": "promo_blast",
+  "eventId": "promo_blackfriday_2026",
+  "templateId": "blackfriday_50off"
+}
+```
+
+And don't over-build the part that *does* vary. You don't need a bespoke enrichment service for every message — you've really got two simple modes:
+
+- **Send the finished message** when the upstream already has the final text (the full-payload case above).
+- **Template + known placeholder tokens** when a few values change. Register the template with the placeholders a standard template library understands, and pass just those fields in `data`:
+
+```text
+# template "payment_complete_v2" — a template library fills the {{...}} tokens from `data`
+Payment complete
+TxnId: {{txnId}}
+Store: {{store}}
+Amount: {{amount}}
+```
+
+Most of the time that's all it is: a static message, or a template library doing string replacement. Reach for real enrichment (looking data up yourself) only when the data genuinely isn't in the payload.
+
 ---
 
 ## Not all notifications are equal — type, priority, and frequency caps
