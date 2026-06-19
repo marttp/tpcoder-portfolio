@@ -558,6 +558,8 @@ We started with a loop that called FCM inside the request, and ended with a part
 
 The meta-point: **nobody should build the final version on day one.** Every box earned its place by solving a problem the previous version created. If you start simple and let real constraints push you, you tend to arrive somewhere close to this — and you'll understand every piece, because you felt the pain that added it.
 
+And let me shout it again, the way I did near the top: **most applications never need most of this.** Naive, plus multi-platform, plus a queue and a worker already carries the overwhelming majority of products that will ever ship. Everything after that — the partitioned pipeline, the dedupe, the lanes, the 120M-a-day machinery — only earns its keep once the volume is genuinely there. So know what you're building for, and don't go designing big-company scale… unless you've actually become the big company 😆
+
 ---
 
 ## Fun fact: my favorite feedback loop
