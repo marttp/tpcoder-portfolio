@@ -277,6 +277,19 @@ flowchart LR
     FCM --> DEV["Devices\n(Android / iOS / Web)"]
 `} />
 
+In code, the claim is just a conditional `SET`:
+
+```text
+# key from the event identity, not the message text
+key = "notif:" + sha256(userId + ":" + type + ":" + eventId + ":" + deviceToken)
+
+# claim-before-send: SET if-not-exists, with a TTL
+if redis.set(key, "1", nx=True, ex=DEDUPE_TTL):   # true only the first time
+    push_handler.send(deviceToken, payload)
+else:
+    skip()                                          # already claimed -> duplicate
+```
+
 A few things that matter in practice:
 
 - **Claim before send, not after.** Use an atomic `SETNX`-style claim so two workers racing the same key can't both win.

@@ -269,6 +269,19 @@ flowchart LR
     FCM --> DEV["Devices\n(Android / iOS / Web)"]
 `} />
 
+เขียนเป็นโค้ดแล้ว การ claim มันก็แค่ `SET` แบบมีเงื่อนไขเองนี่แหละ:
+
+```text
+# key มาจาก identity ของ event ไม่ใช่ text ของ message
+key = "notif:" + sha256(userId + ":" + type + ":" + eventId + ":" + deviceToken)
+
+# claim ก่อนส่ง: SET เฉพาะตอนที่ยังไม่มี key พร้อมตั้ง TTL
+if redis.set(key, "1", nx=True, ex=DEDUPE_TTL):   # true แค่รอบแรกรอบเดียว
+    push_handler.send(deviceToken, payload)
+else:
+    skip()                                          # มีคน claim ไปแล้ว -> ของซ้ำ
+```
+
 ของที่สำคัญตอนเอาไปใช้งานก็มีอยู่ไม่กี่อย่าง:
 
 - **claim ก่อนส่ง อย่าไป claim หลังส่ง** ใช้การ claim แบบ atomic สไตล์ `SETNX` ไว้ เพื่อให้ worker สองตัวที่บังเอิญแย่ง key เดียวกันอยู่ ไม่มีทางชนะพร้อมกันได้ทั้งคู่
