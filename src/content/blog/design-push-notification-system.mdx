@@ -92,6 +92,28 @@ flowchart LR
     FCM -->|"Web (Web Push)"| WEB["Web"]
 `} />
 
+Concretely, one FCM message carries a common `notification` plus per-platform override blocks — you fill in only what each platform needs:
+
+```json
+{
+  "message": {
+    "token": "<device-token>",
+    "notification": { "title": "Payment complete", "body": "245 THB at Store XXXXX" },
+    "android": {
+      "priority": "high",
+      "notification": { "channel_id": "transactions" }
+    },
+    "apns": {
+      "headers": { "apns-priority": "10", "apns-collapse-id": "txn-9813789127398173921" },
+      "payload": { "aps": { "sound": "default", "badge": 1 } }
+    },
+    "webpush": {
+      "headers": { "Urgency": "high" }
+    }
+  }
+}
+```
+
 Two things we get from this:
 
 - **One integration, not three.** You configure each platform once (APNs key, VAPID); you don't build and operate separate APNs and Web Push clients.
