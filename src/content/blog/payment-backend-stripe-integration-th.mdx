@@ -420,7 +420,7 @@ Stripe เขียน[บทความเรื่อง idempotency](https:/
 
 **Layer 2 — Backend ของคุณถึง Stripe** Stripe รองรับ header `Idempotency-Key` แบบ native กฎที่ผมอยากขีดเส้นใต้: **อย่าเอา key ของ client จาก Layer 1 มาใช้เป็น Stripe key ซ้ำ** ถ้าลูกค้า retry แต่ platform ของคุณเปลี่ยน fee หรือ coupon ภายในไปแล้วระหว่างนั้น การใช้ raw client key ต่อจะทำให้ Stripe คืน PaymentIntent ที่ cache ไว้สำหรับ **ยอดคนละยอด** ให้ใช้ `payments.id` ภายในของคุณ (หรือค่าที่ derive จากมัน) เป็น key ฝั่ง downstream แทน Stripe เก็บ idempotency key ไว้ราว 24 ชั่วโมง ซึ่งพอสำหรับ window ของ retry แต่ไม่ใช่ dedup store ถาวร
 
-**Layer 3 — Webhook ingestion** Stripe เตือนชัดเจนว่า webhook มาผิดลำดับหรือมาซ้ำได้ ทุก event มี id ไม่ซ้ำ (`evt_...`) ก่อน process ตัว consumer บันทึก id นั้นใต้ unique constraint (column `stripe_event_id` ด้านบน) หรือจับ row lock ถ้า event id ถูก process ไปแล้ว ก็ทิ้ง message แล้ว ack success จบ
+**Layer 3 — Webhook ingestion** Stripe เตือนไว้เลยว่า webhook มาผิดลำดับหรือมาซ้ำได้ ทุก event มี id ไม่ซ้ำ (`evt_...`) ก่อน process ตัว consumer บันทึก id นั้นใต้ unique constraint (column `stripe_event_id` ด้านบน) หรือจับ row lock ถ้า event id ถูก process ไปแล้ว ก็ทิ้ง message แล้ว ack success จบ
 
 ขอแทรกเรื่อง production นิดนึง: การ verify signature ของ webhook มีมากกว่าการเช็ค HMAC เฉย ๆ Stripe sign ด้วย HMAC-SHA256 บน timestamp บวก payload ส่งมาใน header `Stripe-Signature` คุณควร enforce tolerance window (default ของ Stripe คือ 5 นาที) เพื่อให้ attacker เอา webhook ที่ดักไว้มา replay ทีหลังเป็นชั่วโมงไม่ได้ verify timestamp ด้วย ไม่ใช่ดู signature อย่างเดียว
 
