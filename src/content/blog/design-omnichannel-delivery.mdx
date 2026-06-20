@@ -4,6 +4,7 @@ description: "A backend system design walkthrough: evolve a single campaign-send
 pubDate: "2026-06-19"
 tags:
   ["Software Architecture", "Software Engineering", "Backend"]
+heroImage: "/assets/images/blogs/design-omnichannel-delivery/hero-backbone.png"
 language: "en"
 translationSlug: "design-omnichannel-delivery-th"
 ---
@@ -16,6 +17,12 @@ This is the third post in the backend system design series — same format as al
 
 Last time I built a [push notification system](/blog/design-push-notification-system/) — one channel, taken from a direct FCM call all the way to a 120M-a-day pipeline. This post zooms out a level: the **omnichannel delivery backbone** — the thing that, when a campaign fires, takes a prepared audience and drives it out across **push, email, and SMS**, and writes into the in-app **inbox**. The push system from last post becomes just one of the channels this backbone calls.
 
+One thing worth pinning down, because it shapes the whole design: the push system from last post is a **general service any upstream can call directly**. When a payment service fires a "payment received" push, it calls push straight — not through any of this (and in practice only some upstream services ever needed push at all). **This backbone is the other path** — it's what drives **promotional / campaign** sends and **timeline (inbox) notifications**: the scheduled, whole-audience, multi-channel stuff. Transactional goes direct; promotional and timeline come through here.
+
+{/* IMAGE PROMPT (transactional-vs-promotional.png): Clean conceptual diagram on a light background contrasting TWO paths. Top path labeled "Transactional (direct)": an upstream service (e.g., Payment) → calls the Push system directly → user's phone. Bottom path labeled "Promotional / Timeline (via backbone)": a Campaign → Delivery Backbone → fans out to Push, Email, SMS, and the Inbox timeline. Make it obvious transactional goes straight to push while promotional + timeline go through the backbone. Flat vector, soft shadows, 2–3 accent colors, clear labels, no photorealism. */}
+
+![Two paths: transactional push goes direct to the push system; promotional and timeline go through the delivery backbone](/assets/images/blogs/design-omnichannel-delivery/transactional-vs-promotional.png)
+
 One scoping note up front: *building* the audience — segmenting 120M users, working out who's eligible — is its own system (a later post). Here I'll assume the audience already arrives **prepared and chunked**, and focus on what the backbone does once a schedule hits.
 
 The road, each step forced by the one before it:
@@ -26,6 +33,10 @@ The road, each step forced by the one before it:
 4. **Reach more than one channel** — push, email, SMS (and the inbox service)
 5. A **delivery workflow** with fallback
 6. **Cross-channel dedupe, frequency caps, and cost-aware routing**
+
+{/* IMAGE PROMPT (hero-backbone.png): Wide banner hero, clean modern architecture illustration on a light background. Left-to-right omnichannel delivery backbone: Scheduler (durable timer) → reads a prepared, chunked Audience store → Delivery workers running a per-recipient workflow → dispatch to channels: Push (in-house system), Email (external provider), SMS (external provider) as send arrows, plus a "write item" arrow into a separate Inbox service (in-app timeline). Channels fan from a central "Delivery Backbone" box. Flat vector, soft shadows, tech-blog aesthetic, 2–3 accent colors, labeled boxes, no photorealism. */}
+
+![End-state omnichannel delivery backbone: scheduler, chunked audience, per-recipient workflow, dispatch across push/email/SMS plus the inbox service](/assets/images/blogs/design-omnichannel-delivery/hero-backbone.png)
 
 ---
 
@@ -63,6 +74,10 @@ flowchart LR
     ENQ --> CHUNKS["Chunk 1..N\n(slices of the audience)"]
     CHUNKS --> WK["Delivery workers\n(one chunk at a time)"]
 `} />
+
+{/* IMAGE PROMPT (scheduled-chunks.png): Clean conceptual illustration on a light background. A clock/scheduler fires at a set time → triggers a campaign → a prepared Audience store drawn as a stack of labeled chunks (chunk 1..N) → a few delivery workers each pulling one chunk to process. Emphasize: audience is prepared and chunked ahead of time, and workers read chunk by chunk rather than querying at send time. Flat vector, soft shadows, 2–3 accent colors, no photorealism. */}
+
+![A schedule fires and delivery workers read a prepared audience chunk by chunk](/assets/images/blogs/design-omnichannel-delivery/scheduled-chunks.png)
 
 Two things this gets us. The scheduler is **durable** — a crash doesn't lose the 9am fire, because it's a persisted entry, not an in-memory timer. And the work is **horizontally drainable** — N chunks across M workers, with no single process owning 60M rows.
 
@@ -103,6 +118,8 @@ So far, though, everything's still gone out on one channel. "Reach the customer"
 - **SMS** — the expensive one. You pay per message, carriers rate-limit you, and you're boxed in by a hard length limit — so SMS is usually a deliberate *fallback*, not a default.
 - **Inbox** — and this one isn't a "send" at all (more on that next).
 
+And to be clear on scope: **email and SMS are external providers** — SES/SendGrid for email, an SMS gateway for SMS — that you integrate behind the adapter. You're not building a mail server or becoming a carrier; the backbone's whole value is the orchestration *around* these channels, not the channels themselves.
+
 <MermaidDiagram chart={`
 flowchart LR
     WK["Delivery worker"] --> DISP{"Dispatch per recipient"}
@@ -112,7 +129,15 @@ flowchart LR
     DISP -.->|"write item"| INBOX["Inbox service"]
 `} />
 
+{/* IMAGE PROMPT (omnichannel-reach.png): Clean conceptual illustration on a light background. One user in the center; the delivery backbone reaches them across multiple channels drawn as labeled routes — Push (phone notification), Email, SMS, and an in-app Inbox/bell. Convey "meet the customer wherever they actually are." Flat vector, soft shadows, 2–3 accent colors, clear channel labels, no photorealism. */}
+
+![One recipient reached across push, email, SMS, and the in-app inbox](/assets/images/blogs/design-omnichannel-delivery/omnichannel-reach.png)
+
 **The inbox is a neighbour service, not a channel you fire-and-forget.** "Delivering" to it means writing a record into a per-user feed — the bell-icon timeline — that the user pulls up later. Items are grouped (promotion / system / customer support), each one an image-optional card plus a message that deeplinks into the app or out to the web. Crucially it owns a whole **read side** the fire-and-forget channels don't have: pagination, read/unread state, the unread badge count. The backbone just hands it an item to store; everything after that is the inbox service's job. (Often you do both — fire a push *and* write the inbox item — so tapping the push lands the user right on the stored item.)
+
+{/* IMAGE PROMPT (inbox-timeline.png): Clean UI mockup on a light background of an in-app notification timeline (the bell-icon feed). Top: a bell icon with an unread badge. Below: a vertical list of notification cards grouped under category tabs/sections — Promotion, System, Customer support. Each card uses an image-on-top, message-below layout (some cards with a thumbnail image, some text-only), with a subtle "tap to open" affordance (deeplink/web). Clean mobile-app aesthetic, flat vector, soft shadows, 2–3 accent colors, no photorealism. */}
+
+![In-app inbox timeline: a bell feed grouped into Promotion / System / Customer support, each item an image-optional card that deeplinks on tap](/assets/images/blogs/design-omnichannel-delivery/inbox-timeline.png)
 
 ---
 
@@ -161,6 +186,10 @@ flowchart LR
     GATE -->|"over the per-person cap?"| DROP
     GATE -->|"ok — cheapest reaching channel"| DISP["Dispatch"]
 `} />
+
+{/* IMAGE PROMPT (cost-routing.png): Clean conceptual illustration on a light background showing cost-aware channel routing for one recipient. Channels arranged by cost: Push and Inbox marked cheap/high-reach (green), SMS flagged expensive ($$). An arrow picks the cheapest channel that still reaches the user, with SMS shown as a deliberate paid fallback. Convey "every push that lands is an SMS you didn't pay for." Flat vector, soft shadows, 2–3 accent colors, no photorealism. */}
+
+![Cost-aware routing: prefer push/inbox (cheap, high-reach); use SMS only as a deliberate paid fallback](/assets/images/blogs/design-omnichannel-delivery/cost-routing.png)
 
 ---
 
