@@ -38,7 +38,7 @@ The road, each step forced by the one before it:
 5. A **delivery workflow** with fallback
 6. **Cross-channel dedupe, frequency caps, and cost-aware routing**
 
-{/* IMAGE PROMPT (hero-backbone.png): Wide banner hero, clean modern architecture illustration on a light background. Left-to-right omnichannel delivery backbone: Scheduler (durable timer) → reads a prepared, chunked Audience store → Delivery workers running a per-recipient workflow → dispatch to channels: Push (in-house system), Email (external provider), SMS (external provider) as send arrows, plus a "write item" arrow into a separate Inbox service (in-app timeline). Channels fan from a central "Delivery Backbone" box. Flat vector, soft shadows, tech-blog aesthetic, 2–3 accent colors, labeled boxes, no photorealism. */}
+{/* IMAGE PROMPT (hero-backbone.png): Wide banner hero, clean modern architecture illustration on a light background. A single left-to-right flow with these boxes in order, labeled EXACTLY as written: "Scheduler" → "Audience Store" → "Delivery Workers" → "Delivery Backbone" → then four channel boxes branching from the backbone: "Push (FCM / APNs)", "Email (SES / SendGrid)", "SMS (Twilio / Vonage)", and "Inbox Service" (connected by a "write item" arrow). STRICT: render ONLY the labels listed above, spelled exactly — do NOT print any descriptive, meta, or marketing words (no "informative", "self-describing", "simple"), no full sentences inside boxes, no typos, no duplicate boxes or labels. Flat vector, soft shadows, tech-blog aesthetic, 2–3 accent colors, plain labeled rectangles, no photorealism. */}
 
 ![End-state omnichannel delivery backbone: scheduler, chunked audience, per-recipient workflow, dispatch across push/email/SMS plus the inbox service](/assets/images/blogs/design-omnichannel-delivery/hero-backbone.png)
 
@@ -79,7 +79,7 @@ flowchart LR
     CHUNKS --> WK["Delivery workers\n(one chunk at a time)"]
 `} />
 
-{/* IMAGE PROMPT (scheduled-chunks.png): Clean conceptual illustration on a light background. A clock/scheduler fires at a set time → triggers a send → a prepared Audience store drawn as a stack of labeled chunks (chunk 1..N) → a few delivery workers each pulling one chunk to process. Emphasize: audience is prepared and chunked ahead of time, and workers read chunk by chunk rather than querying at send time. Flat vector, soft shadows, 2–3 accent colors, no photorealism. */}
+{/* IMAGE PROMPT (scheduled-chunks.png): Clean conceptual illustration on a light background, left to right: a clock icon labeled "Scheduler" → arrow → a stack labeled "Audience Store" containing boxes labeled "Chunk 1", "Chunk 2", "Chunk 3", "Chunk N" → arrows to worker boxes labeled "Delivery Worker 1", "Delivery Worker 2", "Delivery Worker N", each reading one chunk. STRICT: use ONLY those labels, spelled exactly; do NOT print any meta or style words (no "informative", "self-describing", "simple"), no extra headings, no duplicate labels, no typos. Flat vector, soft shadows, 2–3 accent colors, no photorealism. */}
 
 ![A schedule fires and delivery workers read a prepared audience chunk by chunk](/assets/images/blogs/design-omnichannel-delivery/scheduled-chunks.png)
 
@@ -133,7 +133,7 @@ flowchart LR
     DISP -.->|"write item"| INBOX["Inbox service"]
 `} />
 
-{/* IMAGE PROMPT (omnichannel-reach.png): Clean conceptual illustration on a light background. One user in the center; the delivery backbone reaches them across multiple channels drawn as labeled routes — Push (phone notification), Email, SMS, and an in-app Inbox/bell. Convey "meet the customer wherever they actually are." Flat vector, soft shadows, 2–3 accent colors, clear channel labels, no photorealism. */}
+{/* IMAGE PROMPT (omnichannel-reach.png): Clean conceptual illustration on a light background. A person icon in the center labeled "Customer". Exactly ONE box on the left labeled "Delivery Backbone" connects out to FOUR channel boxes, each labeled exactly once: "Push", "Email", "SMS", "In-app Inbox". STRICT: exactly one "Delivery Backbone" box and exactly one box per channel — do NOT repeat any label (especially not "Email" twice); render ONLY these labels, spelled exactly; do NOT print any meta or style words (no "simple", "self-describing", "informative"). One short subtitle is allowed: "Meet customers wherever they are." No typos. Flat vector, soft shadows, 2–3 accent colors, no photorealism. */}
 
 ![One recipient reached across push, email, SMS, and the in-app inbox](/assets/images/blogs/design-omnichannel-delivery/omnichannel-reach.png)
 
