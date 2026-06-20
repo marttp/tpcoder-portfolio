@@ -11,7 +11,9 @@
         "authCaptureSeparation": "https://docs.coda.co/codapay/hosted-payment-page-integration/authorize-and-capture-a-payment-separately"
       },
       "highlights": [
-        "Spearheaded the end-to-end delivery of a new Quarkus (JDK 25) merchant notification service to replace a deprecated Lambda notifier, proactively defining the multi-phase architecture and delivery milestones.",
+        "Implemented a Java-based card brand lookup module using BIN pattern matching (inspired by braintree/credit-card-type) to detect card brands (Visa, Mastercard, JCB, etc.) from card numbers, serving as a fallback when the primary provider does not return card brand information.",
+        "Be main of the ingration between chargeback service to send to merchant API service (fulfillment callback feature)",
+        "Spearheaded the end-to-end delivery of a new Quarkus (JDK 25) fulfillment callback service (part of Merchant API Service) to replace a deprecated Lambda notifier, proactively defining the multi-phase architecture and delivery milestones.",
         "Modernized the notification system, transitioning from batch-scheduled GET requests to a real-time POST webhook model with robust SQS-driven retries (receive count and redrive policies), structured as modular acceptor/dispatcher and consumer components for future independent scaling.",
         "Strengthened data security by redesigning the API contract to eliminate sensitive merchant information from URL query parameters during transit.",
         "Designed and implemented the Authorization and Capture Separation feature for Codapay, enabling merchants to decouple payment authorization from fund capture for use cases such as product availability verification, post-authentication fraud checks, and manual review of high-value transactions. Performed low-level design to pause transactions at the authorization stage and exposed Capture Payment Request and Cancel Payment Request endpoints for explicit merchant control — released as a reusable capability to support post-acquisition integration with Recharge and any future prepaid/publisher partners requiring the same flow.",
