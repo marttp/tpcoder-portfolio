@@ -44,13 +44,13 @@ The road, each step forced by the one before it:
 
 ## The naive version — a job that loops and sends
 
-You have to start somewhere, and the honest start is: a campaign is a row in a table, a cron job wakes up, loads its recipients, and sends each one a message on a single channel.
+You have to start somewhere, and the honest start is: a job runs, loads a target audience, and sends each one a message on a single channel. The trigger is *usually* a campaign — but the backbone doesn't really care what kicked it off. It only ever needs three things: an **audience**, a **message**, and a **method** (the channel).
 
 ```text
-on schedule:
-  recipients = load_recipients(campaign_id)
+on trigger:                              # audience + message + method
+  recipients = load_recipients(target)   # target = whatever names the audience
   for r in recipients:
-      send(r, message)      # one channel, inline
+      send(r, message)                   # one channel, inline
 ```
 
 <MermaidDiagram chart={`
