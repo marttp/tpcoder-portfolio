@@ -99,6 +99,7 @@ hard sell, use concrete numbers, match the blog's semi-official peer tone, Thai 
   python3 -c "t=open('PATH').read(); print({b:t.count(b) for b in ['จริง','ตรง','ไม่ใช่แค่','ไม่ได้แค่']})"
   ```
   All counts must be 0 (identifiers in code/`pm_…` tokens etc. are fine; this is about prose).
+  When a new ban is added — or you're asked to audit — re-run this across the **already-published** posts too, not just the one you're editing; they can predate the rule (a stray `ชัดเจน` slipped through the payment-backend TH post exactly this way).
 - Run `npm run build` and confirm it passes (MDX is sensitive to stray `<` / `{` in prose).
 - Mermaid renders client-side, so a green build does NOT prove diagrams render — eyeball them in `npm run dev`
   if a post adds or changes Mermaid.
