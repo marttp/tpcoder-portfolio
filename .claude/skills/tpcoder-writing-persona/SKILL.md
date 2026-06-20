@@ -67,6 +67,23 @@ Reference example the author approved as perfect: the "Three Ways to Accept Paym
 - In TH posts, section **headings are kept in English** (so the table of contents stays untranslated and
   matches the EN post); the body is Thai.
 
+## Diagrams & images
+
+- **Mermaid is the default.** Architecture, flow, and sequence diagrams should be **Mermaid** (`<MermaidDiagram chart={`…`} />`; component at `../../components/blog/MermaidDiagram.astro`, use `\n` for label line breaks). It explains the meaning inline, lives in the prose, and is trivial to revise — so **most diagrams in a post are Mermaid**.
+- **Images are limited — about 5–7 per post.** Reserve designed images for what Mermaid can't do well: a hero banner, a conceptual illustration, a UI mockup, a funnel. **Don't redraw an architecture that's already a Mermaid** — images should complement diagrams, not duplicate them.
+- **Placeholder convention** — put the generation prompt right above the image ref so an image agent can produce it in one pass:
+  ```
+  {/* IMAGE PROMPT (filename.png): <prompt> */}
+
+  ![alt text](/assets/images/blogs/<post-slug>/filename.png)
+  ```
+- **Harden every image prompt** (learned the hard way — models leak instructions and typo their labels):
+  - List the **exact box/label text** to render and say "spell exactly".
+  - Forbid **meta/style words from being printed as text** in the image (no "informative", "self-describing", "simple").
+  - Forbid **duplicate labels/boxes** and **typos**.
+  - State the house style: flat vector, light background, soft shadows, 2–3 accent colors, no photorealism.
+- **QA generated images before committing** — open each PNG (Read it) and check for leaked instruction text, typos, duplicate/wrong labels, and that labels match the post. Regenerate the bad ones, keep the good ones.
+
 ## Facebook / social posts
 
 Before writing a FB post, **always ask first**: how many words (50 / 100 / 150?) and how much detail (headline /
