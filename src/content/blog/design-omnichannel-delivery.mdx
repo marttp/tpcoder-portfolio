@@ -1,6 +1,6 @@
 ---
 title: "Designing an Omnichannel Customer Communication Delivery Backbone"
-description: "A backend system design walkthrough: evolve a single campaign-send job into an omnichannel customer communication delivery backbone — scheduling, chunked audiences, channel dispatch across push/email/SMS plus the inbox service, a delivery workflow with fallback, and cross-channel dedupe, frequency caps, and cost-aware routing. Each version starts with the problem that broke the last one."
+description: "A backend system design walkthrough: evolve a single one-channel send job into an omnichannel customer communication delivery backbone — scheduling, chunked audiences, channel dispatch across push/email/SMS plus the inbox service, a delivery workflow with fallback, and cross-channel dedupe, frequency caps, and cost-aware routing. Each version starts with the problem that broke the last one."
 pubDate: "2026-06-19"
 tags:
   ["Software Architecture", "Software Engineering", "Backend"]
@@ -15,7 +15,7 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 
 This is the third post in the backend system design series — same format as always: start with the most naive thing that works, then let real-world constraints push it into shape.
 
-Last time I built a [push notification system](/blog/design-push-notification-system/) — one channel, taken from a direct FCM call all the way to a 120M-a-day pipeline. This post zooms out a level: the **omnichannel delivery backbone** — the thing that, when a campaign fires, takes a prepared audience and drives it out across **push, email, and SMS**, and writes into the in-app **inbox**. The push system from last post becomes just one of the channels this backbone calls.
+Last time I built a [push notification system](/blog/design-push-notification-system/) — one channel, taken from a direct FCM call all the way to a 120M-a-day pipeline. This post zooms out a level: the **omnichannel delivery backbone** — the thing that, when a send is triggered, takes a prepared audience and drives it out across **push, email, and SMS**, and writes into the in-app **inbox**. The push system from last post becomes just one of the channels this backbone calls.
 
 Boiled right down, the job is simple to state: **you've got a list — usually a big one — of target users, and you want to deliver something to them through a particular method.** Everything below is what that one sentence turns into once the list is huge and the "method" is more than a single channel.
 
@@ -25,11 +25,13 @@ One thing worth pinning down, because it shapes the whole design: the push syste
 
 ![Two paths: transactional push goes direct to the push system; promotional and timeline go through the delivery backbone](/assets/images/blogs/design-omnichannel-delivery/transactional-vs-promotional.png)
 
+To make it concrete: the way I actually ran this was for **marketing's promotional campaigns**. Marketing defines a campaign, an upstream system prepares and chunks the target audience, the send gets scheduled, and the backbone fans each chunk out across push and the in-app inbox — with SMS kept as a paid fallback. That's the running example I'll lean on for the rest of the post. But notice the machinery underneath doesn't actually care that it's a "campaign" — it only ever sees an audience, a message, and a method.
+
 One scoping note up front: *building* the audience — segmenting 120M users, working out who's eligible — is its own system (a later post). Here I'll assume the audience already arrives **prepared and chunked**, and focus on what the backbone does once a schedule hits.
 
 The road, each step forced by the one before it:
 
-1. A **campaign job** that loops recipients and sends
+1. A **send job** that loops recipients and sends
 2. **Fire on a schedule**, wake per chunk
 3. **Consume a prepared, chunked audience** instead of querying it yourself
 4. **Reach more than one channel** — push, email, SMS (and the inbox service)
@@ -60,7 +62,7 @@ flowchart LR
     LOOP --> SEND["send() — one channel"]
 `} />
 
-For a few thousand recipients on one channel, this is genuinely fine — ship it. But two things break the moment it grows. The job loads *everything* into one process, and one slow send stalls the whole campaign — the same flooding problem from the push post. And "send" quietly assumes one channel forever. Real campaigns want to reach people wherever they actually are — and to fire at a planned time, not whenever the cron happens to wake up.
+For a few thousand recipients on one channel, this is genuinely fine — ship it. But two things break the moment it grows. The job loads *everything* into one process, and one slow send stalls the whole run — the same flooding problem from the push post. And "send" quietly assumes one channel forever — but in practice you need to reach people wherever they actually are, and to fire at a planned time, not whenever the cron happens to wake up.
 
 ---
 
@@ -68,16 +70,16 @@ For a few thousand recipients on one channel, this is genuinely fine — ship it
 
 **The problem:** one cron job that loads 60M recipients and loops is the flooding problem all over again — it holds the whole audience in one process, and a single worker owns the entire send. And timing genuinely matters here: marketing schedules a blast for 9am, and it has to fire at 9am — even if the box that set it up is long gone.
 
-**The fix:** split *when* from *doing*. A **scheduler** owns the schedule — a durable entry that fires at the right time — and when it triggers, it doesn't send anything itself. It hands the campaign off to be processed in **chunks**, where each chunk is a slice of the audience a worker can pick up on its own.
+**The fix:** split *when* from *doing*. A **scheduler** owns the schedule — a durable entry that fires at the right time — and when it triggers, it doesn't send anything itself. It hands the send off to be processed in **chunks**, where each chunk is a slice of the audience a worker can pick up on its own.
 
 <MermaidDiagram chart={`
 flowchart LR
-    SCHED["Scheduler\n(durable schedule)"] -->|"trigger at fire time"| ENQ["Enqueue campaign"]
+    SCHED["Scheduler\n(durable schedule)"] -->|"trigger at fire time"| ENQ["Enqueue send"]
     ENQ --> CHUNKS["Chunk 1..N\n(slices of the audience)"]
     CHUNKS --> WK["Delivery workers\n(one chunk at a time)"]
 `} />
 
-{/* IMAGE PROMPT (scheduled-chunks.png): Clean conceptual illustration on a light background. A clock/scheduler fires at a set time → triggers a campaign → a prepared Audience store drawn as a stack of labeled chunks (chunk 1..N) → a few delivery workers each pulling one chunk to process. Emphasize: audience is prepared and chunked ahead of time, and workers read chunk by chunk rather than querying at send time. Flat vector, soft shadows, 2–3 accent colors, no photorealism. */}
+{/* IMAGE PROMPT (scheduled-chunks.png): Clean conceptual illustration on a light background. A clock/scheduler fires at a set time → triggers a send → a prepared Audience store drawn as a stack of labeled chunks (chunk 1..N) → a few delivery workers each pulling one chunk to process. Emphasize: audience is prepared and chunked ahead of time, and workers read chunk by chunk rather than querying at send time. Flat vector, soft shadows, 2–3 accent colors, no photorealism. */}
 
 ![A schedule fires and delivery workers read a prepared audience chunk by chunk](/assets/images/blogs/design-omnichannel-delivery/scheduled-chunks.png)
 
@@ -89,7 +91,7 @@ But where do those chunks actually come from? That's the next question — and t
 
 ## Consume a prepared audience — don't query it here
 
-**The problem:** the obvious move is to let the delivery job run the audience query itself at fire time — `SELECT ... WHERE eligible`. At 60M that's a monster query competing with everything else, it's slow, and it welds delivery to the segmentation logic. Worst of all you're running it under time pressure — the campaign is firing *now* — which is the worst possible moment to hammer the database.
+**The problem:** the obvious move is to let the delivery job run the audience query itself at fire time — `SELECT ... WHERE eligible`. At 60M that's a monster query competing with everything else, it's slow, and it welds delivery to the segmentation logic. Worst of all you're running it under time pressure — the send is firing *now* — which is the worst possible moment to hammer the database.
 
 **The fix:** separate *who* from *deliver to them*. An upstream system prepares the audience ahead of time — segments it, materializes the recipient list, and writes it out as **chunks** (a chunk being a bounded slice of recipients, sized so one worker can chew through it). When the schedule fires, the delivery side queries nothing — it just **reads chunk by chunk and sends**.
 
@@ -101,7 +103,7 @@ flowchart LR
     WK --> SEND["Send"]
 `} />
 
-This is exactly what I ran: the audience was prepared and chunked well ahead of time, and the delivery side's whole job was to read its chunk and push it out. Two wins fall out of it — the heavy segmentation work happens off the critical path (not while the campaign is firing), and delivery scales by simply adding workers that each grab the next unread chunk.
+This is exactly what I ran: the audience was prepared and chunked well ahead of time, and the delivery side's whole job was to read its chunk and push it out. Two wins fall out of it — the heavy segmentation work happens off the critical path (not while the send is firing), and delivery scales by simply adding workers that each grab the next unread chunk.
 
 How the audience actually gets built and chunked — the segmentation, the ETL behind it — is a system of its own, and a post of its own later in this series. Here it's enough that the chunks show up ready to read.
 
@@ -173,11 +175,11 @@ The honest caveat is the same one from the push post: a push "delivered" only me
 
 ## Cross-channel dedupe, frequency caps, and cost
 
-**The problem:** the moment one person is reachable on several channels, three fresh ways to annoy them — or overspend — appear. The same campaign can hit them on push *and* email *and* SMS (cross-channel triple-buzz). The daily frequency cap from the push post was per-channel, so the *total* touches across channels can quietly blow past what you meant. And SMS costs real money per message, so routing blindly is a budget leak.
+**The problem:** the moment one person is reachable on several channels, three fresh ways to annoy them — or overspend — appear. The same message can hit them on push *and* email *and* SMS (cross-channel triple-buzz). The daily frequency cap from the push post was per-channel, so the *total* touches across channels can quietly blow past what you meant. And SMS costs real money per message, so routing blindly is a budget leak.
 
 **The fix:** lift all three up to the backbone, the one place that can see every channel at once:
 
-- **Cross-channel dedupe.** The idempotency key isn't per-channel — it's per (campaign/event, recipient). Once the message lands on *any* channel, the others stand down. Same event-identity key idea as the push dedupe, just scoped across channels.
+- **Cross-channel dedupe.** The idempotency key isn't per-channel — it's per (send/event, recipient). Once the message lands on *any* channel, the others stand down. Same event-identity key idea as the push dedupe, just scoped across channels.
 - **Frequency cap across channels.** Count touches per recipient across *every* channel, not per channel. The cap is a property of the *person*, not the pipe.
 - **Cost-aware routing.** Prefer the cheap, high-reach channels (push, inbox) and treat SMS as a fallback you actually chose to pay for. This is where the real money hides: every push that lands is an SMS you never had to send.
 
@@ -199,12 +201,12 @@ flowchart LR
 
 We started with a cron job that loops a list and sends on one channel, and ended with a backbone that fires on a schedule, reads a prepared audience chunk by chunk, and drives each recipient through an omnichannel workflow. The path, in order:
 
-1. **Split scheduling from sending** so a campaign fires reliably and the work is drainable in chunks.
-2. **Consume a prepared, chunked audience** instead of querying 60M rows while the campaign is firing.
+1. **Split scheduling from sending** so a send fires reliably and the work is drainable in chunks.
+2. **Consume a prepared, chunked audience** instead of querying 60M rows while the send is firing.
 3. **Dispatch across channels** — push, email, SMS — behind one interface, respecting that they're not symmetric.
 4. **Treat the inbox as a neighbour service** you write to, not a channel you fire.
 5. **Make delivery a workflow with fallback**, not a single send.
 6. **Pull dedupe, frequency caps, and cost up to the backbone** so they're reasoned about per person, across all channels.
 
-The meta-point holds from the last two posts: **nobody needs this on day one.** Most apps are a single `send()` on one channel, fired from a job — and that's completely fine. This backbone only earns its keep once you're running *scheduled, multi-channel campaigns to a large, prepared audience*. Don't build the conductor before you have an orchestra to conduct.
+The meta-point holds from the last two posts: **nobody needs this on day one.** Most apps are a single `send()` on one channel, fired from a job — and that's completely fine. This backbone only earns its keep once you're running *scheduled, multi-channel sends to a large, prepared audience*. Don't build the conductor before you have an orchestra to conduct.
 
