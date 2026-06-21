@@ -159,7 +159,7 @@ flowchart LR
 
 ![One recipient reached across push, email, SMS, and the in-app inbox](/assets/images/blogs/design-omnichannel-delivery/omnichannel-reach.png)
 
-**The inbox is a neighbour service, not a channel you fire-and-forget.** "Delivering" to it means writing a record into a per-user feed — the bell-icon timeline — that the user pulls up later. Items are grouped (promotion / system / customer support), each one an image-optional card plus a message that deeplinks into the app or out to the web. Crucially it owns a whole **read side** the fire-and-forget channels don't have: pagination, read/unread state, the unread badge count. The backbone just hands it an item to store; everything after that is the inbox service's job. (Often you do both — fire a push *and* write the inbox item — so tapping the push lands the user right on the stored item.)
+**The inbox is a neighbour service, not a channel you "send" to.** There's no provider, no network delivery — "delivering" to the inbox is literally **inserting a row into a DB**, a per-user feed (the bell-icon timeline) the user pulls up whenever they feel like it. Because nothing is pushed, it's the channel for the **non-urgent** stuff — it sits there until they look. Items are grouped (promotion / system / customer support), each an image-optional card with a message that deeplinks into the app or out to the web. And it owns a whole **read side** the other channels don't have: pagination, read/unread state, the unread badge. The backbone just writes the record; everything after is the inbox service's job. (Often you do both — fire a push *and* write the inbox row — so tapping the push lands on the stored item.)
 
 {/* IMAGE PROMPT (inbox-timeline.png): Clean UI mockup on a light background of an in-app notification timeline (the bell-icon feed). Top: a bell icon with an unread badge. Below: a vertical list of notification cards grouped under category tabs/sections — Promotion, System, Customer support. Each card uses an image-on-top, message-below layout (some cards with a thumbnail image, some text-only), with a subtle "tap to open" affordance (deeplink/web). Clean mobile-app aesthetic, flat vector, soft shadows, 2–3 accent colors, no photorealism. */}
 
@@ -205,12 +205,13 @@ And if you *do* add that fallback, the honest caveat from the push post applies:
 
 ## Frequency caps and cost — what to weigh
 
-**The problem:** the moment one person is reachable on several channels, two things get easy to get wrong. The daily frequency cap from the push post was per-channel — but the *total* touches across channels can quietly blow past what you meant, and over-touching is exactly how you get muted. And SMS costs real money per message, so routing blindly is a budget leak.
+Once one person is reachable on several channels, the backbone is the only place that sees them all at once — so two decisions land here.
 
-**What to weigh:** the backbone is the one place that sees every channel at once, so two decisions land here:
+**Frequency cap — two layers.** Cap the **total** touches per person across all channels (the cap belongs to the *person*, not the pipe), *and* cap per channel. The two interact: say a person tolerates **4/day total**, but the company chooses **1 push + 1 email** and leaves the other 2 unused. That's deliberate — you're balancing business reach against annoying the user, and unused headroom is fine. Erring toward fewer beats getting muted.
 
-- **Frequency cap across channels.** Count touches per recipient across *every* channel, not per channel — the cap is a property of the *person*, not the pipe. The deeper bit is what happens when several sends compete for the same slot under the cap: you need a **priority within the same type**, and that priority can come from a message **attribute** (an explicit priority field) or an **order marketing sets in the UI** (rank the campaigns). Honestly, *where* that priority lives is a fair question — it overlaps with the Audience Platform. My take: keep hard **cap enforcement** at the backbone (it's the only thing that sees all channels in real time), and let the upstream own *who's eligible and in what order*. The line is genuinely blurry, though.
-- **Cost-aware routing.** Prefer the cheap, high-reach channels (push, inbox) and treat SMS as a fallback you actually chose to pay for. This is where the real money hides: every push that lands is an SMS you never had to send. On a related campaign platform, leaning away from costly SMS this way saved about **3M JPY a year** — real budget, not a rounding error.
+When sends compete for a slot under the cap, you need a **priority** — from a message **attribute** (a priority field) or an **order marketing ranks in the UI**. *Where* that priority lives overlaps with the Audience Platform; my take is to keep hard **cap enforcement** at the backbone (only it sees all channels live) and let upstream decide *who's eligible and in what order*. The line is genuinely blurry.
+
+**Cost-aware routing.** Prefer the cheap, high-reach channels (push, inbox); treat SMS as a fallback you *chose* to pay for. Every push that lands is an SMS you never sent — on a related campaign platform, leaning off SMS this way saved about **3M JPY a year**.
 
 <MermaidDiagram chart={`
 flowchart LR
@@ -260,6 +261,21 @@ You don't have to write any of this from scratch; mature tools cover each piece.
 - Feasible when: the audience is huge and the segmentation is heavy. (This is really the upstream Audience Platform — a post of its own — and the delivery backbone just consumes its chunks.)
 
 None of these is "the answer" on its own — each maps to one pattern. Match the tool to the constraint, not the hype.
+
+---
+
+## Get back to your goal — you just want to talk to your users
+
+After all the schedulers, chunks, workflows, and caps, it's worth stepping back to the one thing this whole post is in service of: **you just want to communicate with your users.** That's it. Everything above is plumbing in service of that sentence.
+
+So let the goal pick the plumbing, not the other way around:
+
+- A one-off message to a handful of people? A list and a `send()` — you're done.
+- Need it to go out while the team's off on the weekend? Add the scheduler.
+- Reaching people who've muted push? Add a second channel.
+- A 60M blast that can't melt the system or double-send? *Now* the chunks and the workflow earn their place.
+
+If a piece of this architecture isn't making it easier or cheaper to reach your users — or protecting them from being spammed — it doesn't belong in *your* version yet. The backbone is worth building when the goal genuinely outgrows the simple loop. Until then, the simple loop **is** the right design.
 
 ---
 
