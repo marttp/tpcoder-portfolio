@@ -125,6 +125,8 @@ flowchart LR
 
 This is exactly what I ran: the audience was prepared and chunked well ahead of time, and the delivery side's whole job was to read its chunk and push it out. Two wins fall out of it — the heavy segmentation work happens off the critical path (not while the send is firing), and delivery scales by simply adding workers that each grab the next unread chunk.
 
+**A quick back-of-the-envelope on chunk size.** A promotional audience here can run **40–60M**. I chunk at **1,000 recipients each** — not from any deep formula, honestly, just a size that stays stable to process and easy to reason about. That makes a full blast roughly **40,000–60,000 chunks**, and that count is the real point: tens of thousands of chunks is a unit of work you can actually *watch* — progress, retries, and failures tracked per chunk — whereas 60M individual sends is not something anyone can monitor. The chunk isn't only about parallelism; it's the granularity your observability lives at.
+
 How the audience actually gets built and chunked — the segmentation, the ETL behind it — is a system of its own, and a post of its own later in this series. Here it's enough that the chunks show up ready to read.
 
 And "prepared" can be as humble as it sounds — remember the naive version just pulled targets from some source (an upload, a REST body, a DB). At scale that barely changes: the audience can still be a **CSV marketing drops in**, only now it's split into chunks and read the same way. You reach for the heavy Audience Platform (real segmentation, ETL) only when the targeting genuinely needs it — a list upload covers a surprising amount.
