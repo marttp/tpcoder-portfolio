@@ -46,22 +46,25 @@ The road, each step forced by the one before it:
 
 ## The naive version — a list and a worker
 
-You have to start somewhere, and in the real world the honest start is dead simple: someone hands you a **list**. Often literally a CSV or text file of target `userId`s, each row carrying whatever a send needs — the message (or a `templateId`), maybe the channel, plus a bit of per-recipient metadata. A worker reads it row by row and sends. That's the whole thing.
+You have to start somewhere, and in the real world the honest start is dead simple: you get a **list of targets** from somewhere, and send to each one. "Somewhere" is flexible — a CSV someone **uploads** (multipart), a **REST call** with the targets right in the JSON body, or a **query against a DB**. The transport genuinely doesn't matter yet; conceptually it's all the same thing — *a source of targets, in some way* — and a worker reads them one by one and sends. Each entry carries what a send needs: a `userId`, the message (or a `templateId`), maybe the channel, plus a bit of metadata.
 
 ```text
-on run:                                  # a file/list of targets, one row each
-  for row in read_file("targets.csv"):   # userId, message/templateId, metadata
-      send(row.userId, row.message)      # one channel, inline
+on run:                              # targets from somewhere — upload, REST body, or DB
+  for t in load_targets():           # each: userId, message/templateId, metadata
+      send(t.userId, t.message)      # one channel, inline
 ```
 
 <MermaidDiagram chart={`
 flowchart LR
-    FILE[("Uploaded list\n(CSV: userId + metadata)")] --> WK["Worker"]
-    WK --> LOOP["for each row"]
+    UP["Multipart upload\n(CSV / file)"] --> SRC["Target source"]
+    API["REST call\n(targets in JSON body)"] --> SRC
+    DB[("DB query\n(stored targets)")] --> SRC
+    SRC --> WK["Worker"]
+    WK --> LOOP["for each target"]
     LOOP --> SEND["send() — one channel"]
 `} />
 
-No scheduler, no queue, no pipeline — you drop the file and run it. And it only ever needs three things, which the file already carries: an **audience** (the rows), a **message** (per row), and a **method** (the channel). For a few thousand rows on one channel this genuinely works, and plenty of real sends never grow past it.
+No scheduler, no queue, no pipeline — you point it at a source and run it. And it only ever needs three things, which every target entry carries: an **audience** (the list), a **message** (per entry), and a **method** (the channel). For a few thousand targets on one channel this genuinely works, and plenty of real sends never grow past it.
 
 Worth saying out loud, because it's easy to forget under all the architecture talk: this dead-simple version is *legitimate engineering*. Even senior engineers ship a lot of "just read the file and send" — the minimum that hits the goal beats the clever thing nobody needed. We only add machinery below when a concrete problem forces it.
 
@@ -112,7 +115,7 @@ This is exactly what I ran: the audience was prepared and chunked well ahead of 
 
 How the audience actually gets built and chunked — the segmentation, the ETL behind it — is a system of its own, and a post of its own later in this series. Here it's enough that the chunks show up ready to read.
 
-And "prepared" can be as humble as it sounds — remember the naive version was literally an uploaded file. At scale that barely changes: the audience can still be a **CSV marketing drops in**, only now it's split into chunks and read the same way. You reach for the heavy Audience Platform (real segmentation, ETL) only when the targeting genuinely needs it — a list upload covers a surprising amount.
+And "prepared" can be as humble as it sounds — remember the naive version just pulled targets from some source (an upload, a REST body, a DB). At scale that barely changes: the audience can still be a **CSV marketing drops in**, only now it's split into chunks and read the same way. You reach for the heavy Audience Platform (real segmentation, ETL) only when the targeting genuinely needs it — a list upload covers a surprising amount.
 
 So far, though, everything's still gone out on one channel. "Reach the customer" almost never means only push.
 
