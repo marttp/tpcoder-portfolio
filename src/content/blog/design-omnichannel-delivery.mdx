@@ -242,12 +242,12 @@ You don't have to write any of this from scratch; mature tools cover each piece.
 - Partition the step to run chunks in parallel across workers.
 - Feasible when: bounded, chunk-shaped work with no long per-item waits. A great default for JVM shops.
 
-**Per-recipient workflow + timed fallback — [Temporal](https://temporal.io/) / [Cadence](https://cadenceworkflow.io/)** (self-hosted), or [AWS Step Functions](https://aws.amazon.com/step-functions/) (managed).
+**Stateful per-chunk / per-recipient workflow — [Temporal](https://temporal.io/) / [Cadence](https://cadenceworkflow.io/)** (self-hosted), or [AWS Step Functions](https://aws.amazon.com/step-functions/) (managed).
 
-- One workflow per recipient (or per chunk); each send is an activity (`sendPush`, `sendSMS`, …).
-- Use a durable timer / wait for the fallback window, and let the engine own retries and state.
+- A **parent workflow** fans out **child workflows** per chunk; each send is an activity (`sendPush`, `sendSMS`, …).
+- The engine owns retries and state, and durable timers cover both the scheduled fire and any fallback window.
 - A crashed worker resumes mid-flow — no double-send, no lost place.
-- Feasible when: delivery is genuinely stateful and time-based (push → wait → fall back). Heaviest, but it owns the hard parts. (This is what I used — Cadence.)
+- Feasible when: the per-chunk flow is genuinely stateful (parent/child, timers, retries). Heaviest, but it owns the hard parts. (This is what I used — Cadence.)
 
 **Lighter background jobs + retries — [JobRunr](https://www.jobrunr.io/)** (JVM).
 
