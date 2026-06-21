@@ -10,7 +10,7 @@ Reference posts: `payment-backend-stripe-integration-en.mdx` (~750 lines), `desi
 |---|------|--------|----|----|
 | 1 | Payment Backend with Stripe Integration | Published | pubDate 2026-06-13 | published |
 | 2 | Push Notification System | Published | pubDate 2026-06-17 | published |
-| 3 | Omnichannel Delivery Backbone | Drafting (EN) | - | - |
+| 3 | Omnichannel Customer Communication Delivery Backbone | Published | pubDate 2026-06-19 | published |
 | 4 | Webhook Callback System | Not started | - | - |
 | 5 | Icon Management / Segmentation | Not started | - | - |
 | 6 | Audience Platform (ETL Pipeline) | Not started | - | - |
@@ -73,27 +73,30 @@ Key experience: PayPay push notification service (120M+ daily notifications)
 
 ---
 
-### 3. Omnichannel Delivery Backbone
+### 3. Omnichannel Customer Communication Delivery Backbone
 
 File: `design-omnichannel-delivery.mdx` / `-th.mdx`
 
-The orchestration layer *above* the channels: a schedule fires, prepared audience chunks get picked up, and a delivery workflow drives each chunk out across push + email + SMS, plus writing into the inbox service. Sits above #2 (push is one channel it calls) and below #6 (audience is built/chunked upstream).
+Published as the orchestration layer *above* the channels: a send is triggered, prepared audience chunks get picked up, and a delivery workflow drives each chunk out across push + email + SMS, plus writing into the inbox service. Sits above #2 (push is one channel it calls) and below #6 (audience is built/chunked upstream). Core idea: large target list → deliver via a particular method.
 
-- [ ] v1: Naive — a campaign job loops recipients and sends (one channel)
-- [ ] v2: Fire on a schedule, wake per chunk (scheduler ≠ sender)
-- [ ] v3: Consume a prepared/chunked audience (don't re-derive it — that's #6)
-- [ ] v4: Omnichannel dispatch — pick channel(s) per recipient; *brief* per-channel notes (push = #2, email = async/bounce/reputation, SMS = cost/carrier/length) + inbox as a SEPARATE write-target service (feed/category/read-badge/deeplink owned by it, not the backbone)
-- [ ] v5: Delivery workflow + fallback (push → SMS/email; per-step state)
-- [ ] v6: Cross-channel dedupe, frequency cap, cost-aware routing
-- [ ] v7: End-state — backbone driving #2, writing to the inbox service, consuming #6
+Published sections (EN + TH):
 
-Depth: keep the focus on the **backbone**; each channel gets only its one distinguishing gotcha, not a deep dive.
+- [x] Naive — a list + a worker (target source = upload / REST body / DB; audience+message+method)
+- [x] Fire on a schedule, wake per chunk (scheduler ≠ sender; single cron → distributed scheduler; motivated by marketing's weekend/time, not location)
+- [x] Consume a prepared, chunked audience (don't re-derive — that's #6; file/CSV upload is a fine source; BOTE: 40–60M ÷ 1K = ~40–60K chunks → observability)
+- [x] Omnichannel dispatch — push/email/SMS behind one interface (email/SMS external providers); inbox = SEPARATE service, a DB insert, non-urgent
+- [x] The delivery workflow (the must) — Kafka fan-out OR parent/child workflows; fallback a bonus; retry granularity (whole-block sync, partial → respawn small chunk async 2× then drop, no DLQ)
+- [x] Frequency caps (two-layer: total + per-channel; priority attribute/UI; Audience-Platform overlap) + cost-aware routing
+- [x] Tech by pattern (Quartz / Spring Batch / Temporal-Cadence / Step Functions / JobRunr / Spark, with links)
+- [x] "Get back to your goal" + wrap-up (human value: marketing's time handed back; personal impact numbers deliberately omitted)
 
-Ownership note (avoid overlap): **#6** builds & chunks the audience (*who*) · **#3** schedules & delivers chunks omnichannel (*when/where/how*) · **#2** is the push channel's internal pipeline. **Inbox** is a neighbour service the backbone *writes to*, not a dispatch channel — kept brief (could be its own post later).
+Depth: focus stays on the **backbone**; each channel gets only its one distinguishing gotcha, not a deep dive.
+
+Ownership note (avoid overlap): **#6** builds & chunks the audience (*who*) · **#3** schedules & delivers chunks omnichannel (*when/where/how*) · **#2** is the push channel's internal pipeline. **Inbox** is a neighbour service the backbone *writes to*, not a dispatch channel.
 
 Inbox = the in-app timeline feed (bell icon): grouped by promotion / system / customer support, each item an image-optional card + message, tap → deeplink or web; persistent + read/unread badge (a read side the fire-and-forget channels don't have).
 
-Key experience: PayPay timeline / omnichannel delivery system
+Key experience: PayPay timeline / omnichannel delivery system (Kotlin / Spring Boot WebFlux + Cadence Workflow + Kafka)
 
 ---
 
