@@ -88,6 +88,8 @@ flowchart LR
 
 Two things this gets us. The scheduler is **durable** — a crash doesn't lose the scheduled fire, because it's a persisted entry, not an in-memory timer (your Saturday 10am send still goes out even if the box that scheduled it is long gone). And the work is **horizontally drainable** — N chunks across M workers, with no single process owning 60M rows.
 
+The scheduler itself has a ladder of its own, too. At its simplest it's a **single cron** — one entry that fires one batch at the set time, which is plenty for a single recurring send. But once you've got many sends from different sources, each on its own clock (Saturday 10am here, weekday 9am there, an ad-hoc blast in between), one cron line stops cutting it — you want a **distributed / managed scheduler** that holds many schedule entries and fires each at its own time across workers (clustered Quartz, a scheduling service, or a workflow engine's cron). Same idea, just many schedules instead of one.
+
 But where do those chunks actually come from? That's the next question — and the answer is deliberately *not* "query them right here."
 
 ---
