@@ -16,6 +16,117 @@ Reference posts: `payment-backend-stripe-integration-en.mdx` (~750 lines), `desi
 | 6 | Audience Platform (ETL Pipeline) | Not started | - | - |
 | 7 | Campaign Management Platform | Not started | - | - |
 
+## Facebook Posts (Thai, copy-paste ready)
+
+Shared frame (keep stable across posts): personal "แอดมาร์ท" hook → AI-assists-but-I-review → "Domain N" one-liner of what the system is + start-simple-then-evolve → back-links to earlier posts → the "if 20 people each wrote 3–4 systems" community vision → `🙇‍♂️` close. Banned tokens apply here too (no `จริง`/`ตรง`; use `ทำมากับมือ` not `ทำจริง`). No hard sell. URLs use the **TH** slug.
+
+### #1 Payment Backend (published)
+
+```
+Blog: การออกแบบ Payment backend ที่ต่อกับ Stripe ในทางปฏิบัติ
+Link URL: https://portfolio.tpcoder.dev/blog/payment-backend-stripe-integration-th/
+
+แอดมาร์ทอยากชวนคนคิดเป็นระบบมากขึ้น ว่าทำไมถึงต้องทำอะไรขึ้นมา โดยหยิบของที่ตัวเองทำมากับมือมาอธิบายให้อ่านกัน และไม่ปฏิเสธว่าใช้ AI ช่วยเรียบเรียง แต่แอดรีวิวเองทุกตัวอักษร
+
+เปิดซีรีส์ด้วย Domain แรก เรื่อง Payment backend ที่ต่อกับ Stripe — ระบบที่ถ้าพลาดขึ้นมาไม่ได้จบแค่ UX เสีย แต่คือเงินหาย เริ่มจาก flow การรับเงินแบบพื้นฐาน แล้วค่อย evolve ทีละขั้นไปเรื่อง idempotency, ledger, webhook, ไปจนถึง dispute
+
+ลองคิดเล่น ๆ นะ ถ้ามีคนคิดแบบเดียวกัน แต่ละคนเขียนคนละ 3-4 ระบบที่ไม่ซ้ำกัน มารวมกันสัก 20 คน แค่ตัวเลขเท่านี้ ผมว่าก็ช่วยยกระดับ Quality ของงานสายนี้ในบ้านเราได้ไม่น้อยเลย
+
+หวังว่าจะมีประโยชน์ไม่มากก็น้อยนะครับ ขอให้ทุกคนมีความสุข 🙇‍♂️
+```
+
+### #2 Push Notification (published)
+
+```
+Blog: การออกแบบ Push Notification System แบบเริ่มจากง่าย แล้วค่อย evolve
+Link URL: https://portfolio.tpcoder.dev/blog/design-push-notification-system-th/
+
+แอดมาร์ทพยายามให้คนคิดเป็นระบบมากขึ้น ว่าทำไมถึงต้องทำอะไรขึ้นมา โดยหยิบของที่ตัวเองทำมากับมือมาอธิบายให้อ่านกัน และไม่ปฏิเสธว่าใช้ AI ช่วยเรียบเรียง แต่แอดรีวิวเองทุกตัวอักษร
+
+มาถึง Domain ที่ 2 เป็นเรื่อง Push Notification ที่จะเริ่มจากแบบง่ายที่สุดก่อน แล้วค่อย evolve ไปทีละขั้น ส่วนผมเองคงมีอีกแค่ 4-5 ระบบที่เอามาแชร์แบบนี้ได้ (อันแรกก็ไอ Payment integration with Stripe ไปย้อนดูเอา)
+
+แต่ถ้ามีคนที่คิดแบบเดียวกัน ลองคิดดูว่า ถ้าแต่ละคนเขียนคนละ 3-4 ระบบที่ไม่ซ้ำกัน แล้วมารวมกันสัก 20 คน ผมว่าตัวเลขแค่นี้ ก็น่าจะช่วยอะไรกับ Quality ของงานสายนี้ในบ้านเราได้บ้าง
+
+หวังว่าจะมีประโยชน์ไม่มากก็น้อยนะครับ ขอให้ทุกคนมีความสุข 🙇‍♂️
+```
+
+### #3 Omnichannel Delivery Backbone (published)
+
+```
+Blog: การออกแบบ Omnichannel Delivery Backbone สำหรับสื่อสารกับลูกค้า แบบเริ่มจากง่าย แล้วค่อย evolve
+Link URL: https://portfolio.tpcoder.dev/blog/design-omnichannel-delivery-th/
+
+แอดมาร์ทยังคงพยายามให้คนคิดเป็นระบบมากขึ้น ว่าทำไมถึงต้องทำอะไรขึ้นมา โดยหยิบของที่ตัวเองทำมากับมือมาอธิบายให้อ่านกัน และไม่ปฏิเสธว่าใช้ AI ช่วยเรียบเรียง แต่แอดรีวิวเองทุกตัวอักษร
+
+มาถึง Domain ที่ 3 แล้ว เป็นเรื่อง Omnichannel — ระบบที่เอาไว้ส่งข้อความหาลูกค้าก้อนใหญ่ ๆ ผ่านหลายช่องทาง (push / email / SMS / inbox) เริ่มจากแบบง่ายสุดคือไฟล์ list กับ worker ตัวเดียว แล้วค่อย evolve ทีละขั้นจนกลายเป็น backbone ที่ตั้งเวลาส่งได้ ทำงานทีละ chunk แล้วก็คุมเป็น workflow ทั้งเส้น
+
+ใครยังไม่ได้อ่านสองอันแรก ย้อนไปดูได้ — Payment integration with Stripe (Domain 1) กับ Push Notification (Domain 2) ส่วนของผมเองก็เหลืออีกสัก 4 ระบบที่เอามาแชร์แบบนี้ได้
+
+ลองคิดเล่น ๆ นะ ถ้ามีคนคิดแบบเดียวกัน แต่ละคนเขียนคนละ 3-4 ระบบที่ไม่ซ้ำกัน มารวมกันสัก 20 คน แค่ตัวเลขเท่านี้ ผมว่าก็ช่วยยกระดับ Quality ของงานสายนี้ในบ้านเราได้ไม่น้อยเลย
+
+หวังว่าจะมีประโยชน์ไม่มากก็น้อยนะครับ ขอให้ทุกคนมีความสุข 🙇‍♂️
+```
+
+### #4 Webhook Callback System (draft — finalize angle at publish)
+
+```
+Blog: <TH title>
+Link URL: https://portfolio.tpcoder.dev/blog/design-webhook-callback-system-th/
+
+แอดมาร์ทยังคงพยายามให้คนคิดเป็นระบบมากขึ้น ว่าทำไมถึงต้องทำอะไรขึ้นมา โดยหยิบของที่ตัวเองทำมากับมือมาอธิบายให้อ่านกัน และไม่ปฏิเสธว่าใช้ AI ช่วยเรียบเรียง แต่แอดรีวิวเองทุกตัวอักษร
+
+มาถึง Domain ที่ 4 เป็นเรื่อง Webhook Callback System — ตอนที่ระบบเราต้องยิง callback กลับไปบอก partner/merchant ว่ามีอะไรเกิดขึ้น เริ่มจาก POST แบบ sync ง่าย ๆ แล้วค่อย evolve ทีละขั้นไปเรื่อง retry, backoff, idempotency, signature, ไปจนถึง DLQ
+
+ลองคิดเล่น ๆ นะ ถ้ามีคนคิดแบบเดียวกัน แต่ละคนเขียนคนละ 3-4 ระบบที่ไม่ซ้ำกัน มารวมกันสัก 20 คน แค่ตัวเลขเท่านี้ ผมว่าก็ช่วยยกระดับ Quality ของงานสายนี้ในบ้านเราได้ไม่น้อยเลย
+
+หวังว่าจะมีประโยชน์ไม่มากก็น้อยนะครับ ขอให้ทุกคนมีความสุข 🙇‍♂️
+```
+
+### #5 Icon Management / Segmentation (draft — finalize angle at publish)
+
+```
+Blog: <TH title>
+Link URL: https://portfolio.tpcoder.dev/blog/design-icon-management-segmentation-th/
+
+แอดมาร์ทยังคงพยายามให้คนคิดเป็นระบบมากขึ้น ว่าทำไมถึงต้องทำอะไรขึ้นมา โดยหยิบของที่ตัวเองทำมากับมือมาอธิบายให้อ่านกัน และไม่ปฏิเสธว่าใช้ AI ช่วยเรียบเรียง แต่แอดรีวิวเองทุกตัวอักษร
+
+มาถึง Domain ที่ 5 เป็นเรื่องการเลือก asset/icon ให้เหมาะกับลูกค้าแต่ละ segment — เริ่มจาก icon ตายตัวต่อ campaign แล้วค่อย evolve ไปเรื่องเลือกตาม attribute, cache, ไปจนถึง A/B test และ optimize ตาม CTR
+
+ลองคิดเล่น ๆ นะ ถ้ามีคนคิดแบบเดียวกัน แต่ละคนเขียนคนละ 3-4 ระบบที่ไม่ซ้ำกัน มารวมกันสัก 20 คน แค่ตัวเลขเท่านี้ ผมว่าก็ช่วยยกระดับ Quality ของงานสายนี้ในบ้านเราได้ไม่น้อยเลย
+
+หวังว่าจะมีประโยชน์ไม่มากก็น้อยนะครับ ขอให้ทุกคนมีความสุข 🙇‍♂️
+```
+
+### #6 Audience Platform (draft — finalize angle at publish)
+
+```
+Blog: <TH title>
+Link URL: https://portfolio.tpcoder.dev/blog/design-audience-platform-th/
+
+แอดมาร์ทยังคงพยายามให้คนคิดเป็นระบบมากขึ้น ว่าทำไมถึงต้องทำอะไรขึ้นมา โดยหยิบของที่ตัวเองทำมากับมือมาอธิบายให้อ่านกัน และไม่ปฏิเสธว่าใช้ AI ช่วยเรียบเรียง แต่แอดรีวิวเองทุกตัวอักษร
+
+มาถึง Domain ที่ 6 เป็นเรื่อง Audience Platform — ระบบที่คัดว่าจะส่งหาใคร (ตัวที่ป้อน chunk ให้ Omnichannel ใน Domain 3) เริ่มจาก query ตอนส่ง แล้วค่อย evolve ไปเรื่อง batch ล่วงหน้า, Spark, data lake, ไปจนถึง segment แบบ near real-time
+
+ลองคิดเล่น ๆ นะ ถ้ามีคนคิดแบบเดียวกัน แต่ละคนเขียนคนละ 3-4 ระบบที่ไม่ซ้ำกัน มารวมกันสัก 20 คน แค่ตัวเลขเท่านี้ ผมว่าก็ช่วยยกระดับ Quality ของงานสายนี้ในบ้านเราได้ไม่น้อยเลย
+
+หวังว่าจะมีประโยชน์ไม่มากก็น้อยนะครับ ขอให้ทุกคนมีความสุข 🙇‍♂️
+```
+
+### #7 Campaign Management Platform (draft — finalize angle at publish)
+
+```
+Blog: <TH title>
+Link URL: https://portfolio.tpcoder.dev/blog/design-campaign-management-platform-th/
+
+แอดมาร์ทยังคงพยายามให้คนคิดเป็นระบบมากขึ้น ว่าทำไมถึงต้องทำอะไรขึ้นมา โดยหยิบของที่ตัวเองทำมากับมือมาอธิบายให้อ่านกัน และไม่ปฏิเสธว่าใช้ AI ช่วยเรียบเรียง แต่แอดรีวิวเองทุกตัวอักษร
+
+มาถึง Domain ที่ 7 เป็นเรื่อง Campaign Management Platform — หน้าบ้านที่ทีม marketing ใช้สร้างแล้วก็คุม campaign เริ่มจาก CRUD ง่าย ๆ แล้วค่อย evolve ไปเรื่อง scheduling, approval workflow, budget cap, ไปจนถึง A/B test และ multi-tenant
+
+ลองคิดเล่น ๆ นะ ถ้ามีคนคิดแบบเดียวกัน แต่ละคนเขียนคนละ 3-4 ระบบที่ไม่ซ้ำกัน มารวมกันสัก 20 คน แค่ตัวเลขเท่านี้ ผมว่าก็ช่วยยกระดับ Quality ของงานสายนี้ในบ้านเราได้ไม่น้อยเลย
+
+หวังว่าจะมีประโยชน์ไม่มากก็น้อยนะครับ ขอให้ทุกคนมีความสุข 🙇‍♂️
+```
+
 ## Evolution Template (per post)
 
 Each post follows this narrative arc:
