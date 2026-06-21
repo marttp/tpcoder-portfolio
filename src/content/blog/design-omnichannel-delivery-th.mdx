@@ -1,0 +1,295 @@
+---
+title: "การออกแบบ Omnichannel Delivery Backbone สำหรับสื่อสารกับลูกค้า แบบเริ่มจากง่าย แล้วค่อย evolve"
+description: "พาเดินทุก step ของการออกแบบ omnichannel delivery backbone สำหรับสื่อสารกับลูกค้า ตั้งแต่ job ยิงทีละช่องทางง่าย ๆ ไปจนเป็น backbone ที่มี scheduling, chunked audience, dispatch ข้าม push/email/SMS บวก inbox service, delivery workflow (Kafka fan-out หรือ parent/child workflow) แล้วก็ frequency cap กับ cost-aware routing โดยแต่ละเวอร์ชันเริ่มจากปัญหาที่เวอร์ชันก่อนหน้าทำพัง"
+pubDate: "2026-06-19"
+tags:
+  ["Software Architecture", "Software Engineering", "Backend"]
+heroImage: "/assets/images/blogs/design-omnichannel-delivery/hero-backbone.png"
+language: "th"
+translationSlug: "design-omnichannel-delivery"
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+## Introduction
+
+โพสต์นี้เป็นตัวที่สามของซีรีส์ backend system design — สูตรเดิมเหมือนเคย: เริ่มจากของที่ทื่อที่สุดเท่าที่มัน work ได้ แล้วก็ปล่อยให้ข้อจำกัดหน้างานค่อย ๆ ดันมันให้เข้ารูปเข้ารอย
+
+รอบที่แล้วผมทำ[ระบบ push notification](/blog/design-push-notification-system-th/) ไป — ช่องทางเดียว ลากตั้งแต่ยิง FCM แบบ direct ไปจนเป็น pipeline ระดับ production ที่รับโหลดหนัก ๆ โพสต์นี้ขอถอยออกมามองอีกชั้นนึง: **omnichannel delivery backbone** — ตัวที่พอมีการ trigger ให้ส่ง มันจะหยิบ audience ที่เตรียมไว้แล้วกระจายออกไปทั้ง **push, email แล้วก็ SMS** แล้วก็เขียนลง **inbox** ในแอป ส่วนระบบ push จากโพสต์ก่อนก็กลายเป็นแค่หนึ่งในช่องทางที่ backbone ตัวนี้เรียกใช้
+
+ถ้าเคี่ยวลงไปให้เหลือแก่น งานมันพูดได้ง่าย ๆ เลย: **เรามี list — ปกติก็ก้อนใหญ่ — ของ user ที่เป็นเป้าหมาย แล้วเราอยากส่งอะไรบางอย่างไปหาเขาผ่านช่องทางใดช่องทางหนึ่ง** ทุกอย่างข้างล่างนี้คือสิ่งที่ประโยคเดียวนี้กลายร่างเป็น พอ list มันใหญ่ขึ้น แล้ว `ช่องทาง` ก็ไม่ได้มีแค่อันเดียว
+
+มีอยู่เรื่องนึงที่อยากปักหมุดไว้ก่อน เพราะมันกำหนดรูปร่างของ design ทั้งหมดเลย: ระบบ push จากโพสต์ก่อนมันเป็น **service กลางที่ upstream ตัวไหนก็เรียกใช้ได้เลย** เวลา payment service ยิง push แบบ `จ่ายเงินสำเร็จ` มันก็เรียก push เข้าไปเลย — ไม่ได้วิ่งผ่านอะไรพวกนี้ (แล้วหน้างานก็มี upstream อยู่ไม่กี่ตัวที่ต้องใช้ push ด้วยซ้ำ) ส่วน **backbone ตัวนี้คืออีกเส้นทางนึง** — มันคือตัวที่ขับงานพวก **promotional / campaign** แล้วก็ **timeline (inbox) notification**: ของที่ต้อง schedule, ยิงทั้ง audience, แล้วก็ข้ามหลายช่องทาง สรุปคือ transactional ยิงเข้าไปเลย ส่วน promotional กับ timeline เดินผ่านทางนี้
+
+{/* IMAGE PROMPT (transactional-vs-promotional.png): Clean conceptual diagram on a light background contrasting TWO paths. Top path labeled "Transactional (direct)": an upstream service (e.g., Payment) → calls the Push system directly → user's phone. Bottom path labeled "Promotional / Timeline (via backbone)": a Campaign → Delivery Backbone → fans out to Push, Email, SMS, and the Inbox timeline. Make it obvious transactional goes straight to push while promotional + timeline go through the backbone. Flat vector, soft shadows, 2–3 accent colors, clear labels, no photorealism. */}
+
+![สองเส้นทาง: transactional push ยิงเข้าระบบ push เลย ส่วน promotional กับ timeline เดินผ่าน delivery backbone](/assets/images/blogs/design-omnichannel-delivery/transactional-vs-promotional.png)
+
+ขอยกตัวอย่างให้เห็นภาพ: ที่ผมทำมาเองคือทำให้กับ **promotional campaign ของทีม marketing** ทีม marketing กำหนด campaign, มี upstream เตรียมแล้วก็ซอย audience เป้าหมายเป็น chunk, การส่งถูก schedule ไว้, แล้ว backbone ก็กระจายแต่ละ chunk ออกไปทั้ง push กับ inbox ในแอป โดยมี SMS เก็บไว้เป็น fallback แบบจ่ายเงิน อันนี้คือตัวอย่างหลักที่ผมจะอ้างถึงไปตลอดทั้งโพสต์ แต่สังเกตนะว่าเครื่องจักรข้างใต้มันไม่ได้สนใจหรอกว่ามันเป็น `campaign` — มันเห็นแค่ audience, message, แล้วก็ method เท่านั้นเอง
+
+ขอตั้ง scope ไว้ก่อนสักนิด: เรื่อง *การสร้าง* audience — การ segment user ก้อนใหญ่ ๆ แล้วหาว่าใครเข้าเงื่อนไขบ้าง — มันเป็นระบบของมันเอง (ไว้เขียนโพสต์ถัด ๆ ไป) ในโพสต์นี้ผมจะถือว่า audience มันมาถึงแบบ **เตรียมไว้แล้วแล้วก็ซอยเป็น chunk แล้ว** แล้วโฟกัสที่ว่า backbone ทำอะไรบ้างหลังจาก schedule มันถึงเวลา
+
+เส้นทางทั้งหมด แต่ละ step ถูกบังคับด้วย step ก่อนหน้ามันเอง:
+
+1. **list + worker** ตัวนึงที่อ่านแล้วก็ส่ง
+2. **ยิงตาม schedule** ตื่นมาทำทีละ chunk
+3. **กิน audience ที่เตรียมไว้แล้วเป็น chunk** แทนที่จะมา query เอง
+4. **ส่งให้ถึงมากกว่าหนึ่งช่องทาง** — push, email, SMS (แล้วก็ inbox service)
+5. **delivery workflow** (chunk → worker, หรือ parent/child workflow)
+6. **frequency cap แล้วก็ cost-aware routing**
+
+{/* IMAGE PROMPT (hero-backbone.png): Wide banner hero, clean modern architecture illustration on a light background. A single left-to-right flow with these boxes in order, labeled EXACTLY as written: "Scheduler" → "Audience Store" → "Delivery Workers" → "Delivery Backbone" → then four channel boxes branching from the backbone: "Push (FCM / APNs)", "Email (SES / SendGrid)", "SMS (Twilio / Vonage)", and "Inbox Service" (connected by a "write item" arrow). STRICT: render ONLY the labels listed above, spelled exactly — do NOT print any descriptive, meta, or marketing words (no "informative", "self-describing", "simple"), no full sentences inside boxes, no typos, no duplicate boxes or labels. Flat vector, soft shadows, tech-blog aesthetic, 2–3 accent colors, plain labeled rectangles, no photorealism. */}
+
+![ภาพรวม omnichannel delivery backbone: scheduler, chunked audience, per-recipient workflow, dispatch ข้าม push/email/SMS บวก inbox service](/assets/images/blogs/design-omnichannel-delivery/hero-backbone.png)
+
+---
+
+## The naive version — a list and a worker
+
+ต้องเริ่มจากที่ไหนสักที่ แล้วในโลกการทำงานเอง จุดเริ่มที่ซื่อ ๆ มันง่ายมาก: เราได้ **list ของเป้าหมาย** มาจากที่ไหนสักแห่ง แล้วก็ส่งหาทีละคน ไอ้ `ที่ไหนสักแห่ง` เนี่ยมันยืดหยุ่น:
+
+- **CSV ที่มีคน upload** เข้ามา (multipart)
+- **REST call** ที่แนบเป้าหมายมาใน JSON body เลย หรือ
+- **query จาก DB**
+
+transport มันยังไม่สำคัญในตอนนี้หรอก ในเชิงแนวคิดมันคือเรื่องเดียวกันหมด — *แหล่งของเป้าหมาย ในรูปแบบใดรูปแบบหนึ่ง* — แล้ว worker ก็อ่านมันทีละอันแล้วส่ง แต่ละ entry พกของที่การส่งต้องใช้มาด้วย: `userId`, message (หรือ `templateId`), อาจจะมี channel, บวก metadata นิดหน่อย
+
+```
+on run:                              # targets from somewhere — upload, REST body, or DB
+  for t in load_targets():           # each: userId, message/templateId, metadata
+      send(t.userId, t.message)      # one channel, inline
+```
+
+<MermaidDiagram chart={`
+flowchart LR
+    UP["Multipart upload\n(CSV / file)"] --> SRC["Target source"]
+    API["REST call\n(targets in JSON body)"] --> SRC
+    DB[("DB query\n(stored targets)")] --> SRC
+    SRC --> WK["Worker"]
+    WK --> LOOP["for each target"]
+    LOOP --> SEND["send() — one channel"]
+`} />
+
+ไม่มี scheduler, ไม่มี queue, ไม่มี pipeline — เราแค่ชี้มันไปที่ source แล้วก็สั่งรัน แล้วมันก็ต้องการแค่สามอย่าง ซึ่งทุก entry ของเป้าหมายพกมาให้อยู่แล้ว:
+
+- **audience** (ตัว list)
+- **message** (ของแต่ละ entry)
+- **method** (ช่องทาง)
+
+ถ้ามีเป้าหมายแค่หลักพันบนช่องทางเดียว แบบนี้มัน work ดีเลยนะ แล้วงานส่งหลาย ๆ อันก็ไม่เคยโตเกินจุดนี้ด้วยซ้ำ
+
+ขอพูดออกมาดัง ๆ หน่อย เพราะมันลืมง่ายเวลาคุยกันแต่เรื่อง architecture: เวอร์ชันทื่อ ๆ แบบนี้มันคือ **งาน engineering ที่ถูกต้องตามครรลอง** นะ ต่อให้เป็น senior engineer ก็ส่งมอบของแบบ `อ่านไฟล์แล้วก็ส่ง` กันเยอะแยะ — ของขั้นต่ำที่ทำงานบรรลุเป้าหมายได้ มันชนะของหรู ๆ ที่ไม่มีใครต้องใช้ เราจะใส่เครื่องจักรเพิ่มข้างล่างก็ต่อเมื่อมีปัญหาเป็นรูปธรรมมาบังคับเท่านั้น
+
+ทีนี้สิ่งที่มันแอบ assume ไว้คือ มันเป็นแบบ **ส่ง ณ ตอนที่สั่ง (send-as-you-go)** — มีคน upload CSV จาก back-office แล้วมันก็ยิงออกตอนนั้นเลย ไปช่องทางเดียว แล้วลองนึกภาพคนที่ต้อง upload สิ: ก็**ทีม marketing** ไง campaign ต้องออกเช้าวันเสาร์ เพราะงั้นต้องมีคนเป็น ๆ คนนึงหยุดสิ่งที่เป็นวันหยุดของเขา — เวลากับครอบครัว, เดต, หรือแค่พักผ่อน — เพื่อมา login มานั่งเฝ้าการส่ง จะ remote หรือเข้าออฟฟิศก็ไม่เกี่ยว เพราะมันไม่เคยเป็นเรื่องว่าเขานั่งทำงานที่ไหน — มันคือ **เวลา** ของเขาต่างหาก สิ่งเดียวที่พวกเราทุกคนเอาคืนมาไม่ได้ เขาก็จะทำให้แหละด้วยหน้าที่ แล้วเราก็ซึ้งใจกับมัน — แต่นี่แหละคืองานจุกจิกแบบที่เราควรยกออกจากบ่าเขาไป สิ่งที่เขาอยากได้คือ set campaign ไว้ **ล่วงหน้า** แล้วให้มันยิงเองตามเวลา นั่นคือข้อจำกัดข้อแรกของแท้ — เรื่องเวลา — แล้วในเคสของผม มันคือสิ่งที่ผลักเราให้ข้ามจาก `สั่งรันเดี๋ยวนี้` ไปสู่ scheduler (แล้วก็ไปสู่ทั้ง backbone ในที่สุด)
+
+---
+
+## Fire on a schedule, wake per chunk
+
+**ปัญหา:** เราเพิ่งเจอข้อแรกไป — **เรื่องเวลา** `ยิงตอนที่ job รัน` มันพูดว่า `ยิง 10 โมงเช้าวันเสาร์` ไม่ได้ แล้วทีม marketing ก็ไม่ควรต้องเอาวันหยุดมาเป็นตัว trigger นั่งเฝ้า แถมยังมีเรื่อง **scale** อีก: process เดียวที่โหลด recipient 60M คนมา loop เนี่ย มันแบก audience ทั้งก้อนไว้ใน memory แล้วก็มี worker ตัวเดียวแบกการส่งทั้งหมด — ปัญหา flooding กลับมาอีกแล้ว
+
+**วิธีแก้:** แยก *เมื่อไหร่* ออกจาก *ลงมือทำ* ตัว **scheduler** ดูแลเรื่อง schedule — เป็น entry ที่ทนทาน (durable) ที่ยิงตอนเวลาถูกต้อง — แล้วพอมัน trigger มันไม่ได้ส่งเองนะ มันส่งงานต่อไปให้ถูกประมวลผลเป็น **chunk** โดยแต่ละ chunk คือ slice ของ audience ที่ worker หยิบไปทำเองได้
+
+<MermaidDiagram chart={`
+flowchart LR
+    SCHED["Scheduler\n(durable schedule)"] -->|"trigger at fire time"| ENQ["Enqueue send"]
+    ENQ --> CHUNKS["Chunk 1..N\n(slices of the audience)"]
+    CHUNKS --> WK["Delivery workers\n(one chunk at a time)"]
+`} />
+
+{/* IMAGE PROMPT (scheduled-chunks.png): Clean conceptual illustration on a light background, left to right: a clock icon labeled "Scheduler" → arrow → a stack labeled "Audience Store" containing boxes labeled "Chunk 1", "Chunk 2", "Chunk 3", "Chunk N" → arrows to worker boxes labeled "Delivery Worker 1", "Delivery Worker 2", "Delivery Worker N", each reading one chunk. STRICT: use ONLY those labels, spelled exactly; do NOT print any meta or style words (no "informative", "self-describing", "simple"), no extra headings, no duplicate labels, no typos. Flat vector, soft shadows, 2–3 accent colors, no photorealism. */}
+
+![schedule ยิงแล้ว delivery worker ก็อ่าน audience ที่เตรียมไว้ทีละ chunk](/assets/images/blogs/design-omnichannel-delivery/scheduled-chunks.png)
+
+สองอย่างที่เราได้จากจุดนี้ อย่างแรกคือ scheduler มัน **durable** — crash ไปก็ไม่ทำให้การยิงตามเวลาหายไป เพราะมันเป็น entry ที่ persist ไว้ ไม่ใช่ timer ที่ลอยอยู่ใน memory (การส่งวันเสาร์ 10 โมงของเราก็ยังออกอยู่ดี ต่อให้เครื่องที่ตั้ง schedule ไว้มันหายไปนานแล้วก็เถอะ) อย่างที่สองคืองานมัน **ระบายแบบขยายแนวนอนได้** — N chunk กระจายไป M worker โดยไม่มี process ไหนแบก 60M row ไว้คนเดียว
+
+ตัว scheduler เองก็มี ladder ของมันเหมือนกันนะ ขั้นง่ายสุดมันคือ **cron ตัวเดียว** — entry เดียวยิง batch เดียวตอนเวลาที่ตั้งไว้ ซึ่งก็พอเหลือเฟือสำหรับการส่งที่เกิดซ้ำ ๆ แบบเดียว แต่พอเรามีการส่งหลายตัวจากหลาย source ที่ต่างคนต่างมีนาฬิกาของตัวเอง (อันนี้เสาร์ 10 โมง, อันนั้นวันธรรมดา 9 โมง, แล้วก็มี ad-hoc blast แทรกกลางอีก) cron บรรทัดเดียวมันก็เอาไม่อยู่แล้ว — เราอยากได้ **distributed / managed scheduler** ที่ถือ schedule entry หลาย ๆ อันแล้วยิงแต่ละอันตามเวลาของมันข้าม worker (จะเป็น Quartz แบบ cluster, scheduling service, หรือ cron ของ workflow engine ก็ได้) ไอเดียเดียวกันแหละ แค่มีหลาย schedule แทนที่จะมีอันเดียว
+
+แต่ chunk พวกนั้นมันมาจากไหนกันล่ะ? นั่นคือคำถามถัดไป — แล้วคำตอบก็คือ **ห้าม** ไป `query มันที่นี่` โดยตั้งใจเลย
+
+---
+
+## Consume a prepared audience — don't query it here
+
+**ปัญหา:** ท่าที่นึกออกง่ายสุดคือ ปล่อยให้ตัว delivery job ไป run audience query เองตอนยิง — `SELECT ... WHERE eligible` ที่ระดับ 60M เนี่ยมันคือ query มหึมาที่ไปแย่ง resource กับทุกอย่าง, มันช้า, แล้วก็มัดตัว delivery ติดกับ logic การ segment แล้วที่แย่สุดคือเรารันมันภายใต้แรงกดดันเรื่องเวลา — การส่งกำลังยิง *ตอนนี้* — ซึ่งเป็นจังหวะที่แย่ที่สุดที่จะไปกระหน่ำ database
+
+**วิธีแก้:** แยก *ใคร* ออกจาก *ส่งหาเขา* มี upstream เตรียม audience ไว้ล่วงหน้า — segment มัน, สร้าง recipient list ออกมาเป็นรูปเป็นร่าง, แล้วเขียนออกมาเป็น **chunk** (chunk ก็คือ slice ของ recipient ที่ขนาดกำลังพอดีให้ worker ตัวนึงเคี้ยวจบได้) พอ schedule ยิง ฝั่ง delivery ไม่ต้อง query อะไรเลย — มันแค่ **อ่านทีละ chunk แล้วก็ส่ง**
+
+<MermaidDiagram chart={`
+flowchart LR
+    PREP["Audience prep\n(upstream, ahead of time)"] --> STORE[("Prepared audience\n(chunks)")]
+    SCHED["Scheduler fires"] --> WK["Delivery workers"]
+    STORE -->|"read chunk"| WK
+    WK --> SEND["Send"]
+`} />
+
+อันนี้คือสิ่งที่ผมทำมาเป๊ะ ๆ เลย: audience ถูกเตรียมแล้วก็ซอยเป็น chunk ไว้ล่วงหน้านานแล้ว แล้วงานทั้งหมดของฝั่ง delivery ก็คืออ่าน chunk ของตัวเองแล้วยิงออกไป สองอย่างที่ตามมาคือ — งาน segment ที่หนัก ๆ เกิดนอกเส้นทางวิกฤต (ไม่ใช่ตอนที่การส่งกำลังยิง) แล้วก็ delivery ก็ scale ได้แค่เพิ่ม worker ที่ต่างคนต่างคว้า chunk ถัดไปที่ยังไม่มีใครอ่าน
+
+ส่วนเรื่อง audience มันถูกสร้างแล้วก็ซอยเป็น chunk ยังไง — ตัว segment, ตัว ETL เบื้องหลัง — อันนั้นมันเป็นระบบของมันเอง แล้วก็เป็นโพสต์ของมันเองในซีรีส์นี้ไว้ทีหลัง จุดนี้แค่รู้ว่า chunk มันโผล่มาให้พร้อมอ่านก็พอแล้ว
+
+แล้วคำว่า `เตรียมไว้แล้ว` มันก็ถ่อมตัวได้ตามชื่อมันเลยนะ — จำเวอร์ชัน naive ได้มั้ย ที่มันแค่ดึงเป้าหมายมาจาก source สักที่ (upload, REST body, DB) พอมา scale มันก็แทบไม่ต่างเลย: audience ก็ยังเป็น **CSV ที่ marketing โยนเข้ามา** ได้อยู่ แค่ตอนนี้มันถูกซอยเป็น chunk แล้วอ่านด้วยวิธีเดียวกัน เราจะงัด Audience Platform หนัก ๆ (segment ของแท้, ETL) มาใช้ก็ต่อเมื่อการ target มันต้องการถึงขั้นนั้น — แค่ list upload ก็ครอบคลุมได้เยอะอย่างน่าตกใจ
+
+แต่จนถึงตอนนี้ ทุกอย่างก็ยังออกไปช่องทางเดียวอยู่ดี ส่วนคำว่า `ส่งให้ถึงลูกค้า` เนี่ย แทบไม่เคยแปลว่าแค่ push อย่างเดียวเลย
+
+---
+
+## Reach more than one channel — omnichannel dispatch
+
+**ปัญหา:** push อย่างเดียวมันพลาดคนไปเยอะ — บางคนปิด notification, บางคน uninstall แอปไปแล้ว, หรือบางทีข้อความมันสำคัญพอที่เราอยากมี email หรือ SMS ไว้เป็นตัวสำรอง คำว่า `ส่งให้ถึงลูกค้า` มันแปลว่าไปเจอเขาบนช่องทางที่ส่งถึงตัวเขาได้เข้าเป้าต่างหาก
+
+**วิธีแก้:** backbone อ่าน chunk เข้ามา แล้วก็ **dispatch ไปหนึ่งหรือหลายช่องทาง** ต่อ recipient หนึ่งคน แต่ละช่องทางอยู่หลัง interface กลางตัวเดียวกัน (ไอเดีย Strategy เดียวกับ push handler จากโพสต์ก่อน) — แต่จุดที่กัดคือ **ช่องทางมันไม่ได้สมมาตรกัน** ขอพาทัวร์สั้น ๆ ว่าแต่ละตัวมันมีนิสัยของมันยังไง:
+
+- **Push** — ระบบจากโพสต์ก่อน backbone แค่เรียกใช้ ไว, ถูก, แต่อยู่ชั่วคราว
+- **Email** — async แล้วก็ช้า เราโยนให้ provider (SES, SendGrid) แล้วก็ต้องอยู่กับ bounce, เรื่อง reputation กันโดน spam, แล้วก็ช่องว่างระหว่าง `รับเรื่องแล้ว` กับ `เข้า inbox ของเขาเอง`
+- **SMS** — ตัวแพง จ่ายเป็นรายข้อความ, carrier ก็ rate-limit เรา, แล้วก็ถูกบีบด้วยลิมิตความยาวแบบตายตัว — เพราะงั้น SMS ส่วนใหญ่เลยเป็น *fallback* ที่ตั้งใจเลือก ไม่ใช่ของ default
+- **Inbox** — แล้วตัวนี้ไม่ใช่การ `ส่ง` ด้วยซ้ำ (เดี๋ยวว่ากันต่อ)
+
+แล้วขอเคลียร์เรื่อง scope หน่อย: **email กับ SMS เป็น provider ภายนอก** — SES/SendGrid สำหรับ email, SMS gateway สำหรับ SMS — ที่เรา integrate ไว้หลัง adapter เราไม่ได้สร้าง mail server เองหรือไปเป็น carrier เองนะ คุณค่าทั้งหมดของ backbone คือการ orchestrate *รอบ ๆ* ช่องทางพวกนี้ ไม่ใช่ตัวช่องทางเอง
+
+<MermaidDiagram chart={`
+flowchart LR
+    WK["Delivery worker"] --> DISP{"Dispatch per recipient"}
+    DISP -->|"push"| PUSH["Push system (post #2)"]
+    DISP -->|"email"| EMAIL["Email provider"]
+    DISP -->|"SMS"| SMS["SMS / carrier"]
+    DISP -.->|"write item"| INBOX["Inbox service"]
+`} />
+
+{/* IMAGE PROMPT (omnichannel-reach.png): Clean conceptual illustration on a light background. A person icon in the center labeled "Customer". Exactly ONE box on the left labeled "Delivery Backbone" connects out to FOUR channel boxes, each labeled exactly once: "Push", "Email", "SMS", "In-app Inbox". STRICT: exactly one "Delivery Backbone" box and exactly one box per channel — do NOT repeat any label (especially not "Email" twice); render ONLY these labels, spelled exactly; do NOT print any meta or style words (no "simple", "self-describing", "informative"). One short subtitle is allowed: "Meet customers wherever they are." No typos. Flat vector, soft shadows, 2–3 accent colors, no photorealism. */}
+
+![recipient คนเดียวถูกส่งถึงข้าม push, email, SMS, แล้วก็ inbox ในแอป](/assets/images/blogs/design-omnichannel-delivery/omnichannel-reach.png)
+
+**inbox เป็น service เพื่อนบ้าน ไม่ใช่ช่องทางที่เรา `ส่ง` ไป** ไม่มี provider, ไม่มีการ deliver ผ่านเครือข่าย — การ `deliver` เข้า inbox มันคือการ **insert row ลง DB** เข้าไปเลย เป็น feed ราย user (timeline หน้ากระดิ่ง) ที่ user เปิดดูเมื่อไหร่ก็ได้ตอนเขาอยากดู เพราะไม่มีอะไรถูก push ออกไป มันเลยเป็นช่องทางสำหรับของ **ที่ไม่ด่วน** — มันนอนรออยู่จนกว่าเขาจะมาเปิด item ถูกจัดกลุ่ม (promotion / system / customer support) แต่ละอันเป็น card ที่จะมีรูปหรือไม่มีก็ได้ บวกข้อความที่ deeplink เข้าแอปหรือออกไปเว็บ แล้วมันก็เป็นเจ้าของ **ฝั่ง read** ทั้งชุดที่ช่องทางอื่นไม่มี: pagination, สถานะ read/unread, ตัวเลข badge ที่ยังไม่อ่าน ส่วน backbone แค่เขียน record ลงไป ที่เหลือเป็นงานของ inbox service ทั้งหมด (บ่อยครั้งเราทำทั้งสองอย่าง — ยิง push *แล้วก็* เขียน row ลง inbox — เพื่อให้พอแตะ push แล้วมันพาไปลงที่ item ที่เก็บไว้)
+
+{/* IMAGE PROMPT (inbox-timeline.png): Clean UI mockup on a light background of an in-app notification timeline (the bell-icon feed). Top: a bell icon with an unread badge. Below: a vertical list of notification cards grouped under category tabs/sections — Promotion, System, Customer support. Each card uses an image-on-top, message-below layout (some cards with a thumbnail image, some text-only), with a subtle "tap to open" affordance (deeplink/web). Clean mobile-app aesthetic, flat vector, soft shadows, 2–3 accent colors, no photorealism. */}
+
+![inbox timeline ในแอป: feed หน้ากระดิ่งที่จัดกลุ่มเป็น Promotion / System / Customer support แต่ละอันเป็น card ที่มีรูปหรือไม่มีก็ได้ แตะแล้ว deeplink](/assets/images/blogs/design-omnichannel-delivery/inbox-timeline.png)
+
+---
+
+## The delivery workflow — the part you can't skip
+
+**ปัญหา:** การ dispatch ทั้ง chunk ให้น่าเชื่อถือมันไม่ใช่ loop แบบยิงแล้วลืม recipient ทุกคนต้องถูกส่ง, ถูก track, แล้วก็ถูก retry เมื่อ fail ชั่วคราว, worker ที่ crash กลาง chunk ต้องไม่ส่งซ้ำหรือทำหลุดว่าทำถึงไหน, แล้วเราก็ต้องรู้ด้วยว่าแต่ละคนเกิดอะไรขึ้น นั่นแหละคือ **workflow** — แล้วต่างจากของเสริมเรื่อง fallback ข้างล่าง ตัวนี้มัน **ไม่ใช่ของ optional** มันคือแก่นของสเตจนี้เลย
+
+**วิธีแก้:** ทำให้การประมวลผล chunk เป็น workflow ของแท้ มีอยู่สองทรงที่ work แล้วมันก็คือสองปลายของ ladder ที่เราเห็นมาแล้ว:
+
+- **worker ตัวเดียว กระจายผ่าน Kafka** worker อ่าน chunk แล้วซอยมันเป็น message ราย recipient (หรือเป็น sub-batch) ลง Kafka แล้ว delivery worker แบบ stateless ก็ consume มันไป ส่ง, retry, แล้วก็ dead-letter มัน scale ด้วย partition กับ consumer ส่วน `state` ก็ไปอยู่ที่ Kafka offset บวก result store ของเรา
+- **parent workflow ที่ spawn child workflow** parent workflow หนึ่งตัวต่อหนึ่งการส่ง กระจายออกเป็น **N child workflow** — อันละ chunk (แล้วถ้าอยากได้ ก็มี grandchild อันละ recipient) แต่ละ child เป็นเจ้าของ state, retry, แล้วก็ timer ของตัวเอง อันนี้คือ pattern parent-child ของ Cadence/Temporal
+
+ไม่ว่าทางไหน ของที่ต้องมีเหมือนกันเป๊ะคือ: recipient ทุกคนใน chunk จบลงในสถานะที่ *รู้ผล* — ส่งแล้ว, fail, หรือยอมแพ้ — แล้ว crash แล้วก็ resume ต่อ ไม่ใช่เล่นซ้ำทั้งหมดแบบมั่ว ๆ
+
+<MermaidDiagram chart={`
+flowchart TD
+    PARENT["Parent workflow\n(per send)"] --> C1["Child workflow\nchunk 1"]
+    PARENT --> C2["Child workflow\nchunk 2"]
+    PARENT --> CN["Child workflow\nchunk N"]
+    C1 --> S1["send + track + retry"]
+    C2 --> S2["send + track + retry"]
+    CN --> SN["send + track + retry"]
+`} />
+
+**fallback เป็นแค่ของเสริมที่มีก็ดี** พอ workflow มันมีอยู่แล้ว การเพิ่ม fallback chain เข้าไปก็ถูกมาก: ลองยิง push ก่อน ถ้ามันไม่ถึงภายในเวลาที่กำหนด ก็ค่อย fall back ไป SMS หรือ email คุ้มอยู่สำหรับข้อความที่สำคัญพอตัว — แต่มันเป็นของเสริม ไม่ใช่เหตุผลที่ workflow มีอยู่
+
+ส่วนเรื่อง *จะ build* workflow นี้ยังไง ก็ใช้กฎเดียวกับทุกอย่างในซีรีส์นี้ — เริ่มจากข้อจำกัด ไม่ใช่จากเครื่องมือ — เพราะงั้นปีน ladder นี้ขึ้นไปเท่าที่มีอะไรมาบังคับเราเข้าเท่านั้น:
+
+- **แค่ส่ง + retry ไม่มีอะไรต้องรอ?** ก็ **cron + queue + worker แบบ stateless** ธรรมดา ทรงเดียวกับ push pipeline เขียน retry เองไป ยังไม่มีอะไรต้อง orchestrate
+- **ประมวลผล chunk ที่ต้อง restart ให้สะอาดหลัง crash?** **Spring Batch** — read → process → write เป็น chunk, restart ได้, partition ได้ สร้างมาเพื่อ `อ่าน chunk แล้วส่ง` พอดีเป๊ะ
+- **ส่วนใหญ่เป็นเรื่อง scheduling + background job ที่ retry ได้?** **JobRunr** หรือ **Quartz** ให้ durable scheduling กับ retry (มี dashboard ด้วย) โดยไม่ต้องตั้ง workflow cluster
+- **flow ราย chunk / ราย recipient ที่มัน stateful *แล้วก็* อิงกับเวลาด้วย** — parent กระจาย child workflow ออกไป มี durable state, retry, แล้วก็ timer (บวก timed fallback ถ้าจะใส่)? *ทีนี้แหละ* workflow engine — **Cadence/Temporal**, หรือ **Step Functions** แบบ managed — ถึงจะคุ้มค่ากับน้ำหนักของมัน เพราะนั่นคือเหตุผลที่มันเกิดมา
+
+ผมลงเอยที่ **Cadence** (durable workflow engine ของ Uber; Temporal คือตัว fork ของมัน) เพราะเคสสุดท้ายนั่นแหละคือของผม: parent workflow กระจาย child workflow อันละ chunk แต่ละตัวเป็นเจ้าของ state, retry, แล้วก็ timer ของตัวเอง — ปล่อยให้ engine ดูแลของพวกนั้นทั้งหมดมันคุ้มกว่ามานั่งเขียนเอง แล้ว durable timer ของมันก็ครอบคลุมการยิงตาม schedule ไปด้วย (การส่งช่วงสุดสัปดาห์ก็แค่ workflow ที่เริ่มด้วย timer) แต่ถ้า delivery ของเรามีแค่ส่ง-แล้ว-retry การไปคว้า orchestrator มาใช้ก็คือการ over-engineer แบบที่ซีรีส์นี้เตือนซ้ำ ๆ พอดีเลย เครื่องจักรมันต้องถูกดึงเข้ามาด้วยปัญหา ไม่ใช่ทำสลับทางกัน
+
+แล้วถ้าเรา *จะ* ใส่ fallback นั้นเข้าไป caveat แบบเปิดอกจากโพสต์ push ก็ใช้ได้เลย: push ที่ขึ้นว่า `delivered` มันแปลแค่ว่า provider รับเรื่องไว้แล้วเท่านั้น เพราะงั้น `fall back ถ้ายังไม่ delivered` มันต้องพึ่ง **client-side delivery signal** จากคราวก่อน ถ้าไม่มี signal นั้น fallback ก็แปลว่า `fall back เฉพาะตอน provider ปฏิเสธกลับมาเลย` เท่านั้น — ซึ่งอ่อนกว่า เลือก trigger ของ fallback โดยรู้ว่าเรามี signal ตัวไหนอยู่ในมือกันแน่
+
+---
+
+## Frequency caps and cost — what to weigh
+
+พอคนคนนึงส่งถึงได้หลายช่องทาง backbone ก็เป็นที่เดียวที่เห็นทุกช่องทางพร้อมกัน — เพราะงั้นมีสองเรื่องที่มาตัดสินใจกันที่จุดนี้
+
+**Frequency cap — สองชั้น** cap จำนวน touch **รวม** ต่อคนข้ามทุกช่องทาง (cap เป็นของ *คน* ไม่ใช่ของท่อ) *แล้วก็* cap ราย channel ด้วย สองอันนี้มันส่งผลต่อกัน: สมมติคนนึงรับไหว **4 ครั้งต่อวันรวม ๆ** แต่บริษัทเลือกใช้ **push 1 + email 1** แล้วเหลืออีก 2 ไว้ไม่ใช้ อันนั้นคือตั้งใจ — เรากำลังชั่งน้ำหนักระหว่างการเข้าถึงเชิงธุรกิจกับการรบกวน user มากเกินไป เหลือ headroom ไว้ก็ไม่เป็นไร เอนไปทางส่งน้อยไว้ก่อนยังดีกว่าโดนปิดเสียง
+
+พอมีหลายการส่งมาแย่ง slot กันใต้ cap เดียวกัน เราก็ต้องมี **priority** — มาจาก **attribute** ของ message (field บอก priority) หรือ **ลำดับที่ marketing จัดใน UI** ส่วน *ว่า priority นั้นควรอยู่ที่ไหน* มันก็ทับ ๆ กันกับ Audience Platform อยู่ มุมของผมคือเก็บการ **บังคับใช้ cap** ไว้ที่ backbone (มีแต่มันที่เห็นทุกช่องทางแบบ real-time) แล้วปล่อยให้ upstream เป็นคนตัดสินว่า *ใครเข้าเงื่อนไขแล้วก็เรียงลำดับยังไง* เส้นแบ่งมันก็เบลอ ๆ อยู่นะ บอกกันตามเนื้อผ้า
+
+**Cost-aware routing** เลือกช่องทางที่ถูกแล้วก็เข้าถึงได้กว้างก่อน (push, inbox) ส่วน SMS ก็มองเป็น fallback ที่เรา *เลือก* จะจ่ายเงิน ทุก push ที่ถึงคือ SMS ที่เราไม่ต้องส่ง — การเอนออกจาก SMS ที่แพง ๆ แบบนี้มันกลายเป็น budget ที่ประหยัดได้เป็นเรื่องเป็นราวแล้วก็เกิดซ้ำ ๆ ไม่ใช่เศษเงิน
+
+<MermaidDiagram chart={`
+flowchart LR
+    REC["Recipient"] --> GATE{"Backbone (sees all channels)"}
+    GATE -->|"over the per-person cap?"| DROP["Skip / defer"]
+    GATE -->|"ok — cheapest reaching channel"| DISP["Dispatch"]
+`} />
+
+{/* IMAGE PROMPT (cost-routing.png): Clean conceptual illustration on a light background showing cost-aware channel routing for one recipient. Channels arranged by cost: Push and Inbox marked cheap/high-reach (green), SMS flagged expensive ($$). An arrow picks the cheapest channel that still reaches the user, with SMS shown as a deliberate paid fallback. Convey "every push that lands is an SMS you didn't pay for." Flat vector, soft shadows, 2–3 accent colors, no photorealism. */}
+
+![cost-aware routing: เลือก push/inbox ก่อน (ถูก, เข้าถึงกว้าง); ใช้ SMS เป็น fallback แบบจ่ายเงินที่ตั้งใจเลือกเท่านั้น](/assets/images/blogs/design-omnichannel-delivery/cost-routing.png)
+
+---
+
+## If you want to build it yourself — tech by pattern
+
+ไม่ต้องเขียนทุกอย่างนี้ขึ้นมาเองจากศูนย์หรอก เครื่องมือที่สุกงอมแล้วครอบคลุมแต่ละชิ้นอยู่ เลือกตาม pattern ที่เราต้องใช้เอง — แล้วก็จำ ladder จากเมื่อกี้ไว้: ปีนขึ้นไปแค่เท่าที่ปัญหามันบังคับ
+
+**ตั้งเวลายิง — [Quartz](https://www.quartz-scheduler.org/)** (JVM), หรือ cloud scheduler (AWS EventBridge Scheduler, Kubernetes CronJob)
+
+- กำหนด job + cron/trigger แล้ว persist มันลง store ที่อิง DB เพื่อให้การยิงรอดจากการ restart
+- พอถึงเวลายิง อย่าทำงานเอง — โยนการส่งลง queue ให้ worker มาระบาย
+- เหมาะเมื่อ: เราต้องการแค่ durable timing ตัวที่เบาที่สุด
+
+**อ่านแล้วประมวลผล chunk — [Spring Batch](https://spring.io/projects/spring-batch)** (JVM)
+
+- `ItemReader` อ่าน chunk → `ItemProcessor` ปั้น payload ราย recipient → `ItemWriter` dispatch ออกไป
+- commit ราย chunk เพื่อให้ crash แล้ว restart จาก chunk ดี ๆ อันล่าสุด ไม่ใช่เริ่มใหม่ทั้งหมด
+- partition ตัว step ให้รัน chunk ขนานกันข้าม worker ได้
+- เหมาะเมื่อ: งานเป็นก้อน chunk มีขอบเขต ไม่มีการรอนาน ๆ ราย item เป็น default ที่ดีมากสำหรับสาย JVM
+
+**workflow ราย chunk / ราย recipient ที่ stateful — [Temporal](https://temporal.io/) / [Cadence](https://cadenceworkflow.io/)** (self-hosted), หรือ [AWS Step Functions](https://aws.amazon.com/step-functions/) (managed)
+
+- **parent workflow** กระจาย **child workflow** อันละ chunk แต่ละการส่งเป็น activity (`sendPush`, `sendSMS`, …)
+- engine เป็นเจ้าของ retry กับ state แล้ว durable timer ก็ครอบคลุมทั้งการยิงตาม schedule แล้วก็ fallback window
+- worker crash แล้ว resume กลางทางได้ — ไม่ส่งซ้ำ ไม่หลุดว่าทำถึงไหน
+- เหมาะเมื่อ: flow ราย chunk มัน stateful เข้าขั้นนั้น (parent/child, timer, retry) หนักสุด แต่มันแบกส่วนยาก ๆ ให้ (อันนี้คือตัวที่ผมใช้ — Cadence)
+
+**background job + retry แบบเบา ๆ — [JobRunr](https://www.jobrunr.io/)** (JVM)
+
+- enqueue job แล้วได้ retry อัตโนมัติบวก dashboard มาด้วย ทั้งหมด back ด้วย DB ของเรา
+- เหมาะเมื่อ: เราอยากได้ scheduling + job ที่ retry ได้ โดยไม่ต้องตั้ง workflow cluster แล้ว logic fallback ก็ไม่ซับซ้อน
+
+**เตรียมแล้วก็ซอย audience — [Apache Spark](https://spark.apache.org/)** (หรือ Flink)
+
+- batch job อ่านข้อมูลต้นทาง, apply กฎการ segment, แล้วเขียน recipient list ออกมาเป็น chunk — ทั้งหมดนอกเส้นทางวิกฤต ทำไว้ล่วงหน้าก่อนยิง
+- เหมาะเมื่อ: audience ใหญ่มาก แล้วการ segment ก็หนัก (อันนี้คือ Audience Platform ฝั่ง upstream เลย — เป็นโพสต์ของมันเอง — แล้ว delivery backbone ก็แค่กิน chunk ของมันมาใช้)
+
+ไม่มีตัวไหนเป็น `คำตอบ` ในตัวมันเองหรอก — แต่ละตัว map กับหนึ่ง pattern จับเครื่องมือให้เข้ากับข้อจำกัด ไม่ใช่เข้ากับกระแส
+
+---
+
+## Get back to your goal — you just want to talk to your users
+
+หลังจากผ่าน scheduler, chunk, workflow, แล้วก็ cap มาหมด ขอถอยกลับมาที่สิ่งเดียวที่ทั้งโพสต์นี้ทำเพื่อมัน: **เราแค่อยากสื่อสารกับ user ของเรา** แค่นั้นแหละ ทุกอย่างข้างบนคือท่อที่วางไว้รับใช้ประโยคนี้
+
+เพราะงั้นให้เป้าหมายเป็นคนเลือกท่อ ไม่ใช่ทำกลับทางกัน:
+
+- ส่งข้อความครั้งเดียวจบให้คนไม่กี่คน? list กับ `send()` — จบแล้ว
+- อยากให้มันออกตอนทีมหยุดสุดสัปดาห์? ก็เพิ่ม scheduler
+- จะส่งให้ถึงคนที่ปิด push ไป? ก็เพิ่มช่องทางที่สอง
+- blast 60M ที่ห้ามทำระบบละลายหรือส่งซ้ำ? *ทีนี้แหละ* chunk กับ workflow ถึงได้ที่ทางของมัน
+
+ถ้าชิ้นส่วนไหนของ architecture นี้มันไม่ได้ทำให้การส่งถึง user ง่ายขึ้นหรือถูกลง — หรือไม่ได้ปกป้อง user จากการโดน spam — มันก็ยังไม่ควรอยู่ในเวอร์ชันของ *เรา* ตอนนี้ backbone มันคุ้มค่าที่จะ build ก็ต่อเมื่อเป้าหมายมันโตเกิน loop ง่าย ๆ ไปเลย จนกว่าจะถึงตอนนั้น loop ง่าย ๆ **คือ** design ที่ถูกต้องแล้ว
+
+---
+
+## Wrapping up
+
+เราเริ่มจากไฟล์กับ worker ตัวนึงที่ loop list แล้วส่งบนช่องทางเดียว แล้วมาจบที่ backbone ที่ยิงตาม schedule, อ่าน audience ที่เตรียมไว้ทีละ chunk, แล้วก็ขับ recipient แต่ละคนผ่าน omnichannel workflow เส้นทางทั้งหมด เรียงตามลำดับ:
+
+1. **แยก scheduling ออกจาก sending** เพื่อให้การส่งยิงได้น่าเชื่อถือ แล้วงานก็ระบายเป็น chunk ได้
+2. **กิน audience ที่เตรียมไว้แล้วเป็น chunk** แทนที่จะมา query 60M row ตอนที่การส่งกำลังยิง
+3. **dispatch ข้ามช่องทาง** — push, email, SMS — หลัง interface เดียว โดยเคารพว่ามันไม่สมมาตรกัน
+4. **มอง inbox เป็น service เพื่อนบ้าน** ที่เราเขียนลงไป ไม่ใช่ช่องทางที่เรายิง
+5. **ทำ delivery ให้เป็น workflow ของแท้** — กระจาย chunk ไปหา worker (ผ่าน Kafka) หรือไปหา child workflow; fallback เป็นของแถม
+6. **ชั่งน้ำหนัก frequency cap กับ cost ที่ backbone** — ที่เดียวที่เห็นทุกช่องทาง — รวมถึง priority ตอนที่หลายการส่งมาแย่งกันใต้ cap
+
+แล้วก็ขอปักหมุดว่าทำไมมันถึงคุ้มที่จะ build ขึ้นมา เวอร์ชันที่ลงมือทำเอง — timeline-notification delivery system ที่ผม design แล้วก็ build เอง (Kotlin / Spring Boot WebFlux + Cadence Workflow + Kafka) — มันคือการแปลงงาน **upload เองจาก back-office** ให้กลายเป็นแบบ **schedule ได้** เพราะ delivery layer ตัวนี้ตั้งใจให้เป็น backbone หลักของช่องทางสื่อสารของเรา ผมเลย design ให้ทีม operator กับ marketing set ของได้โดยใช้แรงน้อยลงเยอะ — แล้วก็เอาเวลาไปทุ่มกับเรื่องที่สำคัญกับตัวเขาเองมากกว่า แทนที่จะมานั่งเฝ้าการส่ง มันมีตัวเลข impact ด้วยแหละ แต่อันนั้นมันมาเป็นผลพลอยได้ คุณค่าที่ผมแคร์มากที่สุดมันอยู่ที่คน: เวลาของเขา ที่ได้คืนกลับไป
+
+ประเด็นใหญ่ก็ยังเหมือนสองโพสต์ก่อน: **ไม่มีใครต้องการของพวกนี้ตั้งแต่วันแรกหรอก** แอปส่วนใหญ่คือ `send()` ตัวเดียวบนช่องทางเดียว อ่าน list ที่มีคนยื่นมาให้ — แล้วแบบนั้นก็โอเคสุด ๆ backbone ตัวนี้จะคุ้มก็ต่อเมื่อเรารัน *การส่งแบบ schedule, หลายช่องทาง, ไปหา audience ก้อนใหญ่ที่เตรียมไว้แล้ว* เท่านั้น อย่าเพิ่งไป build วาทยกรก่อนที่จะมีวงออเคสตราให้คุมเลย
