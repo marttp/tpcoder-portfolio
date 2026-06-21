@@ -211,7 +211,7 @@ Once one person is reachable on several channels, the backbone is the only place
 
 When sends compete for a slot under the cap, you need a **priority** — from a message **attribute** (a priority field) or an **order marketing ranks in the UI**. *Where* that priority lives overlaps with the Audience Platform; my take is to keep hard **cap enforcement** at the backbone (only it sees all channels live) and let upstream decide *who's eligible and in what order*. The line is genuinely blurry.
 
-**Cost-aware routing.** Prefer the cheap, high-reach channels (push, inbox); treat SMS as a fallback you *chose* to pay for. Every push that lands is an SMS you never sent — on a related campaign platform, leaning off SMS this way saved about **3M JPY a year**.
+**Cost-aware routing.** Prefer the cheap, high-reach channels (push, inbox); treat SMS as a fallback you *chose* to pay for. Every push that lands is an SMS you never sent — leaning off costly SMS this way turns into real, recurring budget saved, not a rounding error.
 
 <MermaidDiagram chart={`
 flowchart LR
@@ -290,7 +290,7 @@ We started with a file and a worker that loops a list and sends on one channel, 
 5. **Make delivery a real workflow** — fan a chunk to workers (via Kafka) or to child workflows; fallback is a bonus on top.
 6. **Weigh frequency caps and cost at the backbone** — the one place that sees every channel — including priority when sends compete under the cap.
 
-And it's worth grounding why this is worth building at all. The real version — the timeline-notification delivery system I designed and built at PayPay (Kotlin / Spring Boot WebFlux + Cadence Workflow + Kafka) — cut around **100 hours a month** of manual work off the marketing team, let them schedule campaigns over the weekend with nobody in the office, and added roughly **4M JPY in annual GMV**. Those are the numbers that justified the machinery — not architecture for its own sake.
+And it's worth grounding why this is worth building at all. The real version — a timeline-notification delivery system I designed and built (Kotlin / Spring Boot WebFlux + Cadence Workflow + Kafka) — was about transforming a **back-office manual upload** into a **scheduled** one. Since this delivery layer was meant to be the primary backbone for our communication channels, I designed it so the operator and marketing teams could set things up with far less effort — and spend their time on the things that actually matter to them, instead of babysitting a send. There were impact numbers too, but those came as a side effect. The value I really care about belongs to the people: their time, handed back.
 
 The meta-point holds from the last two posts: **nobody needs this on day one.** Most apps are a single `send()` on one channel, reading a list someone handed you — and that's completely fine. This backbone only earns its keep once you're running *scheduled, multi-channel sends to a large, prepared audience*. Don't build the conductor before you have an orchestra to conduct.
 
