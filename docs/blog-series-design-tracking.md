@@ -69,8 +69,6 @@ Link URL: https://portfolio.tpcoder.dev/blog/design-omnichannel-delivery-th/
 Blog: <TH title>
 Link URL: https://portfolio.tpcoder.dev/blog/design-webhook-callback-system-th/
 
-แอดมาร์ทยังคงพยายามให้คนคิดเป็นระบบมากขึ้น ว่าทำไมถึงต้องทำอะไรขึ้นมา โดยหยิบของที่ตัวเองทำมากับมือมาอธิบายให้อ่านกัน และไม่ปฏิเสธว่าใช้ AI ช่วยเรียบเรียง แต่แอดรีวิวเองทุกตัวอักษร
-
 มาถึง Domain ที่ 4 เป็นเรื่อง Webhook Callback System — ตอนที่ระบบเราต้องยิง callback กลับไปบอก partner/merchant ว่ามีอะไรเกิดขึ้น เริ่มจาก POST แบบ sync ง่าย ๆ แล้วค่อย evolve ทีละขั้นไปเรื่อง retry, backoff, idempotency, signature, ไปจนถึง DLQ
 
 หวังว่าจะมีประโยชน์ไม่มากก็น้อยนะครับ ขอให้ทุกคนมีความสุข 🙇‍♂️
@@ -81,8 +79,6 @@ Link URL: https://portfolio.tpcoder.dev/blog/design-webhook-callback-system-th/
 ```
 Blog: <TH title>
 Link URL: https://portfolio.tpcoder.dev/blog/design-icon-management-segmentation-th/
-
-แอดมาร์ทยังคงพยายามให้คนคิดเป็นระบบมากขึ้น ว่าทำไมถึงต้องทำอะไรขึ้นมา โดยหยิบของที่ตัวเองทำมากับมือมาอธิบายให้อ่านกัน และไม่ปฏิเสธว่าใช้ AI ช่วยเรียบเรียง แต่แอดรีวิวเองทุกตัวอักษร
 
 มาถึง Domain ที่ 5 เป็นเรื่องการเลือก asset/icon ให้เหมาะกับลูกค้าแต่ละ segment — เริ่มจาก icon ตายตัวต่อ campaign แล้วค่อย evolve ไปเรื่องเลือกตาม attribute, cache, ไปจนถึง A/B test และ optimize ตาม CTR
 
@@ -95,8 +91,6 @@ Link URL: https://portfolio.tpcoder.dev/blog/design-icon-management-segmentation
 Blog: <TH title>
 Link URL: https://portfolio.tpcoder.dev/blog/design-audience-platform-th/
 
-แอดมาร์ทยังคงพยายามให้คนคิดเป็นระบบมากขึ้น ว่าทำไมถึงต้องทำอะไรขึ้นมา โดยหยิบของที่ตัวเองทำมากับมือมาอธิบายให้อ่านกัน และไม่ปฏิเสธว่าใช้ AI ช่วยเรียบเรียง แต่แอดรีวิวเองทุกตัวอักษร
-
 มาถึง Domain ที่ 6 เป็นเรื่อง Audience Platform — ระบบที่คัดว่าจะส่งหาใคร (ตัวที่ป้อน chunk ให้ Omnichannel ใน Domain 3) เริ่มจาก query ตอนส่ง แล้วค่อย evolve ไปเรื่อง batch ล่วงหน้า, Spark, data lake, ไปจนถึง segment แบบ near real-time
 
 หวังว่าจะมีประโยชน์ไม่มากก็น้อยนะครับ ขอให้ทุกคนมีความสุข 🙇‍♂️
@@ -107,8 +101,6 @@ Link URL: https://portfolio.tpcoder.dev/blog/design-audience-platform-th/
 ```
 Blog: <TH title>
 Link URL: https://portfolio.tpcoder.dev/blog/design-campaign-management-platform-th/
-
-แอดมาร์ทยังคงพยายามให้คนคิดเป็นระบบมากขึ้น ว่าทำไมถึงต้องทำอะไรขึ้นมา โดยหยิบของที่ตัวเองทำมากับมือมาอธิบายให้อ่านกัน และไม่ปฏิเสธว่าใช้ AI ช่วยเรียบเรียง แต่แอดรีวิวเองทุกตัวอักษร
 
 มาถึง Domain ที่ 7 เป็นเรื่อง Campaign Management Platform — หน้าบ้านที่ทีม marketing ใช้สร้างแล้วก็คุม campaign เริ่มจาก CRUD ง่าย ๆ แล้วค่อย evolve ไปเรื่อง scheduling, approval workflow, budget cap, ไปจนถึง A/B test และ multi-tenant
 
