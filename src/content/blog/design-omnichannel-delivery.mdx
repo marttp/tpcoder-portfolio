@@ -35,8 +35,8 @@ The road, each step forced by the one before it:
 2. **Fire on a schedule**, wake per chunk
 3. **Consume a prepared, chunked audience** instead of querying it yourself
 4. **Reach more than one channel** — push, email, SMS (and the inbox service)
-5. A **delivery workflow** with fallback
-6. **Cross-channel dedupe, frequency caps, and cost-aware routing**
+5. A **delivery workflow** (chunks → workers, or parent/child workflows)
+6. **Frequency caps and cost-aware routing**
 
 {/* IMAGE PROMPT (hero-backbone.png): Wide banner hero, clean modern architecture illustration on a light background. A single left-to-right flow with these boxes in order, labeled EXACTLY as written: "Scheduler" → "Audience Store" → "Delivery Workers" → "Delivery Backbone" → then four channel boxes branching from the backbone: "Push (FCM / APNs)", "Email (SES / SendGrid)", "SMS (Twilio / Vonage)", and "Inbox Service" (connected by a "write item" arrow). STRICT: render ONLY the labels listed above, spelled exactly — do NOT print any descriptive, meta, or marketing words (no "informative", "self-describing", "simple"), no full sentences inside boxes, no typos, no duplicate boxes or labels. Flat vector, soft shadows, tech-blog aesthetic, 2–3 accent colors, plain labeled rectangles, no photorealism. */}
 
@@ -46,7 +46,13 @@ The road, each step forced by the one before it:
 
 ## The naive version — a list and a worker
 
-You have to start somewhere, and in the real world the honest start is dead simple: you get a **list of targets** from somewhere, and send to each one. "Somewhere" is flexible — a CSV someone **uploads** (multipart), a **REST call** with the targets right in the JSON body, or a **query against a DB**. The transport genuinely doesn't matter yet; conceptually it's all the same thing — *a source of targets, in some way* — and a worker reads them one by one and sends. Each entry carries what a send needs: a `userId`, the message (or a `templateId`), maybe the channel, plus a bit of metadata.
+You have to start somewhere, and in the real world the honest start is dead simple: you get a **list of targets** from somewhere, and send to each one. "Somewhere" is flexible:
+
+- a **CSV someone uploads** (multipart),
+- a **REST call** with the targets right in the JSON body, or
+- a **query against a DB**.
+
+The transport genuinely doesn't matter yet; conceptually it's all the same thing — *a source of targets, in some way* — and a worker reads them one by one and sends. Each entry carries what a send needs: a `userId`, the message (or a `templateId`), maybe the channel, plus a bit of metadata.
 
 ```
 on run:                              # targets from somewhere — upload, REST body, or DB
@@ -64,7 +70,13 @@ flowchart LR
     LOOP --> SEND["send() — one channel"]
 `} />
 
-No scheduler, no queue, no pipeline — you point it at a source and run it. And it only ever needs three things, which every target entry carries: an **audience** (the list), a **message** (per entry), and a **method** (the channel). For a few thousand targets on one channel this genuinely works, and plenty of real sends never grow past it.
+No scheduler, no queue, no pipeline — you point it at a source and run it. And it only ever needs three things, which every target entry carries:
+
+- an **audience** (the list),
+- a **message** (per entry),
+- a **method** (the channel).
+
+For a few thousand targets on one channel this genuinely works, and plenty of real sends never grow past it.
 
 Worth saying out loud, because it's easy to forget under all the architecture talk: this dead-simple version is *legitimate engineering*. Even senior engineers ship a lot of "just read the file and send" — the minimum that hits the goal beats the clever thing nobody needed. We only add machinery below when a concrete problem forces it.
 
@@ -155,49 +167,55 @@ flowchart LR
 
 ---
 
-## A delivery workflow, not a single send — fallback
+## The delivery workflow — the part you can't skip
 
-**The problem:** dispatching to a channel isn't the finish line. A push comes back "device unregistered," an SMS fails at the carrier — and for a message that matters you don't want to just shrug. You want to try the next channel. That's no longer a single send; it's a small **workflow** per recipient, with state.
+**The problem:** dispatching a whole chunk reliably is not a fire-and-forget loop. Every recipient has to be sent, tracked, and retried on a transient failure; a worker crash mid-chunk mustn't double-send or lose its place; and you need to know what actually happened to each one. That's a **workflow** — and unlike the fallback niceties below, it isn't optional. It's the core of this stage.
 
-**The fix:** model per-recipient delivery as a workflow with explicit steps and a **fallback chain** — try push, and if it doesn't land within a window, fall back to SMS or email, recording the outcome at each step. Every step is idempotent and tracked, so a retry or a crash neither double-sends nor loses its place.
+**The fix:** make the chunk's processing a real workflow. Two shapes work, and they're the two ends of the ladder you've already seen:
+
+- **One worker, fanned out over Kafka.** A worker reads a chunk and splits it into per-recipient (or sub-batch) messages on Kafka; stateless delivery workers consume them, send, retry, and dead-letter. It scales by partitions and consumers, and the "state" lives in Kafka offsets plus your result store.
+- **A parent workflow that spawns child workflows.** A parent workflow per send fans out **N child workflows** — one per chunk (and, if you want, a grandchild per recipient). Each child owns its own state, retries, and timers. This is the Cadence/Temporal parent-child pattern.
+
+Either way the must-have is identical: every recipient in the chunk ends in a *known* state — sent, failed, or given up — and a crash resumes instead of replaying blindly.
 
 <MermaidDiagram chart={`
-flowchart LR
-    START["Recipient in chunk"] --> P["Try push"]
-    P -->|"delivered"| DONE["Done"]
-    P -->|"failed / no signal"| F["Fallback: SMS or email"]
-    F -->|"delivered"| DONE
-    F -->|"failed"| DLQ["Give up + record"]
+flowchart TD
+    PARENT["Parent workflow\n(per send)"] --> C1["Child workflow\nchunk 1"]
+    PARENT --> C2["Child workflow\nchunk 2"]
+    PARENT --> CN["Child workflow\nchunk N"]
+    C1 --> S1["send + track + retry"]
+    C2 --> S2["send + track + retry"]
+    CN --> SN["send + track + retry"]
 `} />
+
+**Fallback is a nice-to-have on top.** Once the workflow exists, adding a fallback chain is cheap: try push, and if it doesn't land within a window, fall back to SMS or email. Worth it for messages that genuinely matter — but it's an enhancement, not the reason the workflow exists.
 
 How you *build* this workflow follows the same rule as everything else in the series — start from the constraint, not the tool — so climb this ladder only as far as something actually forces you:
 
 - **Just send + retry, nothing to wait on?** Plain **cron + queue + stateless workers**, the same shape as the push pipeline. Hand-roll the retry; there's nothing to orchestrate yet.
 - **Chunk processing that has to restart cleanly after a crash?** **Spring Batch** — read → process → write in chunks, restartable, partitionable. Built for exactly "read the chunk and send."
 - **Mostly scheduling + retried background jobs?** **JobRunr** or **Quartz** give durable scheduling and retries (with a dashboard) without standing up a workflow cluster.
-- **A per-recipient flow that's genuinely stateful *and* timed** — fire push, *wait* for a signal, then fall back? *Now* a workflow engine — **Cadence/Temporal**, or managed **Step Functions** — earns its weight, because durable timers + state + retries are the whole reason it exists.
+- **A genuinely stateful per-chunk / per-recipient flow** — a parent fanning out child workflows, with durable state, retries, and timers (and timed fallback if you add it)? *Now* a workflow engine — **Cadence/Temporal**, or managed **Step Functions** — earns its weight, because that's the whole reason it exists.
 
-I landed on **Cadence** (Uber's durable workflow engine; Temporal is the fork of it) because that last case was mine: the timed fallback made the per-recipient step genuinely stateful, so letting the engine own the timers, state, and retries beat hand-rolling them — and its durable timers cover the scheduled fire too (the 9am blast is just a workflow that starts on a timer). But if your delivery is only ever send-and-retry, reaching for an orchestrator is precisely the over-engineering this series keeps warning about. The machinery has to be pulled in by the problem, not the other way around.
+I landed on **Cadence** (Uber's durable workflow engine; Temporal is the fork of it) because that last case was mine: a parent workflow fanning out child workflows per chunk, each owning its own state, retries, and timers — letting the engine own all that beat hand-rolling it, and its durable timers cover the scheduled fire too (the weekend send is just a workflow that starts on a timer). But if your delivery is only ever send-and-retry, reaching for an orchestrator is precisely the over-engineering this series keeps warning about. The machinery has to be pulled in by the problem, not the other way around.
 
-The honest caveat is the same one from the push post: a push "delivered" only means the provider accepted it, so "fall back if not delivered" leans on the **client-side delivery signal** from last time. Without that signal, fallback really means "fall back only if the provider outright rejected it" — which is weaker. Pick your fallback trigger knowing which signal you actually have.
+And if you *do* add that fallback, the honest caveat from the push post applies: a push "delivered" only means the provider accepted it, so "fall back if not delivered" leans on the **client-side delivery signal** from last time. Without it, fallback really means "fall back only if the provider outright rejected it" — weaker. Pick your trigger knowing which signal you actually have.
 
 ---
 
-## Cross-channel dedupe, frequency caps, and cost
+## Frequency caps and cost — what to weigh
 
-**The problem:** the moment one person is reachable on several channels, three fresh ways to annoy them — or overspend — appear. The same message can hit them on push *and* email *and* SMS (cross-channel triple-buzz). The daily frequency cap from the push post was per-channel, so the *total* touches across channels can quietly blow past what you meant. And SMS costs real money per message, so routing blindly is a budget leak.
+**The problem:** the moment one person is reachable on several channels, two things get easy to get wrong. The daily frequency cap from the push post was per-channel — but the *total* touches across channels can quietly blow past what you meant, and over-touching is exactly how you get muted. And SMS costs real money per message, so routing blindly is a budget leak.
 
-**The fix:** lift all three up to the backbone, the one place that can see every channel at once:
+**What to weigh:** the backbone is the one place that sees every channel at once, so two decisions land here:
 
-- **Cross-channel dedupe.** The idempotency key isn't per-channel — it's per (send/event, recipient). Once the message lands on *any* channel, the others stand down. Same event-identity key idea as the push dedupe, just scoped across channels.
-- **Frequency cap across channels.** Count touches per recipient across *every* channel, not per channel. The cap is a property of the *person*, not the pipe.
+- **Frequency cap across channels.** Count touches per recipient across *every* channel, not per channel — the cap is a property of the *person*, not the pipe. The deeper bit is what happens when several sends compete for the same slot under the cap: you need a **priority within the same type**, and that priority can come from a message **attribute** (an explicit priority field) or an **order marketing sets in the UI** (rank the campaigns). Honestly, *where* that priority lives is a fair question — it overlaps with the Audience Platform. My take: keep hard **cap enforcement** at the backbone (it's the only thing that sees all channels in real time), and let the upstream own *who's eligible and in what order*. The line is genuinely blurry, though.
 - **Cost-aware routing.** Prefer the cheap, high-reach channels (push, inbox) and treat SMS as a fallback you actually chose to pay for. This is where the real money hides: every push that lands is an SMS you never had to send. On a related campaign platform, leaning away from costly SMS this way saved about **3M JPY a year** — real budget, not a rounding error.
 
 <MermaidDiagram chart={`
 flowchart LR
     REC["Recipient"] --> GATE{"Backbone (sees all channels)"}
-    GATE -->|"already delivered elsewhere?"| DROP["Skip"]
-    GATE -->|"over the per-person cap?"| DROP
+    GATE -->|"over the per-person cap?"| DROP["Skip / defer"]
     GATE -->|"ok — cheapest reaching channel"| DISP["Dispatch"]
 `} />
 
@@ -253,8 +271,8 @@ We started with a file and a worker that loops a list and sends on one channel, 
 2. **Consume a prepared, chunked audience** instead of querying 60M rows while the send is firing.
 3. **Dispatch across channels** — push, email, SMS — behind one interface, respecting that they're not symmetric.
 4. **Treat the inbox as a neighbour service** you write to, not a channel you fire.
-5. **Make delivery a workflow with fallback**, not a single send.
-6. **Pull dedupe, frequency caps, and cost up to the backbone** so they're reasoned about per person, across all channels.
+5. **Make delivery a real workflow** — fan a chunk to workers (via Kafka) or to child workflows; fallback is a bonus on top.
+6. **Weigh frequency caps and cost at the backbone** — the one place that sees every channel — including priority when sends compete under the cap.
 
 And it's worth grounding why this is worth building at all. The real version — the timeline-notification delivery system I designed and built at PayPay (Kotlin / Spring Boot WebFlux + Cadence Workflow + Kafka) — cut around **100 hours a month** of manual work off the marketing team, let them schedule campaigns over the weekend with nobody in the office, and added roughly **4M JPY in annual GMV**. Those are the numbers that justified the machinery — not architecture for its own sake.
 
