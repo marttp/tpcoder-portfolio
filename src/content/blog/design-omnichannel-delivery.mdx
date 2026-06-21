@@ -15,7 +15,7 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 
 This is the third post in the backend system design series — same format as always: start with the most naive thing that works, then let real-world constraints push it into shape.
 
-Last time I built a [push notification system](/blog/design-push-notification-system/) — one channel, taken from a direct FCM call all the way to a 120M-a-day pipeline. This post zooms out a level: the **omnichannel delivery backbone** — the thing that, when a send is triggered, takes a prepared audience and drives it out across **push, email, and SMS**, and writes into the in-app **inbox**. The push system from last post becomes just one of the channels this backbone calls.
+Last time I built a [push notification system](/blog/design-push-notification-system/) — one channel, taken from a direct FCM call all the way to a high-volume production pipeline. This post zooms out a level: the **omnichannel delivery backbone** — the thing that, when a send is triggered, takes a prepared audience and drives it out across **push, email, and SMS**, and writes into the in-app **inbox**. The push system from last post becomes just one of the channels this backbone calls.
 
 Boiled right down, the job is simple to state: **you've got a list — usually a big one — of target users, and you want to deliver something to them through a particular method.** Everything below is what that one sentence turns into once the list is huge and the "method" is more than a single channel.
 
@@ -27,7 +27,7 @@ One thing worth pinning down, because it shapes the whole design: the push syste
 
 To make it concrete: the way I actually ran this was for **marketing's promotional campaigns**. Marketing defines a campaign, an upstream system prepares and chunks the target audience, the send gets scheduled, and the backbone fans each chunk out across push and the in-app inbox — with SMS kept as a paid fallback. That's the running example I'll lean on for the rest of the post. But notice the machinery underneath doesn't actually care that it's a "campaign" — it only ever sees an audience, a message, and a method.
 
-One scoping note up front: *building* the audience — segmenting 120M users, working out who's eligible — is its own system (a later post). Here I'll assume the audience already arrives **prepared and chunked**, and focus on what the backbone does once a schedule hits.
+One scoping note up front: *building* the audience — segmenting a huge user base, working out who's eligible — is its own system (a later post). Here I'll assume the audience already arrives **prepared and chunked**, and focus on what the backbone does once a schedule hits.
 
 The road, each step forced by the one before it:
 
