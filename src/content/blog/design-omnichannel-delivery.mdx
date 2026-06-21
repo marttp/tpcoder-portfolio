@@ -62,13 +62,13 @@ flowchart LR
     LOOP --> SEND["send() — one channel"]
 `} />
 
-For a few thousand recipients on one channel, this is genuinely fine — ship it. But two things break the moment it grows. The job loads *everything* into one process, and one slow send stalls the whole run — the same flooding problem from the push post. And "send" quietly assumes one channel forever — but in practice you need to reach people wherever they actually are, and to fire at a planned time, not whenever the cron happens to wake up.
+For a few thousand recipients on one channel, this is genuinely fine — ship it. The thing to notice is what this naive version quietly assumes: it's **send-as-you-go** — it fires the moment the job runs, to one channel, with the whole list held in one process. Every one of those assumptions breaks as you grow, but the first one bites in the most ordinary way: "send this Saturday at 10am"? I'm not coming in on my day off to push the button 😅. "Fire when the job runs" simply can't express "fire at 10am Saturday." So the first real constraint is timing — we need a scheduler.
 
 ---
 
 ## Fire on a schedule, wake per chunk
 
-**The problem:** one cron job that loads 60M recipients and loops is the flooding problem all over again — it holds the whole audience in one process, and a single worker owns the entire send. And timing genuinely matters here: marketing schedules a blast for 9am, and it has to fire at 9am — even if the box that set it up is long gone.
+**The problem:** we just hit the first one — **timing**. "Fire when the job runs" can't express "fire at 10am Saturday," and a human shouldn't have to be the trigger, sitting there to push the button at the right moment. On top of that there's **scale**: one process that loads 60M recipients and loops holds the whole audience in memory while a single worker owns the entire send — the flooding problem all over again.
 
 **The fix:** split *when* from *doing*. A **scheduler** owns the schedule — a durable entry that fires at the right time — and when it triggers, it doesn't send anything itself. It hands the send off to be processed in **chunks**, where each chunk is a slice of the audience a worker can pick up on its own.
 
@@ -83,7 +83,7 @@ flowchart LR
 
 ![A schedule fires and delivery workers read a prepared audience chunk by chunk](/assets/images/blogs/design-omnichannel-delivery/scheduled-chunks.png)
 
-Two things this gets us. The scheduler is **durable** — a crash doesn't lose the 9am fire, because it's a persisted entry, not an in-memory timer. And the work is **horizontally drainable** — N chunks across M workers, with no single process owning 60M rows.
+Two things this gets us. The scheduler is **durable** — a crash doesn't lose the scheduled fire, because it's a persisted entry, not an in-memory timer (your Saturday 10am send still goes out even if the box that scheduled it is long gone). And the work is **horizontally drainable** — N chunks across M workers, with no single process owning 60M rows.
 
 But where do those chunks actually come from? That's the next question — and the answer is deliberately *not* "query them right here."
 
