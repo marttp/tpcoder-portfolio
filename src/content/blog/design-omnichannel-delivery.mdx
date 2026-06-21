@@ -192,6 +192,8 @@ flowchart TD
 
 **Fallback is a nice-to-have on top.** Once the workflow exists, adding a fallback chain is cheap: try push, and if it doesn't land within a window, fall back to SMS or email. Worth it for messages that genuinely matter — but it's an enhancement, not the reason the workflow exists.
 
+**Retry granularity matters — and not every failure deserves the full treatment.** Take the inbox write: it's a bulk DB insert for a whole chunk. If the *entire* block fails, a synchronous retry right there is enough. If it's a *partial* failure — say 10 of 1,000 rows didn't land — don't replay the whole chunk; carve out just those 10 into a small child chunk (a new message / workflow carrying only the 10) and retry *that* asynchronously. And know when to stop: for something non-urgent like the inbox, a couple of async retries (say two) and then **drop** is a perfectly sane policy — it isn't worth a dead-letter queue and the operational weight that comes with it. Match the retry effort to what the message is actually worth.
+
 How you *build* this workflow follows the same rule as everything else in the series — start from the constraint, not the tool — so climb this ladder only as far as something actually forces you:
 
 - **Just send + retry, nothing to wait on?** Plain **cron + queue + stateless workers**, the same shape as the push pipeline. Hand-roll the retry; there's nothing to orchestrate yet.
