@@ -197,6 +197,44 @@ flowchart LR
 
 ---
 
+## If you want to build it yourself — tech by pattern
+
+You don't have to write any of this from scratch; mature tools cover each piece. Pick by the pattern you actually need — and remember the ladder from earlier: only climb as far as the problem forces you.
+
+**Scheduling the fire — [Quartz](https://www.quartz-scheduler.org/)** (JVM), or a cloud scheduler (AWS EventBridge Scheduler, Kubernetes CronJob).
+
+- Define a job + a cron/trigger, and persist it to a DB-backed store so the fire survives a restart.
+- On fire, don't do the work — enqueue the send for workers to drain.
+- Feasible when: you just need durable timing. The lightest option.
+
+**Reading & processing chunks — [Spring Batch](https://spring.io/projects/spring-batch)** (JVM).
+
+- `ItemReader` reads a chunk → `ItemProcessor` builds the per-recipient payload → `ItemWriter` dispatches it.
+- Commit per chunk, so a crash restarts from the last good chunk, not the top.
+- Partition the step to run chunks in parallel across workers.
+- Feasible when: bounded, chunk-shaped work with no long per-item waits. A great default for JVM shops.
+
+**Per-recipient workflow + timed fallback — [Temporal](https://temporal.io/) / [Cadence](https://cadenceworkflow.io/)** (self-hosted), or [AWS Step Functions](https://aws.amazon.com/step-functions/) (managed).
+
+- One workflow per recipient (or per chunk); each send is an activity (`sendPush`, `sendSMS`, …).
+- Use a durable timer / wait for the fallback window, and let the engine own retries and state.
+- A crashed worker resumes mid-flow — no double-send, no lost place.
+- Feasible when: delivery is genuinely stateful and time-based (push → wait → fall back). Heaviest, but it owns the hard parts. (This is what I used — Cadence.)
+
+**Lighter background jobs + retries — [JobRunr](https://www.jobrunr.io/)** (JVM).
+
+- Enqueue jobs and get automatic retries plus a dashboard, all backed by your DB.
+- Feasible when: you want scheduling + retried jobs without standing up a workflow cluster, and the fallback logic is simple.
+
+**Preparing & chunking the audience — [Apache Spark](https://spark.apache.org/)** (or Flink).
+
+- A batch job reads the source data, applies the segmentation rules, and writes the recipient list out as chunks — all off the critical path, ahead of the fire.
+- Feasible when: the audience is huge and the segmentation is heavy. (This is really the upstream Audience Platform — a post of its own — and the delivery backbone just consumes its chunks.)
+
+None of these is "the answer" on its own — each maps to one pattern. Match the tool to the constraint, not the hype.
+
+---
+
 ## Wrapping up
 
 We started with a cron job that loops a list and sends on one channel, and ended with a backbone that fires on a schedule, reads a prepared audience chunk by chunk, and drives each recipient through an omnichannel workflow. The path, in order:
