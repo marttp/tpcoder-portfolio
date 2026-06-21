@@ -68,13 +68,13 @@ No scheduler, no queue, no pipeline — you point it at a source and run it. And
 
 Worth saying out loud, because it's easy to forget under all the architecture talk: this dead-simple version is *legitimate engineering*. Even senior engineers ship a lot of "just read the file and send" — the minimum that hits the goal beats the clever thing nobody needed. We only add machinery below when a concrete problem forces it.
 
-The thing to notice is what it quietly assumes: it's **send-as-you-go** — someone uploads the CSV from the back-office and it fires right then, to one channel. Now picture who's actually doing that upload: the **marketing team**. The campaign needs to go out Saturday morning — and nobody on that team wants to come into the office on a holiday just to upload a file and hit send 😅. What they want is to set the campaign up *ahead of time* and have it fire over the weekend on its own. That's the first real constraint — timing — and in my case it's exactly what pushed us past "run it now" to a scheduler (and eventually the whole backbone).
+The thing to notice is what it quietly assumes: it's **send-as-you-go** — someone uploads the CSV from the back-office and it fires right then, to one channel. And picture who's doing that upload: the **marketing team**. The campaign has to go out Saturday morning, so a real person has to stop whatever their weekend is — family, a date, just rest — to log in and babysit a send. Remote or in-office, this was never about *where* they sit; it's their **time**, the one thing none of us gets back. They'll do it out of duty, and you respect that — but it's exactly the kind of chore we should take off their plate. What they actually want is to set the campaign up *ahead of time* and have it fire on its own. That's the first real constraint — timing — and in my case it's what pushed us past "run it now" to a scheduler (and eventually the whole backbone).
 
 ---
 
 ## Fire on a schedule, wake per chunk
 
-**The problem:** we just hit the first one — **timing**. "Fire when the job runs" can't express "fire at 10am Saturday," and the marketing team shouldn't have to be in the office on a holiday to be that trigger. On top of that there's **scale**: one process that loads 60M recipients and loops holds the whole audience in memory while a single worker owns the entire send — the flooding problem all over again.
+**The problem:** we just hit the first one — **timing**. "Fire when the job runs" can't express "fire at 10am Saturday," and the marketing team shouldn't have to spend their weekend being that trigger. On top of that there's **scale**: one process that loads 60M recipients and loops holds the whole audience in memory while a single worker owns the entire send — the flooding problem all over again.
 
 **The fix:** split *when* from *doing*. A **scheduler** owns the schedule — a durable entry that fires at the right time — and when it triggers, it doesn't send anything itself. It hands the send off to be processed in **chunks**, where each chunk is a slice of the audience a worker can pick up on its own.
 
