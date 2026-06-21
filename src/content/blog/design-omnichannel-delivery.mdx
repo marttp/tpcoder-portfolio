@@ -31,7 +31,7 @@ One scoping note up front: *building* the audience — segmenting a huge user ba
 
 The road, each step forced by the one before it:
 
-1. A **send job** that loops recipients and sends
+1. A **list + a worker** that reads and sends
 2. **Fire on a schedule**, wake per chunk
 3. **Consume a prepared, chunked audience** instead of querying it yourself
 4. **Reach more than one channel** — push, email, SMS (and the inbox service)
@@ -44,25 +44,28 @@ The road, each step forced by the one before it:
 
 ---
 
-## The naive version — a job that loops and sends
+## The naive version — a list and a worker
 
-You have to start somewhere, and the honest start is: a job runs, loads a target audience, and sends each one a message on a single channel. The trigger is *usually* a campaign — but the backbone doesn't really care what kicked it off. It only ever needs three things: an **audience**, a **message**, and a **method** (the channel).
+You have to start somewhere, and in the real world the honest start is dead simple: someone hands you a **list**. Often literally a CSV or text file of target `userId`s, each row carrying whatever a send needs — the message (or a `templateId`), maybe the channel, plus a bit of per-recipient metadata. A worker reads it row by row and sends. That's the whole thing.
 
 ```text
-on trigger:                              # audience + message + method
-  recipients = load_recipients(target)   # target = whatever names the audience
-  for r in recipients:
-      send(r, message)                   # one channel, inline
+on run:                                  # a file/list of targets, one row each
+  for row in read_file("targets.csv"):   # userId, message/templateId, metadata
+      send(row.userId, row.message)      # one channel, inline
 ```
 
 <MermaidDiagram chart={`
 flowchart LR
-    CRON["Cron job"] --> LOAD["Load recipients"]
-    LOAD --> LOOP["For each recipient"]
+    FILE[("Uploaded list\n(CSV: userId + metadata)")] --> WK["Worker"]
+    WK --> LOOP["for each row"]
     LOOP --> SEND["send() — one channel"]
 `} />
 
-For a few thousand recipients on one channel, this is genuinely fine — ship it. The thing to notice is what this naive version quietly assumes: it's **send-as-you-go** — it fires the moment the job runs, to one channel, with the whole list held in one process. Every one of those assumptions breaks as you grow, but the first one bites in the most ordinary way: "send this Saturday at 10am"? I'm not coming in on my day off to push the button 😅. "Fire when the job runs" simply can't express "fire at 10am Saturday." So the first real constraint is timing — we need a scheduler.
+No scheduler, no queue, no pipeline — you drop the file and run it. And it only ever needs three things, which the file already carries: an **audience** (the rows), a **message** (per row), and a **method** (the channel). For a few thousand rows on one channel this genuinely works, and plenty of real sends never grow past it.
+
+Worth saying out loud, because it's easy to forget under all the architecture talk: this dead-simple version is *legitimate engineering*. Even senior engineers ship a lot of "just read the file and send" — the minimum that hits the goal beats the clever thing nobody needed. We only add machinery below when a concrete problem forces it.
+
+The thing to notice is what it quietly assumes: it's **send-as-you-go** — it fires the moment you run it, to one channel. "Send this Saturday at 10am"? I'm not coming in on my day off to run a script 😅. "Run it now" can't express "fire at 10am Saturday." So the first real constraint is timing — we need a scheduler.
 
 ---
 
@@ -107,7 +110,7 @@ This is exactly what I ran: the audience was prepared and chunked well ahead of 
 
 How the audience actually gets built and chunked — the segmentation, the ETL behind it — is a system of its own, and a post of its own later in this series. Here it's enough that the chunks show up ready to read.
 
-And "prepared" can be as humble as it sounds. In plenty of cases the audience is just a **file someone uploads** — a CSV of user IDs or contacts that marketing drops in. The backbone splits it into chunks and reads them the exact same way; the only difference is that the source is a file instead of a segmentation pipeline. You reach for the heavy Audience Platform only when the targeting genuinely needs it — a list upload covers a surprising amount.
+And "prepared" can be as humble as it sounds — remember the naive version was literally an uploaded file. At scale that barely changes: the audience can still be a **CSV marketing drops in**, only now it's split into chunks and read the same way. You reach for the heavy Audience Platform (real segmentation, ETL) only when the targeting genuinely needs it — a list upload covers a surprising amount.
 
 So far, though, everything's still gone out on one channel. "Reach the customer" almost never means only push.
 
@@ -239,7 +242,7 @@ None of these is "the answer" on its own — each maps to one pattern. Match the
 
 ## Wrapping up
 
-We started with a cron job that loops a list and sends on one channel, and ended with a backbone that fires on a schedule, reads a prepared audience chunk by chunk, and drives each recipient through an omnichannel workflow. The path, in order:
+We started with a file and a worker that loops a list and sends on one channel, and ended with a backbone that fires on a schedule, reads a prepared audience chunk by chunk, and drives each recipient through an omnichannel workflow. The path, in order:
 
 1. **Split scheduling from sending** so a send fires reliably and the work is drainable in chunks.
 2. **Consume a prepared, chunked audience** instead of querying 60M rows while the send is firing.
@@ -248,5 +251,5 @@ We started with a cron job that loops a list and sends on one channel, and ended
 5. **Make delivery a workflow with fallback**, not a single send.
 6. **Pull dedupe, frequency caps, and cost up to the backbone** so they're reasoned about per person, across all channels.
 
-The meta-point holds from the last two posts: **nobody needs this on day one.** Most apps are a single `send()` on one channel, fired from a job — and that's completely fine. This backbone only earns its keep once you're running *scheduled, multi-channel sends to a large, prepared audience*. Don't build the conductor before you have an orchestra to conduct.
+The meta-point holds from the last two posts: **nobody needs this on day one.** Most apps are a single `send()` on one channel, reading a list someone handed you — and that's completely fine. This backbone only earns its keep once you're running *scheduled, multi-channel sends to a large, prepared audience*. Don't build the conductor before you have an orchestra to conduct.
 
