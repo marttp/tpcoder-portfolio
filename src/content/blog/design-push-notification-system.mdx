@@ -63,7 +63,7 @@ flowchart LR
 
 In code it's basically a loop:
 
-```text
+```
 on event:
   tokens = lookup_device_tokens(user_id)
   for token in tokens:
@@ -282,7 +282,7 @@ flowchart LR
 
 In code, the claim is just a conditional `SET`:
 
-```text
+```
 # key from the event identity, not the message text
 key = "notif:" + sha256(userId + ":" + type + ":" + eventId + ":" + deviceToken)
 
@@ -469,7 +469,7 @@ And the **enrich** path — notice the payload shape is identical whether it's a
 
 Either way, what lands on the user's phone is the same:
 
-```text
+```
 Payment complete
 TxnId: txn_9f2c8a71b4
 Store: FamilyMart
@@ -493,7 +493,7 @@ And don't over-build the part that *does* vary. You don't need a bespoke enrichm
 - **Send the finished message** when the upstream already has the final text (the full-payload case above).
 - **Template + known placeholder tokens** when a few values change. Register the template with the placeholders a standard template library understands, and pass just those fields in `data`:
 
-```text
+```
 # template "payment_complete_v2" — a template library fills the {{...}} tokens from `data`
 Payment complete
 TxnId: {{txnId}}

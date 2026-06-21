@@ -61,7 +61,7 @@ flowchart LR
 
 เขียนเป็นโค้ดมันก็คือ loop ง่าย ๆ นี่แหละ:
 
-```text
+```
 on event:
   tokens = lookup_device_tokens(user_id)
   for token in tokens:
@@ -274,7 +274,7 @@ flowchart LR
 
 เขียนเป็นโค้ดแล้ว การ claim มันก็แค่ `SET` แบบมีเงื่อนไขเองนี่แหละ:
 
-```text
+```
 # key มาจาก identity ของ event ไม่ใช่ text ของ message
 key = "notif:" + sha256(userId + ":" + type + ":" + eventId + ":" + deviceToken)
 
@@ -459,7 +459,7 @@ flowchart TD
 
 สุดท้ายไม่ว่าจะมาทางไหน สิ่งที่เด้งขึ้นบนเครื่อง user ก็หน้าตาเหมือนกัน:
 
-```text
+```
 Payment complete
 TxnId: txn_9f2c8a71b4
 Store: FamilyMart
@@ -483,7 +483,7 @@ Amount: 245 THB
 - **ส่ง message ที่เสร็จแล้วไปเลย** ในเคสที่ upstream มี text สุดท้ายอยู่ในมือแล้ว (ก็คือเคส full-payload ข้างบนนั่นแหละ)
 - **ใช้ template + placeholder token ที่รู้กันอยู่แล้ว** ในเคสที่มีไม่กี่ค่าที่เปลี่ยน ลงทะเบียน template พร้อม placeholder ที่ template library มาตรฐานมันเข้าใจ แล้วก็ส่งมาแค่ field พวกนั้นใน `data`:
 
-```text
+```
 # template "payment_complete_v2" — template library จะเอาค่าจาก `data` มาเติมใน token {{...}}
 Payment complete
 TxnId: {{txnId}}

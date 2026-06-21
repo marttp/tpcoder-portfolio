@@ -456,7 +456,7 @@ New to Stripe webhooks? The [Stripe webhooks docs](https://docs.stripe.com/webho
 
 If you run ledger logic, risk scoring, or external calls synchronously inside the webhook handler, the handler eventually blocks, breaches Stripe's ~20-second timeout, and triggers a cascade of webhook retries that makes everything worse. So the receiver is deliberately dumb:
 
-```text
+```
 [ WEBHOOK INGEST ]
   -> verify HMAC signature + timestamp tolerance
   -> insert raw event into the ingest store (unique on event id)
@@ -686,7 +686,7 @@ If your DB write succeeds but the follow-up publish to Kafka fails, your workers
 
 ![Transactional outbox pattern](/assets/images/blogs/payment-backend-stripe-integration/transactional-outbox.png)
 
-```text
+```
 [ ONE POSTGRES ACID TRANSACTION ]
   1. UPDATE payments SET status = 'CAPTURED' ...
   2. INSERT INTO ledger_entries (DEBIT, CREDIT) ...

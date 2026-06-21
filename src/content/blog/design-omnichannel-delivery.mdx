@@ -48,7 +48,7 @@ The road, each step forced by the one before it:
 
 You have to start somewhere, and in the real world the honest start is dead simple: you get a **list of targets** from somewhere, and send to each one. "Somewhere" is flexible — a CSV someone **uploads** (multipart), a **REST call** with the targets right in the JSON body, or a **query against a DB**. The transport genuinely doesn't matter yet; conceptually it's all the same thing — *a source of targets, in some way* — and a worker reads them one by one and sends. Each entry carries what a send needs: a `userId`, the message (or a `templateId`), maybe the channel, plus a bit of metadata.
 
-```text
+```
 on run:                              # targets from somewhere — upload, REST body, or DB
   for t in load_targets():           # each: userId, message/templateId, metadata
       send(t.userId, t.message)      # one channel, inline
