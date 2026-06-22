@@ -9,10 +9,16 @@ type Props = CollectionEntry<'blog'>['data'] & {
   headings?: { depth: number; slug: string; text: string }[];
 };
 
-const { title, description, pubDate, updatedDate, heroImage, language, translationSlug, headings } = Astro.props;
+const { title, description, pubDate, updatedDate, heroImage, language, translationSlug, servicesNote, headings } = Astro.props;
 
 const translationLabel = language === 'en' ? 'อ่านเป็นภาษาไทย' : 'Read in English';
 const translationFlag = language === 'en' ? '🇹🇭' : '🇺🇸';
+
+const servicesUrl = 'https://business.tpcoder.dev/';
+const servicesText = language === 'th'
+  ? 'ปล. — ผมรับงาน advisory กับ consult เกี่ยวกับ backend system แนว ๆ นี้อยู่บ้างเหมือนกัน ถ้าคิดว่าเป็นประโยชน์กับทีม '
+  : 'P.S. — I also take on a bit of advisory & consulting work on backend systems like this one. If that could help your team, ';
+const servicesLinkLabel = language === 'th' ? 'แวะดูบริการได้เลย' : "here's what I do";
 ---
 
 <html lang="en">
@@ -165,6 +171,21 @@ const translationFlag = language === 'en' ? '🇹🇭' : '🇺🇸';
         ">
           <slot />
         </div>
+
+        <!-- Optional Services P.S. (per-post: set servicesNote: true) -->
+        {servicesNote && (
+          <div class="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
+            <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+              {servicesText}
+              <a
+                href={servicesUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="font-medium text-primary-dark dark:text-primary-light hover:underline"
+              >{servicesLinkLabel}</a>.
+            </p>
+          </div>
+        )}
 
         <!-- Back to Blog Link -->
         <div class="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
