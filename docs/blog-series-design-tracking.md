@@ -203,8 +203,8 @@ File: `design-webhook-callback-system.mdx` / `-th.mdx`
 - [ ] v2: It fails sometimes → add a **sync retry** (still inline) — the naive fix
 - [ ] v3: Sync retries **block the I/O / request thread** (worst when the partner is slow) → go **async (queue + worker)**
 - [ ] v4: Flaky endpoint → **exponential backoff + max attempts**
-- [ ] v5: Retries double-process → **idempotency key / event id** handed to the consumer
-- [ ] v6: Consumer must trust it's us → **HMAC signature** (+ no sensitive data in URL/query)
+- [ ] v5: Endpoint is public on the internet → consumer must trust it's us → **HMAC signature** (+ no sensitive data in URL/query)
+- [ ] v6: Our retries double-process → **idempotency key / event id** handed to the consumer (so they dedupe after authenticating)
 - [ ] v7: Some deliveries never succeed → **DLQ + redrive**
 - [ ] v8: Events arrive out of order → **ordering / sequence tracking**
 - [ ] v9: End-state — **acceptor / dispatcher / consumer** split for independent scaling
