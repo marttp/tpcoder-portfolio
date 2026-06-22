@@ -11,7 +11,7 @@ Reference posts: `payment-backend-stripe-integration-en.mdx` (~750 lines), `desi
 | 1 | Payment Backend with Stripe Integration | Published | pubDate 2026-06-13 | published |
 | 2 | Push Notification System | Published | pubDate 2026-06-17 | published |
 | 3 | Omnichannel Customer Communication Delivery Backbone | Published | pubDate 2026-06-19 | published |
-| 4 | Webhook Callback System | Not started | - | - |
+| 4 | Webhook Callback System | Spine locked (EN drafting) | - | - |
 | 5 | Icon Management / Segmentation | Not started | - | - |
 | 6 | Audience Platform (ETL Pipeline) | Not started | - | - |
 | 7 | Campaign Management Platform | Not started | - | - |
@@ -195,15 +195,21 @@ Key experience: PayPay timeline / omnichannel delivery system (Kotlin / Spring B
 
 File: `design-webhook-callback-system.mdx` / `-th.mdx`
 
-- [ ] v1: Synchronous POST to endpoint
-- [ ] v2: Async queue with retry
-- [ ] v3: Exponential backoff + max attempts
-- [ ] v4: Idempotency keys + dedup
-- [ ] v5: Signature verification (HMAC)
-- [ ] v6: Dead letter queue + redrive
-- [ ] v7: Ordering guarantees + sequence tracking
+**Framing: the OUTBOUND sender** — *we deliver* callbacks to partner endpoints we don't control. Explicit mirror of #1 (which was inbound: *us receiving* Stripe webhooks → dumb receiver/queue/workers). Cross-link #1, lean on the contrast ("last time we received; this time we deliver").
 
-Key experience: Coda webhook model (batch GET -> real-time POST with SQS retries)
+**Running example:** e-commerce event webhooks (`order.paid`, `order.shipped`, `refund.completed`) — universally clear. **Advanced/forward angle:** the consumer is increasingly an **autonomous AI agent** (agentic commerce), not a merchant dashboard a human reviews. So a duplicate / out-of-order / spoofed webhook = an agent taking a *wrong real-world action* with no human in the loop → raises the bar on idempotency, ordering, HMAC. This is the "why it matters more in 2026" thread. (No Coda/chargeback specifics — keep generic.)
+
+- [ ] v1: Naive — synchronous POST to the partner endpoint, inline
+- [ ] v2: It fails sometimes → add a **sync retry** (still inline) — the naive fix
+- [ ] v3: Sync retries **block the I/O / request thread** (worst when the partner is slow) → go **async (queue + worker)**
+- [ ] v4: Flaky endpoint → **exponential backoff + max attempts**
+- [ ] v5: Retries double-process → **idempotency key / event id** handed to the consumer
+- [ ] v6: Consumer must trust it's us → **HMAC signature** (+ no sensitive data in URL/query)
+- [ ] v7: Some deliveries never succeed → **DLQ + redrive**
+- [ ] v8: Events arrive out of order → **ordering / sequence tracking**
+- [ ] v9: End-state — **acceptor / dispatcher / consumer** split for independent scaling
+
+Key experience: Coda webhook modernization (batch-GET polling → real-time POST webhook, SQS retries w/ receive-count + redrive, acceptor/dispatcher/consumer split, Quarkus replacing a Lambda notifier, sensitive data removed from URL) — used as domain knowledge, NOT as a named chargeback story.
 
 ---
 
