@@ -259,6 +259,17 @@ flowchart LR
 
 นี่คือรูปร่างคร่าว ๆ ที่ผมเคย build มากับมือ — ย้ายการต่อกับพาร์ตเนอร์ออกจากการ poll แบบ batch `GET` เก่า ๆ มาเป็น pipeline แบบ push real-time พร้อม retry ที่ขับด้วย queue (receive-count + redrive) แล้วก็แยก acceptor / dispatcher / consumer แบบนี้เป๊ะ ๆ เพื่อให้ชั้น delivery scale ของมันเองได้
 
+**อีกแบบนึงที่ควรรู้ไว้: publish ลง broker แล้วให้ consumer มาดึงเอง** แทนที่จะมี dispatcher คอยไปหา subscription แล้วกางเป็น task ราย endpoint ฝั่ง upstream มันแค่ **publish ทุก event ลง broker** (จะเป็น queue หรือ stream — เช่น Kafka topic) แล้วก็เดินจากไปเลย ไม่ต้องรู้ด้วยซ้ำว่าใครฟังอยู่ ส่วน delivery **consumer ก็ subscribe กับ broker** แล้วดึงเฉพาะอันที่ตัวเองอยากได้ แล้วค่อย POST ออกไปหา merchant/target ของมัน ไม่มี router กลางมาคั่นเลย
+
+ถ้ามันได้กลิ่นเหมือน data engineering / pub-sub — ใช่แล้ว รูปทรงมันเหมือนกันเป๊ะ แต่เจตนาคนละเรื่องกัน: อันนี้ไม่ใช่ analytics มันเป็นแค่เรื่องของการ **decouple** ล้วน ๆ — upstream เลิกเรียก dispatcher แล้วก็แค่โยนข้อมูลขึ้น bus เฉย ๆ
+
+จุดที่ต้องแลกกันคือ *filtering มันไปอยู่ที่ไหน*:
+
+- **Dispatcher (routed / push):** dispatcher กลางกรอง *ก่อน* ที่อะไรจะลง queue ของ delivery — มัน match event เข้ากับ subscription แล้วสร้างเฉพาะ delivery ที่จำเป็นเท่านั้น policy ราย subscription (จะเอา event ไหน, transform, rate cap) อยู่ที่เดียว ต้นทุนคือ มันเป็น component ที่เราต้อง build แล้วก็ scale แล้ว routing ก็รวมศูนย์
+- **Broker-first (pull):** upstream ง่ายสุด ๆ (โยนขึ้น bus จบ ไม่ผูกกับใคร), การเพิ่ม consumer ใหม่ก็ไม่ต้องไปแตะ upstream เลย, แถมได้ replay จาก offset มาฟรี ๆ ด้วย ต้นทุนคือ ไม่มีตัวกรองกลาง เพราะงั้นแต่ละ consumer จะเห็นของมากกว่าที่ตัวเองต้องใช้ แล้วก็ต้องมากรองเอง แล้วก็ต้องพึ่ง event schema ที่นิ่งแล้วก็มีโครงสร้างชัด ๆ เพราะ consumer ทุกตัวตีความ raw stream เองทั้งหมด ถ้า contract ผิดเมื่อไหร่ มันพังพร้อมกันหมดทุกตัว
+
+กฎคร่าว ๆ: ถ้า logic การ routing/subscription มันเยอะแล้วเราอยากบังคับใช้ที่เดียว → เอนไปทาง dispatcher; ถ้าอยากได้ decouple แบบสุด ๆ แล้วก็มี consumer ที่มา ๆ ไป ๆ อิสระ → เอนไปทาง broker-first (แล้วก็ลงทุนกับ schema ให้ดี)
+
 ---
 
 ## Wrapping up
