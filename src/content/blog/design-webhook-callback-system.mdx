@@ -24,6 +24,10 @@ Back in the [payment post](/blog/payment-backend-stripe-integration-en/) we sat 
 
 Quick grounding, because it's the whole reason webhooks exist: before them, a partner who wanted to know "did this order get paid?" had to **poll** you — hit a `GET` every few minutes and diff the result. Wasteful, laggy, and it scales terribly. A webhook flips it to **push** — the moment `order.paid` happens, *you* call *them*. Cheaper and real-time, but now the hard problems are yours: their endpoint will be down, slow, or lying, and you still have to deliver.
 
+{/* IMAGE PROMPT (polling-vs-push.png): Clean conceptual diagram on a light background, two stacked panels (before/after). Top panel labeled "Polling (before)": a box "Partner" sending several repeated arrows labeled "GET?" to a box "Our system", with most replies labeled "nothing new" — conveying wasteful repeated checking. Bottom panel labeled "Webhook (push)": a box "Our system" sending ONE arrow labeled "order.paid" to a box "Partner" the moment it happens. Make the contrast obvious: many wasted polls vs one timely push. STRICT: render only these labels, spelled exactly; no meta/style words; no duplicate boxes; no typos. Flat vector, soft shadows, 2–3 accent colors, no photorealism. */}
+
+![Polling vs push: a partner repeatedly GETs for changes, versus our system pushing one event the moment it happens](/assets/images/blogs/design-webhook-callback-system/polling-vs-push.png)
+
 **And there's a 2026 twist that runs through this whole post.** The thing receiving your webhook used to be a merchant's backend, where a human eventually reviews a dashboard. Increasingly it's an **autonomous AI agent that acts on the event immediately** — places an order, moves money, kicks off fulfillment. So a duplicate, out-of-order, or forged webhook isn't a cosmetic glitch anymore; it's an agent taking a *wrong real-world action with no human in the loop.* That raises the bar on every reliability piece below.
 
 {/* IMAGE PROMPT (agent-vs-human.png): Clean conceptual illustration on a light background contrasting the SAME bad webhook (label the incoming arrow "duplicate / out-of-order event") hitting two different consumers. Left consumer: a "Merchant dashboard" with a small human icon — outcome label "minor glitch, human catches it". Right consumer: an "AI agent" icon — outcome label "acts immediately = wrong action". Make the contrast in consequence obvious. Flat vector, soft shadows, 2–3 accent colors, clear labels, no photorealism. */}
@@ -134,6 +138,10 @@ flowchart LR
     RT -->|"no"| GV["stop → (DLQ later)"]
 `} />
 
+{/* IMAGE PROMPT (thundering-herd.png): Clean conceptual illustration on a light background contrasting two retry strategies hitting a recovering server. Left panel labeled "No jitter": many retry arrows all striking a box "Partner endpoint" at the same instant (one big simultaneous spike) — caption "all retry at once". Right panel labeled "With jitter": the same retries spread out as an evenly staggered sequence into the box — caption "spread out over time". Left should look like an overwhelming simultaneous burst, right evenly spaced. STRICT: render only these labels, spelled exactly; no meta/style words; no duplicate boxes; no typos. Flat vector, soft shadows, 2–3 accent colors, no photorealism. */}
+
+![Thundering herd: without jitter every retry hits at the same instant; with jitter they spread out over time](/assets/images/blogs/design-webhook-callback-system/thundering-herd.png)
+
 ---
 
 ## Anyone can POST to them — sign it (HMAC)
@@ -153,6 +161,10 @@ POST /webhooks/orders
   X-Signature: sha256=...
   { "id": "...", "type": "order.paid", ... }   # data lives here
 ```
+
+{/* IMAGE PROMPT (hmac-trust.png): Clean conceptual illustration on a light background about webhook authenticity. A box on the right labeled "Partner endpoint" receives TWO incoming requests: one labeled "Forged request" shown rejected with a red X, and one labeled "Signed request (valid HMAC)" shown accepted with a green check. On the left, a box "Our system" and the "Partner endpoint" share a small key icon labeled "shared secret". Make it obvious only the validly-signed request gets in. STRICT: render only these labels, spelled exactly; no meta/style words; no duplicate labels; no typos. Flat vector, soft shadows, 2–3 accent colors, no photorealism. */}
+
+![HMAC trust: a forged request is rejected, a validly signed one is accepted, using a secret shared between our system and the partner](/assets/images/blogs/design-webhook-callback-system/hmac-trust.png)
 
 This is the consumer's *first* line of processing: before they look at the content at all, they ask "is this actually from them?" Authenticate first, then everything else.
 
