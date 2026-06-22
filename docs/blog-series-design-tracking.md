@@ -207,6 +207,8 @@ File: `design-webhook-callback-system.mdx` / `-th.mdx`
 - [ ] v6: Our retries double-process → **idempotency key / event id** handed to the consumer (so they dedupe after authenticating)
 - [ ] v7: Some deliveries never succeed → **DLQ + redrive**
 - [ ] v8: Events arrive out of order → **ordering / sequence tracking**
+  - linear per-resource ordering (sequence/version + last-write-wins) = sender's realistic guarantee; partition-by-resource-id for per-entity order; no global ordering
+  - **DAG callout (with Mermaid diagram):** real consumers have a dependency *graph*, not a line — fan-in joins (e.g. `shipment.created` needs both `order.paid` + `inventory.reserved`). Boundary: **sender** emits causation metadata (`event_id`, `causation_ids`, `correlation_id`) + per-resource order; **receiver** rebuilds the DAG and processes in topological order (buffer node until parents arrive, timeout → fetch/alert). Sender is NOT a workflow engine. Agent tie-in: an autonomous agent must traverse the DAG in topo order or it acts on half-built state. Diagram = e-commerce event DAG (order.created → payment.authorized/inventory.reserved → order.paid → shipment.created[join] → shipment.delivered).
 - [ ] v9: End-state — **acceptor / dispatcher / consumer** split for independent scaling
 
 Key experience: Coda webhook modernization (batch-GET polling → real-time POST webhook, SQS retries w/ receive-count + redrive, acceptor/dispatcher/consumer split, Quarkus replacing a Lambda notifier, sensitive data removed from URL) — used as domain knowledge, NOT as a named chargeback story.
