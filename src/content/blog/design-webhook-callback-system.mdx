@@ -1,0 +1,266 @@
+---
+title: "Designing a Webhook Callback System (Start Simple, Then Evolve)"
+description: "A backend system design walkthrough from the sender's side: evolve a single synchronous POST into a reliable outbound webhook delivery system — async workers, backoff, HMAC signing, idempotency, DLQ + redrive, ordering and dependency DAGs, and an acceptor/dispatcher/consumer split. Each step starts with the problem that broke the last one — and why it matters more now that the consumer might be an AI agent."
+pubDate: "2026-06-22"
+tags:
+  ["Software Architecture", "Software Engineering", "Backend"]
+heroImage: "/assets/images/blogs/design-webhook-callback-system/hero-webhook.png"
+language: "en"
+translationSlug: "design-webhook-callback-system-th"
+servicesNote: true
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+## Introduction
+
+This is the fourth post in the backend system design series — same format: start with the most naive thing that works, then let real-world constraints push it into shape.
+
+Back in the [payment post](/blog/payment-backend-stripe-integration-en/) we sat on the **receiving** end of webhooks — Stripe fired events *at us*, and we built a dumb receiver that parked them on a queue and processed them safely. This post flips the wire around: now **we're the sender**. Something happens in our system, and we have to deliver a callback to **someone else's endpoint — one we don't control, can't see, and can't trust by default.** Last time we received; this time we deliver.
+
+{/* IMAGE PROMPT (inbound-vs-outbound.png): Clean conceptual diagram on a light background, two stacked panels. Top panel labeled "Inbound (the payment post)": a box "Stripe" with an arrow pointing right to a box "Our receiver". Bottom panel labeled "Outbound (this post)": a box "Our system" with an arrow pointing right to a box "Partner endpoint". Make it obvious the arrow direction is reversed between the two panels. Flat vector, soft shadows, 2–3 accent colors, clear labels, no photorealism. */}
+
+![Inbound vs outbound webhooks: last time Stripe sent to our receiver; this time our system sends to a partner endpoint](/assets/images/blogs/design-webhook-callback-system/inbound-vs-outbound.png)
+
+Quick grounding, because it's the whole reason webhooks exist: before them, a partner who wanted to know "did this order get paid?" had to **poll** you — hit a `GET` every few minutes and diff the result. Wasteful, laggy, and it scales terribly. A webhook flips it to **push** — the moment `order.paid` happens, *you* call *them*. Cheaper and real-time, but now the hard problems are yours: their endpoint will be down, slow, or lying, and you still have to deliver.
+
+**And there's a 2026 twist that runs through this whole post.** The thing receiving your webhook used to be a merchant's backend, where a human eventually reviews a dashboard. Increasingly it's an **autonomous AI agent that acts on the event immediately** — places an order, moves money, kicks off fulfillment. So a duplicate, out-of-order, or forged webhook isn't a cosmetic glitch anymore; it's an agent taking a *wrong real-world action with no human in the loop.* That raises the bar on every reliability piece below.
+
+{/* IMAGE PROMPT (agent-vs-human.png): Clean conceptual illustration on a light background contrasting the SAME bad webhook (label the incoming arrow "duplicate / out-of-order event") hitting two different consumers. Left consumer: a "Merchant dashboard" with a small human icon — outcome label "minor glitch, human catches it". Right consumer: an "AI agent" icon — outcome label "acts immediately = wrong action". Make the contrast in consequence obvious. Flat vector, soft shadows, 2–3 accent colors, clear labels, no photorealism. */}
+
+![The same bad webhook: a human dashboard tolerates it; an AI agent acts on it immediately](/assets/images/blogs/design-webhook-callback-system/agent-vs-human.png)
+
+The road, each step forced by the one before it:
+
+1. A **synchronous POST**, inline
+2. It fails sometimes → a **sync retry** (still inline)
+3. Sync retries **block your thread** → go **async** (queue + worker)
+4. **Backoff + max attempts** so you don't hammer or loop forever
+5. **Sign it (HMAC)** so the consumer can trust it's really you
+6. **Idempotency / event id** so your retries don't make them act twice
+7. **DLQ + redrive** for deliveries that never succeed
+8. **Ordering** — and the dependency **DAG** the receiver has to respect
+9. End-state: an **acceptor / dispatcher / consumer** split
+
+{/* IMAGE PROMPT (hero-webhook.png): Wide banner hero, clean modern architecture illustration on a light background. Left-to-right outbound webhook delivery system, boxes labeled EXACTLY: "Event source" → "Acceptor" → "Dispatcher" → "Consumer" → then it POSTs out to two destination boxes on the right labeled "Merchant backend" and "AI agent". Show a small side box labeled "Dead letter" branching off the Consumer, and a small "Sign (HMAC)" tag on the arrow from Consumer to the destinations. STRICT: render ONLY these labels, spelled exactly; no meta or marketing words (no "reliable", "simple", "robust"); no duplicate boxes; no typos. Flat vector, soft shadows, tech-blog aesthetic, 2–3 accent colors, plain labeled rectangles, no photorealism. */}
+
+![End-state outbound webhook system: event source → acceptor → dispatcher → consumer → signed POST to a merchant backend and an AI agent, with a dead-letter branch](/assets/images/blogs/design-webhook-callback-system/hero-webhook.png)
+
+---
+
+## The naive version — just POST it
+
+You have to start somewhere, and the honest start is: when something happens, `POST` it to the partner's URL right there in the request handler.
+
+```
+on order_paid(order):
+  resp = http.post(partner_url, body=event(order))   # synchronous
+  return 200
+```
+
+<MermaidDiagram chart={`
+flowchart LR
+    EV["order.paid happens"] --> SVC["Our service"]
+    SVC -->|"POST (inline)"| EP["Partner endpoint"]
+`} />
+
+For one partner at low volume, this genuinely works — ship it. But notice what you've coupled: **the partner's endpoint is now on the critical path of your own request.** Their server's bad day is now your bad day.
+
+---
+
+## It failed — add a retry
+
+**The problem:** someone else's endpoint *will* return a 500 or time out — not because you did anything wrong, just because it's a server on the internet. A one-shot POST drops the event on the floor the first time their box hiccups.
+
+**The fix:** the obvious one — retry a few times before giving up.
+
+```
+on order_paid(order):
+  for attempt in 1..3:
+      resp = http.post(partner_url, body=event(order))
+      if resp.ok: return 200
+      sleep(1s)
+  return 200   # gave up
+```
+
+This is better, and for a tiny integration it might be all you need. But read it closely: **the retries are still happening inline, inside the caller's request.** That's the crack the next step widens.
+
+---
+
+## Sync retries block you — go async
+
+**The problem:** sync retries make the coupling *worse*, not better. When the partner is slow, you don't fail fast — you sit there holding the request (and a worker thread) for `timeout × attempts`, sleeping between tries. And the cruel part: you retry *most* exactly when the partner is *slowest*, which is exactly when you can least afford to hold threads. Under any real load, a single struggling partner exhausts your thread pool and takes down requests that have nothing to do with webhooks.
+
+**The fix:** get the delivery off the caller's thread entirely. The request handler does the minimum — record "this event needs to go out" onto a durable queue, and return. A separate **delivery worker** pulls from the queue and does the POST (and the retries).
+
+```
+on order_paid(order):
+  queue.put(event(order))   # durable, returns in ms
+  return 202
+
+# elsewhere, a worker:
+loop:
+  e = queue.take()
+  deliver(e)                # POST + retries live here now
+```
+
+<MermaidDiagram chart={`
+flowchart LR
+    EV["order.paid"] --> SVC["Our service"]
+    SVC -->|"enqueue, return 202"| Q["Queue"]
+    Q --> WK["Delivery worker"]
+    WK -->|"POST"| EP["Partner endpoint"]
+`} />
+
+This is the highest-leverage change in the post. The partner's latency is now the *worker's* problem, not your API's — and the work is durable, so a crash doesn't lose the event. Almost everything below is a refinement of "deliver asynchronously, off a durable queue."
+
+---
+
+## Don't hammer, don't loop forever — backoff + max attempts
+
+**The problem:** our retry from earlier was naive — fixed delay, and (if we're honest) nothing stopping it from going forever. Two failure modes hide in there. Retrying a struggling endpoint immediately and repeatedly just **kicks it while it's down**. And if an endpoint is gone for good, an unbounded retry is a worker that spins on one dead event forever, never draining the queue behind it.
+
+**The fix:** **exponential backoff with jitter, and a hard max-attempt ceiling.**
+
+- **Exponential backoff** — wait longer between each try (1s, 2s, 4s, 8s, …) so a recovering endpoint gets room to breathe.
+- **Jitter** — add randomness to the delay. Without it, every event queued during an outage retries at the *same* instant the endpoint comes back — a self-inflicted thundering herd that knocks it over again.
+- **Max attempts** — after N tries (or a time budget), stop. The event isn't lost; it goes somewhere we deal with later (the DLQ, a few steps down). "Retry, but with a ceiling" is the whole game.
+
+<MermaidDiagram chart={`
+flowchart LR
+    WK["Delivery worker"] -->|"POST"| EP["Partner endpoint"]
+    EP -->|"5xx / timeout"| RT{"attempt < max?"}
+    RT -->|"yes"| BO["wait: backoff + jitter"] --> WK
+    RT -->|"no"| GV["stop → (DLQ later)"]
+`} />
+
+---
+
+## Anyone can POST to them — sign it (HMAC)
+
+**The problem:** the partner's webhook endpoint is a **public URL on the internet**. Anyone who learns it can POST to it, pretending to be you — a fake `order.paid`, a fake `refund.completed`. The consumer has no way to tell your real event from a forged one. And if you ever stuffed details into the **URL or query string** (`?amount=5000&user=123`), you've leaked them — query strings end up in access logs, proxies, and browser history.
+
+**The fix:** prove the message is from you, and keep the data out of the URL.
+
+- **Sign the payload.** Compute an HMAC (e.g. HMAC-SHA256) of the raw request body using a **shared secret** only you and the consumer know, and send it in a header (`X-Signature`). The consumer recomputes the HMAC over the body they received and compares — if it doesn't match, the request is forged or tampered, and they drop it.
+- **Sign a timestamp too**, and include it in what's signed. The consumer rejects anything older than a few minutes, which kills **replay attacks** (someone capturing a valid call and resending it).
+- **Everything meaningful goes in the body**, never the URL. The URL is just the address; the signed body is the message.
+
+```
+sig = hmac_sha256(secret, timestamp + "." + raw_body)
+POST /webhooks/orders
+  X-Timestamp: 1718000000
+  X-Signature: sha256=...
+  { "id": "...", "type": "order.paid", ... }   # data lives here
+```
+
+This is the consumer's *first* line of processing: before they look at the content at all, they ask "is this actually from them?" Authenticate first, then everything else.
+
+---
+
+## Your retries cause doubles — idempotency
+
+**The problem:** everything we've built is **at-least-once**. The worker retries; the queue can redeliver after a crash; a delivery that actually succeeded but whose acknowledgement got lost gets sent *again*. So the consumer **will** receive the same event more than once. We met this exact wall in the payment and push posts — true exactly-once across a network is a fantasy (the Two Generals Problem). For a dashboard, a duplicate is cosmetic. For an **AI agent**, a duplicate `order.paid` is a second order placed, money moved twice.
+
+**The fix:** make every event carry a **stable, unique `event_id`** (assigned once, at the source — carried unchanged through every retry), and make the delivery contract explicit: *"we deliver at least once; dedupe on `event_id`."* The consumer records the ids it has processed and skips repeats. You guarantee delivery; they guarantee idempotent handling. It's a shared contract, and you should document it loudly in your webhook docs.
+
+```
+{ "id": "evt_7f3c…",        // stable across retries — the dedupe key
+  "type": "order.paid",
+  "data": { … } }
+```
+
+Note the order with the previous step: the consumer **authenticates (HMAC) first, then dedupes (`event_id`), then processes.** Trust it, then check if you've seen it, then act.
+
+---
+
+## Some never succeed — DLQ + redrive
+
+**The problem:** backoff and a max-attempt ceiling stop the looping, but they create a new question: *what happens to the event that exhausted its retries?* A partner can be down for hours. You can't retry forever (we settled that), but silently dropping the event means a lost order notification — and for an agent-driven consumer, lost state it never recovers.
+
+**The fix:** a **dead-letter queue (DLQ)**. When an event crosses the max-attempt threshold, move it to a separate store instead of discarding it. Now:
+
+- **Operators can see and act** — inspect why it failed, and **redrive** (re-enqueue) the batch once the partner is healthy again.
+- **Give the consumer a recovery path too** — a "list/replay events since X" API, so a partner who was down can pull what they missed. (This is the push side of the same coin as the old polling model — a deliberate catch-up channel, not the default path.)
+
+<MermaidDiagram chart={`
+flowchart LR
+    WK["Delivery worker"] -->|"delivered"| OK["done"]
+    WK -->|"attempt >= max"| DLQ[("Dead-letter queue")]
+    DLQ -->|"operator redrive (partner healthy)"| WK
+    DLQ -.->|"or consumer replays"| API["Replay API"]
+`} />
+
+A practical detail from real systems: tie the move-to-DLQ to a **receive-count** (how many times this message has been pulled and failed), and define a **redrive policy** up front — where exhausted messages go and how they come back. Don't invent it during the incident.
+
+---
+
+## They arrive out of order — sequencing, and the DAG
+
+**The problem:** async delivery + retries + parallel workers means events for the same resource can land **out of order**. `order.paid` then `order.refunded`, but the consumer sees `refunded` first; or a *retried* old event arrives after a newer one. A human tolerates it. An agent acting in receipt order does the wrong thing.
+
+**The fix (linear case):** attach a **monotonic sequence number or version** per resource to every event. The consumer keeps the last-seen version and applies **last-write-wins** — anything older is ignored. If you need processing order (not just last-state), **partition by resource id** so all events for one order flow through a single ordered lane. The honest scope note: you almost never need *global* ordering — only **per-resource** ordering. Don't build a total-order system you don't need.
+
+**But real consumers don't have a line — they have a dependency graph.** This is the part worth slowing down on. Model the events as a **DAG**: each event is a node, a directed edge points from a prerequisite to the thing that depends on it, and it's acyclic. Most of it looks linear — until a **fan-in (join)**: an event that needs *two or more* prerequisites.
+
+<MermaidDiagram chart={`
+flowchart TD
+    OC["order.created"] --> PA["payment.authorized"]
+    OC --> IR["inventory.reserved"]
+    PA --> OP["order.paid"]
+    OP --> SC["shipment.created"]
+    IR --> SC
+    SC --> SD["shipment.delivered"]
+`} />
+
+`shipment.created` is the join — it needs **both** `order.paid` *and* `inventory.reserved`. Your system delivers each of those independently and possibly out of order, so the consumer might get `shipment.created` before `inventory.reserved` has even arrived. Here's the boundary that keeps this sane:
+
+- **The sender's job** (in scope, do this): per-resource ordering, plus **causation metadata** in every payload — `event_id`, `causation_ids` (the parent event ids), and a `correlation_id` for the whole flow (e.g. the `order_id`). That's your entire contribution to the graph.
+- **The receiver's job** (out of scope for you, but say it): rebuild the DAG from those links and process in **topological order** — buffer a node until all its parents have arrived/processed, with a timeout that triggers a fetch-or-alert if a parent never shows. **Your webhook system is not a workflow engine — don't turn it into one.**
+
+And this is where the agent angle peaks: an autonomous agent traversing this DAG to *act* must respect topological order, or it fires shipment logic on an order that was never actually paid. The DAG is what stops the agent from acting on half-built state. A human glancing at a dashboard would have just... noticed. The agent won't.
+
+---
+
+## Pull it apart — acceptor / dispatcher / consumer
+
+**The problem:** by now one service is doing a lot — accepting the internal event, figuring out *who* subscribed to it, and doing the slow external delivery with all its retries. Those three jobs have completely different shapes, and bolting them together means the slowest, least reliable one drags down the others. A flood of slow partner endpoints backs up the delivery work *and* the ingestion of new events behind it.
+
+**The fix:** split it into three tiers by responsibility, each scaling and failing independently:
+
+- **Acceptor** (ingress) — receives the internal "this happened, notify subscribers" event, **durably captures it fast, returns.** Write-bound; must never drop an event. Kept deliberately lean so ingestion never blocks on anything downstream.
+- **Dispatcher** (routing / fan-out) — takes an accepted event, looks up **who is subscribed**, applies subscription config, and fans it out into one delivery task per endpoint. Logic-bound; grows with subscriptions × event types. The brain.
+- **Consumer** (delivery) — does the actual signed POST to each endpoint: HMAC, backoff, idempotency id, result tracking, DLQ. **I/O-bound, blocked on slow external endpoints, fails a lot.** You want many of these.
+
+<MermaidDiagram chart={`
+flowchart LR
+    EV["Event source"] --> AC["Acceptor\n(capture fast, durable)"]
+    AC --> Q1["Queue"]
+    Q1 --> DI["Dispatcher\n(route to subscribers)"]
+    DI --> Q2["Per-delivery tasks"]
+    Q2 --> CO["Consumer\n(sign + POST + retry)"]
+    CO --> EP["Partner endpoints"]
+    CO --> DLQ[("Dead-letter")]
+`} />
+
+The payoff is the whole reason to bother: **independent scaling** (a delivery surge or a wave of slow partners means you scale *consumers* only), **failure isolation** (a flaky partner backs up only the consumer tier — the acceptor keeps accepting, the dispatcher keeps routing), and **independent deploy** (change routing without touching delivery). It's the same through-line as the earlier posts: separate the durable-fast part from the slow-external part so one can't drag down the other.
+
+This is roughly the shape I've built in practice — moving a partner integration off old batch-`GET` polling onto a real-time push pipeline, with queue-driven retries (receive-count + redrive), and exactly this acceptor / dispatcher / consumer separation so the delivery tier could scale on its own.
+
+---
+
+## Wrapping up
+
+We started with a single inline `POST` and ended with a three-tier delivery system. The path, in order:
+
+1. **Get delivery off the caller's thread** onto a durable queue — the one change everything builds on.
+2. **Back off with jitter and a max-attempt ceiling** so you don't hammer or loop forever.
+3. **Sign with HMAC** (and keep data out of the URL) so the consumer can trust it's you.
+4. **Stable `event_id`** so at-least-once delivery doesn't become double-action.
+5. **DLQ + redrive** so a long outage doesn't lose events.
+6. **Per-resource ordering**, and hand over **causation metadata** so the receiver can rebuild the dependency DAG — without you becoming a workflow engine.
+7. **Split into acceptor / dispatcher / consumer** so the slow external part can't drag down ingestion.
+
+The meta-point holds from the rest of the series: **nobody should build the three-tier version on day one.** One partner at low volume? A synchronous POST with a couple of retries is genuinely fine. Every box above earned its place by solving a problem the previous version created.
+
+The one thing that's *newly* true in 2026: the consumer on the other end is more and more likely to be an **autonomous agent that acts the instant your webhook lands** — so the duplicate you didn't dedupe, the event you delivered out of order, the forged call you didn't sign against, all become wrong real-world actions instead of dashboard glitches. The reliability work was always good engineering. Now it's the difference between an agent that can trust your events and one that can't.
