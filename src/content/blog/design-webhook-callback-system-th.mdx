@@ -14,9 +14,9 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 
 ## Introduction
 
-โพสต์นี้เป็นตัวที่สี่ของซีรีส์ backend system design — สูตรเดิมเหมือนเคย: เริ่มจากของที่ทื่อที่สุดเท่าที่มัน work ได้ แล้วก็ปล่อยให้ข้อจำกัดหน้างานค่อย ๆ ดันมันให้เข้ารูป
+โพสต์นี้เป็นตัวที่สี่ของซีรีส์ backend system design — สูตรเดิมเหมือนเคย: เริ่มจากของที่ทื่อที่สุดเท่าที่มัน work ได้ แล้วก็ปล่อยให้ข้อจำกัดหน้างานค่อย ๆ ดันมันให้เข้ารูปเข้ารอย
 
-ย้อนไปที่[โพสต์ payment](/blog/payment-backend-stripe-integration-th/) ตอนนั้นเราอยู่ฝั่ง **คนรับ** webhook — Stripe ยิง event มา *หาเรา* แล้วเราก็สร้าง receiver โง่ ๆ ที่เอา event ไปพักไว้บน queue ก่อนแล้วค่อยประมวลผลแบบปลอดภัย โพสต์นี้ขอกลับด้านสายไฟใหม่: คราวนี้ **เราเป็นคนส่ง** มีอะไรเกิดขึ้นในระบบเรา แล้วเราต้องส่ง callback ไปหา **endpoint ของคนอื่น — ตัวที่เราคุมไม่ได้ มองไม่เห็น แล้วก็เชื่อใจไม่ได้โดยปริยาย** คราวที่แล้วเรารับ คราวนี้เราส่ง
+คราวก่อนใน[โพสต์ payment](/blog/payment-backend-stripe-integration-th/) ผมอยู่ฝั่ง **คนรับ** webhook — Stripe ยิง event มา *หาเรา* แล้วเราก็สร้าง receiver โง่ ๆ ที่เอา event ไปพักไว้บน queue ก่อนแล้วค่อยประมวลผลแบบปลอดภัย โพสต์นี้ขอสลับฝั่งกันบ้าง: คราวนี้ **เราเป็นคนส่ง** มีอะไรเกิดขึ้นในระบบเรา แล้วเราต้องส่ง callback ไปหา **endpoint ของคนอื่น — ตัวที่เราคุมไม่ได้ มองไม่เห็น แล้วก็เชื่อใจอะไรไม่ได้เลยตั้งแต่แรก** คราวที่แล้วเรารับ คราวนี้เราส่ง
 
 {/* IMAGE PROMPT (inbound-vs-outbound.png): Clean conceptual diagram on a light background, two stacked panels. Top panel labeled "Inbound": a box "Stripe" with ONE arrow pointing right to a box "Our receiver"; label that arrow once "order.paid". Bottom panel labeled "Outbound": a box "Our system" with ONE arrow pointing right to a box "Partner endpoint"; label that arrow once "order.paid". The reversed sender→receiver direction is the whole point. STRICT: each arrow has EXACTLY ONE label; do NOT repeat any label anywhere (no label appearing twice); the "Stripe" box is labeled just "Stripe" once (no extra logo text); render only these labels, spelled exactly; no meta/style words; no typos. Flat vector, soft shadows, 2–3 accent colors, no photorealism. */}
 
@@ -240,7 +240,7 @@ flowchart TD
 
 **วิธีแก้:** ผ่ามันเป็นสาม tier ตามหน้าที่ แต่ละตัว scale แล้วก็พังแยกกันได้:
 
-- **Acceptor** (ขาเข้า) — รับ event แบบ `มีอะไรเกิดขึ้น ไป notify subscriber` มา **เก็บให้ไว durable แล้วก็ return** เป็นงานเขียนเป็นหลัก ห้ามทำ event หายเด็ดขาด ตั้งใจทำให้มันผอม ๆ ไว้ เพื่อให้การรับเข้าไม่ติดขัดเพราะอะไรที่อยู่ปลายน้ำ
+- **Acceptor** (ขาเข้า) — รับ event แบบ `มีอะไรเกิดขึ้น ไป notify subscriber` มา **เก็บให้ไว durable แล้วก็ return** เน้นงาน write เป็นหลัก ห้ามทำ event หายเด็ดขาด ตั้งใจทำให้มันผอม ๆ ไว้ เพื่อให้การรับเข้าไม่ติดขัดเพราะอะไรที่อยู่ปลายน้ำ
 - **Dispatcher** (routing / fan-out) — เอา event ที่รับเข้ามาแล้วไปหาว่า **ใคร subscribe ไว้** แล้ว apply subscription config แล้วก็กางออกเป็น delivery task อันละ endpoint เป็นงานที่ใช้ logic เยอะ โตตามจำนวน subscription × ชนิดของ event เปรียบเป็นสมอง
 - **Consumer** (delivery) — ทำ POST ที่เซ็นแล้วยิงไปยังแต่ละ endpoint เลย: HMAC, backoff, idempotency id, track ผล, DLQ เป็นงานที่ติด I/O โดน endpoint ข้างนอกที่ช้าบล็อกไว้ แล้วก็ fail บ่อย อยากได้ตัวนี้เยอะ ๆ
 
