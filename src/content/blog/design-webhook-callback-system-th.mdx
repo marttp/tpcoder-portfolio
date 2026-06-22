@@ -1,0 +1,278 @@
+---
+title: "การออกแบบ Webhook Callback System แบบเริ่มจากง่าย แล้วค่อย evolve"
+description: "พาเดินทุก step ของการออกแบบระบบส่ง webhook ออกจากฝั่งคนส่ง ตั้งแต่ POST แบบ sync ตัวเดียว ไปจนเป็นระบบ delivery ที่เชื่อถือได้ — async worker, backoff, เซ็นด้วย HMAC, idempotency, DLQ + redrive, ordering กับ dependency DAG, แล้วก็การแยกเป็น acceptor/dispatcher/consumer โดยแต่ละ step เริ่มจากปัญหาที่ step ก่อนหน้าทำพัง — แล้วก็ทำไมมันยิ่งสำคัญขึ้นในวันที่ consumer ปลายทางอาจจะเป็น AI agent"
+pubDate: "2026-06-22"
+tags:
+  ["Software Architecture", "Software Engineering", "Backend"]
+heroImage: "/assets/images/blogs/design-webhook-callback-system/hero-webhook.png"
+language: "th"
+translationSlug: "design-webhook-callback-system"
+servicesNote: true
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+## Introduction
+
+โพสต์นี้เป็นตัวที่สี่ของซีรีส์ backend system design — สูตรเดิมเหมือนเคย: เริ่มจากของที่ทื่อที่สุดเท่าที่มัน work ได้ แล้วก็ปล่อยให้ข้อจำกัดหน้างานค่อย ๆ ดันมันให้เข้ารูป
+
+ย้อนไปที่[โพสต์ payment](/blog/payment-backend-stripe-integration-th/) ตอนนั้นเราอยู่ฝั่ง **คนรับ** webhook — Stripe ยิง event มา *หาเรา* แล้วเราก็สร้าง receiver โง่ ๆ ที่เอา event ไปพักไว้บน queue ก่อนแล้วค่อยประมวลผลแบบปลอดภัย โพสต์นี้ขอกลับด้านสายไฟใหม่: คราวนี้ **เราเป็นคนส่ง** มีอะไรเกิดขึ้นในระบบเรา แล้วเราต้องส่ง callback ไปหา **endpoint ของคนอื่น — ตัวที่เราคุมไม่ได้ มองไม่เห็น แล้วก็เชื่อใจไม่ได้โดยปริยาย** คราวที่แล้วเรารับ คราวนี้เราส่ง
+
+{/* IMAGE PROMPT (inbound-vs-outbound.png): Clean conceptual diagram on a light background, two stacked panels. Top panel labeled "Inbound": a box "Stripe" with ONE arrow pointing right to a box "Our receiver"; label that arrow once "order.paid". Bottom panel labeled "Outbound": a box "Our system" with ONE arrow pointing right to a box "Partner endpoint"; label that arrow once "order.paid". The reversed sender→receiver direction is the whole point. STRICT: each arrow has EXACTLY ONE label; do NOT repeat any label anywhere (no label appearing twice); the "Stripe" box is labeled just "Stripe" once (no extra logo text); render only these labels, spelled exactly; no meta/style words; no typos. Flat vector, soft shadows, 2–3 accent colors, no photorealism. */}
+
+![Inbound vs outbound webhook: คราวก่อน Stripe ส่งมาหา receiver ของเรา คราวนี้ระบบเราส่งไปหา endpoint ของพาร์ตเนอร์](/assets/images/blogs/design-webhook-callback-system/inbound-vs-outbound.png)
+
+ขอปูพื้นเร็ว ๆ เพราะมันคือเหตุผลทั้งหมดที่ webhook มีอยู่: ก่อนจะมีมัน พาร์ตเนอร์ที่อยากรู้ว่า `order นี้จ่ายเงินรึยัง` ต้องมานั่ง **poll** เรา — ยิง `GET` มาทุก ๆ ไม่กี่นาทีแล้วก็มา diff ผลดูเอง เปลือง, หน่วง, แล้วก็ scale ไม่ไหวเอาซะเลย ส่วน webhook มันพลิกเป็น **push** — วินาทีที่ `order.paid` เกิดขึ้น *เรา* นี่แหละโทรหา *เขา* ถูกกว่าแล้วก็ real-time ด้วย แต่ทีนี้ปัญหายาก ๆ มันก็มาตกอยู่ที่เรา: endpoint ของเขาเดี๋ยวก็ล่ม เดี๋ยวก็ช้า เดี๋ยวก็ตอบมาแบบเชื่อไม่ได้ แล้วเราก็ยังต้องส่งให้ถึงอยู่ดี
+
+{/* IMAGE PROMPT (polling-vs-push.png): Clean conceptual diagram on a light background, two stacked panels (before/after). Top panel labeled "Polling (before)": a box "Partner" sending several repeated arrows labeled "GET?" to a box "Our system", with most replies labeled "nothing new" — conveying wasteful repeated checking. Bottom panel labeled "Webhook (push)": a box "Our system" sending ONE arrow labeled "order.paid" to a box "Partner" the moment it happens. Make the contrast obvious: many wasted polls vs one timely push. STRICT: render only these labels, spelled exactly; no meta/style words; no duplicate boxes; no typos. Flat vector, soft shadows, 2–3 accent colors, no photorealism. */}
+
+![Polling vs push: พาร์ตเนอร์ยิง GET ถามซ้ำ ๆ เทียบกับระบบเรา push event เดียวตอนที่มันเกิดขึ้น](/assets/images/blogs/design-webhook-callback-system/polling-vs-push.png)
+
+**แล้วก็มีจุดพลิกของปี 2026 ที่จะวิ่งอยู่ตลอดทั้งโพสต์นี้** ของที่มารับ webhook ของเรา เมื่อก่อนมันคือ backend ของ merchant ที่สุดท้ายก็มีคนมานั่งดู dashboard อีกที แต่เดี๋ยวนี้มันเริ่มกลายเป็น **AI agent ที่ทำงานเองแล้วลงมือกับ event นั้นทันที** — สั่ง order, ขยับเงิน, เริ่ม fulfillment ให้เลย เพราะงั้น webhook ที่ซ้ำ, มาผิดลำดับ, หรือโดนปลอม มันเลิกเป็นแค่ความผิดเล็ก ๆ น่ารำคาญแล้ว — มันกลายเป็น agent ที่ลงมือทำสิ่งที่ผิดออกไปข้างนอกโดยไม่มีมนุษย์คอยกั้นสักคน จุดนี้แหละที่ดันมาตรฐานของทุกชิ้นส่วนเรื่องความน่าเชื่อถือข้างล่างให้สูงขึ้น
+
+{/* IMAGE PROMPT (agent-vs-human.png): Clean conceptual illustration on a light background contrasting the SAME bad webhook (label the incoming arrow "duplicate / out-of-order event") hitting two different consumers. Left consumer: a "Merchant dashboard" with a small human icon — outcome label "minor glitch, human catches it". Right consumer: an "AI agent" icon — outcome label "acts immediately = wrong action". Make the contrast in consequence obvious. Flat vector, soft shadows, 2–3 accent colors, clear labels, no photorealism. */}
+
+![webhook เสียตัวเดียวกัน: dashboard ของคนยังพอทนได้ แต่ AI agent ลงมือทันที](/assets/images/blogs/design-webhook-callback-system/agent-vs-human.png)
+
+เส้นทางทั้งหมด แต่ละ step ถูกบังคับด้วย step ก่อนหน้ามันเอง:
+
+1. **POST แบบ synchronous** ทำ inline
+2. มันพังบ้างเป็นบางครั้ง → ใส่ **sync retry** (ยังทำ inline อยู่)
+3. sync retry มัน **บล็อก thread เรา** → ย้ายไป **async** (queue + worker)
+4. **Backoff + max attempts** จะได้ไม่กระหน่ำหรือวนไม่จบ
+5. **เซ็นมันซะ (HMAC)** เพื่อให้ consumer เชื่อใจได้ว่าเป็นเราแน่ ๆ
+6. **Idempotency / event id** จะได้ไม่ให้ retry ของเราทำให้เขาลงมือซ้ำ
+7. **DLQ + redrive** สำหรับ delivery ที่ส่งยังไงก็ไม่สำเร็จ
+8. **Ordering** — แล้วก็ dependency **DAG** ที่ฝั่งคนรับต้องเคารพ
+9. ปลายทาง: การแยกเป็น **acceptor / dispatcher / consumer**
+
+{/* IMAGE PROMPT (hero-webhook.png): Wide banner hero, clean modern architecture illustration on a light background. Left-to-right outbound webhook delivery system, boxes labeled EXACTLY: "Event source" → "Acceptor" → "Dispatcher" → "Consumer" → then it POSTs out to two destination boxes on the right labeled "Merchant backend" and "AI agent". Show a small side box labeled "Dead letter" branching off the Consumer, and a small "Sign (HMAC)" tag on the arrow from Consumer to the destinations. STRICT: render ONLY these labels, spelled exactly; no meta or marketing words (no "reliable", "simple", "robust"); no duplicate boxes; no typos. Flat vector, soft shadows, tech-blog aesthetic, 2–3 accent colors, plain labeled rectangles, no photorealism. */}
+
+![ภาพรวมระบบส่ง webhook ออก: event source → acceptor → dispatcher → consumer → POST ที่เซ็นแล้วไปหา merchant backend กับ AI agent พร้อมแขนง dead-letter](/assets/images/blogs/design-webhook-callback-system/hero-webhook.png)
+
+---
+
+## The naive version — just POST it
+
+ต้องเริ่มจากที่ไหนสักที่ แล้วจุดเริ่มแบบซื่อ ๆ ก็คือ: พอมีอะไรเกิดขึ้น ก็ `POST` ไปที่ URL ของพาร์ตเนอร์ในตัว request handler นั้นเลย
+
+```
+on order_paid(order):
+  resp = http.post(partner_url, body=event(order))   # synchronous
+  return 200
+```
+
+<MermaidDiagram chart={`
+flowchart LR
+    EV["order.paid happens"] --> SVC["Our service"]
+    SVC -->|"POST (inline)"| EP["Partner endpoint"]
+`} />
+
+สำหรับพาร์ตเนอร์รายเดียว volume น้อย ๆ แบบนี้มัน work ได้โอเคเลย — ปล่อยขึ้นได้ แต่ลองสังเกตสิ่งที่เราเพิ่งมัดติดกันไว้: **ตอนนี้ endpoint ของพาร์ตเนอร์มันมานั่งอยู่บนเส้นทางวิกฤตของ request เราเองแล้ว** วันที่ server เขามีปัญหา ก็เลยกลายเป็นวันที่เรามีปัญหาไปด้วย
+
+---
+
+## It failed — add a retry
+
+**ปัญหา:** endpoint ของคนอื่นมัน *จะ* ตอบ 500 หรือ timeout กลับมา — ไม่ใช่เพราะเราทำอะไรผิดนะ แค่เพราะมันคือ server ตัวนึงบนอินเทอร์เน็ตเฉย ๆ การ POST แบบยิงทีเดียวจบ มันทำ event หล่นหายตั้งแต่ครั้งแรกที่กล่องเขาสะอึก
+
+**วิธีแก้:** อันที่นึกออกง่ายสุด — retry สักสองสามครั้งก่อนจะยอมแพ้
+
+```
+on order_paid(order):
+  for attempt in 1..3:
+      resp = http.post(partner_url, body=event(order))
+      if resp.ok: return 200
+      sleep(1s)
+  return 200   # gave up
+```
+
+แบบนี้ดีขึ้นนะ แล้วสำหรับ integration เล็ก ๆ มันอาจจะพอแค่นี้เลยก็ได้ แต่ลองอ่านดี ๆ: **retry พวกนี้มันยังเกิดแบบ inline อยู่ข้างใน request ของคนเรียก** นั่นแหละคือจุดที่ step ถัดไปจะเข้ามาขยายต่อ
+
+---
+
+## Sync retries block you — go async
+
+**ปัญหา:** sync retry มันทำให้การมัดติดกัน *แย่ลง* ไม่ใช่ดีขึ้น พอพาร์ตเนอร์ช้า เราไม่ได้ fail เร็ว ๆ — เรานั่งถือ request นั้นไว้ (พร้อมกับ worker thread ตัวนึง) เป็นเวลา `timeout × จำนวนครั้ง` แถมหลับรอระหว่างแต่ละครั้งอีก แล้วส่วนที่โหดร้ายคือ: เรา retry *หนักที่สุด* ก็ตอนที่พาร์ตเนอร์ *ช้าที่สุด* พอดี ซึ่งเป็นจังหวะที่เราเสีย thread ไปแบบไม่คุ้มที่สุด พอเจอ load หนัก ๆ ของหน้างาน พาร์ตเนอร์ที่กำลังแย่อยู่รายเดียวก็ดูด thread pool เราจนหมด แล้วก็ลากเอา request อื่นที่ไม่เกี่ยวกับ webhook เลยล้มตามไปด้วย
+
+**วิธีแก้:** เอางาน delivery ออกไปจาก thread ของคนเรียกให้หมดเลย ตัว request handler ทำให้น้อยที่สุด — แค่บันทึกว่า `event นี้ต้องถูกส่งออกไปนะ` ลง durable queue แล้วก็ return ส่วน **delivery worker** แยกอีกตัวค่อยดึงจาก queue มาทำ POST (แล้วก็ retry)
+
+```
+on order_paid(order):
+  queue.put(event(order))   # durable, returns in ms
+  return 202
+
+# elsewhere, a worker:
+loop:
+  e = queue.take()
+  deliver(e)                # POST + retries live here now
+```
+
+<MermaidDiagram chart={`
+flowchart LR
+    EV["order.paid"] --> SVC["Our service"]
+    SVC -->|"enqueue, return 202"| Q["Queue"]
+    Q --> WK["Delivery worker"]
+    WK -->|"POST"| EP["Partner endpoint"]
+`} />
+
+อันนี้คือการเปลี่ยนที่ leverage สูงที่สุดในโพสต์เลย latency ของพาร์ตเนอร์กลายเป็นปัญหาของ *worker* ไม่ใช่ของ API เราแล้ว — แถมงานมันก็ durable ด้วย crash ไปก็ไม่ทำ event หาย เกือบทุกอย่างข้างล่างนี้คือการขัดเกลาไอเดีย `ส่งแบบ async โดยอิงกับ durable queue` ให้เนียนขึ้นเฉย ๆ
+
+---
+
+## Don't hammer, don't loop forever — backoff + max attempts
+
+**ปัญหา:** retry ของเราเมื่อกี้มันยังกิ๊กก๊อก — delay คงที่ แล้วก็ (พูดกันตามเนื้อผ้า) ไม่มีอะไรห้ามไม่ให้มันวนไปเรื่อย ๆ ไม่จบ มันมีโหมดพังซ่อนอยู่สองอย่าง อย่างแรก การ retry กระหน่ำ endpoint ที่กำลังแย่อยู่ซ้ำ ๆ แบบทันที มันก็เหมือนไปกระทืบซ้ำตอนที่เขากำลังล้มอยู่ อย่างที่สอง ถ้า endpoint มันตายสนิทไปแล้ว retry แบบไม่มีเพดานก็คือ worker ที่หมุนอยู่กับ event ตายตัวเดียวไปตลอด ไม่ยอมระบาย queue ที่ต่อแถวอยู่ข้างหลังเลย
+
+**วิธีแก้:** **exponential backoff พร้อม jitter แล้วก็เพดาน max-attempt แบบตายตัว**
+
+- **Exponential backoff** — รอนานขึ้นเรื่อย ๆ ในแต่ละครั้ง (1s, 2s, 4s, 8s, …) เพื่อให้ endpoint ที่กำลังฟื้นมีที่หายใจ
+- **Jitter** — ใส่ความสุ่มเข้าไปใน delay ถ้าไม่มีมัน ทุก event ที่กองไว้ตอน outage ก็จะ retry พร้อมกันเป๊ะ ๆ ในวินาทีที่ endpoint กลับมา — กลายเป็น thundering herd ที่เราสร้างขึ้นเองแล้วก็ทุบเขาล้มซ้ำอีกรอบ
+- **Max attempts** — หลังจาก N ครั้ง (หรือหมด time budget) ก็หยุด event ไม่ได้หายนะ — มันไปอยู่ที่ที่เราจะจัดการทีหลัง (ตัว DLQ อีกไม่กี่ step ข้างล่าง) หลักการ `retry ได้ แต่ต้องมีเพดาน` คือหัวใจทั้งหมด
+
+<MermaidDiagram chart={`
+flowchart LR
+    WK["Delivery worker"] -->|"POST"| EP["Partner endpoint"]
+    EP -->|"5xx / timeout"| RT{"attempt < max?"}
+    RT -->|"yes"| BO["wait: backoff + jitter"] --> WK
+    RT -->|"no"| GV["stop → (DLQ later)"]
+`} />
+
+{/* IMAGE PROMPT (thundering-herd.png): Clean conceptual illustration on a light background contrasting two retry strategies hitting a recovering server. Left panel labeled "No jitter": many retry arrows all striking a box "Partner endpoint" at the same instant (one big simultaneous spike) — caption "all retry at once". Right panel labeled "With jitter": the same retries spread out as an evenly staggered sequence into the box — caption "spread out over time". Left should look like an overwhelming simultaneous burst, right evenly spaced. STRICT: render only these labels, spelled exactly; no meta/style words; no duplicate boxes; no typos. Flat vector, soft shadows, 2–3 accent colors, no photorealism. */}
+
+![thundering herd: ถ้าไม่มี jitter ทุก retry กระแทกพร้อมกันในวินาทีเดียว ถ้ามี jitter ก็กระจายตัวตามเวลา](/assets/images/blogs/design-webhook-callback-system/thundering-herd.png)
+
+---
+
+## Anyone can POST to them — sign it (HMAC)
+
+**ปัญหา:** endpoint ที่รับ webhook ของพาร์ตเนอร์มันคือ **URL สาธารณะบนอินเทอร์เน็ต** ใครก็ตามที่รู้ URL นี้ก็ POST เข้าไปได้ แล้วก็แกล้งทำเป็นเราได้ด้วย — `order.paid` ปลอม ๆ, `refund.completed` ปลอม ๆ ฝั่ง consumer ไม่มีทางแยกออกเลยว่าอันไหน event ของเราอันไหนของปลอม แล้วถ้าเราเผลอเอารายละเอียดไปยัดไว้ใน **URL หรือ query string** (`?amount=5000&user=123`) ก็เท่ากับทำมันรั่วไปแล้ว — query string มันไปโผล่ใน access log, proxy, แล้วก็ประวัติ browser
+
+**วิธีแก้:** พิสูจน์ว่า message มาจากเรา แล้วก็เก็บข้อมูลออกไปจาก URL
+
+- **เซ็น payload** คำนวณ HMAC (เช่น HMAC-SHA256) ของ raw request body ด้วย **shared secret** ที่มีแค่เรากับ consumer รู้ แล้วก็ส่งไปใน header (`X-Signature`) ฝั่ง consumer ก็คำนวณ HMAC จาก body ที่เขาได้รับมาใหม่แล้วเทียบ — ถ้าไม่ match ก็แปลว่าโดนปลอมหรือโดนแก้ไขระหว่างทาง เขาก็ทิ้งไป
+- **เซ็น timestamp ไปด้วย** แล้วก็รวมมันเข้าไปในสิ่งที่เซ็น ฝั่ง consumer จะ reject อะไรก็ตามที่เก่าเกินไม่กี่นาที ซึ่งกัน **replay attack** ได้ (พวกที่ดักจับ call ที่ valid แล้วเอามายิงซ้ำ)
+- **ทุกอย่างที่มีความหมายอยู่ใน body** ไม่ใช่ URL ตัว URL เป็นแค่ที่อยู่ ส่วน body ที่เซ็นแล้วคือตัว message
+
+```
+sig = hmac_sha256(secret, timestamp + "." + raw_body)
+POST /webhooks/orders
+  X-Timestamp: 1718000000
+  X-Signature: sha256=...
+  { "id": "...", "type": "order.paid", ... }   # data lives here
+```
+
+{/* IMAGE PROMPT (hmac-trust.png): Clean conceptual illustration on a light background about webhook authenticity. A box on the right labeled "Partner endpoint" receives TWO incoming requests: one labeled "Forged request" shown rejected with a red X, and one labeled "Signed request (valid HMAC)" shown accepted with a green check. On the left, a box "Our system" and the "Partner endpoint" share a small key icon labeled "shared secret". Make it obvious only the validly-signed request gets in. STRICT: render only these labels, spelled exactly; no meta/style words; no duplicate labels; no typos. Flat vector, soft shadows, 2–3 accent colors, no photorealism. */}
+
+![HMAC trust: request ปลอมโดน reject ส่วนตัวที่เซ็นถูกต้องผ่านได้ ด้วย secret ที่แชร์กันระหว่างระบบเรากับพาร์ตเนอร์](/assets/images/blogs/design-webhook-callback-system/hmac-trust.png)
+
+อันนี้คือด่านแรกสุดของการประมวลผลฝั่ง consumer เลย: ก่อนจะไปดูเนื้อหาด้วยซ้ำ เขาถามก่อนว่า `อันนี้มาจากเขาคนนั้นแน่นะ?` ยืนยันตัวตนก่อน แล้วค่อยว่ากันเรื่องอื่น
+
+---
+
+## Your retries cause doubles — idempotency
+
+**ปัญหา:** ทุกอย่างที่เราสร้างมามันเป็น **at-least-once** หมด worker ก็ retry; queue ก็ redeliver ได้หลัง crash; ส่วน delivery ที่ส่งสำเร็จไปแล้วแต่ ack ดันหายระหว่างทาง ก็โดนส่ง *ซ้ำ* อีกที เพราะงั้น consumer มัน **จะ** ได้รับ event เดิมซ้ำมากกว่าหนึ่งครั้งแน่ ๆ เราเจอกำแพงนี้มาแล้วเป๊ะ ๆ ทั้งในโพสต์ payment แล้วก็ push — exactly-once แบบเป๊ะข้ามเครือข่ายมันเป็นเรื่องเพ้อฝัน (Two Generals Problem) สำหรับ dashboard ของซ้ำมันก็แค่เรื่องผิวเผิน แต่สำหรับ **AI agent** `order.paid` ที่ซ้ำ คือมีการสั่ง order รอบสอง คือเงินขยับสองเด้ง
+
+**วิธีแก้:** ให้ทุก event พก **`event_id` ที่นิ่งแล้วก็ไม่ซ้ำใคร** (กำหนดครั้งเดียวตั้งแต่ต้นทาง — แล้วพกติดตัวไปไม่เปลี่ยนทุก retry) แล้วก็ทำสัญญาเรื่องการส่งให้เคลียร์ ๆ ไปเลยว่า `เราส่งแบบ at least once นะ ฉะนั้นไป dedupe ด้วย event_id เอาด้วย` ฝั่ง consumer ก็จดว่า id ไหนประมวลผลไปแล้วบ้าง แล้วก็ข้ามตัวที่ซ้ำ เรารับประกันการส่งถึง เขารับประกันการประมวลผลแบบ idempotent มันคือสัญญาร่วมกัน แล้วก็ควรเขียนไว้ดัง ๆ ใน webhook docs ของเราด้วย
+
+```
+{ "id": "evt_7f3c…",        // stable across retries — the dedupe key
+  "type": "order.paid",
+  "data": { … } }
+```
+
+สังเกตลำดับกับ step ก่อนหน้า: ฝั่ง consumer **ยืนยันตัวตน (HMAC) ก่อน แล้วค่อย dedupe (`event_id`) แล้วค่อยประมวลผล** เชื่อใจมันก่อน แล้วเช็คว่าเคยเห็นรึยัง แล้วค่อยลงมือ
+
+---
+
+## Some never succeed — DLQ + redrive
+
+**ปัญหา:** backoff กับเพดาน max-attempt หยุดการวนไม่จบได้ก็เถอะ แต่มันสร้างคำถามใหม่ขึ้นมา: *แล้ว event ที่ retry จนหมดโควต้าไปแล้วล่ะ ไปไหนต่อ?* พาร์ตเนอร์ล่มเป็นชั่วโมง ๆ ได้ เรา retry ตลอดกาลไม่ได้ (ตกลงกันไปแล้ว) แต่การปล่อย event หล่นหายเงียบ ๆ ก็แปลว่า notification ของ order หายไปดื้อ ๆ — แล้วสำหรับ consumer ที่เป็น agent ขับเคลื่อน มันคือ state ที่หายไปแล้วกู้กลับมาไม่ได้เลย
+
+**วิธีแก้:** **dead-letter queue (DLQ)** พอ event ข้ามเพดาน max-attempt ก็ย้ายมันไปเก็บที่ store แยกแทนที่จะทิ้ง ทีนี้:
+
+- **operator มองเห็นแล้วก็ลงมือได้** — ส่องดูว่าทำไมมันถึง fail แล้วก็ **redrive** (เอากลับเข้า queue ใหม่) ทั้งก้อนตอนที่พาร์ตเนอร์กลับมาปกติ
+- **ให้ทางกู้คืนกับ consumer ด้วย** — API แบบ `list/replay event ตั้งแต่จุด X` เพื่อให้พาร์ตเนอร์ที่เคยล่มดึงของที่พลาดไปกลับมาได้ (อันนี้คือด้านกลับของเหรียญเดียวกับโมเดล polling เก่า — เป็น channel ไว้ตามเก็บโดยเฉพาะ ไม่ใช่ทางหลัก)
+
+<MermaidDiagram chart={`
+flowchart LR
+    WK["Delivery worker"] -->|"delivered"| OK["done"]
+    WK -->|"attempt >= max"| DLQ[("Dead-letter queue")]
+    DLQ -->|"operator redrive (partner healthy)"| WK
+    DLQ -.->|"or consumer replays"| API["Replay API"]
+`} />
+
+รายละเอียดเชิงปฏิบัติจากระบบหน้างาน: ผูกการย้ายเข้า DLQ ไว้กับ **receive-count** (message นี้ถูกดึงออกมาแล้ว fail ไปกี่ครั้งแล้ว) แล้วก็กำหนด **redrive policy** ไว้ล่วงหน้าเลย — ว่า message ที่หมดโควต้าจะไปไหนแล้วก็จะกลับมายังไง อย่าเพิ่งไปนั่งคิดสูตรมันตอนเกิด incident
+
+---
+
+## They arrive out of order — sequencing, and the DAG
+
+**ปัญหา:** การส่งแบบ async + retry + worker หลายตัวขนานกัน แปลว่า event ของ resource เดียวกันมา **ผิดลำดับ** ได้ `order.paid` แล้วตามด้วย `order.refunded` แต่ consumer ดันเห็น `refunded` มาก่อน หรือ event เก่าที่โดน retry ดันมาถึงทีหลังตัวที่ใหม่กว่า คนเรายังพอทนได้ แต่ agent ที่ลงมือตามลำดับที่ได้รับ มันทำผิดเลย
+
+**วิธีแก้ (เคสเชิงเส้น):** แปะ **sequence number หรือ version** ที่เพิ่มขึ้นเรื่อย ๆ ต่อ resource ไว้ในทุก event ฝั่ง consumer ก็เก็บ version ล่าสุดที่เห็น แล้วใช้ **last-write-wins** — อะไรที่เก่ากว่าก็ข้ามไป ถ้าอยากได้ลำดับการประมวลผล ไม่ใช่เอาแค่ state ล่าสุด ก็ **partition ตาม resource id** เพื่อให้ทุก event ของ order เดียวไหลผ่าน lane เดียวที่เรียงลำดับแล้ว ขอแปะหมายเหตุเรื่อง scope ไว้: เราแทบไม่เคยต้องการ *global ordering* เลย — ต้องการแค่ลำดับ **ต่อ resource** เท่านั้น อย่าไปสร้างระบบ total-order ที่ไม่ได้ใช้
+
+**แต่ consumer หน้างานมันไม่ได้เป็นแค่เส้นเดียว — มันมีกราฟของ dependency** ส่วนนี้แหละที่ควรค่อย ๆ ดู ลองมอง event เป็น **DAG**: แต่ละ event คือ node, เส้น directed ชี้จากตัวที่เป็น prerequisite ไปยังตัวที่ต้องพึ่งมัน แล้วก็เป็น acyclic (ไม่มีวนกลับ) ส่วนใหญ่หน้าตามันเป็นเชิงเส้น — จนกระทั่งไปเจอ **fan-in (จุดรวม)**: event ที่ต้องรอ prerequisite *ตั้งแต่สองตัวขึ้นไป*
+
+<MermaidDiagram chart={`
+flowchart TD
+    OC["order.created"] --> PA["payment.authorized"]
+    OC --> IR["inventory.reserved"]
+    PA --> OP["order.paid"]
+    OP --> SC["shipment.created"]
+    IR --> SC
+    SC --> SD["shipment.delivered"]
+`} />
+
+`shipment.created` คือจุดรวม — มันต้องรอ **ทั้ง** `order.paid` *และ* `inventory.reserved` ระบบเราส่งสองตัวนี้แยกกันแล้วก็มาผิดลำดับได้ เพราะงั้น consumer อาจจะได้ `shipment.created` มาก่อนที่ `inventory.reserved` จะมาถึงด้วยซ้ำ นี่คือเส้นแบ่งที่ทำให้เรื่องนี้ยังอยู่ในร่องในรอย:
+
+- **งานของฝั่งคนส่ง** (อยู่ใน scope ทำเลย): ลำดับต่อ resource บวกกับ **causation metadata** ในทุก payload — `event_id`, `causation_ids` (id ของ event แม่), แล้วก็ `correlation_id` ของทั้ง flow (เช่น `order_id`) นั่นคือส่วนร่วมทั้งหมดที่เรามีต่อกราฟนี้
+- **งานของฝั่งคนรับ** (อยู่นอก scope ของเรา แต่ขอพูดไว้): เอา link พวกนั้นมาประกอบ DAG ขึ้นใหม่แล้วประมวลผลตาม **topological order** — พัก node ไว้ก่อนจนกว่า parent ทุกตัวจะมาถึง/ประมวลผลเสร็จ พร้อม timeout ที่จะ trigger ให้ไปดึงเองหรือ alert ถ้า parent ไม่มาสักที **ระบบ webhook ของเราไม่ใช่ workflow engine — อย่าไปทำให้มันกลายเป็นแบบนั้น**
+
+แล้วนี่แหละคือจุดที่มุม agent มันพุ่งถึงขีดสุด: agent ที่ทำงานเองแล้วไล่ DAG นี้เพื่อจะ *ลงมือ* มันต้องเคารพ topological order ไม่งั้นมันจะไปสั่ง logic เรื่อง shipment กับ order ที่ไม่เคยถูกจ่ายเงินเลยด้วยซ้ำ ตัว DAG นี่แหละที่กั้นไม่ให้ agent ไปลงมือกับ state ที่ยังประกอบไม่เสร็จ ถ้าเป็นคนเหลือบมอง dashboard แป๊บเดียวก็คง... เอ๊ะ ทันแล้ว ส่วน agent มันไม่เอ๊ะหรอก
+
+---
+
+## Pull it apart — acceptor / dispatcher / consumer
+
+**ปัญหา:** มาถึงตอนนี้ service ตัวเดียวทำงานเยอะมาก — รับ event ภายใน, หาว่า *ใคร* subscribe ไว้บ้าง, แล้วก็ทำ delivery ออกนอกที่ช้า ๆ พร้อม retry ทั้งหมด งานสามอย่างนี้รูปร่างคนละแบบกันเลย พอเอามาแปะรวมกัน ตัวที่ช้าแล้วก็พังบ่อยที่สุดมันก็ลากตัวอื่นจมตามไปด้วย พาร์ตเนอร์ endpoint ช้า ๆ ที่ถาโถมเข้ามา ก็ไปทำให้งาน delivery ตันแล้วก็ไปอุดการรับ event ใหม่ที่ต่อแถวอยู่ข้างหลังด้วย
+
+**วิธีแก้:** ผ่ามันเป็นสาม tier ตามหน้าที่ แต่ละตัว scale แล้วก็พังแยกกันได้:
+
+- **Acceptor** (ขาเข้า) — รับ event แบบ `มีอะไรเกิดขึ้น ไป notify subscriber` มา **เก็บให้ไว durable แล้วก็ return** เป็นงานเขียนเป็นหลัก ห้ามทำ event หายเด็ดขาด ตั้งใจทำให้มันผอม ๆ ไว้ เพื่อให้การรับเข้าไม่ติดขัดเพราะอะไรที่อยู่ปลายน้ำ
+- **Dispatcher** (routing / fan-out) — เอา event ที่รับเข้ามาแล้วไปหาว่า **ใคร subscribe ไว้** แล้ว apply subscription config แล้วก็กางออกเป็น delivery task อันละ endpoint เป็นงานที่ใช้ logic เยอะ โตตามจำนวน subscription × ชนิดของ event เปรียบเป็นสมอง
+- **Consumer** (delivery) — ทำ POST ที่เซ็นแล้วยิงไปยังแต่ละ endpoint เลย: HMAC, backoff, idempotency id, track ผล, DLQ เป็นงานที่ติด I/O โดน endpoint ข้างนอกที่ช้าบล็อกไว้ แล้วก็ fail บ่อย อยากได้ตัวนี้เยอะ ๆ
+
+<MermaidDiagram chart={`
+flowchart LR
+    EV["Event source"] --> AC["Acceptor\n(capture fast, durable)"]
+    AC --> Q1["Queue"]
+    Q1 --> DI["Dispatcher\n(route to subscribers)"]
+    DI --> Q2["Per-delivery tasks"]
+    Q2 --> CO["Consumer\n(sign + POST + retry)"]
+    CO --> EP["Partner endpoints"]
+    CO --> DLQ[("Dead-letter")]
+`} />
+
+ผลตอบแทนคือเหตุผลทั้งหมดที่ยอมเหนื่อย: **scale แยกกันได้** (delivery พุ่งหรือเจอพาร์ตเนอร์ช้า ๆ มาเป็นพรวด ก็ scale แค่ *consumer*), **แยก failure ออกจากกัน** (พาร์ตเนอร์ที่งอแงทำให้ตันแค่ชั้น consumer — ส่วน acceptor ก็รับต่อไป dispatcher ก็ route ต่อไป), แล้วก็ **deploy แยกกันได้** (เปลี่ยน routing โดยไม่ต้องไปแตะ delivery) มันคือเส้นเรื่องเดียวกับโพสต์ก่อน ๆ: แยกส่วนที่ durable-แล้ว-ไว ออกจากส่วนที่ช้า-เพราะของข้างนอก เพื่อให้ตัวนึงลากอีกตัวจมไม่ได้
+
+นี่คือรูปร่างคร่าว ๆ ที่ผมเคย build มากับมือ — ย้ายการต่อกับพาร์ตเนอร์ออกจากการ poll แบบ batch `GET` เก่า ๆ มาเป็น pipeline แบบ push real-time พร้อม retry ที่ขับด้วย queue (receive-count + redrive) แล้วก็แยก acceptor / dispatcher / consumer แบบนี้เป๊ะ ๆ เพื่อให้ชั้น delivery scale ของมันเองได้
+
+---
+
+## Wrapping up
+
+เราเริ่มจาก `POST` ตัวเดียวแบบ inline แล้วมาจบที่ระบบ delivery สาม tier เส้นทางทั้งหมด เรียงตามลำดับ:
+
+1. **เอา delivery ออกจาก thread ของคนเรียก** ไปไว้บน durable queue — การเปลี่ยนอันเดียวที่ทุกอย่างต่อยอดจากมัน
+2. **Back off ด้วย jitter แล้วก็มีเพดาน max-attempt** จะได้ไม่กระหน่ำหรือวนไม่จบ
+3. **เซ็นด้วย HMAC** (แล้วก็เก็บข้อมูลออกจาก URL) เพื่อให้ consumer เชื่อใจได้ว่าเป็นเรา
+4. **`event_id` ที่นิ่ง** จะได้ไม่ให้ at-least-once กลายเป็นการลงมือซ้ำสองเด้ง
+5. **DLQ + redrive** เพื่อให้ outage ยาว ๆ ไม่ทำ event หาย
+6. **ลำดับต่อ resource** แล้วก็ส่งมอบ **causation metadata** ให้ฝั่งคนรับเอาไปประกอบ dependency DAG ขึ้นใหม่ — โดยที่เราไม่ต้องกลายเป็น workflow engine
+7. **ผ่าเป็น acceptor / dispatcher / consumer** เพื่อให้ส่วนข้างนอกที่ช้าลากการรับเข้าจมตามไม่ได้
+
+ประเด็นใหญ่ก็ยังเหมือนตลอดทั้งซีรีส์: **ไม่มีใครควร build เวอร์ชันสาม tier ตั้งแต่วันแรกหรอก** พาร์ตเนอร์รายเดียว volume น้อย ๆ เหรอ? `POST` แบบ sync พร้อม retry สักสองครั้งก็โอเคสุด ๆ แล้ว ทุกกล่องข้างบนได้ที่ทางของมันมาจากการแก้ปัญหาที่เวอร์ชันก่อนหน้าสร้างขึ้น
+
+สิ่งเดียวที่ **เพิ่ง** กลายเป็นเรื่องของปี 2026 คือ: consumer ปลายทางมีโอกาสมากขึ้นเรื่อย ๆ ที่จะเป็น **agent ที่ทำงานเองแล้วลงมือทันทีที่ webhook เราไปถึง** — เพราะงั้นของซ้ำที่เราไม่ได้ dedupe, event ที่เราส่งผิดลำดับ, call ปลอมที่เราไม่ได้กันด้วยลายเซ็น ทั้งหมดนี้กลายเป็นการลงมือทำผิดออกไปข้างนอก แทนที่จะเป็นแค่ความผิดเล็ก ๆ บน dashboard งานเรื่องความน่าเชื่อถือมันเป็น engineering ที่ดีมาตลอดอยู่แล้ว ตอนนี้มันแค่กลายเป็นเส้นแบ่งระหว่าง agent ที่เชื่อใจ event ของเราได้ กับตัวที่เชื่อไม่ได้
