@@ -11,7 +11,7 @@ Reference posts: `payment-backend-stripe-integration-en.mdx` (~750 lines), `desi
 | 1 | Payment Backend with Stripe Integration | Published | pubDate 2026-06-13 | published |
 | 2 | Push Notification System | Published | pubDate 2026-06-17 | published |
 | 3 | Omnichannel Customer Communication Delivery Backbone | Published | pubDate 2026-06-19 | published |
-| 4 | Webhook Callback System | Spine locked (EN drafting) | - | - |
+| 4 | Webhook Callback System | Published | pubDate 2026-06-22 | published |
 | 5 | Icon Management / Segmentation | Not started | - | - |
 | 6 | Audience Platform (ETL Pipeline) | Not started | - | - |
 | 7 | Campaign Management Platform | Not started | - | - |
@@ -199,17 +199,17 @@ File: `design-webhook-callback-system.mdx` / `-th.mdx`
 
 **Running example:** e-commerce event webhooks (`order.paid`, `order.shipped`, `refund.completed`) — universally clear. **Advanced/forward angle:** the consumer is increasingly an **autonomous AI agent** (agentic commerce), not a merchant dashboard a human reviews. So a duplicate / out-of-order / spoofed webhook = an agent taking a *wrong real-world action* with no human in the loop → raises the bar on idempotency, ordering, HMAC. This is the "why it matters more in 2026" thread. (No Coda/chargeback specifics — keep generic.)
 
-- [ ] v1: Naive — synchronous POST to the partner endpoint, inline
-- [ ] v2: It fails sometimes → add a **sync retry** (still inline) — the naive fix
-- [ ] v3: Sync retries **block the I/O / request thread** (worst when the partner is slow) → go **async (queue + worker)**
-- [ ] v4: Flaky endpoint → **exponential backoff + max attempts**
-- [ ] v5: Endpoint is public on the internet → consumer must trust it's us → **HMAC signature** (+ no sensitive data in URL/query)
-- [ ] v6: Our retries double-process → **idempotency key / event id** handed to the consumer (so they dedupe after authenticating)
-- [ ] v7: Some deliveries never succeed → **DLQ + redrive**
-- [ ] v8: Events arrive out of order → **ordering / sequence tracking**
+- [x] v1: Naive — synchronous POST to the partner endpoint, inline
+- [x] v2: It fails sometimes → add a **sync retry** (still inline) — the naive fix
+- [x] v3: Sync retries **block the I/O / request thread** (worst when the partner is slow) → go **async (queue + worker)**
+- [x] v4: Flaky endpoint → **exponential backoff + max attempts**
+- [x] v5: Endpoint is public on the internet → consumer must trust it's us → **HMAC signature** (+ no sensitive data in URL/query)
+- [x] v6: Our retries double-process → **idempotency key / event id** handed to the consumer (so they dedupe after authenticating)
+- [x] v7: Some deliveries never succeed → **DLQ + redrive**
+- [x] v8: Events arrive out of order → **ordering / sequence tracking**
   - linear per-resource ordering (sequence/version + last-write-wins) = sender's realistic guarantee; partition-by-resource-id for per-entity order; no global ordering
   - **DAG callout (with Mermaid diagram):** real consumers have a dependency *graph*, not a line — fan-in joins (e.g. `shipment.created` needs both `order.paid` + `inventory.reserved`). Boundary: **sender** emits causation metadata (`event_id`, `causation_ids`, `correlation_id`) + per-resource order; **receiver** rebuilds the DAG and processes in topological order (buffer node until parents arrive, timeout → fetch/alert). Sender is NOT a workflow engine. Agent tie-in: an autonomous agent must traverse the DAG in topo order or it acts on half-built state. Diagram = e-commerce event DAG (order.created → payment.authorized/inventory.reserved → order.paid → shipment.created[join] → shipment.delivered).
-- [ ] v9: End-state — **acceptor / dispatcher / consumer** split for independent scaling
+- [x] v9: End-state — **acceptor / dispatcher / consumer** split for independent scaling
 
 Key experience: Coda webhook modernization (batch-GET polling → real-time POST webhook, SQS retries w/ receive-count + redrive, acceptor/dispatcher/consumer split, Quarkus replacing a Lambda notifier, sensitive data removed from URL) — used as domain knowledge, NOT as a named chargeback story.
 
