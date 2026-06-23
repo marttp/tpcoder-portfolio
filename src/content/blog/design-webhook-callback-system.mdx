@@ -277,7 +277,9 @@ And this is where the agent angle peaks: an autonomous agent traversing this DAG
 
 **To be clear, though — one service doing all three is exactly where most production apps live, and that's fine.** Packaged as a single deployable, or as a **serverless** stack (event → SQS / EventBridge → a Lambda that signs-and-delivers → a DLQ), the queue-worker-retry-DLQ machinery from the last few steps already carries a lot of real traffic — no split required. Serverless especially hands you retries, scaling, and a DLQ off the shelf. **Reach for the split below only when one tier's load or failure profile genuinely starts dragging the others down** — not before.
 
-**The fix — and the split that actually matters is just two tiers:** **acceptor → queue → consumer.**
+### The split that matters: acceptor → queue → consumer
+
+**The fix: of those three jobs, only two need their own tier — acceptor → queue → consumer.**
 
 - **Acceptor** (ingress) — receives the internal "this happened" event, **durably captures it fast, and returns.** Write-bound; must never drop an event. Kept deliberately lean so ingestion never blocks on anything downstream.
 - **Consumer** (delivery) — pulls from the queue and does the slow signed POST: HMAC, backoff, idempotency id, result tracking, DLQ. **I/O-bound, blocked on slow external endpoints, fails a lot.** You want many of these.
@@ -293,7 +295,9 @@ flowchart LR
     CO --> DLQ[("Dead-letter")]
 `} />
 
-**So where's the dispatcher?** Notice I didn't put one in. The job a dispatcher does — *getting the right event to the right endpoint* — still has to happen, but it doesn't have to be its own component. There are two ways to route, and choosing between them is the real decision:
+### So where's the dispatcher?
+
+Notice I didn't put one in. The job a dispatcher does — *getting the right event to the right endpoint* — still has to happen, but it doesn't have to be its own component. There are two ways to route, and choosing between them is the real decision:
 
 - **Route through the broker (no dispatcher).** Partition the queue/stream by route or event type, and let each **consumer subscribe to the routes it handles** — routing lives in the topic structure, not a service. Deploy it either way:
   - **one service running N consumers** — one consumer per route, all in the same deployable; or
@@ -304,15 +308,17 @@ flowchart LR
 
 The honest trade: broker-routed consumers are dead-simple and decoupled — add a consumer with no upstream change, replay from offsets for free — but there's no central filter, so each consumer reads more than it needs, and you lean *hard* on a stable event schema because everyone interprets the raw stream themselves (get the contract wrong and they all break at once). A dispatcher centralizes routing and filtering, at the cost of a component you build and scale. **Rich, customer-configured routing → dispatcher. Fixed routing you control → broker-routed consumers.**
 
-Whichever way you route, the payoff of getting delivery onto its own tier is the same:
+### What putting delivery on its own tier buys you
+
+Whichever way you route, the payoff is the same — and it's the same through-line as the rest of the series: isolate the durable-fast part from the slow-external one so neither can drag the other down.
 
 - **Independent scaling** — a delivery surge or a wave of slow partners means you scale *consumers* only.
 - **Failure isolation** — a flaky partner backs up only the consumer side; ingestion keeps accepting regardless.
 - **Independent deploy** — change routing or a consumer without touching ingestion.
 
-It's the same through-line as the earlier posts: separate the durable-fast part from the slow-external part so one can't drag down the other.
+### Walk the failure modes
 
-**You won't appreciate how strong this decoupling is until you walk the failure modes** — so let's:
+You won't appreciate how strong this decoupling is until you trace what happens when each piece falls over:
 
 - **Acceptor (ingress) down?** Nothing new gets in — no event reaches the queue, so there's nothing to deliver either. Sounds bad, but notice what *doesn't* happen: nothing already in flight is lost. You've just stopped accepting; whatever's in the queue keeps draining, and the moment ingress is back you resume from exactly where you were.
 - **Consumer (delivery) down?** This is where the queue earns its name. The events just *sit there, safe*, until a consumer comes back to drain them. Delivery is delayed, not lost — the receiver might even notice and ping you ("hey, did event X get dropped?"), but nothing's actually gone. A queue is a **buffer**; a consumer outage is precisely the situation that buffer exists for.
