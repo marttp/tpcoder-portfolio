@@ -308,7 +308,7 @@ Notice I didn't put one in. The job a dispatcher does — *getting the right eve
 
 The honest trade: broker-routed consumers are dead-simple and decoupled — add a consumer with no upstream change, replay from offsets for free — but there's no central filter, so each consumer reads more than it needs, and you lean *hard* on a stable event schema because everyone interprets the raw stream themselves (get the contract wrong and they all break at once). A dispatcher centralizes routing and filtering, at the cost of a component you build and scale. **Rich, customer-configured routing → dispatcher. Fixed routing you control → broker-routed consumers.**
 
-### What putting delivery on its own tier buys you
+### What the split buys you
 
 Whichever way you route, the payoff is the same — and it's the same through-line as the rest of the series: isolate the durable-fast part from the slow-external one so neither can drag the other down.
 
@@ -316,9 +316,7 @@ Whichever way you route, the payoff is the same — and it's the same through-li
 - **Failure isolation** — a flaky partner backs up only the consumer side; ingestion keeps accepting regardless.
 - **Independent deploy** — change routing or a consumer without touching ingestion.
 
-### Walk the failure modes
-
-You won't appreciate how strong this decoupling is until you trace what happens when each piece falls over:
+Those three are the abstract pitch. You won't *feel* how strong the isolation is until you trace what happens when each piece falls over:
 
 - **Acceptor (ingress) down?** Nothing new gets in — no event reaches the queue, so there's nothing to deliver either. Sounds bad, but notice what *doesn't* happen: nothing already in flight is lost. You've just stopped accepting; whatever's in the queue keeps draining, and the moment ingress is back you resume from exactly where you were.
 - **Consumer (delivery) down?** This is where the queue earns its name. The events just *sit there, safe*, until a consumer comes back to drain them. Delivery is delayed, not lost — the receiver might even notice and ping you ("hey, did event X get dropped?"), but nothing's actually gone. A queue is a **buffer**; a consumer outage is precisely the situation that buffer exists for.
