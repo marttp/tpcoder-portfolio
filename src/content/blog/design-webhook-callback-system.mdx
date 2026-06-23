@@ -128,7 +128,7 @@ This is the highest-leverage change in the post. The partner's latency is now th
 
 ## Don't hammer, don't loop forever — backoff + max attempts
 
-**The problem:** our retry from earlier was naive — fixed delay, and (if we're honest) nothing stopping it from going forever. Two failure modes hide in there. Retrying a struggling endpoint immediately and repeatedly just **kicks it while it's down**. And if an endpoint is gone for good, an unbounded retry is a worker that spins on one dead event forever, never draining the queue behind it.
+**The problem:** our retry from earlier was naive — fixed delay, and (if we're honest) nothing stopping it from going forever. Two failure modes hide in there. Retrying a struggling endpoint immediately and repeatedly just **kicks it while it's down**. And if an endpoint is gone for good, an unbounded retry is a worker that spins on one dead event forever, never draining the queue behind it. (And to answer the obvious question — *why backoff lands here and not back in the retry step*: waiting 1s, 2s, 4s, 8s between tries would pin a request thread for 15+ seconds if it ran inline. Backoff, and the attempt ceiling below, only became safe to use once retries moved onto a background worker.)
 
 **The fix:** **exponential backoff with jitter, and a hard max-attempt ceiling.**
 
@@ -261,7 +261,13 @@ flowchart LR
     CO --> DLQ[("Dead-letter")]
 `} />
 
-The payoff is the whole reason to bother: **independent scaling** (a delivery surge or a wave of slow partners means you scale *consumers* only), **failure isolation** (a flaky partner backs up only the consumer tier — the acceptor keeps accepting, the dispatcher keeps routing), and **independent deploy** (change routing without touching delivery). It's the same through-line as the earlier posts: separate the durable-fast part from the slow-external part so one can't drag down the other.
+The payoff is the whole reason to bother:
+
+- **Independent scaling** — a delivery surge or a wave of slow partners means you scale *consumers* only.
+- **Failure isolation** — a flaky partner backs up only the consumer tier; the acceptor keeps accepting, the dispatcher keeps routing.
+- **Independent deploy** — change routing without touching delivery.
+
+It's the same through-line as the earlier posts: separate the durable-fast part from the slow-external part so one can't drag down the other.
 
 This is roughly the shape I've built in practice — moving a partner integration off old batch-`GET` polling onto a real-time push pipeline, with queue-driven retries (receive-count + redrive), and exactly this acceptor / dispatcher / consumer separation so the delivery tier could scale on its own.
 
