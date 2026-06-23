@@ -224,6 +224,15 @@ flowchart LR
 
 A practical detail from real systems: tie the move-to-DLQ to a **receive-count** (how many times this message has been pulled and failed), and define a **redrive policy** up front — where exhausted messages go and how they come back. Don't invent it during the incident.
 
+**Running a DLQ in production is more than "a second queue."** A few realities that bite once it's live:
+
+- **A queue is not long-term storage.** Most brokers expire messages (SQS caps retention at 14 days) — so a DLQ that's *only* a queue silently drops your failed events after a while, which defeats the whole point. For anything you can't lose, **persist DLQ'd events to a durable store** — a `failed_deliveries` table (or object storage), Outbox-style — that you can query, audit, and redrive from at any time, not a queue racing a retention clock.
+- **You need eyes on it.** Operators inspect the DLQ by **polling it manually** — a small admin view or the cloud console — to list, filter by endpoint or error, and read the individual failed payload. A DLQ nobody looks at is just a slower way to lose data.
+- **Redrive surgically, not blindly.** During an incident you rarely want "replay everything" — a bad batch just re-fails or double-fires. **Manually consume / select** the messages that matter (this endpoint, this time window) and redrive only those.
+- **Redrive with the same care as the first send.** Re-enqueue carrying the **original idempotency keys** (so the consumer still dedupes), **throttle** it (a just-recovered endpoint doesn't want your whole backlog at once — same thundering-herd lesson), and keep the attempt ceiling.
+- **Alert on DLQ depth.** A growing DLQ is your earliest signal that a partner — or your own delivery tier — is broken. Page on it; don't find out from the partner's angry email.
+- **Give the persisted store a lifecycle.** Audit copies of failed events need a TTL / archival policy, or that table grows forever.
+
 ---
 
 ## They arrive out of order — sequencing, and the DAG
