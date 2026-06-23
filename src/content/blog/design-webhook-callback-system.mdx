@@ -87,7 +87,13 @@ on order_paid(order):
   return 200   # gave up
 ```
 
-This is better, and for a tiny integration it might be all you need. But read it closely: **the retries are still happening inline, inside the caller's request.** That's the crack the next step widens.
+This is better, and for a tiny integration it might be all you need. One thing though — in real code you wouldn't hand-write that loop. Every ecosystem has a battle-tested retry library that handles the attempt counting, the delays, and (importantly) *which* errors are even worth retrying:
+
+- **Java** — resilience4j (`Retry`), Spring Retry (`@Retryable`), or Failsafe
+- **Go** — `avast/retry-go` or `cenkalti/backoff`
+- **Python** — `tenacity` (or the `Retry` adapter built into `requests` / `urllib3`)
+
+Reach for one of those instead of reinventing it — they get the fiddly parts right, and we'll tune the actual policy (backoff, jitter, a ceiling) a few steps down. But read the code closely either way: **the retries are still happening inline, inside the caller's request.** That's the crack the next step widens.
 
 ---
 
