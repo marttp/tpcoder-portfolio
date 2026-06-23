@@ -124,6 +124,8 @@ flowchart LR
 
 This is the highest-leverage change in the post. The partner's latency is now the *worker's* problem, not your API's — and the work is durable, so a crash doesn't lose the event. Almost everything below is a refinement of "deliver asynchronously, off a durable queue."
 
+And to be frank, if you sit with it a second, async isn't just *faster* here — it's the *honest* model. The thing that **triggered** the event and the thing that should **receive** the callback are different parties: the customer whose payment fired `order.paid` doesn't care whether a partner's endpoint ack'd anything, and shouldn't have to wait on it. The request's origin and the notification's target aren't the same place — so there was never anything on the caller's side that needed the delivery result inline. Blocking on it was meaningless from the start; a notify like this is fire-and-forget by nature.
+
 ---
 
 ## Don't hammer, don't loop forever — backoff + max attempts
