@@ -303,6 +303,14 @@ Whichever way you route, the payoff of getting delivery onto its own tier is the
 
 It's the same through-line as the earlier posts: separate the durable-fast part from the slow-external part so one can't drag down the other.
 
+**You won't appreciate how strong this decoupling is until you walk the failure modes** — so let's:
+
+- **Acceptor (ingress) down?** Nothing new gets in — no event reaches the queue, so there's nothing to deliver either. Sounds bad, but notice what *doesn't* happen: nothing already in flight is lost. You've just stopped accepting; whatever's in the queue keeps draining, and the moment ingress is back you resume from exactly where you were.
+- **Consumer (delivery) down?** This is where the queue earns its name. The events just *sit there, safe*, until a consumer comes back to drain them. Delivery is delayed, not lost — the receiver might even notice and ping you ("hey, did event X get dropped?"), but nothing's actually gone. A queue is a **buffer**; a consumer outage is precisely the situation that buffer exists for.
+- **Broker itself down?** *This* is the one you can't shrug off. The broker is the spine — if it goes, the acceptor has nowhere to put messages and the whole flow stops cold. Which is exactly why the broker is the one piece you make as highly-available as you can afford: it's the single thing whose outage you genuinely can't absorb.
+
+That's the real shape of the trade: you concentrate the system's fate into one well-understood, replicated component (the broker) and make everything around it disposable and restartable. The acceptor and consumers can crash, redeploy, and scale up and down all day — the system just waits in the buffer and catches up. *That's* what "independent" actually buys you.
+
 This is roughly the shape I've built in practice — moving a partner integration off old batch-`GET` polling onto a real-time push pipeline with queue-driven retries (receive-count + redrive). In my case the routing was involved enough that I did run a full **acceptor / dispatcher / consumer**, with the delivery tier separated so it could scale on its own — but if your routing is simpler, the dispatcher is exactly the piece to skip.
 
 ---
