@@ -266,6 +266,8 @@ And this is where the agent angle peaks: an autonomous agent traversing this DAG
 
 **The problem:** by now one service is doing a lot — accepting the internal event, figuring out *who* subscribed to it, and doing the slow external delivery with all its retries. Those three jobs have completely different shapes, and bolting them together means the slowest, least reliable one drags down the others. A flood of slow partner endpoints backs up the delivery work *and* the ingestion of new events behind it.
 
+**To be clear, though — one service doing all three is exactly where most production apps live, and that's fine.** Packaged as a single deployable, or as a **serverless** stack (event → SQS / EventBridge → a Lambda that signs-and-delivers → a DLQ), the queue-worker-retry-DLQ machinery from the last few steps already carries a lot of real traffic — no split required. Serverless especially hands you retries, scaling, and a DLQ off the shelf. **Reach for the split below only when one tier's load or failure profile genuinely starts dragging the others down** — not before.
+
 **The fix:** split it into three tiers by responsibility, each scaling and failing independently:
 
 - **Acceptor** (ingress) — receives the internal "this happened, notify subscribers" event, **durably captures it fast, returns.** Write-bound; must never drop an event. Kept deliberately lean so ingestion never blocks on anything downstream.
