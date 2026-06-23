@@ -101,7 +101,7 @@ Reach for one of those instead of reinventing it — they get the fiddly parts r
 
 **The problem:** sync retries make the coupling *worse*, not better. When the partner is slow, you don't fail fast — you sit there holding the request (and a worker thread) for `timeout × attempts`, sleeping between tries. And the cruel part: you retry *most* exactly when the partner is *slowest*, which is exactly when you can least afford to hold threads. Under any real load, a single struggling partner exhausts your thread pool and takes down requests that have nothing to do with webhooks.
 
-**The fix:** get the delivery off the caller's thread entirely. The request handler does the minimum — record "this event needs to go out" onto a durable queue, and return. A separate **delivery worker** pulls from the queue and does the POST (and the retries).
+**The fix:** get the delivery off the caller's thread entirely. The request handler does the minimum — record "this event needs to go out" onto a durable queue — SQS, RabbitMQ, a Kafka topic, take your pick — and return. A separate **delivery worker** pulls from the queue and does the POST (and the retries).
 
 ```
 on order_paid(order):
@@ -132,7 +132,7 @@ And to be frank, if you sit with it a second, async isn't just *faster* here —
 
 **The problem:** our retry from earlier was naive — fixed delay, and (if we're honest) nothing stopping it from going forever. Two failure modes hide in there. Retrying a struggling endpoint immediately and repeatedly just **kicks it while it's down**. And if an endpoint is gone for good, an unbounded retry is a worker that spins on one dead event forever, never draining the queue behind it. (And to answer the obvious question — *why backoff lands here and not back in the retry step*: waiting 1s, 2s, 4s, 8s between tries would pin a request thread for 15+ seconds if it ran inline. Backoff, and the attempt ceiling below, only became safe to use once retries moved onto a background worker.)
 
-**The fix:** **exponential backoff with jitter, and a hard max-attempt ceiling.**
+**The fix:** **[exponential backoff with jitter](https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/), and a hard max-attempt ceiling.**
 
 - **Exponential backoff** — wait longer between each try (1s, 2s, 4s, 8s, …) so a recovering endpoint gets room to breathe.
 - **Jitter** — add randomness to the delay. Without it, every event queued during an outage retries at the *same* instant the endpoint comes back — a self-inflicted thundering herd that knocks it over again.
@@ -158,7 +158,7 @@ flowchart LR
 
 **The fix:** prove the message is from you, and keep the data out of the URL.
 
-- **Sign the payload.** Compute an HMAC (e.g. HMAC-SHA256) of the raw request body using a **shared secret** only you and the consumer know, and send it in a header (`X-Signature`). The consumer recomputes the HMAC over the body they received and compares — if it doesn't match, the request is forged or tampered, and they drop it.
+- **Sign the payload.** Compute an [HMAC](https://en.wikipedia.org/wiki/HMAC) (e.g. HMAC-SHA256) of the raw request body using a **shared secret** only you and the consumer know, and send it in a header (`X-Signature`). The consumer recomputes the HMAC over the body they received and compares — if it doesn't match, the request is forged or tampered, and they drop it.
 - **Sign a timestamp too**, and include it in what's signed. The consumer rejects anything older than a few minutes, which kills **replay attacks** (someone capturing a valid call and resending it).
 - **Everything meaningful goes in the body**, never the URL. The URL is just the address; the signed body is the message.
 
@@ -179,7 +179,7 @@ This is the consumer's *first* line of processing: before they look at the conte
 **Step back, though — what you're really buying is *trust*, and HMAC is one way to earn it, not the only one.** There are two different questions hiding inside "can I trust this webhook," answered by different tools:
 
 - **Signing (HMAC)** answers *"is this exact payload genuine and untampered?"* — message integrity + origin. Stateless, no token infrastructure; the webhook-world default (Stripe, GitHub).
-- **Auth (OAuth2 client-credentials Bearer token, or mTLS)** answers *"is the caller an authorized sender?"* — identity at the connection level. It plugs into the receiver's existing IdP, tokens are short-lived and revocable — but now the sender has to fetch and cache a token before each delivery.
+- **Auth ([OAuth2 client-credentials](https://oauth.net/2/grant-types/client-credentials/) Bearer token, or [mTLS](https://en.wikipedia.org/wiki/Mutual_authentication))** answers *"is the caller an authorized sender?"* — identity at the connection level. It plugs into the receiver's existing IdP, tokens are short-lived and revocable — but now the sender has to fetch and cache a token before each delivery.
 
 One caveat if you go OAuth2: **client credentials** is the flow that fits — machine-to-machine, no human in the loop. *Authorization code* is for user-delegated consent (a person granting an app access), which doesn't map onto a server-to-server callback, so it's not the tool here.
 
@@ -189,7 +189,7 @@ These aren't competitors — they answer different questions, and plenty of syst
 
 ## Your retries cause doubles — idempotency
 
-**The problem:** everything we've built is **at-least-once**. The worker retries; the queue can redeliver after a crash; a delivery that actually succeeded but whose acknowledgement got lost gets sent *again*. So the consumer **will** receive the same event more than once. We met this exact wall in the payment and push posts — true exactly-once across a network is a fantasy (the Two Generals Problem). For a dashboard, a duplicate is cosmetic. For an **AI agent**, a duplicate `order.paid` is a second order placed, money moved twice.
+**The problem:** everything we've built is **at-least-once**. The worker retries; the queue can redeliver after a crash; a delivery that actually succeeded but whose acknowledgement got lost gets sent *again*. So the consumer **will** receive the same event more than once. We met this exact wall in the payment and push posts — true exactly-once across a network is a fantasy (the [Two Generals Problem](https://en.wikipedia.org/wiki/Two_Generals%27_Problem)). For a dashboard, a duplicate is cosmetic. For an **AI agent**, a duplicate `order.paid` is a second order placed, money moved twice.
 
 **The fix:** make every event carry a **stable, unique `event_id`** (assigned once, at the source — carried unchanged through every retry), and make the delivery contract explicit: *"we deliver at least once; dedupe on `event_id`."* The consumer records the ids it has processed and skips repeats. You guarantee delivery; they guarantee idempotent handling. It's a shared contract, and you should document it loudly in your webhook docs.
 
@@ -226,7 +226,7 @@ A practical detail from real systems: tie the move-to-DLQ to a **receive-count**
 
 **Running a DLQ in production is more than "a second queue."** A few realities that bite once it's live:
 
-- **A queue is not long-term storage.** Most brokers expire messages (SQS caps retention at 14 days) — so a DLQ that's *only* a queue silently drops your failed events after a while, which defeats the whole point. For anything you can't lose, **persist DLQ'd events to a durable store** — a `failed_deliveries` table (or object storage), Outbox-style — that you can query, audit, and redrive from at any time, not a queue racing a retention clock.
+- **A queue is not long-term storage.** Most brokers expire messages (SQS caps retention at 14 days) — so a DLQ that's *only* a queue silently drops your failed events after a while, which defeats the whole point. For anything you can't lose, **persist DLQ'd events to a durable store** — a `failed_deliveries` table (or object storage), [Outbox](https://microservices.io/patterns/data/transactional-outbox.html)-style — that you can query, audit, and redrive from at any time, not a queue racing a retention clock.
 - **You need eyes on it.** Operators inspect the DLQ by **polling it manually** — a small admin view or the cloud console — to list, filter by endpoint or error, and read the individual failed payload. A DLQ nobody looks at is just a slower way to lose data.
 - **Redrive surgically, not blindly.** During an incident you rarely want "replay everything" — a bad batch just re-fails or double-fires. **Manually consume / select** the messages that matter (this endpoint, this time window) and redrive only those.
 - **Redrive with the same care as the first send.** Re-enqueue carrying the **original idempotency keys** (so the consumer still dedupes), **throttle** it (a just-recovered endpoint doesn't want your whole backlog at once — same thundering-herd lesson), and keep the attempt ceiling.
@@ -256,7 +256,7 @@ flowchart TD
 `shipment.created` is the join — it needs **both** `order.paid` *and* `inventory.reserved`. Your system delivers each of those independently and possibly out of order, so the consumer might get `shipment.created` before `inventory.reserved` has even arrived. Here's the boundary that keeps this sane:
 
 - **The sender's job** (in scope, do this): per-resource ordering, plus **causation metadata** in every payload — `event_id`, `causation_ids` (the parent event ids), and a `correlation_id` for the whole flow (e.g. the `order_id`). That's your entire contribution to the graph.
-- **The receiver's job** (out of scope for you, but say it): rebuild the DAG from those links and process in **topological order** — buffer a node until all its parents have arrived/processed, with a timeout that triggers a fetch-or-alert if a parent never shows. **Your webhook system is not a workflow engine — don't turn it into one.**
+- **The receiver's job** (out of scope for you, but say it): rebuild the DAG from those links and process in **[topological order](https://en.wikipedia.org/wiki/Topological_sorting)** — buffer a node until all its parents have arrived/processed, with a timeout that triggers a fetch-or-alert if a parent never shows. **Your webhook system is not a workflow engine — don't turn it into one.**
 
 And this is where the agent angle peaks: an autonomous agent traversing this DAG to *act* must respect topological order, or it fires shipment logic on an order that was never actually paid. The DAG is what stops the agent from acting on half-built state. A human glancing at a dashboard would have just... noticed. The agent won't.
 

@@ -101,7 +101,7 @@ on order_paid(order):
 
 **ปัญหา:** sync retry มันทำให้การมัดติดกัน *แย่ลง* ไม่ใช่ดีขึ้น พอพาร์ตเนอร์ช้า เราไม่ได้ fail เร็ว ๆ — เรานั่งถือ request นั้นไว้ (พร้อมกับ worker thread ตัวนึง) เป็นเวลา `timeout × จำนวนครั้ง` แถมหลับรอระหว่างแต่ละครั้งอีก แล้วส่วนที่โหดร้ายคือ: เรา retry *หนักที่สุด* ก็ตอนที่พาร์ตเนอร์ *ช้าที่สุด* พอดี ซึ่งเป็นจังหวะที่เราเสีย thread ไปแบบไม่คุ้มที่สุด พอเจอ load หนัก ๆ ของหน้างาน พาร์ตเนอร์ที่กำลังแย่อยู่รายเดียวก็ดูด thread pool เราจนหมด แล้วก็ลากเอา request อื่นที่ไม่เกี่ยวกับ webhook เลยล้มตามไปด้วย
 
-**วิธีแก้:** เอางาน delivery ออกไปจาก thread ของคนเรียกให้หมดเลย ตัว request handler ทำให้น้อยที่สุด — แค่บันทึกว่า `event นี้ต้องถูกส่งออกไปนะ` ลง durable queue แล้วก็ return ส่วน **delivery worker** แยกอีกตัวค่อยดึงจาก queue มาทำ POST (แล้วก็ retry)
+**วิธีแก้:** เอางาน delivery ออกไปจาก thread ของคนเรียกให้หมดเลย ตัว request handler ทำให้น้อยที่สุด — แค่บันทึกว่า `event นี้ต้องถูกส่งออกไปนะ` ลง durable queue (SQS, RabbitMQ, Kafka topic, แล้วแต่จะเลือก) แล้วก็ return ส่วน **delivery worker** แยกอีกตัวค่อยดึงจาก queue มาทำ POST (แล้วก็ retry)
 
 ```
 on order_paid(order):
@@ -132,7 +132,7 @@ flowchart LR
 
 **ปัญหา:** retry ของเราเมื่อกี้มันยังกิ๊กก๊อก — delay คงที่ แล้วก็ (พูดกันตามเนื้อผ้า) ไม่มีอะไรห้ามไม่ให้มันวนไปเรื่อย ๆ ไม่จบ มันมีโหมดพังซ่อนอยู่สองอย่าง อย่างแรก การ retry กระหน่ำ endpoint ที่กำลังแย่อยู่ซ้ำ ๆ แบบทันที มันก็เหมือนไปกระทืบซ้ำตอนที่เขากำลังล้มอยู่ อย่างที่สอง ถ้า endpoint มันตายสนิทไปแล้ว retry แบบไม่มีเพดานก็คือ worker ที่หมุนอยู่กับ event ตายตัวเดียวไปตลอด ไม่ยอมระบาย queue ที่ต่อแถวอยู่ข้างหลังเลย (แล้วขอตอบคำถามที่หลายคนน่าจะสงสัย — *ทำไม backoff ถึงเพิ่งมาโผล่จุดนี้ ไม่ไปอยู่ตั้งแต่ step retry*: การรอ 1s, 2s, 4s, 8s ระหว่างแต่ละครั้ง ถ้ามันรันแบบ inline ก็เท่ากับพิน request thread ไว้ 15 วินาทีกว่า ๆ เพราะงั้น backoff กับเพดานจำนวนครั้งข้างล่าง ถึงเพิ่งปลอดภัยพอจะเอามาใช้ได้ ก็ตอนที่เราย้าย retry ไปอยู่บน background worker แล้ว)
 
-**วิธีแก้:** **exponential backoff พร้อม jitter แล้วก็เพดาน max-attempt แบบตายตัว**
+**วิธีแก้:** **[exponential backoff พร้อม jitter](https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/) แล้วก็เพดาน max-attempt แบบตายตัว**
 
 - **Exponential backoff** — รอนานขึ้นเรื่อย ๆ ในแต่ละครั้ง (1s, 2s, 4s, 8s, …) เพื่อให้ endpoint ที่กำลังฟื้นมีที่หายใจ
 - **Jitter** — ใส่ความสุ่มเข้าไปใน delay ถ้าไม่มีมัน ทุก event ที่กองไว้ตอน outage ก็จะ retry พร้อมกันเป๊ะ ๆ ในวินาทีที่ endpoint กลับมา — กลายเป็น thundering herd ที่เราสร้างขึ้นเองแล้วก็ทุบเขาล้มซ้ำอีกรอบ
@@ -158,7 +158,7 @@ flowchart LR
 
 **วิธีแก้:** พิสูจน์ว่า message มาจากเรา แล้วก็เก็บข้อมูลออกไปจาก URL
 
-- **เซ็น payload** คำนวณ HMAC (เช่น HMAC-SHA256) ของ raw request body ด้วย **shared secret** ที่มีแค่เรากับ consumer รู้ แล้วก็ส่งไปใน header (`X-Signature`) ฝั่ง consumer ก็คำนวณ HMAC จาก body ที่เขาได้รับมาใหม่แล้วเทียบ — ถ้าไม่ match ก็แปลว่าโดนปลอมหรือโดนแก้ไขระหว่างทาง เขาก็ทิ้งไป
+- **เซ็น payload** คำนวณ [HMAC](https://en.wikipedia.org/wiki/HMAC) (เช่น HMAC-SHA256) ของ raw request body ด้วย **shared secret** ที่มีแค่เรากับ consumer รู้ แล้วก็ส่งไปใน header (`X-Signature`) ฝั่ง consumer ก็คำนวณ HMAC จาก body ที่เขาได้รับมาใหม่แล้วเทียบ — ถ้าไม่ match ก็แปลว่าโดนปลอมหรือโดนแก้ไขระหว่างทาง เขาก็ทิ้งไป
 - **เซ็น timestamp ไปด้วย** แล้วก็รวมมันเข้าไปในสิ่งที่เซ็น ฝั่ง consumer จะ reject อะไรก็ตามที่เก่าเกินไม่กี่นาที ซึ่งกัน **replay attack** ได้ (พวกที่ดักจับ call ที่ valid แล้วเอามายิงซ้ำ)
 - **ทุกอย่างที่มีความหมายอยู่ใน body** ไม่ใช่ URL ตัว URL เป็นแค่ที่อยู่ ส่วน body ที่เซ็นแล้วคือตัว message
 
@@ -179,7 +179,7 @@ POST /webhooks/orders
 **ขอถอยมามองภาพรวมหน่อย — สุดท้ายแล้วสิ่งที่เราต้องการคือ trust แล้ว HMAC ก็เป็นแค่ทางนึงที่ทำให้ได้ trust นั้นมา ไม่ใช่ทางเดียว** ในคำว่า `เชื่อ webhook อันนี้ได้มั้ย` มันมีคำถามซ่อนอยู่สองข้อที่ต่างกัน แล้วก็ตอบด้วยเครื่องมือคนละตัว:
 
 - **การเซ็น (HMAC)** ตอบคำถามว่า *payload ก้อนนี้ของแท้แล้วก็ไม่โดนแก้รึเปล่า?* — integrity + origin ของ message ทำแบบ stateless ไม่ต้องมี token infra เลย เป็น default ของโลก webhook (Stripe, GitHub)
-- **Auth (OAuth2 client-credentials Bearer token หรือ mTLS)** ตอบคำถามว่า *คนที่เรียกมาเป็น sender ที่ได้รับอนุญาตมั้ย?* — เป็นเรื่อง identity ระดับ connection มันต่อกับ IdP ที่ผู้รับมีอยู่แล้ว, token ก็อายุสั้นแล้วก็ revoke ได้ — แต่แลกมากับที่ฝั่งคนส่งต้องไปขอแล้วก็ cache token ไว้ก่อนยิงทุกครั้ง
+- **Auth ([OAuth2 client-credentials](https://oauth.net/2/grant-types/client-credentials/) Bearer token หรือ [mTLS](https://en.wikipedia.org/wiki/Mutual_authentication))** ตอบคำถามว่า *คนที่เรียกมาเป็น sender ที่ได้รับอนุญาตมั้ย?* — เป็นเรื่อง identity ระดับ connection มันต่อกับ IdP ที่ผู้รับมีอยู่แล้ว, token ก็อายุสั้นแล้วก็ revoke ได้ — แต่แลกมากับที่ฝั่งคนส่งต้องไปขอแล้วก็ cache token ไว้ก่อนยิงทุกครั้ง
 
 ขอแปะ caveat อันนึงถ้าจะไปทาง OAuth2: flow ที่เข้ากับงานนี้คือ **client credentials** — machine-to-machine ไม่มีคนมาเกี่ยวกลางทาง ส่วน *authorization code* เอาไว้ทำ user-delegated consent (คนกดอนุญาตให้แอปเข้าถึงข้อมูล) ซึ่งมันไม่เข้ากับ callback แบบ server-to-server เพราะงั้นไม่ใช่เครื่องมือสำหรับงานนี้
 
@@ -189,7 +189,7 @@ POST /webhooks/orders
 
 ## Your retries cause doubles — idempotency
 
-**ปัญหา:** ทุกอย่างที่เราสร้างมามันเป็น **at-least-once** หมด worker ก็ retry; queue ก็ redeliver ได้หลัง crash; ส่วน delivery ที่ส่งสำเร็จไปแล้วแต่ ack ดันหายระหว่างทาง ก็โดนส่ง *ซ้ำ* อีกที เพราะงั้น consumer มัน **จะ** ได้รับ event เดิมซ้ำมากกว่าหนึ่งครั้งแน่ ๆ เราเจอกำแพงนี้มาแล้วเป๊ะ ๆ ทั้งในโพสต์ payment แล้วก็ push — exactly-once แบบเป๊ะข้ามเครือข่ายมันเป็นเรื่องเพ้อฝัน (Two Generals Problem) สำหรับ dashboard ของซ้ำมันก็แค่เรื่องผิวเผิน แต่สำหรับ **AI agent** `order.paid` ที่ซ้ำ คือมีการสั่ง order รอบสอง คือเงินขยับสองเด้ง
+**ปัญหา:** ทุกอย่างที่เราสร้างมามันเป็น **at-least-once** หมด worker ก็ retry; queue ก็ redeliver ได้หลัง crash; ส่วน delivery ที่ส่งสำเร็จไปแล้วแต่ ack ดันหายระหว่างทาง ก็โดนส่ง *ซ้ำ* อีกที เพราะงั้น consumer มัน **จะ** ได้รับ event เดิมซ้ำมากกว่าหนึ่งครั้งแน่ ๆ เราเจอกำแพงนี้มาแล้วเป๊ะ ๆ ทั้งในโพสต์ payment แล้วก็ push — exactly-once แบบเป๊ะข้ามเครือข่ายมันเป็นเรื่องเพ้อฝัน ([Two Generals Problem](https://en.wikipedia.org/wiki/Two_Generals%27_Problem)) สำหรับ dashboard ของซ้ำมันก็แค่เรื่องผิวเผิน แต่สำหรับ **AI agent** `order.paid` ที่ซ้ำ คือมีการสั่ง order รอบสอง คือเงินขยับสองเด้ง
 
 **วิธีแก้:** ให้ทุก event พก **`event_id` ที่นิ่งแล้วก็ไม่ซ้ำใคร** (กำหนดครั้งเดียวตั้งแต่ต้นทาง — แล้วพกติดตัวไปไม่เปลี่ยนทุก retry) แล้วก็ทำสัญญาเรื่องการส่งให้เคลียร์ ๆ ไปเลยว่า `เราส่งแบบ at least once นะ เพราะงั้นช่วยไป dedupe ด้วย event_id เอาเองนะ` ฝั่ง consumer ก็จดว่า id ไหนประมวลผลไปแล้วบ้าง แล้วก็ข้ามตัวที่ซ้ำ เรารับประกันการส่งถึง เขารับประกันการประมวลผลแบบ idempotent มันคือสัญญาร่วมกัน แล้วก็ควรเขียนไว้ดัง ๆ ใน webhook docs ของเราด้วย
 
@@ -226,7 +226,7 @@ flowchart LR
 
 **การรัน DLQ บนหน้างานมันมีอะไรมากกว่าแค่ `queue ตัวที่สอง` เยอะ** มีเรื่องที่กัดเราตอนมันขึ้นใช้งานอยู่หลายอย่าง:
 
-- **queue ไม่ใช่ที่เก็บของระยะยาว** broker ส่วนใหญ่มันลบ message ทิ้งตามอายุ (SQS เก็บได้สูงสุด 14 วัน) — เพราะงั้น DLQ ที่เป็น *แค่* queue เฉย ๆ มันจะค่อย ๆ ทำ failed event หล่นหายเงียบ ๆ พอเลยกำหนด ซึ่งมันก็เสียจุดประสงค์ไปเลย ของอะไรที่หายไม่ได้ ให้ **persist event ที่ตกลง DLQ ลง store ที่ทนทาน** — ตาราง `failed_deliveries` (หรือ object storage) สไตล์ Outbox — ที่เรา query, audit, แล้วก็ redrive ได้ทุกเมื่อ ไม่ใช่ queue ที่กำลังแข่งกับนาฬิกานับอายุอยู่
+- **queue ไม่ใช่ที่เก็บของระยะยาว** broker ส่วนใหญ่มันลบ message ทิ้งตามอายุ (SQS เก็บได้สูงสุด 14 วัน) — เพราะงั้น DLQ ที่เป็น *แค่* queue เฉย ๆ มันจะค่อย ๆ ทำ failed event หล่นหายเงียบ ๆ พอเลยกำหนด ซึ่งมันก็เสียจุดประสงค์ไปเลย ของอะไรที่หายไม่ได้ ให้ **persist event ที่ตกลง DLQ ลง store ที่ทนทาน** — ตาราง `failed_deliveries` (หรือ object storage) สไตล์ [Outbox](https://microservices.io/patterns/data/transactional-outbox.html) — ที่เรา query, audit, แล้วก็ redrive ได้ทุกเมื่อ ไม่ใช่ queue ที่กำลังแข่งกับนาฬิกานับอายุอยู่
 - **ต้องมีคนคอยจับตาดูมัน** operator ส่อง DLQ ด้วยการ **poll ดูเองแบบ manual** (จะเป็น admin view เล็ก ๆ หรือ cloud console ก็ได้) — list, filter ตาม endpoint หรือ error, แล้วก็เปิดอ่าน payload ที่ fail ทีละอัน DLQ ที่ไม่มีใครเปิดดูเลย ก็เป็นแค่วิธีทำข้อมูลหายแบบช้าลงเฉย ๆ
 - **redrive แบบเจาะจง อย่า redrive มั่ว ๆ** ตอนเกิด incident เราแทบไม่อยากกด `replay ทั้งหมด` หรอก — batch เสีย ๆ มันก็แค่ fail ซ้ำหรือยิงซ้ำ ให้ **consume / เลือกแบบ manual** เฉพาะ message ที่เกี่ยวข้องเท่านั้น (endpoint นี้, ช่วงเวลานี้) แล้วก็ redrive เฉพาะพวกนั้น
 - **redrive ด้วยความระวังเท่ากับตอนส่งครั้งแรก** เอากลับเข้า queue โดยพก **idempotency key เดิม** ไปด้วย (consumer จะได้ยัง dedupe ได้อยู่), **throttle** การ redrive ด้วย (endpoint ที่เพิ่งฟื้นมาไม่อยากได้ backlog ทั้งกองทีเดียว — บทเรียน thundering herd อันเดิม) แล้วก็คงเพดานจำนวนครั้งไว้
@@ -256,7 +256,7 @@ flowchart TD
 `shipment.created` คือจุดรวม — มันต้องรอ **ทั้ง** `order.paid` *และ* `inventory.reserved` ระบบเราส่งสองตัวนี้แยกกันแล้วก็มาผิดลำดับได้ เพราะงั้น consumer อาจจะได้ `shipment.created` มาก่อนที่ `inventory.reserved` จะมาถึงด้วยซ้ำ นี่คือเส้นแบ่งที่ทำให้เรื่องนี้ยังอยู่ในร่องในรอย:
 
 - **งานของฝั่งคนส่ง** (อยู่ใน scope ทำเลย): ลำดับต่อ resource บวกกับ **causation metadata** ในทุก payload — `event_id`, `causation_ids` (id ของ event แม่), แล้วก็ `correlation_id` ของทั้ง flow (เช่น `order_id`) นั่นคือส่วนร่วมทั้งหมดที่เรามีต่อกราฟนี้
-- **งานของฝั่งคนรับ** (อยู่นอก scope ของเรา แต่ขอพูดไว้): เอา link พวกนั้นมาประกอบ DAG ขึ้นใหม่แล้วประมวลผลตาม **topological order** — พัก node ไว้ก่อนจนกว่า parent ทุกตัวจะมาถึง/ประมวลผลเสร็จ พร้อม timeout ที่จะ trigger ให้ไปดึงเองหรือ alert ถ้า parent ไม่มาสักที **ระบบ webhook ของเราไม่ใช่ workflow engine — อย่าไปทำให้มันกลายเป็นแบบนั้น**
+- **งานของฝั่งคนรับ** (อยู่นอก scope ของเรา แต่ขอพูดไว้): เอา link พวกนั้นมาประกอบ DAG ขึ้นใหม่แล้วประมวลผลตาม **[topological order](https://en.wikipedia.org/wiki/Topological_sorting)** — พัก node ไว้ก่อนจนกว่า parent ทุกตัวจะมาถึง/ประมวลผลเสร็จ พร้อม timeout ที่จะ trigger ให้ไปดึงเองหรือ alert ถ้า parent ไม่มาสักที **ระบบ webhook ของเราไม่ใช่ workflow engine — อย่าไปทำให้มันกลายเป็นแบบนั้น**
 
 แล้วนี่แหละคือจุดที่มุม agent มันพุ่งถึงขีดสุด: agent ที่ทำงานเองแล้วไล่ DAG นี้เพื่อจะ *ลงมือ* มันต้องเคารพ topological order ไม่งั้นมันจะไปสั่ง logic เรื่อง shipment กับ order ที่ไม่เคยถูกจ่ายเงินเลยด้วยซ้ำ ตัว DAG นี่แหละที่กั้นไม่ให้ agent ไปลงมือกับ state ที่ยังประกอบไม่เสร็จ ถ้าเป็นคนเหลือบมอง dashboard แป๊บเดียวก็คง... เอ๊ะ ทันแล้ว ส่วน agent มันไม่เอ๊ะหรอก
 
