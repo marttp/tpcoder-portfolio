@@ -176,6 +176,15 @@ POST /webhooks/orders
 
 This is the consumer's *first* line of processing: before they look at the content at all, they ask "is this actually from them?" Authenticate first, then everything else.
 
+**Step back, though — what you're really buying is *trust*, and HMAC is one way to earn it, not the only one.** There are two different questions hiding inside "can I trust this webhook," answered by different tools:
+
+- **Signing (HMAC)** answers *"is this exact payload genuine and untampered?"* — message integrity + origin. Stateless, no token infrastructure; the webhook-world default (Stripe, GitHub).
+- **Auth (OAuth2 client-credentials Bearer token, or mTLS)** answers *"is the caller an authorized sender?"* — identity at the connection level. It plugs into the receiver's existing IdP, tokens are short-lived and revocable — but now the sender has to fetch and cache a token before each delivery.
+
+One caveat if you go OAuth2: **client credentials** is the flow that fits — machine-to-machine, no human in the loop. *Authorization code* is for user-delegated consent (a person granting an app access), which doesn't map onto a server-to-server callback, so it's not the tool here.
+
+These aren't competitors — they answer different questions, and plenty of systems run both: a token to prove *who's calling*, a signature to prove *the message wasn't touched*. Pick by your threat model; at the end of the day all of it is in service of the same thing — the receiver trusting the event enough to act on it.
+
 ---
 
 ## Your retries cause doubles — idempotency
@@ -185,9 +194,11 @@ This is the consumer's *first* line of processing: before they look at the conte
 **The fix:** make every event carry a **stable, unique `event_id`** (assigned once, at the source — carried unchanged through every retry), and make the delivery contract explicit: *"we deliver at least once; dedupe on `event_id`."* The consumer records the ids it has processed and skips repeats. You guarantee delivery; they guarantee idempotent handling. It's a shared contract, and you should document it loudly in your webhook docs.
 
 ```
-{ "id": "evt_7f3c…",        // stable across retries — the dedupe key
+{
+  "id": "evt_7f3c8a",
   "type": "order.paid",
-  "data": { … } }
+  "data": { "order_id": "ord_123", "amount": "245 THB" }
+}
 ```
 
 Note the order with the previous step: the consumer **authenticates (HMAC) first, then dedupes (`event_id`), then processes.** Trust it, then check if you've seen it, then act.
