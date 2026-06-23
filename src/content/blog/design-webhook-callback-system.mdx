@@ -203,6 +203,15 @@ These aren't competitors — they answer different questions, and plenty of syst
 
 Note the order with the previous step: the consumer **authenticates (HMAC) first, then dedupes (`event_id`), then processes.** Trust it, then check if you've seen it, then act.
 
+<MermaidDiagram chart={`
+flowchart TD
+    IN["Webhook arrives"] --> VF{"Valid HMAC?"}
+    VF -->|"no"| RJ["Reject — forged or tampered"]
+    VF -->|"yes"| DD{"Seen event_id\nbefore?"}
+    DD -->|"yes"| SK["Skip — already processed"]
+    DD -->|"no"| PR["Process + record event_id"]
+`} />
+
 ---
 
 ## Some never succeed — DLQ + redrive
