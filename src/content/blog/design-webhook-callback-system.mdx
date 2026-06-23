@@ -44,7 +44,7 @@ The road, each step forced by the one before it:
 6. **Idempotency / event id** so your retries don't make them act twice
 7. **DLQ + redrive** for deliveries that never succeed
 8. **Ordering** — and the dependency **DAG** the receiver has to respect
-9. End-state: an **acceptor / dispatcher / consumer** split
+9. End-state: split delivery onto its own tier (**acceptor → queue → consumer**, plus a dispatcher when routing turns dynamic)
 
 {/* IMAGE PROMPT (hero-webhook.png): Wide banner hero, clean modern architecture illustration on a light background. Left-to-right outbound webhook delivery system, boxes labeled EXACTLY: "Event source" → "Acceptor" → "Dispatcher" → "Consumer" → then it POSTs out to two destination boxes on the right labeled "Merchant backend" and "AI agent". Show a small side box labeled "Dead letter" branching off the Consumer, and a small "Sign (HMAC)" tag on the arrow from Consumer to the destinations. STRICT: render ONLY these labels, spelled exactly; no meta or marketing words (no "reliable", "simple", "robust"); no duplicate boxes; no typos. Flat vector, soft shadows, tech-blog aesthetic, 2–3 accent colors, plain labeled rectangles, no photorealism. */}
 
@@ -268,49 +268,48 @@ And this is where the agent angle peaks: an autonomous agent traversing this DAG
 
 **To be clear, though — one service doing all three is exactly where most production apps live, and that's fine.** Packaged as a single deployable, or as a **serverless** stack (event → SQS / EventBridge → a Lambda that signs-and-delivers → a DLQ), the queue-worker-retry-DLQ machinery from the last few steps already carries a lot of real traffic — no split required. Serverless especially hands you retries, scaling, and a DLQ off the shelf. **Reach for the split below only when one tier's load or failure profile genuinely starts dragging the others down** — not before.
 
-**The fix:** split it into three tiers by responsibility, each scaling and failing independently:
+**The fix — and the split that actually matters is just two tiers:** **acceptor → queue → consumer.**
 
-- **Acceptor** (ingress) — receives the internal "this happened, notify subscribers" event, **durably captures it fast, returns.** Write-bound; must never drop an event. Kept deliberately lean so ingestion never blocks on anything downstream.
-- **Dispatcher** (routing / fan-out) — takes an accepted event, looks up **who is subscribed**, applies subscription config, and fans it out into one delivery task per endpoint. Logic-bound; grows with subscriptions × event types. The brain.
-- **Consumer** (delivery) — does the actual signed POST to each endpoint: HMAC, backoff, idempotency id, result tracking, DLQ. **I/O-bound, blocked on slow external endpoints, fails a lot.** You want many of these.
+- **Acceptor** (ingress) — receives the internal "this happened" event, **durably captures it fast, and returns.** Write-bound; must never drop an event. Kept deliberately lean so ingestion never blocks on anything downstream.
+- **Consumer** (delivery) — pulls from the queue and does the slow signed POST: HMAC, backoff, idempotency id, result tracking, DLQ. **I/O-bound, blocked on slow external endpoints, fails a lot.** You want many of these.
+
+That two-tier split *is* the point: the durable-fast ingest is isolated from the slow-external delivery, so one can't drag the other down.
 
 <MermaidDiagram chart={`
 flowchart LR
     EV["Event source"] --> AC["Acceptor\n(capture fast, durable)"]
-    AC --> Q1["Queue"]
-    Q1 --> DI["Dispatcher\n(route to subscribers)"]
-    DI --> Q2["Per-delivery tasks"]
-    Q2 --> CO["Consumer\n(sign + POST + retry)"]
+    AC --> Q["Queue / topic"]
+    Q --> CO["Consumer\n(sign + POST + retry)"]
     CO --> EP["Partner endpoints"]
     CO --> DLQ[("Dead-letter")]
 `} />
 
-The payoff is the whole reason to bother:
+**So where's the dispatcher?** Notice I didn't put one in. The job a dispatcher does — *getting the right event to the right endpoint* — still has to happen, but it doesn't have to be its own component. There are two ways to route, and choosing between them is the real decision:
+
+- **Route through the broker (no dispatcher).** Partition the queue/stream by route or event type, and let each **consumer subscribe to the routes it handles** — routing lives in the topic structure, not a service. Deploy it either way:
+  - **one service running N consumers** — one consumer per route, all in the same deployable; or
+  - **N services, each owning one route** — independent, deployed and scaled on their own.
+
+  Simplest when routing is **fixed and known** — a handful of event types going to known places.
+- **A dispatcher (a third tier).** A central component that looks up *who's subscribed*, applies subscription config, and fans the event out into per-endpoint tasks. It earns its keep when routing is **dynamic** — customers register their own endpoints and event filters at runtime, or you apply per-subscription transforms and rate caps. That's routing logic that wants one home, enforced in one place, rather than smeared across every consumer.
+
+The honest trade: broker-routed consumers are dead-simple and decoupled — add a consumer with no upstream change, replay from offsets for free — but there's no central filter, so each consumer reads more than it needs, and you lean *hard* on a stable event schema because everyone interprets the raw stream themselves (get the contract wrong and they all break at once). A dispatcher centralizes routing and filtering, at the cost of a component you build and scale. **Rich, customer-configured routing → dispatcher. Fixed routing you control → broker-routed consumers.**
+
+Whichever way you route, the payoff of getting delivery onto its own tier is the same:
 
 - **Independent scaling** — a delivery surge or a wave of slow partners means you scale *consumers* only.
-- **Failure isolation** — a flaky partner backs up only the consumer tier; the acceptor keeps accepting, the dispatcher keeps routing.
-- **Independent deploy** — change routing without touching delivery.
+- **Failure isolation** — a flaky partner backs up only the consumer side; ingestion keeps accepting regardless.
+- **Independent deploy** — change routing or a consumer without touching ingestion.
 
 It's the same through-line as the earlier posts: separate the durable-fast part from the slow-external part so one can't drag down the other.
 
-This is roughly the shape I've built in practice — moving a partner integration off old batch-`GET` polling onto a real-time push pipeline, with queue-driven retries (receive-count + redrive), and exactly this acceptor / dispatcher / consumer separation so the delivery tier could scale on its own.
-
-**An alternative worth knowing: publish to a broker, let consumers pull.** Instead of a dispatcher that looks up subscriptions and fans out per-endpoint tasks, the upstream can just **publish every event onto a broker** (a queue or stream — Kafka topics, say) and walk away — it doesn't know or care who's listening. The delivery **consumers subscribe to the broker**, pull what they want, and POST it out to their merchant/target. No central router in the middle.
-
-If that smells like data engineering / pub-sub — yeah, the shape is identical. But the intent is different: this isn't analytics, it's purely **decoupling** — the upstream stops calling a dispatcher and just drops data on the bus.
-
-The trade is *where filtering lives*:
-
-- **Dispatcher (routed / push):** the central dispatcher filters *before* anything hits the delivery queue — it matches the event to subscriptions and creates only the deliveries that matter. Per-subscription policy (which events, transforms, rate caps) lives in one place. Cost: it's a component you build and scale, and routing is centralized.
-- **Broker-first (pull):** dead-simple upstream (fire onto the bus, zero coupling), adding a new consumer needs no upstream change, and you get replay from offsets for free. Cost: there's no central filter, so each consumer sees more than it needs and has to filter itself — and you lean *hard* on a stable, well-defined event schema, because every consumer interprets the raw stream on its own. Get the contract wrong and they all break at once.
-
-Rule of thumb: rich routing/subscription logic you want enforced in one place → lean dispatcher. Maximum decoupling with consumers that come and go independently → lean broker-first (and invest in the schema).
+This is roughly the shape I've built in practice — moving a partner integration off old batch-`GET` polling onto a real-time push pipeline with queue-driven retries (receive-count + redrive). In my case the routing was involved enough that I did run a full **acceptor / dispatcher / consumer**, with the delivery tier separated so it could scale on its own — but if your routing is simpler, the dispatcher is exactly the piece to skip.
 
 ---
 
 ## Wrapping up
 
-We started with a single inline `POST` and ended with a three-tier delivery system. The path, in order:
+We started with a single inline `POST` and ended with a split, durable delivery system. The path, in order:
 
 1. **Get delivery off the caller's thread** onto a durable queue — the one change everything builds on.
 2. **Back off with jitter and a max-attempt ceiling** so you don't hammer or loop forever.
@@ -318,8 +317,8 @@ We started with a single inline `POST` and ended with a three-tier delivery syst
 4. **Stable `event_id`** so at-least-once delivery doesn't become double-action.
 5. **DLQ + redrive** so a long outage doesn't lose events.
 6. **Per-resource ordering**, and hand over **causation metadata** so the receiver can rebuild the dependency DAG — without you becoming a workflow engine.
-7. **Split into acceptor / dispatcher / consumer** so the slow external part can't drag down ingestion.
+7. **Split delivery onto its own tier** (acceptor → queue → consumer; add a dispatcher only when routing turns dynamic) so the slow external part can't drag down ingestion.
 
-The meta-point holds from the rest of the series: **nobody should build the three-tier version on day one.** One partner at low volume? A synchronous POST with a couple of retries is genuinely fine. Every box above earned its place by solving a problem the previous version created.
+The meta-point holds from the rest of the series: **nobody should build the split-out version on day one.** One partner at low volume? A synchronous POST with a couple of retries is genuinely fine. Every box above earned its place by solving a problem the previous version created.
 
 The one thing that's *newly* true in 2026: the consumer on the other end is more and more likely to be an **autonomous agent that acts the instant your webhook lands** — so the duplicate you didn't dedupe, the event you delivered out of order, the forged call you didn't sign against, all become wrong real-world actions instead of dashboard glitches. The reliability work was always good engineering. Now it's the difference between an agent that can trust your events and one that can't.

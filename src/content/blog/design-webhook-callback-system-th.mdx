@@ -44,7 +44,7 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 6. **Idempotency / event id** จะได้ไม่ให้ retry ของเราทำให้เขาลงมือซ้ำ
 7. **DLQ + redrive** สำหรับ delivery ที่ส่งยังไงก็ไม่สำเร็จ
 8. **Ordering** — แล้วก็ dependency **DAG** ที่ฝั่งคนรับต้องเคารพ
-9. ปลายทาง: การแยกเป็น **acceptor / dispatcher / consumer**
+9. ปลายทาง: แยก delivery ออกมาอยู่ tier ของมันเอง (**acceptor → queue → consumer**, บวก dispatcher ตอนที่ routing เริ่ม dynamic)
 
 {/* IMAGE PROMPT (hero-webhook.png): Wide banner hero, clean modern architecture illustration on a light background. Left-to-right outbound webhook delivery system, boxes labeled EXACTLY: "Event source" → "Acceptor" → "Dispatcher" → "Consumer" → then it POSTs out to two destination boxes on the right labeled "Merchant backend" and "AI agent". Show a small side box labeled "Dead letter" branching off the Consumer, and a small "Sign (HMAC)" tag on the arrow from Consumer to the destinations. STRICT: render ONLY these labels, spelled exactly; no meta or marketing words (no "reliable", "simple", "robust"); no duplicate boxes; no typos. Flat vector, soft shadows, tech-blog aesthetic, 2–3 accent colors, plain labeled rectangles, no photorealism. */}
 
@@ -268,49 +268,48 @@ flowchart TD
 
 **แต่ขอพูดให้เคลียร์ ๆ หน่อย — service ตัวเดียวที่ทำครบทั้งสามอย่างเนี่ย มันคือจุดที่แอปบนหน้างานส่วนใหญ่อยู่กัน แล้วก็โอเคแบบนั้นด้วยนะ** ไม่ว่าจะ package เป็น deployable ตัวเดียว หรือเป็นสแตก **serverless** (event → SQS / EventBridge → Lambda ที่เซ็นแล้วก็ส่ง → DLQ) เครื่องจักร queue-worker-retry-DLQ จากไม่กี่ step ที่ผ่านมาก็แบก traffic หน้างานได้เยอะแล้ว ไม่ต้องไปแยกอะไรเลย โดยเฉพาะ serverless เนี่ยมันแถม retry, การ scale, แล้วก็ DLQ มาให้แบบสำเร็จรูปด้วย **จะงัดการแยกข้างล่างมาใช้ ก็ต่อเมื่อโหลดหรือรูปแบบการพังของ tier นึงมันเริ่มลากตัวอื่นให้จมตามเท่านั้น** — ก่อนหน้านั้นยังไม่ต้อง
 
-**วิธีแก้:** ผ่ามันเป็นสาม tier ตามหน้าที่ แต่ละตัว scale แล้วก็พังแยกกันได้:
+**วิธีแก้ — แล้วการแยกที่สำคัญแท้ ๆ มันมีแค่สอง tier:** **acceptor → queue → consumer**
 
-- **Acceptor** (ขาเข้า) — รับ event แบบ `มีอะไรเกิดขึ้น ไป notify subscriber` มา **เก็บให้ไว durable แล้วก็ return** เน้นงาน write เป็นหลัก ห้ามทำ event หายเด็ดขาด ตั้งใจทำให้มันผอม ๆ ไว้ เพื่อให้การรับเข้าไม่ติดขัดเพราะอะไรที่อยู่ปลายน้ำ
-- **Dispatcher** (routing / fan-out) — เอา event ที่รับเข้ามาแล้วไปหาว่า **ใคร subscribe ไว้** แล้ว apply subscription config แล้วก็กางออกเป็น delivery task อันละ endpoint เป็นงานที่ใช้ logic เยอะ โตตามจำนวน subscription × ชนิดของ event เปรียบเป็นสมอง
-- **Consumer** (delivery) — ทำ POST ที่เซ็นแล้วยิงไปยังแต่ละ endpoint เลย: HMAC, backoff, idempotency id, track ผล, DLQ เป็นงานที่ติด I/O โดน endpoint ข้างนอกที่ช้าบล็อกไว้ แล้วก็ fail บ่อย อยากได้ตัวนี้เยอะ ๆ
+- **Acceptor** (ขาเข้า) — รับ event แบบ `มีอะไรเกิดขึ้น` มา **เก็บให้ไว durable แล้วก็ return** เน้นงาน write เป็นหลัก ห้ามทำ event หายเด็ดขาด ตั้งใจทำให้มันผอม ๆ ไว้ เพื่อให้การรับเข้าไม่ติดขัดเพราะอะไรที่อยู่ปลายน้ำ
+- **Consumer** (delivery) — ดึงจาก queue แล้วทำ POST ที่เซ็นแล้วช้า ๆ นั่นแหละ: HMAC, backoff, idempotency id, track ผล, DLQ เป็นงานที่ติด I/O โดน endpoint ข้างนอกที่ช้าบล็อกไว้ แล้วก็ fail บ่อย อยากได้ตัวนี้เยอะ ๆ
+
+การแยกสอง tier นี้แหละคือหัวใจ: แยกฝั่งรับเข้าที่ durable-แล้ว-ไว ออกจากฝั่ง delivery ที่ช้า-เพราะของข้างนอก เพื่อให้ตัวนึงลากอีกตัวจมไม่ได้
 
 <MermaidDiagram chart={`
 flowchart LR
     EV["Event source"] --> AC["Acceptor\n(capture fast, durable)"]
-    AC --> Q1["Queue"]
-    Q1 --> DI["Dispatcher\n(route to subscribers)"]
-    DI --> Q2["Per-delivery tasks"]
-    Q2 --> CO["Consumer\n(sign + POST + retry)"]
+    AC --> Q["Queue / topic"]
+    Q --> CO["Consumer\n(sign + POST + retry)"]
     CO --> EP["Partner endpoints"]
     CO --> DLQ[("Dead-letter")]
 `} />
 
-ผลตอบแทนคือเหตุผลทั้งหมดที่ยอมเหนื่อย:
+**แล้ว dispatcher อยู่ไหนล่ะ?** สังเกตว่าผมไม่ได้ใส่มันเข้าไป งานที่ dispatcher ทำ — *พา event ที่ถูกไปหา endpoint ที่ถูก* — มันก็ยังต้องเกิดขึ้นอยู่ดี แต่มันไม่จำเป็นต้องเป็น component แยกของตัวเอง การ route มันมีอยู่สองทาง แล้วการเลือกระหว่างสองทางนี้แหละคือจุดตัดสินใจที่แท้:
+
+- **route ผ่าน broker (ไม่ต้องมี dispatcher)** partition queue/stream ตาม route หรือชนิดของ event แล้วก็ให้แต่ละ **consumer subscribe เฉพาะ route ที่ตัวเองดูแล** — การ route ไปอยู่ในโครงสร้างของ topic ไม่ใช่ใน service deploy ได้สองแบบ:
+  - **service ตัวเดียว รัน N consumer** — consumer ละ route อยู่ใน deployable เดียวกัน หรือ
+  - **N service แยกกัน อันละ route** — อิสระ deploy แล้วก็ scale ของใครของมัน
+
+  อันนี้ง่ายสุดตอนที่ routing มัน **fix แล้วก็รู้แน่ชัด** — event ไม่กี่ชนิดวิ่งไปที่ที่รู้กันอยู่แล้ว
+- **dispatcher (tier ที่สาม)** component กลางที่ไปหาว่า *ใคร subscribe ไว้* แล้ว apply subscription config แล้วก็กาง event ออกเป็น task ราย endpoint มันคุ้มก็ตอนที่ routing มัน **dynamic** — ลูกค้าลงทะเบียน endpoint กับ event filter เองตอน runtime หรือเราต้องทำ transform / rate cap ราย subscription นั่นแหละคือ logic การ route ที่มีน้ำหนักพอจะอยากมีบ้านหลังเดียว บังคับใช้ที่เดียว แทนที่จะกระจายไปทั่วทุก consumer
+
+การแลกแบบเปิดอก: consumer ที่ route ผ่าน broker มันง่ายแล้วก็ decouple สุด ๆ — เพิ่ม consumer ได้โดยไม่ต้องแตะ upstream, ได้ replay จาก offset มาฟรี ๆ — แต่ไม่มีตัวกรองกลาง เพราะงั้นแต่ละ consumer ก็อ่านของมากกว่าที่ตัวเองต้องใช้ แล้วก็ต้องพึ่ง event schema ที่นิ่ง ๆ เพราะทุกตัวตีความ raw stream เอง (ถ้า contract ผิดเมื่อไหร่ มันพังพร้อมกันหมด) ส่วน dispatcher ก็รวมศูนย์การ route กับ filtering ไว้ แลกกับ component ที่เราต้อง build แล้วก็ scale **routing ที่ลูกค้า config เองแบบเยอะ ๆ → dispatcher; routing ที่เราคุมเองแบบ fix → consumer ที่ route ผ่าน broker**
+
+ไม่ว่าจะ route แบบไหน ผลตอบแทนของการดึง delivery ออกมาอยู่ tier ของมันเองก็เหมือนกัน:
 
 - **scale แยกกันได้** — delivery พุ่งหรือเจอพาร์ตเนอร์ช้า ๆ มาเป็นพรวด ก็ scale แค่ *consumer*
-- **แยก failure ออกจากกัน** — พาร์ตเนอร์ที่งอแงทำให้ตันแค่ชั้น consumer ส่วน acceptor ก็รับต่อไป dispatcher ก็ route ต่อไป
-- **deploy แยกกันได้** — เปลี่ยน routing โดยไม่ต้องไปแตะ delivery
+- **แยก failure ออกจากกัน** — พาร์ตเนอร์ที่งอแงทำให้ตันแค่ฝั่ง consumer ส่วนการรับเข้าก็ยังรับต่อไปได้เรื่อย ๆ
+- **deploy แยกกันได้** — เปลี่ยน routing หรือตัว consumer โดยไม่ต้องไปแตะการรับเข้า
 
 มันคือเส้นเรื่องเดียวกับโพสต์ก่อน ๆ: แยกส่วนที่ durable-แล้ว-ไว ออกจากส่วนที่ช้า-เพราะของข้างนอก เพื่อให้ตัวนึงลากอีกตัวจมไม่ได้
 
-นี่คือรูปร่างคร่าว ๆ ที่ผมเคย build มากับมือ — ย้ายการต่อกับพาร์ตเนอร์ออกจากการ poll แบบ batch `GET` เก่า ๆ มาเป็น pipeline แบบ push real-time พร้อม retry ที่ขับด้วย queue (receive-count + redrive) แล้วก็แยก acceptor / dispatcher / consumer แบบนี้เป๊ะ ๆ เพื่อให้ชั้น delivery scale ของมันเองได้
-
-**อีกแบบนึงที่ควรรู้ไว้: publish ลง broker แล้วให้ consumer มาดึงเอง** แทนที่จะมี dispatcher คอยไปหา subscription แล้วกางเป็น task ราย endpoint ฝั่ง upstream มันแค่ **publish ทุก event ลง broker** (จะเป็น queue หรือ stream — เช่น Kafka topic) แล้วก็เดินจากไปเลย ไม่ต้องรู้ด้วยซ้ำว่าใครฟังอยู่ ส่วน delivery **consumer ก็ subscribe กับ broker** แล้วดึงเฉพาะอันที่ตัวเองอยากได้ แล้วค่อย POST ออกไปหา merchant/target ของมัน ไม่มี router กลางมาคั่นเลย
-
-ถ้ามันได้กลิ่นเหมือน data engineering / pub-sub — ใช่แล้ว รูปทรงมันเหมือนกันเป๊ะ แต่เจตนาคนละเรื่องกัน: อันนี้ไม่ใช่ analytics มันเป็นแค่เรื่องของการ **decouple** ล้วน ๆ — upstream เลิกเรียก dispatcher แล้วก็แค่โยนข้อมูลขึ้น bus เฉย ๆ
-
-จุดที่ต้องแลกกันคือ *filtering มันไปอยู่ที่ไหน*:
-
-- **Dispatcher (routed / push):** dispatcher กลางกรอง *ก่อน* ที่อะไรจะลง queue ของ delivery — มัน match event เข้ากับ subscription แล้วสร้างเฉพาะ delivery ที่จำเป็นเท่านั้น policy ราย subscription (จะเอา event ไหน, transform, rate cap) อยู่ที่เดียว ต้นทุนคือ มันเป็น component ที่เราต้อง build แล้วก็ scale แล้ว routing ก็รวมศูนย์
-- **Broker-first (pull):** upstream ง่ายสุด ๆ (โยนขึ้น bus จบ ไม่ผูกกับใคร), การเพิ่ม consumer ใหม่ก็ไม่ต้องไปแตะ upstream เลย, แถมได้ replay จาก offset มาฟรี ๆ ด้วย ต้นทุนคือ ไม่มีตัวกรองกลาง เพราะงั้นแต่ละ consumer จะเห็นของมากกว่าที่ตัวเองต้องใช้ แล้วก็ต้องมากรองเอง แล้วก็ต้องพึ่ง event schema ที่นิ่งแล้วก็มีโครงสร้างชัด ๆ เพราะ consumer ทุกตัวตีความ raw stream เองทั้งหมด ถ้า contract ผิดเมื่อไหร่ มันพังพร้อมกันหมดทุกตัว
-
-กฎคร่าว ๆ: ถ้า logic การ routing/subscription มันเยอะแล้วเราอยากบังคับใช้ที่เดียว → เอนไปทาง dispatcher; ถ้าอยากได้ decouple แบบสุด ๆ แล้วก็มี consumer ที่มา ๆ ไป ๆ อิสระ → เอนไปทาง broker-first (แล้วก็ลงทุนกับ schema ให้ดี)
+นี่คือรูปร่างคร่าว ๆ ที่ผมเคย build มากับมือ — ย้ายการต่อกับพาร์ตเนอร์ออกจากการ poll แบบ batch `GET` เก่า ๆ มาเป็น pipeline แบบ push real-time พร้อม retry ที่ขับด้วย queue (receive-count + redrive) ในเคสของผม routing มันซับซ้อนพอที่ผมเลยรัน **acceptor / dispatcher / consumer** เต็มรูปแบบ โดยแยกชั้น delivery ออกมาเพื่อให้ scale ของมันเองได้ — แต่ถ้า routing ของใครมันง่ายกว่านั้น dispatcher นี่แหละคือชิ้นที่ควรข้ามไป
 
 ---
 
 ## Wrapping up
 
-เราเริ่มจาก `POST` ตัวเดียวแบบ inline แล้วมาจบที่ระบบ delivery สาม tier เส้นทางทั้งหมด เรียงตามลำดับ:
+เราเริ่มจาก `POST` ตัวเดียวแบบ inline แล้วมาจบที่ระบบ delivery ที่แยกชั้นแล้วก็ทนทาน เส้นทางทั้งหมด เรียงตามลำดับ:
 
 1. **เอา delivery ออกจาก thread ของคนเรียก** ไปไว้บน durable queue — การเปลี่ยนอันเดียวที่ทุกอย่างต่อยอดจากมัน
 2. **Back off ด้วย jitter แล้วก็มีเพดาน max-attempt** จะได้ไม่กระหน่ำหรือวนไม่จบ
@@ -318,8 +317,8 @@ flowchart LR
 4. **`event_id` ที่นิ่ง** จะได้ไม่ให้ at-least-once กลายเป็นการลงมือซ้ำสองเด้ง
 5. **DLQ + redrive** เพื่อให้ outage ยาว ๆ ไม่ทำ event หาย
 6. **ลำดับต่อ resource** แล้วก็ส่งมอบ **causation metadata** ให้ฝั่งคนรับเอาไปประกอบ dependency DAG ขึ้นใหม่ — โดยที่เราไม่ต้องกลายเป็น workflow engine
-7. **ผ่าเป็น acceptor / dispatcher / consumer** เพื่อให้ส่วนข้างนอกที่ช้าลากการรับเข้าจมตามไม่ได้
+7. **แยก delivery ออกมาอยู่ tier ของมันเอง** (acceptor → queue → consumer; เพิ่ม dispatcher ตอนที่ routing เริ่ม dynamic) เพื่อให้ส่วนข้างนอกที่ช้าลากการรับเข้าจมตามไม่ได้
 
-ประเด็นใหญ่ก็ยังเหมือนตลอดทั้งซีรีส์: **ไม่มีใครควร build เวอร์ชันสาม tier ตั้งแต่วันแรกหรอก** พาร์ตเนอร์รายเดียว volume น้อย ๆ เหรอ? `POST` แบบ sync พร้อม retry สักสองครั้งก็โอเคสุด ๆ แล้ว ทุกกล่องข้างบนได้ที่ทางของมันมาจากการแก้ปัญหาที่เวอร์ชันก่อนหน้าสร้างขึ้น
+ประเด็นใหญ่ก็ยังเหมือนตลอดทั้งซีรีส์: **ไม่มีใครควร build เวอร์ชันที่แยกชั้นออกมาตั้งแต่วันแรกหรอก** พาร์ตเนอร์รายเดียว volume น้อย ๆ เหรอ? `POST` แบบ sync พร้อม retry สักสองครั้งก็โอเคสุด ๆ แล้ว ทุกกล่องข้างบนได้ที่ทางของมันมาจากการแก้ปัญหาที่เวอร์ชันก่อนหน้าสร้างขึ้น
 
 สิ่งเดียวที่ **เพิ่ง** กลายเป็นเรื่องของปี 2026 คือ: consumer ปลายทางมีโอกาสมากขึ้นเรื่อย ๆ ที่จะเป็น **agent ที่ทำงานเองแล้วลงมือทันทีที่ webhook เราไปถึง** — เพราะงั้นของซ้ำที่เราไม่ได้ dedupe, event ที่เราส่งผิดลำดับ, call ปลอมที่เราไม่ได้กันด้วยลายเซ็น ทั้งหมดนี้กลายเป็นการลงมือทำผิดพลาดออกไปในโลกภายนอก แทนที่จะเป็นแค่ความผิดเล็ก ๆ บน dashboard งานเรื่องความน่าเชื่อถือมันเป็น engineering ที่ดีมาตลอดอยู่แล้ว ตอนนี้มันแค่กลายเป็นเส้นแบ่งระหว่าง agent ที่เชื่อใจ event ของเราได้ กับตัวที่เชื่อไม่ได้
