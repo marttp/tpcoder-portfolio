@@ -58,6 +58,8 @@ Turn stiff noun-phrase bullets into spoken sentences. Talk to the reader like a 
   `ปาไป / แตะ / ฝัง / เด้งกลับ`
 - particles: `ครับ / แหละ / นะ / เนอะ / หรอ / อ่ะ / ล่ะ / ดิ๊`; stretched-vowel emphasis where it fits (`เลยยย`, `โคตร…`); light humor (`หยอก ๆ`, `555`) and a **sparing emoji** (😅 😂 🥲) like his Medium posts — a couple per post, tied to a genuine beat, never every paragraph
 - rhetorical asides: "ไวหรอ ก็ดี UX สวยหรอ มันก็ดี แต่ถูกมั้ยอ่ะ?"
+- **Set up explanations with `สมมุติว่า…`** — pose a concrete little scenario, then walk it ("สมมุติว่าพาร์ตเนอร์เขาอยากรู้ว่า… เขาก็ต้องมานั่ง poll เราเอง — ยิง `GET` เข้ามา ขอข้อมูลทีละอัน หรือขอมาเป็น list"). Be specific about mechanics, not abstract. This is his default teaching move.
+- **Watch floating `มัน`.** He flagged `ก่อนจะมีมัน` — a `มัน` whose referent is vague reads off. Don't use `มัน` to stand in for *his own* system/work, and don't open a clause with a `มัน` the reader has to chase. Name the thing (`webhook`, `queue`) or restructure. `มัน` is fine mid-sentence for a clearly-established object ("ส่วน webhook พลิกเป็น push" — note: dropped the `มัน`).
 
 Reference examples: the "Three Ways to Accept Payments" options (payment-backend-stripe-integration-th.mdx),
 and — for the **fullest** authentic spoken voice (ผม + ครับ + direct คุณ address + 555 + emoji) — his Medium
