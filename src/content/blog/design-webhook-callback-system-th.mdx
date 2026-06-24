@@ -1,6 +1,6 @@
 ---
 title: "การออกแบบ Webhook Callback System แบบเริ่มจากง่าย แล้วค่อย evolve"
-description: "พาเดินทุก step ของการออกแบบระบบส่ง webhook ออกจากฝั่งคนส่ง ตั้งแต่ POST แบบ sync ตัวเดียว ไปจนเป็นระบบ delivery ที่เชื่อถือได้ — async worker, backoff, circuit breaker, เซ็นด้วย HMAC, idempotency, DLQ + redrive, ordering กับ dependency DAG, metadata store, แล้วก็การแยกเป็น acceptor/dispatcher/consumer โดยแต่ละ step เริ่มจากปัญหาที่ step ก่อนหน้าทำพัง — แล้วก็ทำไมมันยิ่งสำคัญขึ้นในวันที่ consumer ปลายทางอาจจะเป็น AI agent"
+description: "พาเดินทุก step ของการออกแบบระบบส่ง webhook ออกจากฝั่งคนส่ง ตั้งแต่ POST แบบ sync ตัวเดียว ไปจนเป็นระบบ delivery ที่เชื่อถือได้ — async worker, backoff, circuit breaker, เซ็นด้วย HMAC, idempotency, DLQ + redrive, ordering กับ state machine, metadata store, แล้วก็การแยกเป็น acceptor/dispatcher/consumer โดยแต่ละ step เริ่มจากปัญหาที่ step ก่อนหน้าทำพัง — แล้วก็ทำไมมันยิ่งสำคัญขึ้นในวันที่ consumer ปลายทางอาจจะเป็น AI agent"
 pubDate: "2026-06-22"
 tags:
   ["Software Architecture", "Software Engineering", "Backend"]
@@ -42,10 +42,10 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 2. พังบ้างเป็นบางครั้ง → ใส่ **sync retry** (ยังทำ inline อยู่)
 3. sync retry **บล็อก thread เรา** → ย้ายไป **async** (queue + worker)
 4. **Backoff + max attempts** จะได้ไม่กระหน่ำหรือวนไม่จบ
-5. **เซ็น payload (HMAC)** เพื่อให้ consumer เชื่อใจได้ว่าเป็นเราแน่ ๆ
-6. **Idempotency / event id** จะได้ไม่ให้ retry ของเราทำให้เขาลงมือซ้ำ
+5. **Signed payload (HMAC)** เพื่อให้ consumer เชื่อใจได้ว่าเป็นเราแน่ ๆ
+6. **Idempotency / event id** retry มาได้ แต่ไม่ใช่ปล่อยให้ผลลัพธ์เกิดซ้ำ
 7. **DLQ + redrive** สำหรับ delivery ที่ส่งยังไงก็ไม่สำเร็จ
-8. **Ordering** — แล้วก็ dependency **DAG** ที่ฝั่งคนรับต้องเคารพ
+8. **Ordering** — maintain state เพื่อให้การทำงานถูกต้องตามลำดับที่ถูกต้อง
 9. ปลายทาง: แยก delivery ออกมาอยู่ tier ของมันเอง (**acceptor → queue → consumer**, บวก dispatcher ตอนที่ routing เริ่ม dynamic)
 
 {/* IMAGE PROMPT (hero-webhook.png): Wide banner hero, clean modern architecture illustration on a light background. Left-to-right outbound webhook delivery system, boxes labeled EXACTLY: "Event source" → "Acceptor" → "Dispatcher" → "Consumer" → then it POSTs out to two destination boxes on the right labeled "Partner backend" and "AI agent". Show a small side box labeled "Dead letter" branching off the Consumer, and a small "Sign (HMAC)" tag on the arrow from Consumer to the destinations. STRICT: render ONLY these labels, spelled exactly; no meta or marketing words (no "reliable", "simple", "robust"); no duplicate boxes; no typos. Flat vector, soft shadows, tech-blog aesthetic, 2–3 accent colors, plain labeled rectangles, no photorealism. */}
@@ -70,7 +70,7 @@ flowchart LR
     SVC -->|"POST (inline)"| EP["Partner endpoint"]
 `} />
 
-สำหรับ partner รายเดียว volume น้อย ๆ วิธีนี้ก็ work ได้สบาย ๆ ครับ ปล่อยขึ้น prod ได้เลย แต่ลองสังเกต coupling ที่เราเพิ่งสร้างขึ้นมาให้ดีนะครับ: **ตอนนี้ endpoint ของ partner เข้ามาอยู่บนเส้นทางวิกฤตของ request เราเรียบร้อยแล้ว** วันที่ server ของเขามีปัญหา ก็กลายเป็นวันที่ระบบเรามีปัญหาตามไปด้วยทันที
+สำหรับ partner รายเดียว volume น้อย ๆ วิธีนี้ก็ work ได้สบาย ๆ ครับ ปล่อยขึ้น prod ได้เลย แต่ลองสังเกต coupling ที่เราเพิ่งสร้างขึ้นมาให้ดีนะครับ: **ตอนนี้ endpoint ของ partner เข้ามาอยู่ในเส้น request ของเราเรียบร้อยแล้ว** วันที่ server ของเขามีปัญหา ก็กลายเป็นวันที่ระบบเรามีปัญหาตามไปด้วยทันที
 
 ---
 
@@ -267,13 +267,16 @@ flowchart LR
 
 ---
 
-## They arrive out of order — sequencing, and the DAG
+## They arrive out of order — sequencing and the state machine
 
 **ปัญหา:** การส่งแบบ async + retry + worker หลายตัวขนานกัน แปลว่า event ของ resource เดียวกันมา **ผิดลำดับ** ได้ครับ `order.paid` แล้วตามด้วย `order.refunded` แต่ consumer ดันเห็น `refunded` มาก่อน หรือ event เก่าที่โดน retry ดันมาถึงทีหลังตัวที่ใหม่กว่า คนเรายังพอทนได้ แต่ agent ที่ลงมือตามลำดับที่ได้รับ มันทำผิดเลย
 
-**วิธีแก้ (เคสเชิงเส้น):** แปะ **sequence number หรือ version** ที่เพิ่มขึ้นเรื่อย ๆ ต่อ resource ไว้ในทุก event ฝั่ง consumer ก็เก็บ version ล่าสุดที่เห็น แล้วใช้ **last-write-wins** — อะไรที่เก่ากว่าก็ข้ามไป ถ้าอยากได้ลำดับการประมวลผล ไม่ใช่เอาแค่ state ล่าสุด ก็ **partition ตาม resource id** เพื่อให้ทุก event ของ order เดียวไหลผ่าน lane เดียวที่เรียงลำดับแล้ว ขอแปะหมายเหตุเรื่อง scope ไว้นะครับ: เราแทบไม่เคยต้องการ *global ordering* เลย — ต้องการแค่ลำดับ **ต่อ resource** เท่านั้น อย่าไปสร้างระบบ total-order ที่ไม่ได้ใช้
+**วิธีแก้:** มีอยู่สองชิ้น แล้วก็ไม่ต้องมีมากกว่านี้ครับ
 
-**แต่ consumer หน้างานมันไม่ได้เป็นแค่เส้นเดียว — มันมีกราฟของ dependency ครับ** ส่วนนี้แหละที่ควรค่อย ๆ ดู ลองมอง event เป็น **DAG**: แต่ละ event คือ node, เส้น directed ชี้จากตัวที่เป็น prerequisite ไปยังตัวที่ต้องพึ่งมัน แล้วก็เป็น acyclic (ไม่มีวนกลับ) ส่วนใหญ่หน้าตามันเป็นเชิงเส้น — จนกระทั่งไปเจอ **fan-in (จุดรวม)**: event ที่ต้องรอ prerequisite *ตั้งแต่สองตัวขึ้นไป*
+- **sequence/version ต่อ resource + last-write-wins** — แปะ sequence number หรือ version ที่เพิ่มขึ้นเรื่อย ๆ ต่อ resource ไว้ในทุก event ฝั่ง consumer ก็เก็บ version ล่าสุดที่เห็นไว้ แล้วข้ามอะไรที่เก่ากว่าทิ้งไป ถ้าอยากได้ลำดับการประมวลผล ไม่ใช่เอาแค่ state ล่าสุด ก็ **partition ตาม resource id** ให้ทุก event ของ order เดียวไหลผ่าน lane เดียวที่เรียงแล้ว เราแทบไม่เคยต้องการ *global ordering* เลยนะครับ — ต้องการแค่ลำดับ **ต่อ resource** เท่านั้น อย่าไปสร้างระบบ total-order ที่ไม่ได้ใช้
+- **state machine ที่บังคับ transition** — อันนี้แหละคือตัวกันหลักครับ แล้วก็เป็นวิธีเดียวกับที่เราทำฝั่งคนรับในโพสต์ payment เลย ฝั่ง consumer มอง lifecycle ของแต่ละ resource เป็น state ที่มี transition ที่ถูกต้องของมัน แล้วก็ปฏิเสธอันที่ไม่สมเหตุสมผล — `refunded` ที่มาก่อน `paid` มันก็ไม่ใช่ transition ที่ออกจาก state ปัจจุบันได้ ก็เลยโดนข้ามหรือพักไว้ ไม่ใช่เอาไปลงมือ ลำดับการ *มาถึง* เลยไม่สำคัญ สำคัญแค่ลำดับของ *state* เท่านั้น
+
+**พอ flow เริ่มมี dependency ซ้อนกัน** การมองมันเป็น **DAG** ก็ช่วยได้ครับ — ไม่ใช่เพื่อเอาไป *สร้าง* อะไร แต่เป็นวิธีคิดว่าอะไรต้องมาก่อนอะไร ส่วนใหญ่ lifecycle มันก็เป็นเส้นเดียว จนกระทั่งไปเจอ **fan-in (จุดรวม)**: event ที่ต้องรอ prerequisite *ตั้งแต่สองตัวขึ้นไป*
 
 <MermaidDiagram chart={`
 flowchart TD
@@ -285,12 +288,9 @@ flowchart TD
     SC --> SD["shipment.delivered"]
 `} />
 
-`shipment.created` คือจุดรวม — มันต้องรอ **ทั้ง** `order.paid` *และ* `inventory.reserved` ระบบเราส่งสองตัวนี้แยกกันแล้วก็มาผิดลำดับได้ เพราะงั้น consumer อาจจะได้ `shipment.created` มาก่อนที่ `inventory.reserved` จะมาถึงด้วยซ้ำ นี่คือเส้นแบ่งที่ทำให้เรื่องนี้ยังอยู่ในร่องในรอยครับ:
+`shipment.created` คือจุดรวม — มันต้องรอ **ทั้ง** `order.paid` *และ* `inventory.reserved` ซึ่งระบบเราส่งสองตัวนี้แยกกัน แล้วก็มาผิดลำดับได้ การมอง event เป็น DAG ก็แค่ช่วยให้เราเห็นว่า transition ไหนบ้างที่ state machine ต้องคอยกันไว้ ส่วนงานของฝั่ง *คนส่ง* ก็ยังเล็กเหมือนเดิมครับ: ลำดับต่อ resource บวกกับ id ในแต่ละ payload ให้พอ — `event_id` แล้วก็ `correlation_id` (แบบ `order_id`) ไว้ผูก flow เดียวกันเข้าด้วยกัน — เพื่อให้ฝั่งคนรับเอาไปโยง event กันได้ ที่เหลือเป็นงานของ state machine ฝั่งเขา **ระบบ webhook ของเราไม่ใช่ workflow engine อย่าไปทำให้มันกลายเป็นแบบนั้นนะครับ**
 
-- **งานของฝั่งคนส่ง** (อยู่ใน scope ทำเลย): ลำดับต่อ resource บวกกับ **causation metadata** ในทุก payload — `event_id`, `causation_ids` (id ของ event แม่), แล้วก็ `correlation_id` ของทั้ง flow (เช่น `order_id`) นั่นคือส่วนร่วมทั้งหมดที่เรามีต่อกราฟนี้
-- **งานของฝั่งคนรับ** (อยู่นอก scope ของเรา แต่ขอพูดไว้): เอา link พวกนั้นมาประกอบ DAG ขึ้นใหม่แล้วประมวลผลตาม **[topological order](https://en.wikipedia.org/wiki/Topological_sorting)** — พัก node ไว้ก่อนจนกว่า parent ทุกตัวจะมาถึง/ประมวลผลเสร็จ พร้อม timeout ที่จะ trigger ให้ไปดึงเองหรือ alert ถ้า parent ไม่มาสักที **ระบบ webhook ของเราไม่ใช่ workflow engine — อย่าไปทำให้มันกลายเป็นแบบนั้นนะครับ**
-
-แล้วนี่แหละคือจุดที่มุม agent มันพุ่งถึงขีดสุด: agent ที่ทำงานเองแล้วไล่ DAG นี้เพื่อจะ *ลงมือ* มันต้องเคารพ topological order ไม่งั้นมันจะไปสั่ง logic เรื่อง shipment กับ order ที่ไม่เคยถูกจ่ายเงินเลยด้วยซ้ำ ตัว DAG นี่แหละที่กั้นไม่ให้ agent ไปลงมือกับ state ที่ยังประกอบไม่เสร็จ ถ้าเป็นคนนั่งดู dashboard อยู่ เห็นอะไรแปลก ๆ ก็คงทักได้ทัน แต่ agent มันไม่ได้รู้จักเอะใจแบบนั้นครับ
+แล้วนี่แหละคือจุดที่มุม agent สำคัญที่สุด: agent ที่ลงมือกับทุก event ทันทีที่มันมาถึง มันจะไปสั่ง logic เรื่อง shipment ของ order ที่ยังไม่เคยถูกจ่ายเงินเลย — ถ้าไม่มี state machine คอยปฏิเสธ transition นั้นไว้ ตัวกันอันนี้แหละที่ไม่ให้ agent ไปลงมือกับ state ที่ยังประกอบไม่เสร็จ ถ้าเป็นคนนั่งดู dashboard อยู่ เห็นอะไรแปลก ๆ ก็คงทักได้ทัน แต่ agent มันไม่ได้รู้จักเอะใจแบบนั้นครับ
 
 ---
 
@@ -371,7 +371,7 @@ flowchart LR
 3. **เซ็นด้วย HMAC** (แล้วก็เก็บข้อมูลออกจาก URL) เพื่อให้ consumer เชื่อใจได้ว่าเป็นเรา
 4. **`event_id` ที่นิ่ง** จะได้ไม่ให้ at-least-once กลายเป็นการลงมือซ้ำสองรอบ
 5. **DLQ + redrive** เพื่อให้ outage ยาว ๆ ไม่ทำ event หาย
-6. **ลำดับต่อ resource** แล้วก็ส่งมอบ **causation metadata** ให้ฝั่งคนรับเอาไปประกอบ dependency DAG ขึ้นใหม่ — โดยที่เราไม่ต้องกลายเป็น workflow engine
+6. **ลำดับต่อ resource** แล้วก็ให้ฝั่งคนรับมี **state machine** คอยปฏิเสธ event ที่มาผิดลำดับ แทนที่จะลงมือตามนั้น — โดยที่เราไม่ต้องกลายเป็น workflow engine
 7. **แยก delivery ออกมาอยู่ tier ของมันเอง** (acceptor → queue → consumer; เพิ่ม dispatcher ตอนที่ routing เริ่ม dynamic) เพื่อให้ส่วนข้างนอกที่ช้าลากการรับเข้าจมตามไม่ได้
 
 ประเด็นใหญ่ก็ยังเหมือนตลอดทั้งซีรีส์ครับ: **ไม่มีใครควร build เวอร์ชันที่แยกชั้นออกมาตั้งแต่วันแรกหรอก** partner รายเดียว volume น้อย ๆ เหรอ? `POST` แบบ sync พร้อม retry สักสองครั้งก็โอเคสุด ๆ แล้ว ทุกกล่องข้างบนได้ที่ทางของมันมาจากการแก้ปัญหาที่เวอร์ชันก่อนหน้าสร้างขึ้น

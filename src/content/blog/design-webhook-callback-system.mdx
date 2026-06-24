@@ -1,6 +1,6 @@
 ---
 title: "Designing a Webhook Callback System (Start Simple, Then Evolve)"
-description: "A backend system design walkthrough from the sender's side: evolve a single synchronous POST into a reliable outbound webhook delivery system — async workers, backoff, HMAC signing, idempotency, DLQ + redrive, ordering and dependency DAGs, and an acceptor/dispatcher/consumer split. Each step starts with the problem that broke the last one — and why it matters more now that the consumer might be an AI agent."
+description: "A backend system design walkthrough from the sender's side: evolve a single synchronous POST into a reliable outbound webhook delivery system — async workers, backoff, HMAC signing, idempotency, DLQ + redrive, ordering and an out-of-order-safe state machine, and an acceptor/dispatcher/consumer split. Each step starts with the problem that broke the last one — and why it matters more now that the consumer might be an AI agent."
 pubDate: "2026-06-22"
 tags:
   ["Software Architecture", "Software Engineering", "Backend"]
@@ -43,7 +43,7 @@ The road, each step forced by the one before it:
 5. **Sign it (HMAC)** so the consumer can trust it's really you
 6. **Idempotency / event id** so your retries don't make them act twice
 7. **DLQ + redrive** for deliveries that never succeed
-8. **Ordering** — and the dependency **DAG** the receiver has to respect
+8. **Ordering** — and a **state machine** so out-of-order events can't trigger the wrong action
 9. End-state: split delivery onto its own tier (**acceptor → queue → consumer**, plus a dispatcher when routing turns dynamic)
 
 {/* IMAGE PROMPT (hero-webhook.png): Wide banner hero, clean modern architecture illustration on a light background. Left-to-right outbound webhook delivery system, boxes labeled EXACTLY: "Event source" → "Acceptor" → "Dispatcher" → "Consumer" → then it POSTs out to two destination boxes on the right labeled "Partner backend" and "AI agent". Show a small side box labeled "Dead letter" branching off the Consumer, and a small "Sign (HMAC)" tag on the arrow from Consumer to the destinations. STRICT: render ONLY these labels, spelled exactly; no meta or marketing words (no "reliable", "simple", "robust"); no duplicate boxes; no typos. Flat vector, soft shadows, tech-blog aesthetic, 2–3 accent colors, plain labeled rectangles, no photorealism. */}
@@ -265,13 +265,16 @@ A practical detail from real systems: tie the move-to-DLQ to a **receive-count**
 
 ---
 
-## They arrive out of order — sequencing, and the DAG
+## They arrive out of order — sequencing and the state machine
 
 **The problem:** async delivery + retries + parallel workers means events for the same resource can land **out of order**. `order.paid` then `order.refunded`, but the consumer sees `refunded` first; or a *retried* old event arrives after a newer one. A human tolerates it. An agent acting in receipt order does the wrong thing.
 
-**The fix (linear case):** attach a **monotonic sequence number or version** per resource to every event. The consumer keeps the last-seen version and applies **last-write-wins** — anything older is ignored. If you need processing order (not just last-state), **partition by resource id** so all events for one order flow through a single ordered lane. The honest scope note: you almost never need *global* ordering — only **per-resource** ordering. Don't build a total-order system you don't need.
+**The fix:** two pieces, and you don't need more than this.
 
-**But real consumers don't have a line — they have a dependency graph.** This is the part worth slowing down on. Model the events as a **DAG**: each event is a node, a directed edge points from a prerequisite to the thing that depends on it, and it's acyclic. Most of it looks linear — until a **fan-in (join)**: an event that needs *two or more* prerequisites.
+- **Per-resource sequence/version + last-write-wins.** Attach a monotonic sequence number or version per resource to every event; the consumer keeps the last-seen version and ignores anything older. If you need processing order (not just last state), **partition by resource id** so all events for one order flow through a single ordered lane. You almost never need *global* ordering — only **per-resource**. Don't build a total-order system you don't need.
+- **A state machine with enforced transitions.** This is the real defense — the same move we made on the *receiving* side in the payment post. The consumer models each resource's lifecycle as states with *legal* transitions and rejects the ones that don't make sense: a `refunded` that lands before `paid` simply isn't a valid transition out of the current state, so it's ignored or parked, not applied. Arrival order stops mattering; only state order does.
+
+**When a flow has real dependencies, it helps to picture it as a DAG** — not as something to *build*, but as a way to reason about what has to come before what. Most lifecycles are a simple line, until a **fan-in (join)**: an event that needs *two or more* prerequisites.
 
 <MermaidDiagram chart={`
 flowchart TD
@@ -283,12 +286,9 @@ flowchart TD
     SC --> SD["shipment.delivered"]
 `} />
 
-`shipment.created` is the join — it needs **both** `order.paid` *and* `inventory.reserved`. Your system delivers each of those independently and possibly out of order, so the consumer might get `shipment.created` before `inventory.reserved` has even arrived. Here's the boundary that keeps this sane:
+`shipment.created` is the join — it needs **both** `order.paid` *and* `inventory.reserved`, and your system delivers those independently and possibly out of order. Seeing the events as a DAG is simply how you spot which transitions the state machine has to guard. Your job as the *sender* stays small: per-resource ordering, plus enough ids in each payload — an `event_id`, and a `correlation_id` (like `order_id`) to tie one flow together — for the receiver to relate events. The receiver's state machine does the rest. **Your webhook system is not a workflow engine — don't turn it into one.**
 
-- **The sender's job** (in scope, do this): per-resource ordering, plus **causation metadata** in every payload — `event_id`, `causation_ids` (the parent event ids), and a `correlation_id` for the whole flow (e.g. the `order_id`). That's your entire contribution to the graph.
-- **The receiver's job** (out of scope for you, but say it): rebuild the DAG from those links and process in **[topological order](https://en.wikipedia.org/wiki/Topological_sorting)** — buffer a node until all its parents have arrived/processed, with a timeout that triggers a fetch-or-alert if a parent never shows. **Your webhook system is not a workflow engine — don't turn it into one.**
-
-And this is where the agent angle peaks: an autonomous agent traversing this DAG to *act* must respect topological order, or it fires shipment logic on an order that was never actually paid. The DAG is what stops the agent from acting on half-built state. A human glancing at a dashboard would have just... noticed. The agent won't.
+And this is where the agent angle peaks: an agent that acts on each event the instant it lands will fire shipment logic on an order that was never actually paid — unless a state machine refuses that transition. That guard is the only thing standing between the agent and acting on half-built state. A human glancing at a dashboard would have just... noticed. The agent won't.
 
 ---
 
@@ -369,7 +369,7 @@ We started with a single inline `POST` and ended with a split, durable delivery 
 3. **Sign with HMAC** (and keep data out of the URL) so the consumer can trust it's you.
 4. **Stable `event_id`** so at-least-once delivery doesn't become double-action.
 5. **DLQ + redrive** so a long outage doesn't lose events.
-6. **Per-resource ordering**, and hand over **causation metadata** so the receiver can rebuild the dependency DAG — without you becoming a workflow engine.
+6. **Per-resource ordering**, plus a **state machine** on the receiver so out-of-order events get rejected instead of acted on — without you becoming a workflow engine.
 7. **Split delivery onto its own tier** (acceptor → queue → consumer; add a dispatcher only when routing turns dynamic) so the slow external part can't drag down ingestion.
 
 The meta-point holds from the rest of the series: **nobody should build the split-out version on day one.** One partner at low volume? A synchronous POST with a couple of retries is genuinely fine. Every box above earned its place by solving a problem the previous version created.
