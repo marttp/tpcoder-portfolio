@@ -20,17 +20,19 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 
 {/* IMAGE PROMPT (inbound-vs-outbound.png): Clean conceptual diagram on a light background, two stacked panels. Top panel labeled "Inbound": a box "Stripe" with ONE arrow pointing right to a box "Our receiver"; label that arrow once "order.paid". Bottom panel labeled "Outbound": a box "Our system" with ONE arrow pointing right to a box "Partner endpoint"; label that arrow once "order.paid". The reversed sender→receiver direction is the whole point. STRICT: each arrow has EXACTLY ONE label; do NOT repeat any label anywhere (no label appearing twice); the "Stripe" box is labeled just "Stripe" once (no extra logo text); render only these labels, spelled exactly; no meta/style words; no typos. Flat vector, soft shadows, 2–3 accent colors, no photorealism. */}
 
-![Inbound vs outbound webhook: คราวก่อน Stripe ส่งมาหา receiver ของเรา คราวนี้ระบบเราส่งไปหา endpoint ของพาร์ตเนอร์](/assets/images/blogs/design-webhook-callback-system/inbound-vs-outbound.png)
+![Inbound vs outbound webhook: คราวก่อน Stripe ส่งมาหา receiver ของเรา คราวนี้ระบบเราส่งไปหา endpoint ของ partner ](/assets/images/blogs/design-webhook-callback-system/inbound-vs-outbound.png)
 
-ขอปูพื้นเร็ว ๆ นะครับ สมมุติว่าพาร์ตเนอร์เขาอยากรู้ว่า `order นี้จ่ายเงินรึยัง` ถ้าไม่มี webhook เขาก็ต้องมานั่ง **poll** เราเอง — ยิง `GET` เข้ามาเรื่อย ๆ ทุก ๆ ไม่กี่นาที ขอข้อมูลทีละอัน หรือขอมาเป็น list ทั้งก้อน แล้วก็มา diff ดูเองว่ามีอะไรเปลี่ยนไปบ้าง เปลือง หน่วง แล้วก็ scale ไม่ไหวเอาซะเลย ส่วน webhook พลิกเป็น **push** — วินาทีที่ `order.paid` เกิดขึ้น *เรา* นี่แหละเป็นฝ่ายยิงไปหา *เขา* เอง ถูกกว่าแล้วก็ real-time ด้วย แต่ทีนี้ปัญหายาก ๆ ก็มาตกอยู่ที่เราครับ: endpoint ของเขาเดี๋ยวก็ล่ม เดี๋ยวก็ช้า เดี๋ยวก็ตอบมาแบบเชื่อไม่ได้ แล้วเราก็ยังต้องส่งให้ถึงอยู่ดี
+ขอปูพื้นเร็ว ๆ นะครับ สมมุติว่า partner เขาอยากรู้ว่า `order นี้จ่ายเงินรึยัง` ถ้าไม่มี webhook เขาก็ต้องมานั่ง **poll** เราเอง — ยิง `GET` เข้ามาเรื่อย ๆ ทุก ๆ ไม่กี่นาที ขอข้อมูลทีละอัน หรือขอมาเป็น list ทั้งก้อน แล้วก็มา diff ดูเองว่ามีอะไรเปลี่ยนไปบ้าง เปลือง หน่วง แล้วก็ scale ไม่ไหวเอาซะเลย ส่วน webhook พลิกเป็น **push** — วินาทีที่ `order.paid` เกิดขึ้น *เรา* นี่แหละเป็นฝ่ายยิงไปหา *เขา* เอง ถูกกว่าแล้วก็ real-time ด้วย แต่ทีนี้ปัญหายาก ๆ ก็มาตกอยู่ที่เราครับ: endpoint ของเขาเดี๋ยวก็ล่ม เดี๋ยวก็ช้า เดี๋ยวก็ตอบมาแบบเชื่อไม่ได้ แล้วเราก็ยังต้องส่งให้ถึงอยู่ดี
 
 {/* IMAGE PROMPT (polling-vs-push.png): Clean conceptual diagram on a light background, two stacked panels (before/after). Top panel labeled "Polling (before)": a box "Partner" sending several repeated arrows labeled "GET?" to a box "Our system", with most replies labeled "nothing new" — conveying wasteful repeated checking. Bottom panel labeled "Webhook (push)": a box "Our system" sending ONE arrow labeled "order.paid" to a box "Partner" the moment it happens. Make the contrast obvious: many wasted polls vs one timely push. STRICT: render only these labels, spelled exactly; no meta/style words; no duplicate boxes; no typos. Flat vector, soft shadows, 2–3 accent colors, no photorealism. */}
 
-![Polling vs push: พาร์ตเนอร์ยิง GET ถามซ้ำ ๆ เทียบกับระบบเรา push event เดียวตอนที่มันเกิดขึ้น](/assets/images/blogs/design-webhook-callback-system/polling-vs-push.png)
+![Polling vs push: partner ยิง GET ถามซ้ำ ๆ เทียบกับระบบเรา push event เดียวตอนที่มันเกิดขึ้น](/assets/images/blogs/design-webhook-callback-system/polling-vs-push.png)
 
-**แล้วก็มีจุดพลิกของปี 2026 ที่จะวิ่งอยู่ตลอดทั้งโพสต์นี้ครับ** ตัวที่มารับ webhook ของเรา เมื่อก่อนคือ backend ของ merchant ที่สุดท้ายก็มีคนมานั่งดู dashboard อีกที แต่เดี๋ยวนี้เริ่มกลายเป็น **AI agent ที่ทำงานเองแล้วลงมือกับ event นั้นทันที** — สั่ง order, ขยับเงิน, เริ่ม fulfillment ให้เลย เพราะงั้น webhook ที่ซ้ำ มาผิดลำดับ หรือโดนปลอม เลยเลิกเป็นแค่ความผิดเล็ก ๆ น่ารำคาญแล้วครับ — มันกลายเป็น agent ลงมือทำอะไรผิด ๆ ออกไปในโลกภายนอกโดยไม่มีมนุษย์คอยกั้นสักคน เห็นมั้ยครับว่าจุดนี้แหละที่ดันมาตรฐานของทุกชิ้นส่วนเรื่องความน่าเชื่อถือข้างล่างให้สูงขึ้นไปอีก
+**ตอนนี้ในปี 2026** ตัวที่มารับ webhook ของเรา เมื่อก่อนคือ backend ของ partner ที่สุดท้ายก็มีคนมานั่งดู dashboard อีกที แต่จุดที่แตกต่างคือ ตัวที่มารับ webhook อาจจะไม่ใช่ backend อย่างเดียวแล้วนะครับ — **AI agent ก็เป็นตัวรับ webhook ได้เหมือนกัน** แล้วพอคนรับเป็น agent มันก็ลงมือกับ event ที่ได้รับทันที — สั่ง order, โอนเงิน, เริ่ม fulfillment ด้วยตัวเอง โดยไม่ได้รอให้คนมากดยืนยันก่อน
 
-{/* IMAGE PROMPT (agent-vs-human.png): Clean conceptual illustration on a light background contrasting the SAME bad webhook (label the incoming arrow "duplicate / out-of-order event") hitting two different consumers. Left consumer: a "Merchant dashboard" with a small human icon — outcome label "minor glitch, human catches it". Right consumer: an "AI agent" icon — outcome label "acts immediately = wrong action". Make the contrast in consequence obvious. Flat vector, soft shadows, 2–3 accent colors, clear labels, no photorealism. */}
+นี่แหละครับคือจุดที่ทุกอย่างเปลี่ยนไป webhook ที่ซ้ำ มาผิดลำดับ หรือโดนปลอม เมื่อก่อนก็เป็นแค่ข้อผิดพลาดเล็ก ๆ ที่เดี๋ยวคนก็มาเห็นแล้วตามแก้ทัน แต่พอปลายทางเป็น agent มันแปลว่า agent จะลงมือทำสิ่งที่ผิดออกไปเลย โดยไม่มีใครมาเบรกไว้ทัน เพราะงั้นความน่าเชื่อถือของทุก step ที่เหลือในโพสต์นี้ เลยยิ่งสำคัญกว่าเดิมมากครับ
+
+{/* IMAGE PROMPT (agent-vs-human.png): Clean conceptual illustration on a light background contrasting the SAME bad webhook (label the incoming arrow "duplicate / out-of-order event") hitting two different consumers. Left consumer: a "Partner dashboard" with a small human icon — outcome label "minor glitch, human catches it". Right consumer: an "AI agent" icon — outcome label "acts immediately = wrong action". Make the contrast in consequence obvious. Flat vector, soft shadows, 2–3 accent colors, clear labels, no photorealism. */}
 
 ![webhook เสียตัวเดียวกัน: dashboard ของคนยังพอทนได้ แต่ AI agent ลงมือทันที](/assets/images/blogs/design-webhook-callback-system/agent-vs-human.png)
 
@@ -40,21 +42,21 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 2. พังบ้างเป็นบางครั้ง → ใส่ **sync retry** (ยังทำ inline อยู่)
 3. sync retry **บล็อก thread เรา** → ย้ายไป **async** (queue + worker)
 4. **Backoff + max attempts** จะได้ไม่กระหน่ำหรือวนไม่จบ
-5. **เซ็นมันซะ (HMAC)** เพื่อให้ consumer เชื่อใจได้ว่าเป็นเราแน่ ๆ
+5. **เซ็น payload (HMAC)** เพื่อให้ consumer เชื่อใจได้ว่าเป็นเราแน่ ๆ
 6. **Idempotency / event id** จะได้ไม่ให้ retry ของเราทำให้เขาลงมือซ้ำ
 7. **DLQ + redrive** สำหรับ delivery ที่ส่งยังไงก็ไม่สำเร็จ
 8. **Ordering** — แล้วก็ dependency **DAG** ที่ฝั่งคนรับต้องเคารพ
 9. ปลายทาง: แยก delivery ออกมาอยู่ tier ของมันเอง (**acceptor → queue → consumer**, บวก dispatcher ตอนที่ routing เริ่ม dynamic)
 
-{/* IMAGE PROMPT (hero-webhook.png): Wide banner hero, clean modern architecture illustration on a light background. Left-to-right outbound webhook delivery system, boxes labeled EXACTLY: "Event source" → "Acceptor" → "Dispatcher" → "Consumer" → then it POSTs out to two destination boxes on the right labeled "Merchant backend" and "AI agent". Show a small side box labeled "Dead letter" branching off the Consumer, and a small "Sign (HMAC)" tag on the arrow from Consumer to the destinations. STRICT: render ONLY these labels, spelled exactly; no meta or marketing words (no "reliable", "simple", "robust"); no duplicate boxes; no typos. Flat vector, soft shadows, tech-blog aesthetic, 2–3 accent colors, plain labeled rectangles, no photorealism. */}
+{/* IMAGE PROMPT (hero-webhook.png): Wide banner hero, clean modern architecture illustration on a light background. Left-to-right outbound webhook delivery system, boxes labeled EXACTLY: "Event source" → "Acceptor" → "Dispatcher" → "Consumer" → then it POSTs out to two destination boxes on the right labeled "Partner backend" and "AI agent". Show a small side box labeled "Dead letter" branching off the Consumer, and a small "Sign (HMAC)" tag on the arrow from Consumer to the destinations. STRICT: render ONLY these labels, spelled exactly; no meta or marketing words (no "reliable", "simple", "robust"); no duplicate boxes; no typos. Flat vector, soft shadows, tech-blog aesthetic, 2–3 accent colors, plain labeled rectangles, no photorealism. */}
 
-![ภาพรวมระบบส่ง webhook ออก: event source → acceptor → dispatcher → consumer → POST ที่เซ็นแล้วไปหา merchant backend กับ AI agent พร้อมแขนง dead-letter](/assets/images/blogs/design-webhook-callback-system/hero-webhook.png)
+![ภาพรวมระบบส่ง webhook ออก: event source → acceptor → dispatcher → consumer → POST ที่เซ็นแล้วไปหา partner backend กับ AI agent พร้อมแขนง dead-letter](/assets/images/blogs/design-webhook-callback-system/hero-webhook.png)
 
 ---
 
 ## The naive version — just POST it
 
-ต้องเริ่มจากที่ไหนสักที่ก่อนเนอะครับ จุดเริ่มแบบซื่อ ๆ ที่สุดเลยก็คือ: พอมีอะไรเกิดขึ้น ก็ `POST` ไปที่ URL ของพาร์ตเนอร์ในตัว request handler นั้นเลย
+ต้องเริ่มจากที่ไหนสักที่ก่อนเนอะครับ จุดเริ่มแบบซื่อ ๆ ที่สุดเลยก็คือ: พอมีอะไรเกิดขึ้น ก็ `POST` ไปที่ URL ของ partner ในตัว request handler นั้นเลย
 
 ```
 on order_paid(order):
@@ -68,13 +70,13 @@ flowchart LR
     SVC -->|"POST (inline)"| EP["Partner endpoint"]
 `} />
 
-สำหรับพาร์ตเนอร์รายเดียว volume น้อย ๆ บอกเลยว่ามัน work ได้สบาย ๆ เลยครับ — ปล่อยขึ้น prod ได้เลย แต่เดี๋ยวก่อนนะครับ ลองสังเกตสิ่งที่เราเพิ่งมัดติดกันไว้ดี ๆ: **ตอนนี้ endpoint ของพาร์ตเนอร์มันมานั่งอยู่บนเส้นทางวิกฤตของ request เราไปแล้ว** วันที่ server เขามีปัญหา ก็เลยกลายเป็นวันที่เราซวยไปด้วยเต็ม ๆ 😅
+สำหรับ partner รายเดียว volume น้อย ๆ วิธีนี้ก็ work ได้สบาย ๆ ครับ ปล่อยขึ้น prod ได้เลย แต่ลองสังเกต coupling ที่เราเพิ่งสร้างขึ้นมาให้ดีนะครับ: **ตอนนี้ endpoint ของ partner เข้ามาอยู่บนเส้นทางวิกฤตของ request เราเรียบร้อยแล้ว** วันที่ server ของเขามีปัญหา ก็กลายเป็นวันที่ระบบเรามีปัญหาตามไปด้วยทันที
 
 ---
 
 ## It failed — add a retry
 
-**ปัญหา:** endpoint ของคนอื่นมัน *จะ* ตอบ 500 หรือ timeout กลับมาครับ — ไม่ใช่เพราะเราทำอะไรผิดนะ แค่เพราะมันคือ server ตัวนึงบนอินเทอร์เน็ตเฉย ๆ การ POST แบบยิงทีเดียวจบ มันทำ event หล่นหายตั้งแต่ครั้งแรกที่เครื่องเขาสะดุดเลย
+**ปัญหา:** endpoint ของคนอื่น ยังไงมันก็มีโอกาสตอบ 500 หรือ timeout กลับมาครับ ไม่ใช่เพราะเราทำอะไรผิด แต่เพราะมันก็เป็น server ตัวนึงบนอินเทอร์เน็ต ที่มีวันแย่ ๆ ของมันได้ การ POST แบบยิงทีเดียวจบ พอเครื่องเขาสะดุดขึ้นมาครั้งแรก event ก็หล่นหายไปเลย
 
 **วิธีแก้:** อันที่นึกออกง่ายสุด — retry สักสองสามครั้งก่อนจะยอมแพ้
 
@@ -99,7 +101,7 @@ on order_paid(order):
 
 ## Sync retries block you — go async
 
-**ปัญหา:** sync retry มันทำให้การมัดติดกัน *แย่ลง* ไม่ใช่ดีขึ้นครับ พอพาร์ตเนอร์ช้า เราไม่ได้ fail เร็ว ๆ — เรานั่งถือ request นั้นไว้ (พร้อมกับ worker thread ตัวนึง) เป็นเวลา `timeout × จำนวนครั้ง` แถมหลับรอระหว่างแต่ละครั้งอีก แล้วส่วนที่โหดร้ายคือ: เรา retry *หนักที่สุด* ก็ตอนที่พาร์ตเนอร์ *ช้าที่สุด* พอดี ซึ่งเป็นจังหวะที่เราเสีย thread ไปแบบไม่คุ้มที่สุด พอโดน load หนัก ๆ เข้า พาร์ตเนอร์ที่กำลังแย่อยู่รายเดียวก็ดูด thread pool เราจนหมด แล้วก็ลากเอา request อื่นที่ไม่เกี่ยวกับ webhook เลยล้มตามไปด้วย
+**ปัญหา:** sync retry มันยิ่งทำให้ coupling *แย่ลง* ไม่ใช่ดีขึ้นครับ พอ partner ช้า เราไม่ได้ fail เร็ว ๆ — เรานั่งถือ request นั้นไว้ (พร้อมกับ worker thread ตัวนึง) เป็นเวลา `timeout × จำนวนครั้ง` แถมหลับรอระหว่างแต่ละครั้งอีก แล้วจุดที่แย่ที่สุดคือ เรา retry *หนักที่สุด* ก็ตอนที่ partner *ช้าที่สุด* พอดี ซึ่งเป็นจังหวะที่เราเสีย thread ไปแบบไม่คุ้มที่สุด พอโดน load หนัก ๆ เข้า partner ที่กำลังแย่อยู่รายเดียวก็ดูด thread pool เราจนหมด แล้วก็ลากเอา request อื่นที่ไม่เกี่ยวกับ webhook เลยล้มตามไปด้วย
 
 **วิธีแก้:** เอางาน delivery ออกไปจาก thread ของคนเรียกให้หมดเลยครับ ตัว request handler ทำให้น้อยที่สุด — แค่บันทึกว่า `event นี้ต้องถูกส่งออกไปนะ` ลง durable queue (SQS, RabbitMQ, Kafka topic, แล้วแต่จะเลือก) แล้วก็ return จากนั้นมี **delivery worker** แยกอีกตัวค่อยดึงจาก queue มาทำ POST (แล้วก็ retry)
 
@@ -122,15 +124,15 @@ flowchart LR
     WK -->|"POST"| EP["Partner endpoint"]
 `} />
 
-อันนี้คือการเปลี่ยนที่ leverage สูงที่สุดในโพสต์เลยครับ latency ของพาร์ตเนอร์กลายเป็นปัญหาของ *worker* ไม่ใช่ของ API เราแล้ว — แถมงานมันก็ durable ด้วย crash ไปก็ไม่ทำ event หาย เกือบทุกอย่างข้างล่างนี้คือการขัดเกลาไอเดีย `ส่งแบบ async โดยอิงกับ durable queue` ให้เนียนขึ้นเฉย ๆ
+อันนี้คือการเปลี่ยนที่ leverage สูงที่สุดในโพสต์เลยครับ latency ของ partner กลายเป็นปัญหาของ *worker* ไม่ใช่ของ API เราแล้ว — แถมงานมันก็ durable ด้วย crash ไปก็ไม่ทำ event หาย เกือบทุกอย่างข้างล่างนี้คือการขัดเกลาไอเดีย `ส่งแบบ async โดยอิงกับ durable queue` ให้เนียนขึ้นเฉย ๆ
 
-แล้วก็พูดกันแบบเปิดอกนะครับ ถ้าลองนั่งคิดดูดี ๆ async ในเคสนี้มันไม่ได้ดีแค่เรื่องความไวอย่างเดียว — แต่มันเป็นโมเดลที่เข้ากับเนื้องานมากกว่าด้วย: ตัวที่ **ทำให้เกิด** event กับตัวที่ **ควรได้รับ** callback มันคนละฝ่ายกันเลยครับ ลูกค้าที่จ่ายเงินจนเกิด `order.paid` ไม่ได้แคร์หรอกว่า endpoint ของพาร์ตเนอร์จะ ack อะไรกลับมามั้ย แล้วก็ไม่ควรต้องมานั่งรอมันด้วย ต้นทางของ request กับปลายทางของการ notify มันคนละที่กัน — เพราะงั้นฝั่งคนเรียกมันไม่เคยมีอะไรที่ต้องใช้ผลการส่งแบบ inline เลยตั้งแต่แรก จะไปบล็อกมันไว้ก็ไม่เคยมีความหมายมาตั้งแต่ต้น งาน notify แบบนี้มันคือ fire-and-forget โดยธรรมชาติของมันอยู่แล้วครับ
+แล้วก็พูดกันแบบเปิดอกนะครับ ถ้าลองนั่งคิดดูดี ๆ async ในเคสนี้มันไม่ได้ดีแค่เรื่องความไวอย่างเดียว — แต่มันเป็นโมเดลที่เข้ากับเนื้องานมากกว่าด้วย: ตัวที่ **ทำให้เกิด** event กับตัวที่ **ควรได้รับ** callback มันคนละฝ่ายกันเลยครับ ลูกค้าที่จ่ายเงินจนเกิด `order.paid` ไม่ได้แคร์หรอกว่า endpoint ของ partner จะ ack อะไรกลับมามั้ย แล้วก็ไม่ควรต้องมานั่งรอมันด้วย ต้นทางของ request กับปลายทางของการ notify มันคนละที่กัน — เพราะงั้นฝั่งคนเรียกมันไม่เคยมีอะไรที่ต้องใช้ผลการส่งแบบ inline เลยตั้งแต่แรก จะไปบล็อกมันไว้ก็ไม่เคยมีความหมายมาตั้งแต่ต้น งาน notify แบบนี้มันคือ fire-and-forget โดยธรรมชาติของมันอยู่แล้วครับ
 
 ---
 
 ## Don't hammer, don't loop forever — backoff + max attempts
 
-**ปัญหา:** retry ของเราเมื่อกี้มันยังกิ๊กก๊อกอยู่ครับ — delay คงที่ แล้วก็ (พูดกันตามเนื้อผ้า) ไม่มีอะไรห้ามไม่ให้มันวนไปเรื่อย ๆ ไม่จบ มีโหมดพังซ่อนอยู่สองอย่างครับ อย่างแรก การ retry กระหน่ำ endpoint ที่กำลังแย่อยู่ซ้ำ ๆ แบบทันที มันก็เหมือนไปกระทืบซ้ำตอนที่เขากำลังล้มอยู่ อย่างที่สอง ถ้า endpoint มันตายสนิทไปแล้ว retry แบบไม่มีเพดานก็คือ worker ที่หมุนอยู่กับ event ตายตัวเดียวไปตลอด ไม่ยอมระบาย queue ที่ต่อแถวอยู่ข้างหลังเลย (แล้วขอตอบคำถามที่หลายคนน่าจะสงสัย — *ทำไม backoff ถึงเพิ่งมาโผล่จุดนี้ ไม่ไปอยู่ตั้งแต่ step retry*: การรอ 1s, 2s, 4s, 8s ระหว่างแต่ละครั้ง ถ้ามันรันแบบ inline ก็เท่ากับพิน request thread ไว้ 15 วินาทีกว่า ๆ เพราะงั้น backoff กับเพดานจำนวนครั้งข้างล่าง ถึงเพิ่งปลอดภัยพอจะเอามาใช้ได้ ก็ตอนที่เราย้าย retry ไปอยู่บน background worker แล้วครับ)
+**ปัญหา:** retry แบบเมื่อกี้ของเรามันยังหยาบอยู่ครับ — delay คงที่ แล้วก็ (พูดกันตามเนื้อผ้า) ไม่มีอะไรห้ามไม่ให้มันวนไปเรื่อย ๆ ไม่จบ ซึ่งมันมีโหมดพังซ่อนอยู่สองอย่าง อย่างแรก การ retry ซ้ำ ๆ ใส่ endpoint ที่กำลังแย่อยู่แบบรัว ๆ ทันที ก็เหมือนไปซ้ำเติมตอนที่เขากำลังจะล้มอยู่แล้ว อย่างที่สอง ถ้า endpoint มันตายสนิทไปแล้ว retry แบบไม่มีเพดานก็คือ worker ที่วนอยู่กับ event ตายตัวเดียวไปตลอด ไม่ยอมระบาย queue ที่ต่อแถวอยู่ข้างหลังเลย (แล้วขอตอบคำถามที่หลายคนน่าจะสงสัย — *ทำไม backoff ถึงเพิ่งมาโผล่จุดนี้ ไม่ไปอยู่ตั้งแต่ step retry*: การรอ 1s, 2s, 4s, 8s ระหว่างแต่ละครั้ง ถ้ามันรันแบบ inline ก็เท่ากับพิน request thread ไว้ 15 วินาทีกว่า ๆ เพราะงั้น backoff กับเพดานจำนวนครั้งข้างล่าง ถึงเพิ่งปลอดภัยพอจะเอามาใช้ได้ ก็ตอนที่เราย้าย retry ไปอยู่บน background worker แล้วครับ)
 
 **วิธีแก้:** **[exponential backoff พร้อม jitter](https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/) แล้วก็เพดาน max-attempt แบบตายตัว**
 
@@ -152,7 +154,7 @@ flowchart LR
 
 ### Circuit breaker — stop dialing a dead endpoint
 
-backoff กับเพดาน max-attempt มันคุมการ retry ของ *event ตัวเดียว* ได้ครับ แต่ลองนึกภาพพาร์ตเนอร์ที่ล่มสนิทมาเป็นชั่วโมงดูสิครับ: **ทุก event ใหม่** ก็ยังเปิด connection รอจน timeout แล้วก็ไล่ backoff ครบทั้งชุดกว่าจะยอมแพ้ — เท่ากับเราเผาเวลา worker เผา connection แล้วก็ถ่วง latency ของทั้ง queue ไปกับการกระแทก endpoint ที่เรารู้อยู่แล้วว่ามันตายไปแล้ว แถมยังไปทำให้พาร์ตเนอร์ที่ *ยังดี ๆ* ที่ต่อแถวรออยู่ข้างหลังอดส่งไปด้วย
+backoff กับเพดาน max-attempt มันคุมการ retry ของ *event ตัวเดียว* ได้ครับ แต่ลองนึกภาพ partner ที่ล่มสนิทมาเป็นชั่วโมงดูสิครับ: **ทุก event ใหม่** ก็ยังเปิด connection รอจน timeout แล้วก็ไล่ backoff ครบทั้งชุดกว่าจะยอมแพ้ — เท่ากับเราเผาเวลา worker เผา connection แล้วก็ถ่วง latency ของทั้ง queue ไปกับการกระแทก endpoint ที่เรารู้อยู่แล้วว่ามันตายไปแล้ว แถมยังไปทำให้ partner ที่ *ยังดี ๆ* ที่ต่อแถวรออยู่ข้างหลังอดส่งไปด้วย
 
 **circuit breaker** แก้จุดนี้ด้วยการคอยจับชีพจรของแต่ละ endpoint ครับ:
 
@@ -169,13 +171,13 @@ stateDiagram-v2
     HalfOpen --> Open: trial fails
 `} />
 
-แบ่งหน้าที่กันแบบนี้ครับ: **backoff คอยถ่างจังหวะ retry ของ delivery ตัวเดียว ส่วน breaker คอยตัดทั้งสายของ delivery ที่จะวิ่งไปหา host ที่ล่มชัด ๆ** สองตัวนี้ทำงานเสริมกัน — library ชุดเดิมจาก step ที่แล้วมีมาให้ทั้งคู่เลย (resilience4j มีทั้ง `Retry` แล้วก็ `CircuitBreaker`) แล้ว breaker มันก็แยกตาม endpoint ด้วย พาร์ตเนอร์ที่ตายไปรายนึงก็ทริปวงจรของตัวเองไป โดยไม่ไปแตะ delivery ของรายอื่นเลยครับ
+แบ่งหน้าที่กันแบบนี้ครับ: **backoff คอยถ่างจังหวะ retry ของ delivery ตัวเดียว ส่วน breaker คอยตัดทั้งสายของ delivery ที่จะวิ่งไปหา host ที่ล่มชัด ๆ** สองตัวนี้ทำงานเสริมกัน — library ชุดเดิมจาก step ที่แล้วมีมาให้ทั้งคู่เลย (resilience4j มีทั้ง `Retry` แล้วก็ `CircuitBreaker`) แล้ว breaker มันก็แยกตาม endpoint ด้วย partner ที่ตายไปรายนึงก็ตัดวงจรของตัวเองไป โดยไม่ไปกระทบ delivery ของรายอื่นเลยครับ
 
 ---
 
 ## Anyone can POST to them — sign it (HMAC)
 
-**ปัญหา:** endpoint ที่รับ webhook ของพาร์ตเนอร์ มันคือ **URL สาธารณะบนอินเทอร์เน็ต** ครับ ลองนึกภาพว่ามีใครสักคนไปรู้ URL นี้เข้า เขาก็ POST เข้าไปได้เลย แล้วก็แกล้งทำเป็นเราได้ด้วย — ยิง `order.paid` ปลอม ๆ, `refund.completed` ปลอม ๆ เข้าไป ฝั่ง consumer ไม่มีทางแยกออกเลยว่าอันไหน event ของเราอันไหนของปลอม แล้วถ้าคุณเผลอเอารายละเอียดไปยัดไว้ใน **URL หรือ query string** (`?amount=5000&user=123`) ก็เท่ากับทำมันรั่วไปแล้ว — query string มันไปโผล่ใน access log, proxy, แล้วก็ประวัติ browser
+**ปัญหา:** endpoint ที่รับ webhook ของ partner มันคือ **URL สาธารณะบนอินเทอร์เน็ต** ครับ ลองนึกภาพว่ามีใครสักคนไปรู้ URL นี้เข้า เขาก็ POST เข้าไปได้เลย แล้วก็แกล้งทำเป็นเราได้ด้วย — ยิง `order.paid` ปลอม ๆ, `refund.completed` ปลอม ๆ เข้าไป ฝั่ง consumer ไม่มีทางแยกออกเลยว่าอันไหน event ของเราอันไหนของปลอม แล้วถ้าคุณเผลอเอารายละเอียดไปยัดไว้ใน **URL หรือ query string** (`?amount=5000&user=123`) ก็เท่ากับทำมันรั่วไปแล้ว — query string มันไปโผล่ใน access log, proxy, แล้วก็ประวัติ browser
 
 **วิธีแก้:** พิสูจน์ว่า message มาจากเรา แล้วก็เก็บข้อมูลออกไปจาก URL ซะ
 
@@ -193,7 +195,7 @@ POST /webhooks/orders
 
 {/* IMAGE PROMPT (hmac-trust.png): Clean conceptual illustration on a light background about webhook authenticity. A box on the right labeled "Partner endpoint" receives TWO incoming requests: one labeled "Forged request" shown rejected with a red X, and one labeled "Signed request (valid HMAC)" shown accepted with a green check. On the left, a box "Our system" and the "Partner endpoint" share a small key icon labeled "shared secret". Make it obvious only the validly-signed request gets in. STRICT: render only these labels, spelled exactly; no meta/style words; no duplicate labels; no typos. Flat vector, soft shadows, 2–3 accent colors, no photorealism. */}
 
-![HMAC trust: request ปลอมโดน reject ส่วนตัวที่เซ็นถูกต้องผ่านได้ ด้วย secret ที่แชร์กันระหว่างระบบเรากับพาร์ตเนอร์](/assets/images/blogs/design-webhook-callback-system/hmac-trust.png)
+![HMAC trust: request ปลอมโดน reject ส่วนตัวที่เซ็นถูกต้องผ่านได้ ด้วย secret ที่แชร์กันระหว่างระบบเรากับ partner ](/assets/images/blogs/design-webhook-callback-system/hmac-trust.png)
 
 อันนี้คือด่านแรกสุดของการประมวลผลฝั่ง consumer เลยครับ: ก่อนจะไปดูเนื้อหาด้วยซ้ำ เขาถามก่อนว่า `อันนี้มาจากเขาคนนั้นแน่นะ?` ยืนยันตัวตนก่อน แล้วค่อยว่ากันเรื่องอื่น
 
@@ -210,7 +212,7 @@ POST /webhooks/orders
 
 ## Your retries cause doubles — idempotency
 
-**ปัญหา:** ทุกอย่างที่เราสร้างมามันเป็น **at-least-once** หมดเลยครับ worker ก็ retry; queue ก็ redeliver ได้หลัง crash; ส่วน delivery ที่ส่งสำเร็จไปแล้วแต่ ack ดันหายระหว่างทาง ก็โดนส่ง *ซ้ำ* อีกที เพราะงั้น consumer มัน **จะ** ได้รับ event เดิมซ้ำมากกว่าหนึ่งครั้งแน่ ๆ เราเจอกำแพงนี้มาแล้วเป๊ะ ๆ ทั้งในโพสต์ payment แล้วก็ push — exactly-once แบบเป๊ะข้ามเครือข่ายมันเป็นเรื่องเพ้อฝัน ([Two Generals Problem](https://en.wikipedia.org/wiki/Two_Generals%27_Problem)) สำหรับ dashboard ของซ้ำมันก็แค่เรื่องผิวเผิน แต่สำหรับ **AI agent** `order.paid` ที่ซ้ำ คือมีการสั่ง order รอบสอง คือเงินขยับสองเด้ง
+**ปัญหา:** ทุกอย่างที่เราสร้างมามันเป็น **at-least-once** หมดเลยครับ worker ก็ retry; queue ก็ redeliver ได้หลัง crash; ส่วน delivery ที่ส่งสำเร็จไปแล้วแต่ ack ดันหายระหว่างทาง ก็โดนส่ง *ซ้ำ* อีกที เพราะงั้น consumer มัน **จะ** ได้รับ event เดิมซ้ำมากกว่าหนึ่งครั้งแน่ ๆ เราเจอกำแพงนี้มาแล้วเป๊ะ ๆ ทั้งในโพสต์ payment แล้วก็ push — exactly-once แบบเป๊ะข้ามเครือข่ายมันเป็นเรื่องเพ้อฝัน ([Two Generals Problem](https://en.wikipedia.org/wiki/Two_Generals%27_Problem)) สำหรับ dashboard ของซ้ำมันก็แค่เรื่องผิวเผิน แต่สำหรับ **AI agent** `order.paid` ที่ซ้ำ คือมีการสั่ง order ซ้ำอีกรอบ คือเงินถูกตัดสองรอบ
 
 **วิธีแก้:** ให้ทุก event พก **`event_id` ที่นิ่งแล้วก็ไม่ซ้ำใคร** (กำหนดครั้งเดียวตั้งแต่ต้นทาง — แล้วพกติดตัวไปไม่เปลี่ยนทุก retry) แล้วก็ทำสัญญาเรื่องการส่งให้เคลียร์ ๆ ไปเลยว่า `เราส่งแบบ at least once นะ เพราะงั้นช่วยไป dedupe ด้วย event_id เอาเองนะ` ฝั่ง consumer ก็จดว่า id ไหนประมวลผลไปแล้วบ้าง แล้วก็ข้ามตัวที่ซ้ำ เรารับประกันการส่งถึง เขารับประกันการประมวลผลแบบ idempotent มันคือสัญญาร่วมกัน แล้วก็ควรเขียนไว้ดัง ๆ ใน webhook docs ของเราด้วยนะครับ
 
@@ -237,12 +239,12 @@ flowchart TD
 
 ## Some never succeed — DLQ + redrive
 
-**ปัญหา:** backoff กับเพดาน max-attempt หยุดการวนไม่จบได้ก็เถอะครับ แต่มันสร้างคำถามใหม่ขึ้นมา: *แล้ว event ที่ retry จนหมดโควต้าไปแล้วล่ะ ไปไหนต่อ?* พาร์ตเนอร์ล่มเป็นชั่วโมง ๆ ได้ เรา retry ตลอดกาลไม่ได้ (ตกลงกันไปแล้ว) แต่การปล่อย event หล่นหายเงียบ ๆ ก็แปลว่า notification ของ order หายไปดื้อ ๆ — แล้วสำหรับ consumer ที่ขับเคลื่อนด้วย agent มันคือ state ที่หายไปแล้วกู้กลับมาไม่ได้เลย
+**ปัญหา:** backoff กับเพดาน max-attempt หยุดการวนไม่จบได้ก็เถอะครับ แต่มันสร้างคำถามใหม่ขึ้นมา: *แล้ว event ที่ retry จนหมดโควต้าไปแล้วล่ะ ไปไหนต่อ?* partner ล่มเป็นชั่วโมง ๆ ได้ เรา retry ตลอดกาลไม่ได้ (ตกลงกันไปแล้ว) แต่การปล่อย event หล่นหายเงียบ ๆ ก็แปลว่า notification ของ order หายไปดื้อ ๆ — แล้วสำหรับ consumer ที่ขับเคลื่อนด้วย agent มันคือ state ที่หายไปแล้วกู้กลับมาไม่ได้เลย
 
 **วิธีแก้:** **dead-letter queue (DLQ)** ครับ พอ event ข้ามเพดาน max-attempt ก็ย้ายมันไปเก็บที่ store แยกแทนที่จะทิ้ง ทีนี้:
 
-- **operator มองเห็นแล้วก็ลงมือได้** — ส่องดูว่าทำไมมันถึง fail แล้วก็ **redrive** (เอากลับเข้า queue ใหม่) ทั้งก้อนตอนที่พาร์ตเนอร์กลับมาปกติ
-- **ให้ทางกู้คืนกับ consumer ด้วย** — API แบบ `list/replay event ตั้งแต่จุด X` เพื่อให้พาร์ตเนอร์ที่เคยล่มดึงของที่พลาดไปกลับมาได้ (อันนี้คือด้านกลับของเหรียญเดียวกับโมเดล polling เก่า — เป็น channel ไว้ตามเก็บโดยเฉพาะ ไม่ใช่ทางหลัก)
+- **operator มองเห็นแล้วก็ลงมือได้** — ส่องดูว่าทำไมมันถึง fail แล้วก็ **redrive** (เอากลับเข้า queue ใหม่) ทั้งก้อนตอนที่ partner กลับมาปกติ
+- **ให้ทางกู้คืนกับ consumer ด้วย** — API แบบ `list/replay event ตั้งแต่จุด X` เพื่อให้ partner ที่เคยล่มดึงของที่พลาดไปกลับมาได้ (อันนี้คือด้านกลับของเหรียญเดียวกับโมเดล polling เก่า — เป็น channel ไว้ตามเก็บโดยเฉพาะ ไม่ใช่ทางหลัก)
 
 <MermaidDiagram chart={`
 flowchart LR
@@ -260,7 +262,7 @@ flowchart LR
 - **ต้องมีคนคอยจับตาดูมัน** operator ส่อง DLQ ด้วยการ **poll ดูเองแบบ manual** (จะเป็น admin view เล็ก ๆ หรือ cloud console ก็ได้) — list, filter ตาม endpoint หรือ error, แล้วก็เปิดอ่าน payload ที่ fail ทีละอัน DLQ ที่ไม่มีใครเปิดดูเลย ก็เป็นแค่วิธีทำข้อมูลหายแบบช้าลงเฉย ๆ ครับ
 - **redrive แบบเจาะจง อย่า redrive มั่ว ๆ** ตอนเกิด incident เราแทบไม่อยากกด `replay ทั้งหมด` หรอกครับ — batch เสีย ๆ มันก็แค่ fail ซ้ำหรือยิงซ้ำ ให้ **consume / เลือกแบบ manual** เฉพาะ message ที่เกี่ยวข้องเท่านั้น (endpoint นี้, ช่วงเวลานี้) แล้วก็ redrive เฉพาะพวกนั้น
 - **redrive ด้วยความระวังเท่ากับตอนส่งครั้งแรก** เอากลับเข้า queue โดยพก **idempotency key เดิม** ไปด้วย (consumer จะได้ยัง dedupe ได้อยู่), **throttle** การ redrive ด้วย (endpoint ที่เพิ่งฟื้นมาไม่อยากได้ backlog ทั้งกองทีเดียว — บทเรียน thundering herd อันเดิม) แล้วก็คงเพดานจำนวนครั้งไว้
-- **ตั้ง alert ที่ความลึกของ DLQ** DLQ ที่โตขึ้นเรื่อย ๆ คือ signal แรกสุดที่บอกว่าพาร์ตเนอร์ — หรือชั้น delivery ของเราเอง — กำลังพัง เปิด page แจ้งเตือนไว้ อย่าไปรู้เอาตอนพาร์ตเนอร์ส่งเมลมาด่านะครับ 😂
+- **ตั้ง alert ที่ความลึกของ DLQ** DLQ ที่โตขึ้นเรื่อย ๆ คือ signal แรกสุดที่บอกว่า partner — หรือชั้น delivery ของเราเอง — กำลังพัง เปิด page แจ้งเตือนไว้ อย่าให้ต้องไปรู้เอาตอน partner ส่งเมลมาทวงนะครับ
 - **ให้ store ที่ persist ไว้มี lifecycle ด้วย** สำเนา audit ของ failed event ต้องมี TTL / นโยบาย archive ไม่งั้นตารางนั้นมันโตไม่หยุด
 
 ---
@@ -288,13 +290,13 @@ flowchart TD
 - **งานของฝั่งคนส่ง** (อยู่ใน scope ทำเลย): ลำดับต่อ resource บวกกับ **causation metadata** ในทุก payload — `event_id`, `causation_ids` (id ของ event แม่), แล้วก็ `correlation_id` ของทั้ง flow (เช่น `order_id`) นั่นคือส่วนร่วมทั้งหมดที่เรามีต่อกราฟนี้
 - **งานของฝั่งคนรับ** (อยู่นอก scope ของเรา แต่ขอพูดไว้): เอา link พวกนั้นมาประกอบ DAG ขึ้นใหม่แล้วประมวลผลตาม **[topological order](https://en.wikipedia.org/wiki/Topological_sorting)** — พัก node ไว้ก่อนจนกว่า parent ทุกตัวจะมาถึง/ประมวลผลเสร็จ พร้อม timeout ที่จะ trigger ให้ไปดึงเองหรือ alert ถ้า parent ไม่มาสักที **ระบบ webhook ของเราไม่ใช่ workflow engine — อย่าไปทำให้มันกลายเป็นแบบนั้นนะครับ**
 
-แล้วนี่แหละคือจุดที่มุม agent มันพุ่งถึงขีดสุด: agent ที่ทำงานเองแล้วไล่ DAG นี้เพื่อจะ *ลงมือ* มันต้องเคารพ topological order ไม่งั้นมันจะไปสั่ง logic เรื่อง shipment กับ order ที่ไม่เคยถูกจ่ายเงินเลยด้วยซ้ำ ตัว DAG นี่แหละที่กั้นไม่ให้ agent ไปลงมือกับ state ที่ยังประกอบไม่เสร็จ ถ้าเป็นคนเหลือบมอง dashboard แป๊บเดียวก็คง... เอ๊ะ ทันแล้ว ส่วน agent มันไม่เอ๊ะหรอกครับ
+แล้วนี่แหละคือจุดที่มุม agent มันพุ่งถึงขีดสุด: agent ที่ทำงานเองแล้วไล่ DAG นี้เพื่อจะ *ลงมือ* มันต้องเคารพ topological order ไม่งั้นมันจะไปสั่ง logic เรื่อง shipment กับ order ที่ไม่เคยถูกจ่ายเงินเลยด้วยซ้ำ ตัว DAG นี่แหละที่กั้นไม่ให้ agent ไปลงมือกับ state ที่ยังประกอบไม่เสร็จ ถ้าเป็นคนนั่งดู dashboard อยู่ เห็นอะไรแปลก ๆ ก็คงทักได้ทัน แต่ agent มันไม่ได้รู้จักเอะใจแบบนั้นครับ
 
 ---
 
 ## Pull it apart — acceptor / dispatcher / consumer
 
-**ปัญหา:** มาถึงตอนนี้ service ตัวเดียวทำงานเยอะมากครับ — รับ event ภายใน, หาว่า *ใคร* subscribe ไว้บ้าง, แล้วก็ทำ delivery ออกนอกที่ช้า ๆ พร้อม retry ทั้งหมด งานสามอย่างนี้รูปร่างคนละแบบกันเลย พอเอามาแปะรวมกัน ตัวที่ช้าแล้วก็พังบ่อยที่สุดมันก็ลากตัวอื่นจมตามไปด้วย พาร์ตเนอร์ endpoint ช้า ๆ ที่ถาโถมเข้ามา ก็ไปทำให้งาน delivery ตันแล้วก็ไปอุดการรับ event ใหม่ที่ต่อแถวอยู่ข้างหลังด้วย
+**ปัญหา:** มาถึงตอนนี้ service ตัวเดียวทำงานเยอะมากครับ — รับ event ภายใน, หาว่า *ใคร* subscribe ไว้บ้าง, แล้วก็ทำ delivery ออกนอกที่ช้า ๆ พร้อม retry ทั้งหมด งานสามอย่างนี้รูปร่างคนละแบบกันเลย พอเอามาแปะรวมกัน ตัวที่ช้าแล้วก็พังบ่อยที่สุดมันก็ลากตัวอื่นจมตามไปด้วย partner endpoint ช้า ๆ ที่ถาโถมเข้ามา ก็ไปทำให้งาน delivery ตันแล้วก็ไปอุดการรับ event ใหม่ที่ต่อแถวอยู่ข้างหลังด้วย
 
 **แต่ขอพูดให้เคลียร์ ๆ หน่อยนะครับ — service ตัวเดียวที่ทำครบทั้งสามอย่างเนี่ย มันคือจุดที่แอปบนหน้างานส่วนใหญ่อยู่กัน แล้วก็โอเคแบบนั้นด้วยนะ** ไม่ว่าจะ package เป็น deployable ตัวเดียว หรือเป็นสแตก **serverless** (event → SQS / EventBridge → Lambda ที่เซ็นแล้วก็ส่ง → DLQ) เครื่องจักร queue-worker-retry-DLQ จากไม่กี่ step ที่ผ่านมาก็แบก traffic หน้างานได้เยอะแล้ว ไม่ต้องไปแยกอะไรเลย โดยเฉพาะ serverless เนี่ยมันแถม retry, การ scale, แล้วก็ DLQ มาให้แบบสำเร็จรูปด้วย **จะงัดการแยกข้างล่างมาใช้ ก็ต่อเมื่อโหลดหรือรูปแบบการพังของ tier นึงมันเริ่มลากตัวอื่นให้จมตามเท่านั้น** — ก่อนหน้านั้นยังไม่ต้องครับ
 
@@ -318,14 +320,14 @@ flowchart LR
 
 ### Knowing where to send — the metadata store
 
-มีอยู่ชั้นนึงที่เราแอบข้ามมาตลอดเลยครับ: จะส่ง webhook ได้ ตัว consumer มันต้องรู้ก่อนว่า **ส่งไปไหน** แล้วก็ **ส่งยังไง** — endpoint URL, secret ที่ใช้เซ็น, แล้วก็พาร์ตเนอร์รายนี้ subscribe event type ไหนไว้บ้าง ในเวอร์ชันซื่อ ๆ ตอนแรกมันคือ URL ที่ hardcode ไว้ แต่พอมีพาร์ตเนอร์หลายรายเข้า มันก็กลายเป็น **subscription / partner metadata store** — ตารางนึงที่ฝั่ง delivery ต้องอ่านในทุก event:
+มีอยู่ชั้นนึงที่เราแอบข้ามมาตลอดเลยครับ: จะส่ง webhook ได้ ตัว consumer มันต้องรู้ก่อนว่า **ส่งไปไหน** แล้วก็ **ส่งยังไง** — endpoint URL, secret ที่ใช้เซ็น, แล้วก็ partner รายนี้ subscribe event type ไหนไว้บ้าง ในเวอร์ชันซื่อ ๆ ตอนแรกมันคือ URL ที่ hardcode ไว้ แต่พอมี partner หลายรายเข้า มันก็กลายเป็น **subscription / partner metadata store** — ตารางนึงที่ฝั่ง delivery ต้องอ่านในทุก event:
 
-- *ส่งไปไหน* — endpoint URL ของแต่ละพาร์ตเนอร์
+- *ส่งไปไหน* — endpoint URL ของแต่ละ partner
 - *ส่งยังไง* — secret ของ HMAC (หรือ OAuth client id), API version, custom header
 - *ส่งอะไรบ้าง* — เซ็ตของ event type ที่เขา subscribe ไว้
-- *ลิมิตเท่าไหร่* — rate cap รายพาร์ตเนอร์ แล้วก็ flag active/paused
+- *ลิมิตเท่าไหร่* — rate cap ราย partner แล้วก็ flag active/paused
 
-**แต่การอ่าน store นี้ในทุก ๆ event มันก็เป็นปัญหาของมันเองครับ** ที่ระดับหลายพัน delivery ต่อวินาที เราก็จะไปกระแทก database ด้วย lookup เดิม ๆ ที่แทบไม่เปลี่ยนเลยซ้ำ ๆ เพราะงั้น **cache มันซะ** — จะเป็น in-process cache ในแต่ละ worker สำหรับ hot path หรือจะใช้ **Redis / Memcached** ที่แชร์กันตอนอยากได้ view เดียวที่เหมือนกันทั้งหลาย worker หลาย instance ก็ได้ ใส่ TTL สั้น ๆ หรือ invalidate ตอนมีการเปลี่ยน เพื่อให้พาร์ตเนอร์ที่หมุน secret ใหม่หรือกดหยุด delivery มีผลไว ๆ ไม่ใช่รอจนพ้นช่วง cache ค้าง ชั้น metadata นี้แหละที่ทั้งสองแบบของการ route ข้างล่างต้องอ่านจากมัน — ทั้ง consumer ที่ route ผ่าน broker แล้วก็ตัว dispatcher
+**แต่การอ่าน store นี้ในทุก ๆ event มันก็เป็นปัญหาของมันเองครับ** ที่ระดับหลายพัน delivery ต่อวินาที เราก็จะไปกระแทก database ด้วย lookup เดิม ๆ ที่แทบไม่เปลี่ยนเลยซ้ำ ๆ เพราะงั้น **cache มันซะ** — จะเป็น in-process cache ในแต่ละ worker สำหรับ hot path หรือจะใช้ **Redis / Memcached** ที่แชร์กันตอนอยากได้ view เดียวที่เหมือนกันทั้งหลาย worker หลาย instance ก็ได้ ใส่ TTL สั้น ๆ หรือ invalidate ตอนมีการเปลี่ยน เพื่อให้ partner ที่หมุน secret ใหม่หรือกดหยุด delivery มีผลไว ๆ ไม่ใช่รอจนพ้นช่วง cache ค้าง ชั้น metadata นี้แหละที่ทั้งสองแบบของการ route ข้างล่างต้องอ่านจากมัน — ทั้ง consumer ที่ route ผ่าน broker แล้วก็ตัว dispatcher
 
 ### So where's the dispatcher?
 
@@ -344,19 +346,19 @@ flowchart LR
 
 ไม่ว่าจะ route แบบไหน ผลตอบแทนก็เหมือนกันครับ — แล้วก็เป็นเส้นเรื่องเดียวกับทั้งซีรีส์ คือแยกฝั่งที่ไวแล้วก็ทนทาน ออกจากฝั่งที่ช้าเพราะต้องไปง้อของข้างนอก จะได้ไม่ลากกันจม:
 
-- **scale แยกกันได้** — delivery พุ่งหรือเจอพาร์ตเนอร์ช้า ๆ มาเป็นพรวด ก็ scale แค่ *consumer*
-- **แยก failure ออกจากกัน** — พาร์ตเนอร์ที่งอแงทำให้ตันแค่ฝั่ง consumer ส่วนการรับเข้าก็ยังรับต่อไปได้เรื่อย ๆ
+- **scale แยกกันได้** — delivery พุ่งหรือเจอ partner ช้า ๆ มาเป็นพรวด ก็ scale แค่ *consumer*
+- **แยก failure ออกจากกัน** — partner ที่มีปัญหาทำให้ตันแค่ฝั่ง consumer ส่วนการรับเข้าก็ยังรับต่อไปได้เรื่อย ๆ
 - **deploy แยกกันได้** — เปลี่ยน routing หรือตัว consumer โดยไม่ต้องไปแตะการรับเข้า
 
 สามข้อนั้นคือข้อดีแบบนามธรรม แต่คุณจะยังไม่ *รู้สึก* ถึงมันเลย จนกว่าจะลองไล่ดูว่าพอแต่ละชิ้นมันล้ม จะเกิดอะไรขึ้น:
 
 - **acceptor (ฝั่งรับเข้า) ล่ม?** ก็ไม่มีของใหม่เข้ามา — ไม่มี event ลง queue เพราะงั้นก็ไม่มีอะไรให้ส่งต่อด้วย ฟังดูแย่ แต่ลองสังเกตสิ่งที่ *ไม่* เกิดขึ้น: ของที่ค้างอยู่ระหว่างทางไม่ได้หายไปไหนเลย เราแค่หยุดรับเข้าเฉย ๆ ส่วนอะไรที่อยู่ใน queue แล้วมันก็ไหลออกต่อไปเรื่อย ๆ พอ acceptor กลับมาปุ๊บก็ทำต่อจากเดิมได้เลย
 - **consumer (delivery) ล่ม?** อันนี้แหละที่ queue ได้ทำหน้าที่สมชื่อมัน event มันก็แค่ *นอนรออยู่ใน queue แบบปลอดภัย* จนกว่า consumer จะกลับมาดึงไปส่ง การส่งแค่ดีเลย์ ไม่ได้หาย — ฝั่งผู้รับอาจจะสังเกตเห็นแล้ว ping มาถามเราด้วยซ้ำ (`เอ๊ะ event X หล่นหายไปรึเปล่า?`) แต่ของไม่ได้หายไปไหนเลย queue มันคือ **buffer** ตัวนึง — consumer ล่มเนี่ยแหละคือสถานการณ์ที่ buffer ตัวนั้นมีไว้รับมือพอดี
-- **broker เองล่ม?** อันนี้แหละคือส่วนที่เราชิลไม่ได้ครับ broker มันคือกระดูกสันหลัง — ถ้ามันล่ม acceptor ก็ไม่มีที่ให้วาง message ทั้ง flow ก็หยุดนิ่งสนิท เพราะงั้น broker เลยเป็นชิ้นเดียวที่เราต้องทำให้ HA สูงที่สุดเท่าที่งบจะไหว มันคือสิ่งเดียวที่ถ้าล่มแล้วเรารับไม่ได้เลย
+- **broker เองล่ม?** อันนี้แหละคือส่วนที่เรานิ่งนอนใจไม่ได้ครับ broker มันคือกระดูกสันหลัง — ถ้ามันล่ม acceptor ก็ไม่มีที่ให้วาง message ทั้ง flow ก็หยุดนิ่งสนิท เพราะงั้น broker เลยเป็นชิ้นเดียวที่เราต้องทำให้ HA สูงที่สุดเท่าที่งบจะไหว มันคือสิ่งเดียวที่ถ้าล่มแล้วเรารับไม่ได้เลย
 
 นี่แหละครับหน้าตาแท้ ๆ ของสิ่งที่เราแลกมา: เรารวมชะตากรรมของทั้งระบบไปไว้ที่ component ตัวเดียวที่เข้าใจมันดีแล้วก็ replicate ได้ (ตัว broker) แล้วทำให้ทุกอย่างรอบ ๆ มันทิ้งแล้วเกิดใหม่ได้ acceptor กับ consumer จะ crash, redeploy, scale ขึ้นลงทั้งวันก็ได้ ระบบมันก็แค่รออยู่ใน buffer แล้วค่อยตามเก็บทีหลัง นี่แหละคือสิ่งที่คำว่า `independent` มันซื้อให้เรา
 
-นี่คือรูปร่างคร่าว ๆ ที่ผมเคย build มากับมือครับ — ย้ายการต่อกับพาร์ตเนอร์ออกจากการ poll แบบ batch `GET` เก่า ๆ มาเป็น pipeline แบบ push real-time พร้อม retry ที่ขับด้วย queue (receive-count + redrive) ในเคสของผม routing มันซับซ้อนพอที่ผมเลยรัน **acceptor / dispatcher / consumer** เต็มรูปแบบ โดยแยกชั้น delivery ออกมาเพื่อให้ scale ของมันเองได้ — แต่ถ้า routing ของคุณมันง่ายกว่านั้น dispatcher นี่แหละคือชิ้นที่ควรข้ามไปครับ
+นี่คือรูปร่างคร่าว ๆ ที่ผมเคย build มากับมือครับ — ย้ายการต่อกับ partner ออกจากการ poll แบบ batch `GET` เก่า ๆ มาเป็น pipeline แบบ push real-time พร้อม retry ที่ขับด้วย queue (receive-count + redrive) ในเคสของผม routing มันซับซ้อนพอที่ผมเลยรัน **acceptor / dispatcher / consumer** เต็มรูปแบบ โดยแยกชั้น delivery ออกมาเพื่อให้ scale ของมันเองได้ — แต่ถ้า routing ของคุณมันง่ายกว่านั้น dispatcher นี่แหละคือชิ้นที่ควรข้ามไปครับ
 
 ---
 
@@ -367,11 +369,11 @@ flowchart LR
 1. **เอา delivery ออกจาก thread ของคนเรียก** ไปไว้บน durable queue — การเปลี่ยนอันเดียวที่ทุกอย่างต่อยอดจากมัน
 2. **Back off ด้วย jitter แล้วก็มีเพดาน max-attempt** — แล้วก็ทริป **circuit breaker** กับ endpoint ที่ล่มชัด ๆ — จะได้ไม่กระหน่ำหรือวนไม่จบ
 3. **เซ็นด้วย HMAC** (แล้วก็เก็บข้อมูลออกจาก URL) เพื่อให้ consumer เชื่อใจได้ว่าเป็นเรา
-4. **`event_id` ที่นิ่ง** จะได้ไม่ให้ at-least-once กลายเป็นการลงมือซ้ำสองเด้ง
+4. **`event_id` ที่นิ่ง** จะได้ไม่ให้ at-least-once กลายเป็นการลงมือซ้ำสองรอบ
 5. **DLQ + redrive** เพื่อให้ outage ยาว ๆ ไม่ทำ event หาย
 6. **ลำดับต่อ resource** แล้วก็ส่งมอบ **causation metadata** ให้ฝั่งคนรับเอาไปประกอบ dependency DAG ขึ้นใหม่ — โดยที่เราไม่ต้องกลายเป็น workflow engine
 7. **แยก delivery ออกมาอยู่ tier ของมันเอง** (acceptor → queue → consumer; เพิ่ม dispatcher ตอนที่ routing เริ่ม dynamic) เพื่อให้ส่วนข้างนอกที่ช้าลากการรับเข้าจมตามไม่ได้
 
-ประเด็นใหญ่ก็ยังเหมือนตลอดทั้งซีรีส์ครับ: **ไม่มีใครควร build เวอร์ชันที่แยกชั้นออกมาตั้งแต่วันแรกหรอก** พาร์ตเนอร์รายเดียว volume น้อย ๆ เหรอ? `POST` แบบ sync พร้อม retry สักสองครั้งก็โอเคสุด ๆ แล้ว ทุกกล่องข้างบนได้ที่ทางของมันมาจากการแก้ปัญหาที่เวอร์ชันก่อนหน้าสร้างขึ้น
+ประเด็นใหญ่ก็ยังเหมือนตลอดทั้งซีรีส์ครับ: **ไม่มีใครควร build เวอร์ชันที่แยกชั้นออกมาตั้งแต่วันแรกหรอก** partner รายเดียว volume น้อย ๆ เหรอ? `POST` แบบ sync พร้อม retry สักสองครั้งก็โอเคสุด ๆ แล้ว ทุกกล่องข้างบนได้ที่ทางของมันมาจากการแก้ปัญหาที่เวอร์ชันก่อนหน้าสร้างขึ้น
 
 สิ่งเดียวที่ **เพิ่ง** กลายเป็นเรื่องของปี 2026 คือ: consumer ปลายทางมีโอกาสมากขึ้นเรื่อย ๆ ที่จะเป็น **agent ที่ทำงานเองแล้วลงมือทันทีที่ webhook เราไปถึง** — เพราะงั้นของซ้ำที่เราไม่ได้ dedupe, event ที่เราส่งผิดลำดับ, call ปลอมที่เราไม่ได้กันด้วยลายเซ็น ทั้งหมดนี้กลายเป็นการลงมือทำผิดพลาดออกไปในโลกภายนอก แทนที่จะเป็นแค่ความผิดเล็ก ๆ บน dashboard งานเรื่องความน่าเชื่อถือมันเป็น engineering ที่ดีมาตลอดอยู่แล้ว ตอนนี้มันแค่กลายเป็นเส้นแบ่งระหว่าง agent ที่เชื่อใจ event ของเราได้ กับตัวที่เชื่อไม่ได้ครับ
