@@ -150,6 +150,27 @@ flowchart LR
 
 ![Thundering herd: without jitter every retry hits at the same instant; with jitter they spread out over time](/assets/images/blogs/design-webhook-callback-system/thundering-herd.png)
 
+### Circuit breaker — stop dialing a dead endpoint
+
+Backoff and a max-attempt ceiling tame *one event's* retries. But picture a partner who's been hard-down for an hour: **every new event** still opens a connection, waits out the timeout, and grinds through its whole backoff schedule before giving up. You're burning worker time, connections, and queue latency hammering an endpoint you already know is a corpse — and starving every *healthy* partner queued behind it.
+
+A **circuit breaker** fixes that by tracking each endpoint's recent health:
+
+- **Closed** (normal) — deliveries flow; you just count failures.
+- **Open** — once the failure rate crosses a threshold, you *stop calling that endpoint entirely* for a cooldown. New events fail fast (straight to retry-later / DLQ) instead of each wasting a full timeout.
+- **Half-open** — after the cooldown, let a few trial deliveries through. They succeed → close and resume; they fail → re-open and wait again.
+
+<MermaidDiagram chart={`
+stateDiagram-v2
+    [*] --> Closed
+    Closed --> Open: failure rate > threshold
+    Open --> HalfOpen: cooldown elapsed
+    HalfOpen --> Closed: trial succeeds
+    HalfOpen --> Open: trial fails
+`} />
+
+The division of labor: **backoff spaces out the retries of one delivery; the breaker stops the whole stream of deliveries to a host that's clearly down.** They compose — the same libraries from the last step ship both (resilience4j has `Retry` *and* `CircuitBreaker`). And the breaker is per-endpoint, so one dead partner trips only its own circuit and leaves everyone else's deliveries flowing.
+
 ---
 
 ## Anyone can POST to them — sign it (HMAC)
@@ -295,6 +316,17 @@ flowchart LR
     CO --> DLQ[("Dead-letter")]
 `} />
 
+### Knowing where to send — the metadata store
+
+There's a layer we've quietly skipped this whole time: to deliver a webhook at all, the consumer has to know **where** and **how** — the endpoint URL, the signing secret, which event types this partner even subscribed to. In the naive version that was a hard-coded URL. Once you have real partners, it becomes a **subscription / partner metadata store** — a table the delivery path reads on every event:
+
+- *where* — the endpoint URL(s) per partner
+- *how* — the HMAC secret (or OAuth client id), API version, custom headers
+- *what* — the set of event types they subscribed to
+- *limits* — per-partner rate caps, and an active/paused flag
+
+**But reading that store on every single event is its own problem.** At thousands of deliveries a second you'd pound the database with the same near-static lookups. So **cache it** — an in-process cache inside each worker for the hot path, or a shared **Redis / Memcached** when you want one consistent view across many workers and instances. Give it a short TTL or invalidate on change, so a partner who rotates their secret or hits pause is honoured quickly instead of after a stale window. This metadata layer is what *both* routing styles below read from — broker-routed consumers and a dispatcher alike.
+
 ### So where's the dispatcher?
 
 Notice I didn't put one in. The job a dispatcher does — *getting the right event to the right endpoint* — still has to happen, but it doesn't have to be its own component. There are two ways to route, and choosing between them is the real decision:
@@ -333,7 +365,7 @@ This is roughly the shape I've built in practice — moving a partner integratio
 We started with a single inline `POST` and ended with a split, durable delivery system. The path, in order:
 
 1. **Get delivery off the caller's thread** onto a durable queue — the one change everything builds on.
-2. **Back off with jitter and a max-attempt ceiling** so you don't hammer or loop forever.
+2. **Back off with jitter and a max-attempt ceiling** — and trip a **circuit breaker** on an endpoint that's clearly down — so you don't hammer or loop forever.
 3. **Sign with HMAC** (and keep data out of the URL) so the consumer can trust it's you.
 4. **Stable `event_id`** so at-least-once delivery doesn't become double-action.
 5. **DLQ + redrive** so a long outage doesn't lose events.
