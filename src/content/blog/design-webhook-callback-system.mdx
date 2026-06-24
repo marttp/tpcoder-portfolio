@@ -130,7 +130,7 @@ And to be frank, if you sit with it a second, async isn't just *faster* here —
 
 ## Don't hammer, don't loop forever — backoff + max attempts
 
-**The problem:** our retry from earlier was naive — fixed delay, and (if we're honest) nothing stopping it from going forever. Two failure modes hide in there. Retrying a struggling endpoint immediately and repeatedly just **kicks it while it's down**. And if an endpoint is gone for good, an unbounded retry is a worker that spins on one dead event forever, never draining the queue behind it. (And to answer the obvious question — *why backoff lands here and not back in the retry step*: waiting 1s, 2s, 4s, 8s between tries would pin a request thread for 15+ seconds if it ran inline. Backoff, and the attempt ceiling below, only became safe to use once retries moved onto a background worker.)
+**The problem:** that retry was naive — fixed delay, and nothing stopping it from looping forever. Two failure modes: retrying a struggling endpoint on repeat just **kicks it while it's down**; and if an endpoint is gone for good, an unbounded retry is a worker spinning on one dead event forever, never draining the queue behind it. (Why backoff lands *here* and not at the retry step: waiting 1s, 2s, 4s, 8s inline would pin a request thread for 15+ seconds — it's only safe once retries moved onto a background worker.)
 
 **The fix:** **[exponential backoff with jitter](https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/), and a hard max-attempt ceiling.**
 
