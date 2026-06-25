@@ -347,7 +347,19 @@ flowchart LR
   อันนี้ง่ายสุดตอนที่ routing มัน **fix แล้วก็รู้แน่ชัด** — event ไม่กี่ชนิดวิ่งไปที่ที่รู้กันอยู่แล้ว
 - **dispatcher (tier ที่สาม)** component กลางที่ไปหาว่า *ใคร subscribe ไว้* แล้ว apply subscription config แล้วก็กาง event ออกเป็น task ราย endpoint มันคุ้มก็ตอนที่ routing มัน **dynamic** — ลูกค้าลงทะเบียน endpoint กับ event filter เองตอน runtime หรือเราต้องทำ transform / rate cap ราย subscription นั่นแหละคือ logic การ route ที่มีน้ำหนักพอจะอยากมีบ้านหลังเดียว บังคับใช้ที่เดียว แทนที่จะกระจายไปทั่วทุก consumer
 
-สรุปการแลกกันแบบเปิดอกนะครับ ฝั่ง broker-routed consumer ข้อดีคือง่ายแล้วก็ decouple สุด ๆ — เพิ่ม consumer ใหม่ได้โดยไม่ต้องแตะ upstream แถม replay จาก offset ได้ฟรี ๆ ส่วนข้อเสียคือไม่มีตัวกรองกลาง แต่ละ consumer เลยต้องอ่าน raw stream มาเองทั้งหมด (อ่านเกินที่ตัวเองใช้ด้วย) แล้วก็ต้องพึ่ง event schema ที่นิ่งมาก ๆ เพราะถ้า contract เปลี่ยนเมื่อไหร่ ทุกตัวพังพร้อมกันหมด ส่วน dispatcher จะรวมศูนย์ทั้ง routing แล้วก็ filtering ไว้ที่เดียว แลกกับการที่เราต้องมี component เพิ่มขึ้นมา build แล้วก็ scale เอง สรุปสั้น ๆ คือ **routing ที่ลูกค้า config เองเยอะ ๆ → dispatcher; routing ที่เราคุมเองแบบ fix → broker-routed consumer**
+เทียบกันชัด ๆ ครับ:
+
+| | **Broker-routed consumer** | **Dispatcher** |
+| --- | --- | --- |
+| routing อยู่ที่ไหน | โครงสร้าง topic/partition | component กลาง |
+| เพิ่ม consumer | ไม่ต้องแตะ upstream | ไปลงทะเบียนใน dispatcher |
+| การ filter | ไม่มี — แต่ละตัวอ่านเกินที่ใช้ | รวมศูนย์ |
+| replay | ได้ฟรีจาก offset | ต้อง build เอง |
+| ผูกกับ schema | แน่น — ทุกตัวอ่าน raw stream เอง, contract พังทีเดียวพังหมด | ถูกกันไว้หลัง dispatcher |
+| ต้นทุน | ไม่มี component เพิ่ม | มี component ที่ต้อง build + scale |
+| เหมาะตอนไหน | routing fix แล้วก็เราคุมเอง | routing dynamic / ลูกค้า config เอง |
+
+**routing ที่ลูกค้า config เองเยอะ ๆ → dispatcher; routing ที่เราคุมเองแบบ fix → broker-routed consumer**
 
 ### What the split buys you
 

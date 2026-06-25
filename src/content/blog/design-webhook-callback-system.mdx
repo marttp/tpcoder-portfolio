@@ -345,7 +345,19 @@ Notice I didn't put one in. The job a dispatcher does — *getting the right eve
   Simplest when routing is **fixed and known** — a handful of event types going to known places.
 - **A dispatcher (a third tier).** A central component that looks up *who's subscribed*, applies subscription config, and fans the event out into per-endpoint tasks. It earns its keep when routing is **dynamic** — customers register their own endpoints and event filters at runtime, or you apply per-subscription transforms and rate caps. That's routing logic that wants one home, enforced in one place, rather than smeared across every consumer.
 
-The honest trade: broker-routed consumers are dead-simple and decoupled — add a consumer with no upstream change, replay from offsets for free — but there's no central filter, so each consumer reads more than it needs, and you lean *hard* on a stable event schema because everyone interprets the raw stream themselves (get the contract wrong and they all break at once). A dispatcher centralizes routing and filtering, at the cost of a component you build and scale. **Rich, customer-configured routing → dispatcher. Fixed routing you control → broker-routed consumers.**
+Head to head:
+
+| | **Broker-routed consumer** | **Dispatcher** |
+| --- | --- | --- |
+| Routing lives in | the topic/partition structure | a central component |
+| Adding a consumer | no upstream change | register it in the dispatcher |
+| Filtering | none — each reads more than it needs | centralized |
+| Replay | free, from offsets | you build it |
+| Schema coupling | high — everyone parses the raw stream; one bad contract breaks them all at once | isolated behind the dispatcher |
+| Cost | no extra component | a component you build + scale |
+| Best when | routing is fixed and you control it | routing is dynamic / customer-configured |
+
+**Rich, customer-configured routing → dispatcher. Fixed routing you control → broker-routed consumers.**
 
 ### What the split buys you
 
