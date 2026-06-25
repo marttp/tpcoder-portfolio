@@ -289,7 +289,9 @@ flowchart TD
     SC --> SD["shipment.delivered"]
 `} />
 
-`shipment.created` is the join — it needs **both** `order.paid` *and* `inventory.reserved`, and your system delivers those independently and possibly out of order. Seeing the events as a DAG is simply how you spot which transitions the state machine has to guard. Your job as the *sender* stays small: per-resource ordering, plus enough ids in each payload — an `event_id`, and a `correlation_id` (like `order_id`) to tie one flow together — for the receiver to relate events. The receiver's state machine does the rest. **Your webhook system is not a workflow engine — don't turn it into one.**
+`shipment.created` is the join — it needs **both** `order.paid` *and* `inventory.reserved`, and your system delivers those independently and possibly out of order. Seeing the events as a DAG is simply how you spot which transitions the state machine has to guard. Your job as the *sender* is small, and worth keeping strict: **enrich the event and send it** — `event_id`, per-resource ordering, a `correlation_id` (like `order_id`) to tie a flow together — then stop. State belongs to the *receiver*; you just hand over enough for them to rebuild it. **Your webhook system is not a workflow engine — don't turn it into one.**
+
+And if that growing dependency graph looks familiar, it is: it's the same shape as a **[SAGA](https://microservices.io/patterns/data/saga.html)** in microservices — specifically the **choreography** flavor, where each participant reacts to events and emits its own, with no central brain sequencing them. The other flavor, **orchestration**, *is* a central workflow engine — exactly the thing you (the sender) are staying out of. Keeping delivery dumb is choosing choreography on purpose.
 
 And this is where the agent angle peaks: an agent that acts on each event the instant it lands will fire shipment logic on an order that was never actually paid — unless a state machine refuses that transition. That guard is the only thing standing between the agent and acting on half-built state. A human glancing at a dashboard would have just... noticed. The agent won't.
 
