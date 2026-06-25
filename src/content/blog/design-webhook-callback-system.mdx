@@ -349,13 +349,13 @@ Head to head:
 
 | | **Broker-routed consumer** | **Dispatcher** |
 | --- | --- | --- |
-| Routing lives in | the topic/partition structure | a central component |
-| Adding a consumer | no upstream change | register it in the dispatcher |
-| Filtering | none — each reads more than it needs | centralized |
-| Replay | free, from offsets | you build it |
-| Schema coupling | high — everyone parses the raw stream; one bad contract breaks them all at once | isolated behind the dispatcher |
-| Cost | no extra component | a component you build + scale |
-| Best when | routing is fixed and you control it | routing is dynamic / customer-configured |
+| Where routing logic lives | baked into the topic/partition structure | in one central component |
+| Adding a route | subscribe a new topic, touch nothing else | add its config in the dispatcher first |
+| Filtering | none — each consumer takes everything and filters itself | centralized; only the events you need get sent |
+| Replay | pull from offsets, free | build a replay mechanism yourself |
+| Coupling to event schema | tight — every consumer reads the raw stream, so one schema change breaks them all | looser — the dispatcher absorbs a schema change in one place |
+| Added cost | no extra component | another component to build + scale |
+| Best when | routing is fixed and fully yours | routing changes often / customers configure it |
 
 **Rich, customer-configured routing → dispatcher. Fixed routing you control → broker-routed consumers.**
 
