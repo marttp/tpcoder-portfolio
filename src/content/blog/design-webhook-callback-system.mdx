@@ -367,9 +367,9 @@ Whichever way you route, the payoff is the same — and it's the same through-li
 - **Failure isolation** — a flaky partner backs up only the consumer side; ingestion keeps accepting regardless.
 - **Independent deploy** — change routing or a consumer without touching ingestion.
 
-Those three are the abstract pitch. You won't *feel* how strong the isolation is until you trace what happens when each piece falls over:
+Those three are the abstract pitch. The split pays off again the moment something breaks — not because any failure is harmless, but because you can tell *which* layer went down and exactly how far the damage reaches:
 
-- **Acceptor (ingress) down?** Nothing new gets in — no event reaches the queue, so there's nothing to deliver either. Sounds bad, but notice what *doesn't* happen: nothing already in flight is lost. You've just stopped accepting; whatever's in the queue keeps draining, and the moment ingress is back you resume from exactly where you were.
+- **Acceptor (ingress) down?** New events can't get in — and yes, that's critical: you're refusing intake at the front door. But the split contains it. You know immediately it's the acceptor (not delivery, not the broker), and the blast radius stops there — nothing already in the queue is lost, the consumer keeps draining it, and intake resumes the moment ingress is back.
 - **Consumer (delivery) down?** This is where the queue earns its name. The events just *sit there, safe*, until a consumer comes back to drain them. Delivery is delayed, not lost — the receiver might even notice and ping you ("hey, did event X get dropped?"), but nothing's actually gone. A queue is a **buffer**; a consumer outage is precisely the situation that buffer exists for.
 - **Broker itself down?** *This* is the one you can't shrug off. The broker is the spine — if it goes, the acceptor has nowhere to put messages and the whole flow stops cold. Which is exactly why the broker is the one piece you make as highly-available as you can afford: it's the single thing whose outage you genuinely can't absorb.
 
