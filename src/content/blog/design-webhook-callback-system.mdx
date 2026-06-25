@@ -28,7 +28,9 @@ Quick grounding, because it's the whole reason webhooks exist: before them, a pa
 
 ![Polling vs push: a partner repeatedly GETs for changes, versus our system pushing one event the moment it happens](/assets/images/blogs/design-webhook-callback-system/polling-vs-push.png)
 
-**And there's a 2026 twist that runs through this whole post.** The thing receiving your webhook used to be a partner's backend, where a human eventually reviews a dashboard. Increasingly it's an **autonomous AI agent that acts on the event immediately** — places an order, moves money, kicks off fulfillment. So a duplicate, out-of-order, or forged webhook isn't a cosmetic glitch anymore; it's an agent taking a *wrong real-world action with no human in the loop.* That raises the bar on every reliability piece below.
+**The 2026 twist that runs through this whole post:** the thing receiving your webhook used to be a partner's backend, with a human eventually reviewing a dashboard. Not anymore — increasingly the receiver is an **autonomous AI agent**, and the instant your webhook lands it *acts*: places an order, moves money, kicks off fulfillment, with no human confirming anything in between.
+
+And that's what changes everything. A duplicate, out-of-order, or forged webhook used to be a small glitch someone would catch on a dashboard and fix. With an agent on the other end, it becomes the agent doing the wrong thing for real — with no one to hit the brakes. So the reliability of every step below matters far more than it used to.
 
 {/* IMAGE PROMPT (agent-vs-human.png): Clean conceptual illustration on a light background contrasting the SAME bad webhook (label the incoming arrow "duplicate / out-of-order event") hitting two different consumers. Left consumer: a "Partner dashboard" with a small human icon — outcome label "minor glitch, human catches it". Right consumer: an "AI agent" icon — outcome label "acts immediately = wrong action". Make the contrast in consequence obvious. Flat vector, soft shadows, 2–3 accent colors, clear labels, no photorealism. */}
 
