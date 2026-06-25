@@ -301,7 +301,9 @@ And this is where the agent angle peaks: an agent that acts on each event the in
 
 **The problem:** by now one service is doing a lot — accepting the internal event, figuring out *who* subscribed to it, and doing the slow external delivery with all its retries. Those three jobs have completely different shapes, and bolting them together means the slowest, least reliable one drags down the others. A flood of slow partner endpoints backs up the delivery work *and* the ingestion of new events behind it.
 
-**To be clear, though — one service doing all three is exactly where most production apps live, and that's fine.** Packaged as a single deployable, or as a **serverless** stack (event → SQS / EventBridge → a Lambda that signs-and-delivers → a DLQ), the queue-worker-retry-DLQ machinery from the last few steps already carries a lot of real traffic — no split required. Serverless especially hands you retries, scaling, and a DLQ off the shelf. **Reach for the split below only when one tier's load or failure profile genuinely starts dragging the others down** — not before.
+**To be clear, though — one service doing all three has been production-grade for ages.** Packaged as a single deployable, or as a **serverless** stack (event → SQS / EventBridge → a Lambda that signs-and-delivers → a DLQ), the queue-worker-retry-DLQ machinery from the last few steps already carries a lot of real traffic — serverless especially hands you retries, scaling, and a DLQ off the shelf. When it needs to grow, you scale it the usual way: **horizontal or vertical**.
+
+**But what if you want to scale the three jobs independently?** *That's* where splitting the tiers starts to earn its keep — scaling the whole box up and down is a different thing from scaling each job on its own. If you don't need that, you don't need the split.
 
 ### The split that matters: acceptor → queue → consumer
 
