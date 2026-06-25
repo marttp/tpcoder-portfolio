@@ -197,14 +197,15 @@ POST /webhooks/orders
 
 This is the consumer's *first* line of processing: before they look at the content at all, they ask "is this actually from them?" Authenticate first, then everything else.
 
-**Step back, though — what you're really buying is *trust*, and HMAC is one way to earn it, not the only one.** There are two different questions hiding inside "can I trust this webhook," answered by different tools:
+**Step back, though — what you're really buying is *trust*, and HMAC is one way to earn it, not the only one.** There are two questions hiding inside "can I trust this webhook," plus a coarser gate you can put in front of both — a different tool for each:
 
 - **Signing (HMAC)** answers *"is this exact payload genuine and untampered?"* — message integrity + origin. Stateless, no token infrastructure; the webhook-world default (Stripe, GitHub).
 - **Auth ([OAuth2 client-credentials](https://oauth.net/2/grant-types/client-credentials/) Bearer token, or [mTLS](https://en.wikipedia.org/wiki/Mutual_authentication))** answers *"is the caller an authorized sender?"* — identity at the connection level. It plugs into the receiver's existing IdP, tokens are short-lived and revocable — but now the sender has to fetch and cache a token before each delivery.
+- **Network allowlist (defense in depth)** — a coarser gate you bolt on *in front* of both: restrict which sources can even reach the endpoint. An **IP allowlist** of the sender's published egress IPs (Stripe, GitHub and friends publish theirs), or lock the route behind mTLS / a private link. It won't prove a payload is genuine on its own — IPs get shared, spoofed, and rotated — but it keeps random internet traffic from ever reaching your verification logic.
 
 One caveat if you go OAuth2: **client credentials** is the flow that fits — machine-to-machine, no human in the loop. *Authorization code* is for user-delegated consent (a person granting an app access), which doesn't map onto a server-to-server callback, so it's not the tool here.
 
-These aren't competitors — they answer different questions, and plenty of systems run both: a token to prove *who's calling*, a signature to prove *the message wasn't touched*. Pick by your threat model; at the end of the day all of it is in service of the same thing — the receiver trusting the event enough to act on it.
+These aren't competitors — they stack, and plenty of systems run all three: an allowlist so only known sources reach you, a token to prove *who's calling*, a signature to prove *the message wasn't touched*. Pick by your threat model; at the end of the day all of it is in service of the same thing — the receiver trusting the event enough to act on it.
 
 ---
 
