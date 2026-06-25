@@ -63,15 +63,19 @@ Link URL: https://portfolio.tpcoder.dev/blog/design-omnichannel-delivery-th/
 หวังว่าจะมีประโยชน์ไม่มากก็น้อยนะครับ ขอให้ทุกคนมีความสุข 🙇‍♂️
 ```
 
-### #4 Webhook Callback System (draft — finalize angle at publish)
+### #4 Webhook Callback System (final)
 
 ```
-Blog: <TH title>
-Link URL: https://portfolio.tpcoder.dev/blog/design-webhook-callback-system-th/
+Blog: การออกแบบ Webhook Callback System แบบเริ่มจากง่าย แล้วค่อย evolve
 
-มาถึง Domain ที่ 4 เป็นเรื่อง Webhook Callback System — ตอนที่ระบบเราต้องยิง callback กลับไปบอก partner/merchant ว่ามีอะไรเกิดขึ้น เริ่มจาก POST แบบ sync ง่าย ๆ แล้วค่อย evolve ทีละขั้นไปเรื่อง retry, backoff, idempotency, signature, ไปจนถึง DLQ
+https://portfolio.tpcoder.dev/blog/design-webhook-callback-system-th/
 
-หวังว่าจะมีประโยชน์ไม่มากก็น้อยนะครับ ขอให้ทุกคนมีความสุข 🙇‍♂️
+มาถึง Domain ที่ 4 เป็นเรื่อง Webhook Callback System — ตอนที่ระบบเราเป็นฝ่ายยิง callback กลับไปบอก partner ว่ามีอะไรเกิดขึ้น เริ่มจาก POST แบบ sync ตัวเดียวง่าย ๆ แล้วค่อย evolve ทีละขั้น
+
+ในปี 2026 คือ ปลายทางเริ่มเป็น AI agent ที่ execute ทันทีที่ webhook ไปถึง
+
+ใครยังไม่ได้อ่านอันก่อน ๆ ย้อนไปอ่านได้
+หวังว่าจะมีประโยชน์ไม่มากก็น้อยนะครับ 🙇‍♂️
 ```
 
 ### #5 Icon Management / Segmentation (draft — finalize angle at publish)
