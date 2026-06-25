@@ -218,13 +218,13 @@ This is the consumer's *first* line of processing: before they look at the conte
 
 One caveat if you go OAuth2: **client credentials** is the flow that fits — machine-to-machine, no human in the loop. *Authorization code* is for user-delegated consent (a person granting an app access), which doesn't map onto a server-to-server callback, so it's not the tool here.
 
-These aren't competitors — they stack, and plenty of systems run all three: an allowlist so only known sources reach you, a token to prove *who's calling*, a signature to prove *the message wasn't touched*. Pick by your threat model; at the end of the day all of it is in service of the same thing — the receiver trusting the event enough to act on it.
+These aren't competitors, and it's not all-or-nothing — run none, one, or all three by your threat model: an allowlist so only known sources reach you, a token to prove *who's calling*, a signature to prove *the message wasn't touched*. In the end it all serves the same goal — the receiver trusting the event enough to act on it.
 
 ---
 
 ## Your retries cause doubles — idempotency
 
-**The problem:** everything we've built is **at-least-once**. The worker retries; the queue can redeliver after a crash; a delivery that actually succeeded but whose acknowledgement got lost gets sent *again*. So the consumer **will** receive the same event more than once. We met this exact wall in the payment and push posts — true exactly-once across a network is a fantasy (the [Two Generals Problem](https://en.wikipedia.org/wiki/Two_Generals%27_Problem)). For a dashboard, a duplicate is cosmetic. For an **AI agent**, a duplicate `order.paid` is a second order placed, money moved twice.
+**The problem:** everything we've built is **at-least-once**. The worker retries; the queue can redeliver after a crash; a delivery that succeeded but whose acknowledgement got lost gets sent *again*. So the consumer **will** see the same event more than once — we hit this same wall in the payment and push posts, and true exactly-once over a network just isn't on the table. For an **AI agent**, a duplicate `order.paid` means a second order placed, maybe money charged twice — if it isn't checking idempotency.
 
 **The fix:** make every event carry a **stable, unique `event_id`** (assigned once, at the source — carried unchanged through every retry), and make the delivery contract explicit: *"we deliver at least once; dedupe on `event_id`."* The consumer records the ids it has processed and skips repeats. You guarantee delivery; they guarantee idempotent handling. It's a shared contract, and you should document it loudly in your webhook docs.
 
@@ -251,7 +251,7 @@ flowchart TD
 
 ## Some never succeed — DLQ + redrive
 
-**The problem:** backoff and a max-attempt ceiling stop the looping, but they create a new question: *what happens to the event that exhausted its retries?* A partner can be down for hours. You can't retry forever (we settled that), but silently dropping the event means a lost order notification — and for an agent-driven consumer, lost state it never recovers.
+**The problem:** backoff and a max-attempt ceiling stop the looping, but they create a new question: *what happens to the event that exhausted its retries?* A partner can be down for hours, and silently dropping the event means a lost order notification — for an agent-driven consumer, lost state it never recovers (you could dig through the logs, sure, but you won't refill it completely).
 
 **The fix:** a **dead-letter queue (DLQ)**. When an event crosses the max-attempt threshold, move it to a separate store instead of discarding it. Now:
 
@@ -363,36 +363,32 @@ Head to head:
 
 ### What the split buys you
 
-Whichever way you route, the payoff is the same — and it's the same through-line as the rest of the series: isolate the durable-fast part from the slow-external one so neither can drag the other down.
-
 - **Independent scaling** — a delivery surge or a wave of slow partners means you scale *consumers* only.
 - **Failure isolation** — a flaky partner backs up only the consumer side; ingestion keeps accepting regardless.
 - **Independent deploy** — change routing or a consumer without touching ingestion.
 
-Those three are the abstract pitch. The split pays off again the moment something breaks — not because any failure is harmless, but because you can tell *which* layer went down and exactly how far the damage reaches:
+Now trace what happens when each piece falls over:
 
 - **Acceptor (ingress) down?** New events can't get in — and yes, that's critical: you're refusing intake at the front door. But the split contains it. You know immediately it's the acceptor (not delivery, not the broker), and the blast radius stops there — nothing already in the queue is lost, the consumer keeps draining it, and intake resumes the moment ingress is back.
 - **Consumer (delivery) down?** This is where the queue earns its name. The events just *sit there, safe*, until a consumer comes back to drain them. Delivery is delayed, not lost — the receiver might even notice and ping you ("hey, did event X get dropped?"), but nothing's actually gone. A queue is a **buffer**; a consumer outage is precisely the situation that buffer exists for.
 - **Broker itself down?** *This* is the one you can't shrug off. The broker is the spine — if it goes, the acceptor has nowhere to put messages and the whole flow stops cold. Which is exactly why the broker is the one piece you make as highly-available as you can afford: it's the single thing whose outage you genuinely can't absorb.
 
-That's the real shape of the trade: you concentrate the system's fate into one well-understood, replicated component (the broker) and make everything around it disposable and restartable. The acceptor and consumers can crash, redeploy, and scale up and down all day — the system just waits in the buffer and catches up. *That's* what "independent" actually buys you.
-
-This is roughly the shape I've built in practice — moving a partner integration off old batch-`GET` polling onto a real-time push pipeline with queue-driven retries (receive-count + redrive). In my case the routing was involved enough that I did run a full **acceptor / dispatcher / consumer**, with the delivery tier separated so it could scale on its own — but if your routing is simpler, the dispatcher is exactly the piece to skip.
+Roughly the shape I've built myself. 🙇‍♂️
 
 ---
 
 ## Wrapping up
 
-We started with a single inline `POST` (with the destination pulled from a partner metadata store) and ended with a split, durable delivery system. The path, in order:
+Notice it all starts with one question — what's the destination this system delivers to? From there, this Webhook Callback System grew from a single inline `POST` (with that destination pulled from a partner metadata store) into a delivery system decoupled behind a queue/buffer:
 
-1. **Get delivery off the caller's thread** onto a durable queue — the one change everything builds on.
-2. **Back off with jitter and a max-attempt ceiling** — and trip a **circuit breaker** on an endpoint that's clearly down — so you don't hammer or loop forever.
-3. **Sign with HMAC** (and keep data out of the URL), with an allowlist or auth in front, so the consumer can trust it's you.
-4. **Stable `event_id`** so at-least-once delivery doesn't become double-action.
+1. **Get delivery off the caller's thread** onto a durable queue.
+2. **Back off with jitter and a max-attempt ceiling** — and trip a **circuit breaker** when an endpoint is down.
+3. **Sign with HMAC**, plus an **allowlist** or **auth**, so the consumer can trust it's you.
+4. **A unique `event_id`** so at-least-once doesn't turn into double-work.
 5. **DLQ + redrive** so a long outage doesn't lose events.
-6. **Per-resource ordering**, plus a **state machine** on the receiver so out-of-order events get rejected instead of acted on — without you becoming a workflow engine.
-7. **Split delivery onto its own tier** (acceptor → queue → consumer; add a dispatcher only when routing turns dynamic) so the slow external part can't drag down ingestion.
+6. **Per-resource ordering**, plus a **state machine** on the receiver that rejects out-of-order events.
+7. **Split delivery onto its own tier** (acceptor → queue → consumer; add a dispatcher when routing turns dynamic).
 
-The meta-point holds from the rest of the series: **nobody should build the split-out version on day one.** One partner at low volume? A synchronous POST with a couple of retries is genuinely fine. Every box above earned its place by solving a problem the previous version created.
+The meta-point holds from the rest of the series: **nobody should build this on day one.** One partner at low volume? A synchronous POST with a couple of retries is genuinely fine.
 
-The one thing that's *newly* true in 2026: the consumer on the other end is more and more likely to be an **autonomous agent that acts the instant your webhook lands** — so the duplicate you didn't dedupe, the event you delivered out of order, the forged call you didn't sign against, all become wrong real-world actions instead of dashboard glitches. The reliability work was always good engineering. Now it's the difference between an agent that can trust your events and one that can't.
+The one thing that's *newly* true in 2026: the consumer on the other end is more and more likely to be an **autonomous AI agent that executes the instant your webhook lands** — so a duplicate you didn't dedupe, an out-of-order event, or a call you didn't sign all turn into real risk. This reliability work was always good engineering. The difference now is that we lean on agents to act for us — so we want them acting on our actual intent, and these guarantees are what keep that intact.
