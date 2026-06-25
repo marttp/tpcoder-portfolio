@@ -381,11 +381,11 @@ This is roughly the shape I've built in practice — moving a partner integratio
 
 ## Wrapping up
 
-We started with a single inline `POST` and ended with a split, durable delivery system. The path, in order:
+We started with a single inline `POST` (with the destination pulled from a partner metadata store) and ended with a split, durable delivery system. The path, in order:
 
 1. **Get delivery off the caller's thread** onto a durable queue — the one change everything builds on.
 2. **Back off with jitter and a max-attempt ceiling** — and trip a **circuit breaker** on an endpoint that's clearly down — so you don't hammer or loop forever.
-3. **Sign with HMAC** (and keep data out of the URL) so the consumer can trust it's you.
+3. **Sign with HMAC** (and keep data out of the URL), with an allowlist or auth in front, so the consumer can trust it's you.
 4. **Stable `event_id`** so at-least-once delivery doesn't become double-action.
 5. **DLQ + redrive** so a long outage doesn't lose events.
 6. **Per-resource ordering**, plus a **state machine** on the receiver so out-of-order events get rejected instead of acted on — without you becoming a workflow engine.
