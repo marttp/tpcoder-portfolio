@@ -72,6 +72,17 @@ flowchart LR
 
 สำหรับ partner รายเดียว volume น้อย ๆ วิธีนี้ก็ work ได้สบาย ๆ ครับ ปล่อยขึ้น prod ได้เลย แต่ลองสังเกต coupling ที่เราเพิ่งสร้างขึ้นมาให้ดีนะครับ: **ตอนนี้ endpoint ของ partner เข้ามาอยู่ในเส้น request ของเราเรียบร้อยแล้ว** วันที่ server ของเขามีปัญหา ก็กลายเป็นวันที่ระบบเรามีปัญหาตามไปด้วยทันที
 
+### Where does that URL come from? — the metadata store
+
+มีอยู่ชั้นนึงที่ต้องพูดถึงก่อนจะไป harden อะไรต่อครับ เพราะทุก step ข้างล่างมันแอบอิงกับชั้นนี้หมดเลย: ตัว `partner_url` เนี่ย มันไม่ได้โผล่มาเองจากไหน พอเรามี partner มากกว่าหนึ่งรายเมื่อไหร่ เรื่อง **ส่งไปไหน** แล้วก็ **ส่งยังไง** มันจะไปอยู่ใน **subscription / partner metadata store** — ตารางนึงที่ฝั่ง delivery ต้องอ่านในทุก event:
+
+- *ส่งไปไหน* — endpoint URL ของแต่ละ partner
+- *ส่งยังไง* — secret ที่ใช้เซ็น (หรือ OAuth client id), API version, custom header
+- *ส่งอะไรบ้าง* — เซ็ตของ event type ที่เขา subscribe ไว้
+- *ลิมิตเท่าไหร่* — rate cap ราย partner แล้วก็ flag active/paused
+
+แล้วเพราะทุก delivery ต้องอ่านมัน พอเริ่มส่งกันเยอะ ๆ เราก็ต้อง **cache มันไว้** — จะเป็น in-process cache ในแต่ละ worker หรือใช้ **Redis / Memcached** ที่แชร์กันให้เห็น view เดียวกันทั้งหลาย instance ก็ได้ ใส่ TTL สั้น ๆ หรือ invalidate ตอนมีการเปลี่ยน เพื่อให้ secret ที่เพิ่งหมุนใหม่หรือ partner ที่กดหยุดมีผลไว ๆ ตั้งแต่เรื่อง retry ยันเรื่อง routing ก็อ่านจากชั้นนี้กันหมดครับ
+
 ---
 
 ## It failed — add a retry
@@ -325,17 +336,6 @@ flowchart LR
     CO --> DLQ[("Dead-letter")]
 `} />
 
-### Knowing where to send — the metadata store
-
-มีอยู่ชั้นนึงที่เราแอบข้ามมาตลอดเลยครับ: จะส่ง webhook ได้ ตัว consumer มันต้องรู้ก่อนว่า **ส่งไปไหน** แล้วก็ **ส่งยังไง** — endpoint URL, secret ที่ใช้เซ็น, แล้วก็ partner รายนี้ subscribe event type ไหนไว้บ้าง ในเวอร์ชันซื่อ ๆ ตอนแรกมันคือ URL ที่ hardcode ไว้ แต่พอมี partner หลายรายเข้า มันก็กลายเป็น **subscription / partner metadata store** — ตารางนึงที่ฝั่ง delivery ต้องอ่านในทุก event:
-
-- *ส่งไปไหน* — endpoint URL ของแต่ละ partner
-- *ส่งยังไง* — secret ของ HMAC (หรือ OAuth client id), API version, custom header
-- *ส่งอะไรบ้าง* — เซ็ตของ event type ที่เขา subscribe ไว้
-- *ลิมิตเท่าไหร่* — rate cap ราย partner แล้วก็ flag active/paused
-
-**แต่การอ่าน store นี้ในทุก ๆ event มันก็เป็นปัญหาของมันเองครับ** ที่ระดับหลายพัน delivery ต่อวินาที เราก็จะไปกระแทก database ด้วย lookup เดิม ๆ ที่แทบไม่เปลี่ยนเลยซ้ำ ๆ เพราะงั้น **cache มันซะ** — จะเป็น in-process cache ในแต่ละ worker สำหรับ hot path หรือจะใช้ **Redis / Memcached** ที่แชร์กันตอนอยากได้ view เดียวที่เหมือนกันทั้งหลาย worker หลาย instance ก็ได้ ใส่ TTL สั้น ๆ หรือ invalidate ตอนมีการเปลี่ยน เพื่อให้ partner ที่หมุน secret ใหม่หรือกดหยุด delivery มีผลไว ๆ ไม่ใช่รอจนพ้นช่วง cache ค้าง ชั้น metadata นี้แหละที่ทั้งสองแบบของการ route ข้างล่างต้องอ่านจากมัน — ทั้ง consumer ที่ route ผ่าน broker แล้วก็ตัว dispatcher
-
 ### So where's the dispatcher?
 
 สังเกตว่าผมไม่ได้ใส่มันเข้าไปนะครับ งานที่ dispatcher ทำ — *พา event ที่ถูกไปหา endpoint ที่ถูก* — มันก็ยังต้องเกิดขึ้นอยู่ดี แต่มันไม่จำเป็นต้องเป็น component แยกของตัวเอง การ route มันมีอยู่สองทาง แล้วการเลือกระหว่างสองทางนี้แหละคือจุดตัดสินใจที่แท้:
@@ -347,7 +347,7 @@ flowchart LR
   อันนี้ง่ายสุดตอนที่ routing มัน **fix แล้วก็รู้แน่ชัด** — event ไม่กี่ชนิดวิ่งไปที่ที่รู้กันอยู่แล้ว
 - **dispatcher (tier ที่สาม)** component กลางที่ไปหาว่า *ใคร subscribe ไว้* แล้ว apply subscription config แล้วก็กาง event ออกเป็น task ราย endpoint มันคุ้มก็ตอนที่ routing มัน **dynamic** — ลูกค้าลงทะเบียน endpoint กับ event filter เองตอน runtime หรือเราต้องทำ transform / rate cap ราย subscription นั่นแหละคือ logic การ route ที่มีน้ำหนักพอจะอยากมีบ้านหลังเดียว บังคับใช้ที่เดียว แทนที่จะกระจายไปทั่วทุก consumer
 
-การแลกแบบเปิดอกครับ: consumer ที่ route ผ่าน broker มันง่ายแล้วก็ decouple สุด ๆ — เพิ่ม consumer ได้โดยไม่ต้องแตะ upstream, ได้ replay จาก offset มาฟรี ๆ — แต่ไม่มีตัวกรองกลาง เพราะงั้นแต่ละ consumer ก็อ่านของมากกว่าที่ตัวเองต้องใช้ แล้วก็ต้องพึ่ง event schema ที่นิ่ง ๆ เพราะทุกตัวตีความ raw stream เอง (ถ้า contract ผิดเมื่อไหร่ มันพังพร้อมกันหมด) ส่วน dispatcher ก็รวมศูนย์การ route กับ filtering ไว้ แลกกับ component ที่เราต้อง build แล้วก็ scale **routing ที่ลูกค้า config เองแบบเยอะ ๆ → dispatcher; routing ที่เราคุมเองแบบ fix → consumer ที่ route ผ่าน broker**
+สรุปการแลกกันแบบเปิดอกนะครับ ฝั่ง broker-routed consumer ข้อดีคือง่ายแล้วก็ decouple สุด ๆ — เพิ่ม consumer ใหม่ได้โดยไม่ต้องแตะ upstream แถม replay จาก offset ได้ฟรี ๆ ส่วนข้อเสียคือไม่มีตัวกรองกลาง แต่ละ consumer เลยต้องอ่าน raw stream มาเองทั้งหมด (อ่านเกินที่ตัวเองใช้ด้วย) แล้วก็ต้องพึ่ง event schema ที่นิ่งมาก ๆ เพราะถ้า contract เปลี่ยนเมื่อไหร่ ทุกตัวพังพร้อมกันหมด ส่วน dispatcher จะรวมศูนย์ทั้ง routing แล้วก็ filtering ไว้ที่เดียว แลกกับการที่เราต้องมี component เพิ่มขึ้นมา build แล้วก็ scale เอง สรุปสั้น ๆ คือ **routing ที่ลูกค้า config เองเยอะ ๆ → dispatcher; routing ที่เราคุมเองแบบ fix → broker-routed consumer**
 
 ### What the split buys you
 

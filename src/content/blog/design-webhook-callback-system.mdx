@@ -70,6 +70,17 @@ flowchart LR
 
 For one partner at low volume, this genuinely works — ship it. But notice what you've coupled: **the partner's endpoint is now on the critical path of your own request.** Their server's bad day is now your bad day.
 
+### Where does that URL come from? — the metadata store
+
+One foundational thing before we harden anything, because every step below quietly leans on it: that `partner_url` doesn't appear out of nowhere. The moment you have more than one partner, *where* and *how* to deliver lives in a **subscription / partner metadata store** — a table the delivery path looks up per event:
+
+- *where* — the endpoint URL(s) per partner
+- *how* — the signing secret (or OAuth client id), API version, custom headers
+- *what* — the event types they subscribed to
+- *limits* — per-partner rate caps, and an active/paused flag
+
+Every delivery reads it, so once you're sending at any real volume you'll **cache it** — an in-process cache in each worker, or a shared **Redis / Memcached** for one consistent view across instances — with a short TTL or invalidation on change, so a rotated secret or a paused partner takes effect quickly. Everything from retries to routing reads off this layer.
+
 ---
 
 ## It failed — add a retry
@@ -322,17 +333,6 @@ flowchart LR
     CO --> EP["Partner endpoints"]
     CO --> DLQ[("Dead-letter")]
 `} />
-
-### Knowing where to send — the metadata store
-
-There's a layer we've quietly skipped this whole time: to deliver a webhook at all, the consumer has to know **where** and **how** — the endpoint URL, the signing secret, which event types this partner even subscribed to. In the naive version that was a hard-coded URL. Once you have real partners, it becomes a **subscription / partner metadata store** — a table the delivery path reads on every event:
-
-- *where* — the endpoint URL(s) per partner
-- *how* — the HMAC secret (or OAuth client id), API version, custom headers
-- *what* — the set of event types they subscribed to
-- *limits* — per-partner rate caps, and an active/paused flag
-
-**But reading that store on every single event is its own problem.** At thousands of deliveries a second you'd pound the database with the same near-static lookups. So **cache it** — an in-process cache inside each worker for the hot path, or a shared **Redis / Memcached** when you want one consistent view across many workers and instances. Give it a short TTL or invalidate on change, so a partner who rotates their secret or hits pause is honoured quickly instead of after a stale window. This metadata layer is what *both* routing styles below read from — broker-routed consumers and a dispatcher alike.
 
 ### So where's the dispatcher?
 
