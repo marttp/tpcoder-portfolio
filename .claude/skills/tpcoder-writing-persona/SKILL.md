@@ -95,12 +95,24 @@ re-read that piece before writing.
   - State the house style: flat vector, light background, soft shadows, 2–3 accent colors, no photorealism.
 - **QA generated images before committing** — open each PNG (Read it) and check for leaked instruction text, typos, duplicate/wrong labels, and that labels match the post. Regenerate the bad ones, keep the good ones.
 
-## Facebook / social posts
+## Social posts (Facebook + LinkedIn)
 
-Before writing a FB post, **always ask first**: how many words (50 / 100 / 150?) and how much detail (headline /
-key points / nearly everything?). Then: summarize directly (real value in the post itself, not a teaser), no
-hard sell, use concrete numbers, match the blog's semi-official peer tone, Thai may use English tech terms,
-**no emojis in the body** (one link emoji at the end is optional).
+**Cadence — the two channels run differently:**
+- **Facebook: one post per published blog.** Every blog publish gets its own FB post.
+- **LinkedIn: a roundup that batches several blogs (he aims for ~3), NOT per-blog.** Wait until a few new posts have stacked up, then bundle them in one "the series is continuing" roundup. (The kickoff post covered Payment + Push; the next roundup bundled Omnichannel + Webhook.)
+
+For any social post: summarize directly (real value in the post, not a teaser), no hard sell, concrete over vague. Confirm length/detail only if it isn't obvious from the established frame below.
+
+### Facebook (Thai)
+- Copy-paste-ready posts live in `docs/blog-series-design-tracking.md` (the "Facebook Posts" section) — read the existing entries (#1–#4) and match.
+- Shared frame: personal **แอดมาร์ท** hook → AI-assists-but-I-review-every-character → "Domain N" one-liner of the system + start-simple-then-evolve → back-link to earlier posts → `🙇‍♂️` close. URL uses the **TH** slug.
+- The frame is a *default, not a cage* — he often trims it hard. The approved #4 dropped the long hook and the bullet list, keeping just the Domain-4 line + the 2026-agent twist + a back-link + `🙇‍♂️`. Offer the fuller version; let him cut.
+- **No emojis in the body**; the single `🙇‍♂️` sign-off is the established close. English tech terms inline. Banned tokens apply (`ทำมากับมือ`, not `ทำจริง`).
+
+### LinkedIn (English)
+- Warm, first-person, plain — readable for a mixed audience, not jargon-dense. His real voice (from the kickoff): a personal opener, then the format line ("take one real system, start with the most naive thing that works, then add real-world constraints one at a time until it grows into what you'd actually run in production"), then each post as a plain **Title** line + **link** line. **No dense arrow step-chains** (sync POST → async → backoff → …) — that's blog-body register, too heavy for LinkedIn.
+- Always include: the **AI just helps me arrange the topics / I write from real experience** note, and the mission line — *"I've spent quite some time building systems like these at scale, and I want to share that knowledge back to help grow Thailand's tech industry."* Close with **"More posts coming."** and **`#ThailandTech #TPCoder`** (that order).
+- One light emoji in the personal opener is fine (the kickoff used `😆`); none required.
 
 ## Verify before you call it done
 
