@@ -222,6 +222,10 @@ flowchart LR
 
 **Gate the deploy on a warm cache.** Here's the detail people miss: when a new serving instance boots, it has to finish loading its cache **before** it's marked ready and put into rotation. A half-warm instance that starts taking traffic serves blanks (or falls through to the slow path) for its first minutes — exactly during a rollout, the worst moment. So readiness *is* "cache loaded." The tradeoff is honest: deploys get slower, and a big dataset makes cold start long — so warm from a **snapshot** instead of recomputing from scratch on every boot.
 
+{/* IMAGE PROMPT (deploy-gate.png): Clean conceptual diagram, flat vector, light background. Two stacked states of the same scene. Each scene: a server box labeled exactly "New instance" with a progress bar inside, a gate/barrier in front of it, and an incoming arrow labeled exactly "traffic". Top state: the bar is half-filled labeled exactly "loading cache", the gate is CLOSED, the traffic arrow is blocked. Bottom state: the bar is full labeled exactly "cache ready", the gate is OPEN, the traffic arrow flows through into the box. Convey: an instance takes traffic only after its cache is fully warm. STRICT: render ONLY these labels — "New instance", "traffic", "loading cache", "cache ready" — spelled exactly; no other words; no typos; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
+
+![A new instance stays out of rotation while its cache loads, and serves only once it's warm](/assets/images/blogs/design-icon-management-segmentation/deploy-gate.png)
+
 **Fall back to the default, always.** Even reading from cache, a key can miss — a brand-new user, a just-added slot. The read path still ends in the v5 rule: miss or doubt → the slot default. The cache makes you fast; the default keeps you safe.
 
 **Where the cache lives is a real decision:**
