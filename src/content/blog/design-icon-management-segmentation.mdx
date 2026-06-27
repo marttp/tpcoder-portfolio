@@ -202,3 +202,23 @@ flowchart LR
 - **Shared (Redis / Memcached)** — one warm copy that many instances read; deploys don't re-warm, but you pay a network hop per read and the cache is now a dependency to keep alive.
 
 Plenty of setups land on a blend: a shared cache as the warmed source, plus a small in-process layer for the hottest keys. Whichever way, the theme holds — the read path does as little as possible, as fast as possible, and degrades to a default rather than an error.
+
+---
+
+## System B — Backoffice (the write/config path)
+
+This is where operators actually do the work: create assets, define audiences, map a campaign to a slot, set its window. It's internal, low-traffic, and — the key decision — **allowed to be eventually consistent.** A change doesn't have to hit screens this millisecond; a few minutes of propagation is fine. That one permission is what lets the backoffice stay simple.
+
+**An internal UI over the source of truth.** Operators manage icons / banners / campaigns and map them to segments, placements (which slot), and schedules. It's plain CRUD against the rule + asset store — no exotic infrastructure. Correctness and clear validation matter far more here than latency or uptime.
+
+**Getting an asset in — three paths.** An asset is an image plus metadata, and there's more than one way it arrives:
+
+- **Managed upload** — the operator uploads the file → you **validate** it (format, size, dimensions) → store it in object storage → serve it via CDN, with the final CDN URL filling in **asynchronously** (so the UI shows "processing" for a beat, not a broken link).
+- **Bring-your-own URL, used directly** — the operator pastes a link they already host, and you store it as-is. Fast and zero-effort, but you inherit their problem: a broken link, a slow host, an asset that quietly disappears — and now it's *your* blank slot.
+- **Bring-your-own URL, ingested** — the operator pastes a link, but in the background you download it, re-upload to your own object storage, and serve from your CDN. You own availability and caching from then on; the external host only mattered once.
+
+The middle option is the honest trap — easiest to ship, first to page you. Which paths you allow is a call; just make it a deliberate one.
+
+**Publishing = invalidate / refresh the cache.** When an operator saves, the write lands in the source of truth — and that's where the backoffice's job ends. A signal goes to the serving side (invalidate the affected keys, or nudge the warmer to rebuild) and the new state shows up on screens shortly after. "Shortly" is the whole point: this is the ~10-minutes-is-fine SLA in action. No need to make the backoffice highly available or low-latency; it isn't on anyone's hot path.
+
+So the backoffice is deliberately the boring one: a UI, some validation, writes to a store, and a poke at the cache. Boring is the *correct* amount of engineering for it.
