@@ -237,3 +237,20 @@ Two things make this comfortable to live with:
 - **The source of truth is the contract.** As long as both sides agree on the shape of a resolved view, you can rebuild, re-shard, or redeploy either side without touching the other.
 
 Same lesson as the webhook split: keep the coupling to one well-understood seam, and each side is free to be tuned — or to fail, or to scale — on its own.
+
+---
+
+## Wrapping up
+
+We started with icons hardcoded into each client and ended with two systems that share one cache. The path, in order:
+
+1. **Static icons in the client** — fine until every change is a release.
+2. **Permissions** make the layout per-user — the forcing function.
+3. **A per-user layout can't live in the client** → serve it from an API.
+4. **Segments + tiers** turn each slot into a targeted lookup.
+5. **Eligibility + fallback** — every slot has a default, so the screen is never blank.
+6. **Split into two systems** — a cache-first serving path (warmed before it serves) and a low-criticality backoffice, joined by one async seam.
+
+The meta-point, same as the rest of the series: **nobody starts here.** One app, one fixed grid? Hardcode it and move on. Every layer above earned its place by solving a problem the previous one created — permissions forced the API, scale forced the cache, and the opposite-SLA reality forced the split.
+
+If there's one thing to carry over: the serving and backoffice halves *look* like the same domain, but they're different problems — and the whole win is in letting them be different. The read path obsesses over latency and never-blank; the backoffice gets to be calm, correct, and a few minutes behind. Hold both to the same bar and you over-build one while under-serving the other.
