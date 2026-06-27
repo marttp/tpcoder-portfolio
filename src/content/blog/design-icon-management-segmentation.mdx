@@ -24,6 +24,10 @@ This one's shaped a little differently from the earlier posts, though. It ends u
 
 Picture the home screen of a super-app: the grid of icons, the nav bar, the promo banners. The unit we actually care about is the **slot**. A page is made of **blocks**, each block holds **slots**, and a slot is where a single icon / asset / banner renders. The *layout* — which blocks, which slots, where they sit — is a design choice you make up front. What *fills* each slot is the interesting part: it's resolved **per user**. User A sees asset A in a slot, user B sees asset B in that same slot, and a user who matches nothing gets the slot's **default**.
 
+{/* IMAGE PROMPT (slot-anatomy.png): Clean conceptual diagram, flat vector, light background. A phone/page outline on the left labeled exactly "Page". Inside it two stacked rounded rectangles labeled exactly "Block A" (top) and "Block B" (bottom). Inside Block A, three small squares in a row labeled exactly "Slot 1", "Slot 2", "Slot 3". An arrow from "Slot 2" points to a small icon shape on the right labeled exactly "asset". Convey the nesting: Page contains Blocks, a Block contains Slots, a Slot holds one asset. STRICT: render ONLY these labels — "Page", "Block A", "Block B", "Slot 1", "Slot 2", "Slot 3", "asset" — each spelled exactly and appearing once; no other words; no typos; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
+
+![Page is built of blocks, each block holds slots, and a slot holds one asset](/assets/images/blogs/design-icon-management-segmentation/slot-anatomy.png)
+
 So the whole job, in one line: given a `(user, page)`, resolve every slot to an asset — or its default. Sounds small. It stops being small the moment you add permissions, segmentation, eligibility rules, and a few thousand requests a second that can never, ever render a blank screen.
 
 Here's the road. The first half is the evolution that *forces* personalization on you; the second half is the two systems it splits into.
