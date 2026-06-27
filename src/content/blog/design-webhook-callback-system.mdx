@@ -1,6 +1,6 @@
 ---
 title: "Designing a Webhook Callback System (Start Simple, Then Evolve)"
-description: "A backend system design walkthrough from the sender's side: evolve a single synchronous POST into a reliable outbound webhook delivery system — async workers, backoff, HMAC signing, idempotency, DLQ + redrive, ordering and an out-of-order-safe state machine, and an acceptor/dispatcher/consumer split. Each step starts with the problem that broke the last one — and why it matters more now that the consumer might be an AI agent."
+description: "Evolve a single synchronous POST into a reliable outbound webhook delivery system — async workers, backoff, HMAC, idempotency, DLQ, ordering, and an acceptor/dispatcher/consumer split — and why it matters more when the consumer is an AI agent."
 pubDate: "2026-06-22"
 tags:
   ["Software Architecture", "Software Engineering", "Backend"]
