@@ -255,6 +255,10 @@ This is where operators actually do the work: create assets, define audiences, m
 
 The middle option is the honest trap — easiest to ship, first to page you. Which paths you allow is a call; just make it a deliberate one.
 
+{/* IMAGE PROMPT (ingestion-paths.png): Clean conceptual diagram, flat vector, light background. An operator figure on the left labeled exactly "Operator" feeding into THREE horizontal lanes that each end at a slot on the right. Lane 1 header labeled exactly "Managed upload" with a sequence of boxes labeled exactly "upload", "validate", "object storage", "CDN". Lane 2 header labeled exactly "BYO URL - direct" with a single straight arrow to the slot and a small warning mark labeled exactly "external risk". Lane 3 header labeled exactly "BYO URL - ingest" with boxes labeled exactly "download", "re-upload", "CDN". STRICT: render ONLY these labels — "Operator", "Managed upload", "upload", "validate", "object storage", "CDN", "BYO URL - direct", "external risk", "BYO URL - ingest", "download", "re-upload" — spelled exactly ("CDN" may appear in lane 1 and lane 3); no other words; no typos; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
+
+![Three ways an asset gets in — managed upload, bring-your-own-URL used directly, or BYO-URL ingested](/assets/images/blogs/design-icon-management-segmentation/ingestion-paths.png)
+
 **Publishing = invalidate / refresh the cache.** When an operator saves, the write lands in the source of truth — and that's where the backoffice's job ends. A signal goes to the serving side (invalidate the affected keys, or nudge the warmer to rebuild) and the new state shows up on screens shortly after. "Shortly" is the whole point: this is the ~10-minutes-is-fine SLA in action. No need to make the backoffice highly available or low-latency; it isn't on anyone's hot path.
 
 So the backoffice is deliberately the boring one: a UI, some validation, writes to a store, and a poke at the cache. Boring is the *correct* amount of engineering for it.
