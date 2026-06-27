@@ -58,3 +58,22 @@ But two cracks show up fast:
 - **The platforms drift.** Web and mobile each hold their own copy of the truth, so they fall out of sync — a banner that's live on web but missing in the app, an icon mobile dropped but web still shows.
 
 Both cracks point the same way: the layout shouldn't live in the client. But before we move it, something else forces our hand first.
+
+---
+
+## Permissions arrive — show/hide per user
+
+**The problem:** features start carrying permissions. A merchant tool only for merchant accounts, a "loans" entry only where lending is enabled, an admin shortcut only for staff. Suddenly the grid isn't one fixed list — what belongs on the screen depends on *who's looking*.
+
+You *could* keep this in the client: ship every icon, then hide the ones the user can't use. That breaks two ways. You're shipping the existence of entries to people who shouldn't even know they're there (open the bundle and read them off), and the client now needs the full permission picture to make the call — which means it's making an authorization decision it has no business making.
+
+**The fix:** resolve visibility on the server, per user. For a given user, walk the catalog of slots and keep only the ones their level / role / entitlements allow. The client stops deciding; it just renders what it's handed.
+
+<MermaidDiagram chart={`
+flowchart LR
+    U["User + permissions"] --> R["Resolver"]
+    CAT["Slot catalog (all)"] --> R
+    R --> OUT["Slots this user may see"]
+`} />
+
+The shift that matters here isn't the filtering itself — it's that the answer is now **per-user**. The same page, requested by two different people, comes back as two different layouts. And a per-user answer is exactly the thing you can't bake into a client build.
