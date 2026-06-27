@@ -38,3 +38,23 @@ Then the split — two systems with opposite SLAs:
 - **Backoffice** — internal, low-traffic, correctness-first. A few minutes of staleness is fine.
 
 The punchline of the whole post is that contrast: the same domain pulls apart into two services you tune *differently*. Let's start simple.
+
+---
+
+## The naive version — icons baked into each client
+
+You have to start somewhere, and the honest start is: hardcode the icon grid and the nav bar straight into each client. The mobile app ships a list of icons; the web app ships its own. No backend involved — the layout is just part of the build.
+
+```
+// mobile build — hardcoded
+val homeIcons = listOf("wallet", "scan", "transfer", "rewards", "topup")
+```
+
+For a small app this genuinely works — ship it. Everyone sees the same grid, it renders instantly, and there's nothing to operate.
+
+But two cracks show up fast:
+
+- **Every change is a release.** Want to swap an icon, reorder the grid, or run a banner next week? That's an app-store submission (and its review wait) on mobile, plus a deploy on web. Marketing moves faster than your release train.
+- **The platforms drift.** Web and mobile each hold their own copy of the truth, so they fall out of sync — a banner that's live on web but missing in the app, an icon mobile dropped but web still shows.
+
+Both cracks point the same way: the layout shouldn't live in the client. But before we move it, something else forces our hand first.
