@@ -1,0 +1,40 @@
+---
+title: "Designing a Personalized Icon & Asset Delivery System (Start Simple, Then Evolve)"
+description: "A backend system design walkthrough: evolve a static, client-baked icon grid into a per-user asset delivery system — permissions, segmentation, eligibility with fallback — then split it into two systems with opposite priorities: a high-RPS front-facing serving path (cache-first, warmed before it serves) and a low-criticality backoffice that manages and maps the assets."
+pubDate: "2026-06-29"
+tags:
+  ["Software Architecture", "Software Engineering", "Backend"]
+heroImage: "/assets/images/blogs/design-icon-management-segmentation/hero-icon-personalization.png"
+language: "en"
+translationSlug: "design-icon-management-segmentation-th"
+servicesNote: true
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+## Introduction
+
+This is the fifth post in the backend system design series — same format as always: start with the most naive thing that works, then let real-world constraints push it into shape.
+
+This one's shaped a little differently from the earlier posts, though. It ends up as **two systems in one** — with deliberately opposite priorities — so before the usual step-by-step evolution, let me set the mental model.
+
+Picture the home screen of a super-app: the grid of icons, the nav bar, the promo banners. The unit we actually care about is the **slot**. A page is made of **blocks**, each block holds **slots**, and a slot is where a single icon / asset / banner renders. The *layout* — which blocks, which slots, where they sit — is a design choice you make up front. What *fills* each slot is the interesting part: it's resolved **per user**. User A sees asset A in a slot, user B sees asset B in that same slot, and a user who matches nothing gets the slot's **default**.
+
+So the whole job, in one line: given a `(user, page)`, resolve every slot to an asset — or its default. Sounds small. It stops being small the moment you add permissions, segmentation, eligibility rules, and a few thousand requests a second that can never, ever render a blank screen.
+
+Here's the road. The first half is the evolution that *forces* personalization on you; the second half is the two systems it splits into.
+
+The evolution:
+
+1. **Static icons** baked into each client
+2. Permissions arrive → **show/hide per user**
+3. A per-user layout can't live in the client → **serve it from an API**
+4. Different users, different assets → **segments + tiers**
+5. Never render a blank slot → **eligibility + fallback**
+
+Then the split — two systems with opposite SLAs:
+
+- **Front-facing serving** — high-RPS, latency-critical, must-never-blank. **Availability first.**
+- **Backoffice** — internal, low-traffic, correctness-first. A few minutes of staleness is fine.
+
+The punchline of the whole post is that contrast: the same domain pulls apart into two services you tune *differently*. Let's start simple.
