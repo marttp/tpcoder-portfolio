@@ -145,3 +145,30 @@ flowchart TD
 The mindset shift: the request path's job isn't "compute the perfect asset." It's "return a good-enough asset, always, fast." Personalization is the upside; the default is the floor you never fall through. Put a tight timeout on the fancy path and let it fail *to the default*, never to an error.
 
 It's the same instinct as the webhook post's "never lose an event" — here it's "never render a blank." And it's the hinge that splits this into two systems. The moment *always fast, always something* becomes the contract on the read path, that path wants completely different treatment from the backoffice that *manages* the assets. So let's pull them apart.
+
+---
+
+## Pull it apart — two systems, opposite priorities
+
+Everything so far has been one `(user, page) → layout` call. But two very different jobs hide inside it: **serving** the layout (read, hot, every request) and **managing** the assets and rules behind it (write, rare, internal). They pull in opposite directions, so we build them as two systems with one thin connection.
+
+<MermaidDiagram chart={`
+flowchart LR
+    UI["Operator UI"] --> SOT[("Source of truth\nrules + assets")]
+    SOT --> W["Cache warmer /\ninvalidation"]
+    W --> C[("Serving cache")]
+    API["Serving API"] --> C
+    CL["Client"] --> API
+`} />
+
+Same domain, mirror-image requirements:
+
+| | **Front-facing serving** | **Backoffice** |
+| --- | --- | --- |
+| Traffic | thousands of RPS | a handful of operators |
+| Priority | availability + latency | correctness + usability |
+| Shape | read-heavy | write / config |
+| Freshness | instant, every request | minutes of staleness is fine |
+| Cost of failure | a blank screen for users | an operator waits and retries |
+
+The rest of the post is designing each to its own contract — and being honest that the backoffice gets to be the *simpler* one, because we let it.
