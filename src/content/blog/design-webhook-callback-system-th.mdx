@@ -1,6 +1,6 @@
 ---
 title: "การออกแบบ Webhook Callback System แบบเริ่มจากง่าย แล้วค่อย evolve"
-description: "พาเดินทุก step ของการออกแบบระบบส่ง webhook ออกจากฝั่งคนส่ง ตั้งแต่ POST แบบ sync ตัวเดียว ไปจนเป็นระบบ delivery ที่เชื่อถือได้ — async worker, backoff, circuit breaker, เซ็นด้วย HMAC, idempotency, DLQ + redrive, ordering กับ state machine, metadata store, แล้วก็การแยกเป็น acceptor/dispatcher/consumer โดยแต่ละ step เริ่มจากปัญหาที่ step ก่อนหน้าทำพัง — แล้วก็ทำไมมันยิ่งสำคัญขึ้นในวันที่ consumer ปลายทางอาจจะเป็น AI agent"
+description: "พาดูการออกแบบระบบส่ง webhook จากฝั่งคนส่ง ตั้งแต่ POST แบบ sync ตัวเดียว ไปจนเป็นระบบ delivery ที่เชื่อถือได้ — async worker, backoff, HMAC, idempotency, DLQ, ordering, acceptor/dispatcher/consumer — แล้วก็ทำไมยิ่งสำคัญเมื่อ consumer ปลายทางอาจเป็น AI agent"
 pubDate: "2026-06-22"
 tags:
   ["Software Architecture", "Software Engineering", "Backend"]
