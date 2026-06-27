@@ -122,3 +122,26 @@ A few things worth being precise about:
 - **A campaign is just a time-boxed asset** — targeting plus a start/end window. "The right banner for this user" becomes: the highest-priority asset whose targeting matches *and* whose window is open right now.
 
 So a slot's answer for one user is: of all candidates for that slot, take the matching, eligible, highest-priority one. Which begs the obvious question — what happens when **nothing** matches?
+
+---
+
+## Never render a blank slot — eligibility + fallback
+
+**The problem:** now that each slot is a targeted lookup, plenty of users will match nothing — and plenty of *requests* will fail mid-resolution. The eligibility check times out, the targeting store blips, a campaign ended a second ago. On a home screen at thousands of requests a second, every one of those turns into a hole in the grid — a blank slot, or worse, a blank page. That's the one outcome you can't ship: the app opening to nothing.
+
+**The fix:** every slot carries a **default** asset, and resolution is wrapped so it always returns *something*. Two cases, one rule:
+
+- **No match (ineligible)** — the user fits no targeted candidate → render the slot's default.
+- **Failure (timeout / dependency down)** — resolution couldn't finish inside its budget → render the slot's default.
+
+<MermaidDiagram chart={`
+flowchart TD
+    S["Resolve slot for user"] --> M{"Match + eligible?"}
+    M -->|"yes"| A["Render matched asset"]
+    M -->|"no"| D["Render slot default"]
+    S -.->|"timeout / error"| D
+`} />
+
+The mindset shift: the request path's job isn't "compute the perfect asset." It's "return a good-enough asset, always, fast." Personalization is the upside; the default is the floor you never fall through. Put a tight timeout on the fancy path and let it fail *to the default*, never to an error.
+
+It's the same instinct as the webhook post's "never lose an event" — here it's "never render a blank." And it's the hinge that splits this into two systems. The moment *always fast, always something* becomes the contract on the read path, that path wants completely different treatment from the backoffice that *manages* the assets. So let's pull them apart.
