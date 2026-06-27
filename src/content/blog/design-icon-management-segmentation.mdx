@@ -302,6 +302,26 @@ Same lesson as the webhook split: keep the coupling to one well-understood conne
 
 ---
 
+## Last but not least — GenAI for generated content
+
+Strip this system down and it's about putting the right *piece of content* in the right slot for the right person — and generating content is exactly what GenAI is built for.
+
+However, I would recommend it lives on the **backoffice** side, not the serving side. The read path is cache-heavy and latency-bound — no place for a slow, nondeterministic model call. The backoffice is low-stress, human-reviewed, relaxed SLA. So GenAI sits there: an operator generates, reviews, publishes, and the result flows through the source of truth into the cache like any other asset. It's effectively a fourth ingestion path next to upload / BYO-direct / BYO-ingest — *generate*.
+
+The sweet spot is generating **themed sets**, not one-offs:
+
+- A house/company theme — one consistent visual language across every icon and banner.
+- Predefined themes by function — wallet, credit card, nearby store, a mini-app's own look.
+- Predefined themes by season — Halloween, spring, winter.
+
+An operator picks a theme, the model drafts the set, a human approves, the warmer caches it. Personalization here means choosing a *theme per segment* — which stays perfectly cacheable, because it's still a handful of sets, not one per user.
+
+The trap is letting it run all the way to **per-user custom icons**. Don't. That's the cache-killer this whole post has been dodging — it drags you straight back to users × slots, a set too large to precompute or cache, and an ops headache on top. On high-traffic surfaces, keep generated personalization at theme/segment granularity.
+
+There *is* a place for one-of-a-kind, per-user generated visuals — just not the home grid. Surfaces that rarely update and sit off the hot path — a payment-complete screen, a virtual-card theme — can afford to generate once per user and store it, because it doesn't churn and isn't read thousands of times a second. The deciding question is the one this post keeps asking: how often does it change, and how hard is it to cache?
+
+---
+
 ## Wrapping up
 
 We started with icons hardcoded into each client and ended with two systems that share one cache. The path, in order:
