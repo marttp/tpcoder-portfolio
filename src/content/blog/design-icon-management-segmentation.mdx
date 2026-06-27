@@ -106,3 +106,19 @@ The client goes dumb on purpose: it draws blocks and fills slots with whatever c
 - **Catalog and rules stay server-side** — the client never sees what it isn't allowed to.
 
 This is the serving API in its first form. It's also where the whole rest of the post lives: every step from here makes that one `(user, page) → layout` call either smarter, faster, or harder to knock over.
+
+---
+
+## Different users, different assets — segments and tiers
+
+**The problem:** permissions only answer yes/no — *can* this user see this slot at all? The business wants more. The same slot should show **different assets** to different people: a gold-tier user gets a premium-rewards banner, a brand-new user gets an onboarding nudge, a lapsed user gets a win-back promo. Same slot, same position on screen — different content per audience.
+
+**The fix:** make slot resolution a *lookup*, not just a filter. Each slot has a set of candidate assets, and each candidate is tagged with the audience it's meant for — a tier, some attributes, an active campaign. At request time, for each slot, you pick the asset whose targeting matches this user.
+
+A few things worth being precise about:
+
+- **Targeting is data, not code.** "gold tier, in TH, signed up under 30 days ago" is a rule attached to an asset and evaluated against the user's attributes — so the business can add an audience without a deploy.
+- **Priority matters when more than one matches.** A user can fall into several audiences at once, so you need a deterministic order (most-specific wins, or an explicit rank). Otherwise the slot shows whichever row the database happened to return first — different on every request.
+- **A campaign is just a time-boxed asset** — targeting plus a start/end window. "The right banner for this user" becomes: the highest-priority asset whose targeting matches *and* whose window is open right now.
+
+So a slot's answer for one user is: of all candidates for that slot, take the matching, eligible, highest-priority one. Which begs the obvious question — what happens when **nothing** matches?
