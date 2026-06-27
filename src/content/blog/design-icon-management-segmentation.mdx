@@ -172,3 +172,33 @@ Same domain, mirror-image requirements:
 | Cost of failure | a blank screen for users | an operator waits and retries |
 
 The rest of the post is designing each to its own contract — and being honest that the backoffice gets to be the *simpler* one, because we let it.
+
+---
+
+## System A — Front-facing serving (the read path)
+
+This is the side that eats the thousands of RPS, so the whole design bends toward one sentence: **answer from memory, and never block on anything slow.**
+
+**Serve from a cache, not a live computation.** Resolving a user's layout touches the rule store, the campaign/eligibility data, and the asset catalog — far too much to do per request at this volume. So the request path doesn't resolve anything live; it reads an already-resolved view out of a cache and returns it. Resolution happens *ahead* of the request, not during it.
+
+**A worker keeps the cache warm, asynchronously.** A separate cache-warming worker — one deployable, or several partitioned by page/segment — reads the source of truth and (re)builds the resolved view: per segment where it can, per user where it must. Serving and warming never share a request. Warming is background work; serving is a memory read.
+
+<MermaidDiagram chart={`
+flowchart LR
+    SOT[("Source of truth")] --> WK["Cache warmer\n(background)"]
+    WK --> C[("Serving cache")]
+    CL["Client"] -->|"GET /pages/home"| API["Serving API"]
+    API -->|"read"| C
+    API -.->|"miss / error"| DEF["Slot default"]
+`} />
+
+**Gate the deploy on a warm cache.** Here's the detail people miss: when a new serving instance boots, it has to finish loading its cache **before** it's marked ready and put into rotation. A half-warm instance that starts taking traffic serves blanks (or falls through to the slow path) for its first minutes — exactly during a rollout, the worst moment. So readiness *is* "cache loaded." The tradeoff is honest: deploys get slower, and a big dataset makes cold start long — so warm from a **snapshot** instead of recomputing from scratch on every boot.
+
+**Fall back to the default, always.** Even reading from cache, a key can miss — a brand-new user, a just-added slot. The read path still ends in the v5 rule: miss or doubt → the slot default. The cache makes you fast; the default keeps you safe.
+
+**Where the cache lives is a real decision:**
+
+- **In-memory, per instance** — the fastest possible read (no network hop), but every instance holds the whole set and every deploy re-warms it. Fine when the resolved set fits in memory and you can snapshot it for a quick load.
+- **Shared (Redis / Memcached)** — one warm copy that many instances read; deploys don't re-warm, but you pay a network hop per read and the cache is now a dependency to keep alive.
+
+Plenty of setups land on a blend: a shared cache as the warmed source, plus a small in-process layer for the hottest keys. Whichever way, the theme holds — the read path does as little as possible, as fast as possible, and degrades to a default rather than an error.
