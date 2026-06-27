@@ -12,7 +12,7 @@ Reference posts: `payment-backend-stripe-integration-en.mdx` (~750 lines), `desi
 | 2 | Push Notification System | Published | pubDate 2026-06-17 | published |
 | 3 | Omnichannel Customer Communication Delivery Backbone | Published | pubDate 2026-06-19 | published |
 | 4 | Webhook Callback System | Published | pubDate 2026-06-22 | published |
-| 5 | Icon Management / Segmentation | Not started | - | - |
+| 5 | Icon Management / Segmentation | Outline drafted | - | - |
 | 6 | Audience Platform (ETL Pipeline) | Not started | - | - |
 | 7 | Campaign Management Platform | Not started | - | - |
 
@@ -223,14 +223,19 @@ Key experience: Coda webhook modernization (batch-GET polling → real-time POST
 
 File: `design-icon-management-segmentation.mdx` / `-th.mdx`
 
-- [ ] v1: Static icons per campaign
-- [ ] v2: Per-segment icon mapping
-- [ ] v3: Dynamic attribute-based selection
-- [ ] v4: Cache invalidation strategy
-- [ ] v5: A/B testing icon variants
-- [ ] v6: ML-driven CTR optimization
+**Framing:** the home-screen **icon grid / navbar / banners** an app renders for a user. Start with each client owning its own static set; evolve into a server-driven, permission-aware, per-user-personalized asset service with a safe fallback; then split *serving* from *management*. Running example: a super-app home screen (icons + promo banners). Read-heavy and latency-critical — it's on the hot path of every app open, and must never render blank.
 
-Key experience: PayPay personalized asset delivery (Akka -> Spring Boot Kotlin, 8K RPS)
+- [ ] v1: **Static icons/navbar shipped per client** — web and mobile each hardcode their own icon set + navbar. Works; but every change = a new app/web release, and the two platforms drift apart.
+- [ ] v2: **Serve the layout from an API** — move the icon/navbar config server-side so you can change what's shown without a client release. Still the same set for everyone; the response just carries a per-platform shape (web vs mobile).
+- [ ] v3: **Permission-aware show/hide** — once features carry permissions, the set isn't the same for everyone. Hide/show each icon by the user's level / role / entitlement. This is where it starts to get complicated: the response is now **per-user**, not global.
+- [ ] v4: **Segment & tier personalization** — go past allow/deny: choose *which* assets to show by tier + user attributes, and surface the promotion/campaign each user is eligible for (the banner = the right campaign for *this* user).
+- [ ] v5: **Eligibility + fallback (graceful degradation)** — evaluate campaign/promo eligibility at request time; when the personalization path fails, times out, or the user is ineligible, fall back to a safe **static default** so the screen never renders blank.
+- [ ] v6: **Cache the hot path** — at ~8K RPS you can't recompute per request. Cache the resolved asset set per segment/user, precompute where you can, and invalidate when the backoffice changes a mapping.
+- [ ] v7: **Split into two planes — serving API vs backoffice** (end-state) — separate the **serving API** (read path: "what should *this* user see right now?" — hot, cached, low-latency, fallback) from the **backoffice** (admin: manage campaigns / banners / icons and map them to segments, placements, and schedules — the write/config side). Two very different shapes: read-heavy & latency-critical vs low-traffic & correctness-critical.
+
+Optional forward angle: A/B variants + CTR-driven selection (which icon/banner performs best per segment).
+
+Key experience: PayPay personalized asset delivery (Akka -> Spring Boot Kotlin, ~8K RPS)
 
 ---
 
