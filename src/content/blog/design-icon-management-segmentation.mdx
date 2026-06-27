@@ -222,3 +222,18 @@ The middle option is the honest trap — easiest to ship, first to page you. Whi
 **Publishing = invalidate / refresh the cache.** When an operator saves, the write lands in the source of truth — and that's where the backoffice's job ends. A signal goes to the serving side (invalidate the affected keys, or nudge the warmer to rebuild) and the new state shows up on screens shortly after. "Shortly" is the whole point: this is the ~10-minutes-is-fine SLA in action. No need to make the backoffice highly available or low-latency; it isn't on anyone's hot path.
 
 So the backoffice is deliberately the boring one: a UI, some validation, writes to a store, and a poke at the cache. Boring is the *correct* amount of engineering for it.
+
+---
+
+## The seam — where the two systems touch
+
+Two systems, but not fully independent — there's exactly one wire between them, and keeping it to *one* wire is what makes the split clean.
+
+The seam: **backoffice writes the source of truth → a signal (invalidate or rebuild) → the warmer refreshes the serving cache.** That's the whole connection. The backoffice never calls the serving API; the serving path never reads the backoffice's database directly. They meet only through the source of truth and the cache sitting between them.
+
+Two things make this comfortable to live with:
+
+- **It's asynchronous and tolerant of a miss.** The signal can be a queue message, a CDC stream, or just the warmer re-reading on a timer. Miss one refresh and the next sweep catches it — because the serving side always has a safe default to show in the gap. The ~10-minute SLA is exactly the slack that lets this stay simple.
+- **The source of truth is the contract.** As long as both sides agree on the shape of a resolved view, you can rebuild, re-shard, or redeploy either side without touching the other.
+
+Same lesson as the webhook split: keep the coupling to one well-understood seam, and each side is free to be tuned — or to fail, or to scale — on its own.
