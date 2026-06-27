@@ -1,6 +1,6 @@
 ---
 title: "การออกแบบระบบ Personalized Icon & Asset Delivery (เริ่มจากง่าย แล้วค่อย evolve)"
-description: "พาเดินทุก step ของการออกแบบระบบจัดส่ง asset: ตั้งแต่ grid ไอคอนแบบ static ที่ผูกกับตัว client ไปจนถึงระบบส่ง asset แบบแยกตามผู้ใช้ — การจัดการสิทธิ์, การทำ segmentation, ความเหมาะสมในการแสดงผลพร้อม fallback — จากนั้นแยกส่วนออกเป็นสองระบบที่มี priority ตรงข้ามกัน: Serving path สำหรับหน้าร้านที่ต้องรับ RPS สูงและ latency ต่ำ (เน้น cache-first อุ่นของก่อนเปิดใช้) กับ Backoffice ความสำคัญต่ำที่เน้นบริหารจัดการและจับคู่ asset"
+description: "พาดูการออกแบบระบบจัดส่ง asset แบบเจาะกลุ่มผู้ใช้ ตั้งแต่ grid ไอคอน static ที่ผูกกับ client ไปจนถึงระบบที่มี permission, segmentation, eligibility พร้อม fallback แล้วแยกเป็นสองระบบที่ priority สวนทางกัน: serving path แบบ cache-first กับ backoffice ที่ผ่อนคลาย"
 pubDate: "2026-06-29"
 tags:
   ["Software Architecture", "Software Engineering", "Backend"]
