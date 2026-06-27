@@ -137,6 +137,10 @@ A few things worth being precise about:
 - **Priority matters when more than one matches.** A user can fall into several audiences at once, so you need a deterministic order (most-specific wins, or an explicit rank). Otherwise the slot shows whichever row the database happened to return first — different on every request.
 - **A campaign is just a time-boxed asset** — targeting plus a start/end window. "The right banner for this user" becomes: the highest-priority asset whose targeting matches *and* whose window is open right now.
 
+{/* IMAGE PROMPT (per-user-slot-assets.png): Clean conceptual diagram, flat vector, light background. One slot position shown three times (the same square outline), each filled with a DIFFERENT colored banner/asset shape, labeled underneath exactly "User A", "User B", "Default". A small tag on User A reads exactly "gold tier", on User B reads exactly "new user", on Default reads exactly "no match". Convey: same slot, a different asset per audience, default when nothing matches. STRICT: render ONLY these labels — "User A", "User B", "Default", "gold tier", "new user", "no match" — spelled exactly, each once; asset shapes carry no other text; no typos; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
+
+![Same slot, resolved per audience — User A, User B, and the default each get a different asset](/assets/images/blogs/design-icon-management-segmentation/per-user-slot-assets.png)
+
 So a slot's answer for one user is: of all candidates for that slot, take the matching, eligible, highest-priority one. Which begs the obvious question — what happens when **nothing** matches?
 
 ---
