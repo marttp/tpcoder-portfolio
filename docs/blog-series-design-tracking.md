@@ -228,13 +228,15 @@ File: `design-icon-management-segmentation.mdx` / `-th.mdx`
 - **Backoffice management** — internal, low-traffic, correctness-first → eventual-consistency-OK.
 The takeaway is the contrast: tune the SLA to the problem; don't design both the same.
 
+**Domain model (the unit of personalization is the slot):** a page is composed of **blocks**, each block holds **slots**, and a slot is where one icon/asset/banner renders. The layout (which blocks/slots, where) is a **design choice**; what *fills* each slot is resolved **per user** — user A → asset A, user B → asset B, and anyone who matches nothing gets the slot's **default**. So serving boils down to: given `(user, page)` → resolve every slot to an asset, or its default.
+
 **Lead-in — why it gets personal (the evolution that forces all this):**
 
 - [ ] v1: **Static icons/navbar shipped per client** — web & mobile each hardcode their own set → every change = a release, and the two drift apart.
 - [ ] v2: **Permission-aware show/hide** — features carry permissions, so the set goes **per-user** (the complication).
 - [ ] v3: A per-user set can't live in the client → **serve the resolved layout from an API**.
-- [ ] v4: **Segment & tier personalization** — which assets by tier + attributes, and the campaign/banner each user is eligible for.
-- [ ] v5: **Eligibility + fallback** — on failure / timeout / ineligible, drop to a safe **static default** (never blank).
+- [ ] v4: **Segment & tier personalization** — for each **slot**, pick the asset for this user by tier + attributes + the campaign they're eligible for (user A → asset A, user B → asset B).
+- [ ] v5: **Eligibility + fallback** — every slot has a **default** asset; on no-match / failure / timeout / ineligible, render the slot default (never an empty slot).
 
 …which sets up the real shape: **two services, deliberately different.**
 
@@ -249,7 +251,7 @@ The takeaway is the contrast: tune the SLA to the problem; don't design both the
 **System B — Backoffice management (write/config path):**
 
 - [ ] Internal **UI** for operators to manage icons / banners / campaigns and map them to segments / placements / schedules.
-- [ ] Two asset-ingestion paths: **upload → validate (format/size/dimensions) → object storage → CDN** (the CDN URL fills in **asynchronously**), OR the operator brings **their own icon URL** (skip storage entirely).
+- [ ] Asset-ingestion paths: **(a) managed upload** → validate (format/size/dimensions) → object storage → CDN (URL fills in **async**); **(b) operator-provided URL**, which itself splits — use the **external link directly** (fast, but you inherit human-error / broken-link / external-dependency risk), or **async-ingest** it (download in the background → re-upload to internal object storage → serve from your own CDN, so you own availability + caching).
 - [ ] On change, **invalidate / refresh** the front-facing cache.
 - [ ] **Relaxed SLA, stated outright:** the backoffice isn't on the hot path — a ~10-minute propagation delay is fine, so don't over-build it for latency/availability.
 
