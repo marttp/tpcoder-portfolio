@@ -233,6 +233,10 @@ flowchart LR
 - **In-memory, per instance** — the fastest possible read (no network hop), but every instance holds the whole set and every deploy re-warms it. Fine when the resolved set fits in memory and you can snapshot it for a quick load.
 - **Shared (Redis / Memcached)** — one warm copy that many instances read; deploys don't re-warm, but you pay a network hop per read and the cache is now a dependency to keep alive.
 
+{/* IMAGE PROMPT (cache-location.png): Clean conceptual comparison, flat vector, light background, two panels. Left panel header labeled exactly "In-memory per instance": three server boxes, each containing its OWN small cache box (no shared store), with a tag labeled exactly "fastest, re-warms on deploy". Right panel header labeled exactly "Shared cache": three server boxes all drawing arrows to ONE central cache cylinder labeled exactly "Redis", with a tag labeled exactly "warm once, network hop". STRICT: render ONLY these labels — "In-memory per instance", "Shared cache", "Redis", "fastest, re-warms on deploy", "warm once, network hop" — spelled exactly, each once; no other words; no typos; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
+
+![Cache-location tradeoff — in-memory per instance versus one shared cache](/assets/images/blogs/design-icon-management-segmentation/cache-location.png)
+
 Plenty of setups land on a blend: a shared cache as the warmed source, plus a small in-process layer for the hottest keys. Whichever way, the theme holds — the read path does as little as possible, as fast as possible, and degrades to a default rather than an error.
 
 ---
