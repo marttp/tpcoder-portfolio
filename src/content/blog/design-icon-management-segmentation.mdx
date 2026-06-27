@@ -90,6 +90,10 @@ flowchart LR
 
 The shift that matters here isn't the filtering itself — it's that the answer is now **per-user**. The same page, requested by two different people, comes back as two different layouts. And a per-user answer is exactly the thing you can't bake into a client build.
 
+{/* IMAGE PROMPT (permission-visibility.png): Clean conceptual diagram, flat vector, light background. Two phone frames side by side showing the SAME home grid but with different icons visible. Left frame labeled exactly "Staff user" shows one extra highlighted icon. Right frame labeled exactly "Regular user" has an empty gap where that icon would be. Convey: same page, permissions show/hide an icon per user. STRICT: render ONLY these labels — "Staff user", "Regular user" — spelled exactly, each once; icons are blank shapes with no text; no other words; no typos; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
+
+![Same page, two users — permissions reveal an extra icon to one and hide it from the other](/assets/images/blogs/design-icon-management-segmentation/permission-visibility.png)
+
 ---
 
 ## A per-user layout can't live in the client — serve it from an API
