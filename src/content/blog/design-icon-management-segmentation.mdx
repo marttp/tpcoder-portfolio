@@ -164,6 +164,10 @@ flowchart TD
 
 The mindset shift: the request path's job isn't "compute the perfect asset." It's "return a good-enough asset, always, fast." Personalization is the upside; the default is the floor you never fall through. Put a tight timeout on the fancy path and let it fail *to the default*, never to an error.
 
+{/* IMAGE PROMPT (campaign-window.png): Clean conceptual timeline, flat vector, light background. A horizontal axis labeled exactly "time". A shaded interval in the middle labeled exactly "campaign window", with edge markers labeled exactly "start" and "end". Above the shaded interval a slot shows a promo banner labeled exactly "campaign asset"; before "start" and after "end" the same slot shows a plain banner labeled exactly "default". Convey: the campaign asset shows only inside the window; outside it the slot falls back to default. STRICT: render ONLY these labels — "time", "campaign window", "start", "end", "campaign asset", "default" — spelled exactly, each once; no other words; no typos; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
+
+![A campaign is a time-boxed asset — shown inside its window, default outside it](/assets/images/blogs/design-icon-management-segmentation/campaign-window.png)
+
 It's the same instinct as the webhook post's "never lose an event" — here it's "never render a blank." And it's the hinge that splits this into two systems. The moment *always fast, always something* becomes the contract on the read path, that path wants completely different treatment from the backoffice that *manages* the assets. So let's pull them apart.
 
 ---
