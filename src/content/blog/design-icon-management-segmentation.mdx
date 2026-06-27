@@ -65,6 +65,10 @@ But two cracks show up fast:
 - **Every change is a release.** Want to swap an icon, reorder the grid, or run a banner next week? That's an app-store submission (and its review wait) on mobile, plus a deploy on web. Marketing moves faster than your release train.
 - **The platforms drift.** Web and mobile each hold their own copy of the truth, so they fall out of sync — a banner that's live on web but missing in the app, an icon mobile dropped but web still shows.
 
+{/* IMAGE PROMPT (static-client-drift.png): Clean conceptual diagram, flat vector, light background. Two phone frames side by side. Left frame labeled exactly "Web", right frame labeled exactly "Mobile". Both show a grid of blank icon shapes, but the two grids visibly differ (one icon present on Web is absent on Mobile; a wide banner present on Mobile is absent on Web). Between them a small jagged divider labeled exactly "drift". STRICT: render ONLY these labels — "Web", "Mobile", "drift" — spelled exactly, each once; icons/banners are blank shapes with no text; no other words; no typos; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
+
+![Web and mobile each hardcode their own set, so the two drift out of sync](/assets/images/blogs/design-icon-management-segmentation/static-client-drift.png)
+
 Both cracks point the same way: the layout shouldn't live in the client. But before we move it, something else forces our hand first.
 
 ---
