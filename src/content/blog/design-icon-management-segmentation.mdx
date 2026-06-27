@@ -195,6 +195,10 @@ Same domain, mirror-image requirements:
 | Freshness | instant, every request | minutes of staleness is fine |
 | Cost of failure | a blank screen for users | an operator waits and retries |
 
+{/* IMAGE PROMPT (two-systems-contrast.png): Clean conceptual diagram, flat vector, light background. Two mirror-image panels split by a thin vertical divider. Left panel header labeled exactly "Front-facing serving" with three small stacked tags labeled exactly "high RPS", "low latency", "never blank". Right panel header labeled exactly "Backoffice" with three small stacked tags labeled exactly "low traffic", "correctness", "minutes is fine". STRICT: render ONLY these labels — "Front-facing serving", "Backoffice", "high RPS", "low latency", "never blank", "low traffic", "correctness", "minutes is fine" — spelled exactly, each once; no other words; no typos; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
+
+![Two systems, opposite priorities — serving tunes for speed and availability, the backoffice for correctness](/assets/images/blogs/design-icon-management-segmentation/two-systems-contrast.png)
+
 The rest of the post is designing each to its own contract — and being honest that the backoffice gets to be the *simpler* one, because we let it.
 
 ---
