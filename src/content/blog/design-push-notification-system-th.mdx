@@ -1,6 +1,6 @@
 ---
 title: "การออกแบบ Push Notification System แบบเริ่มจากง่าย แล้วค่อย evolve"
-description: "พาเดินทุก step ของการ design push notification service ตั้งแต่ยิงเข้า FCM แบบ direct ใน request เดียว ไปจนเป็น pipeline สองสเตจที่ partition แล้วรับโหลดระดับ 120M+ notification ต่อวัน — async worker, multi-platform, batching, audience fan-out, dedupe, delivery tracking, token cleanup, bounded retry แล้วก็ priority lane โดยแต่ละเวอร์ชันเริ่มจากปัญหาที่เวอร์ชันก่อนหน้าทำพัง"
+description: "พาดูการ design push notification service ตั้งแต่ยิงเข้า FCM ใน request เดียว ไปจนเป็น pipeline สองสเตจที่รับโหลด 120M+ notification ต่อวัน โดยแต่ละเวอร์ชันเริ่มจากปัญหาที่เวอร์ชันก่อนหน้าทำพัง"
 pubDate: "2026-06-17"
 tags:
   ["Software Architecture", "Software Engineering", "Backend"]
