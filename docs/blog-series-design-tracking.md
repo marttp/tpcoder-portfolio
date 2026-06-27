@@ -223,17 +223,39 @@ Key experience: Coda webhook modernization (batch-GET polling → real-time POST
 
 File: `design-icon-management-segmentation.mdx` / `-th.mdx`
 
-**Framing:** the home-screen **icon grid / navbar / banners** an app renders for a user. Start with each client owning its own static set; evolve into a server-driven, permission-aware, per-user-personalized asset service with a safe fallback; then split *serving* from *management*. Running example: a super-app home screen (icons + promo banners). Read-heavy and latency-critical — it's on the hot path of every app open, and must never render blank.
+**Framing:** the home-screen icon grid / navbar / banners an app renders per user. This post deliberately holds **two systems with opposite priorities** in one blog — same domain, different problems, each gets its own high-level design:
+- **Front-facing serving** — high-RPS, latency-critical, must-never-blank → availability-first.
+- **Backoffice management** — internal, low-traffic, correctness-first → eventual-consistency-OK.
+The takeaway is the contrast: tune the SLA to the problem; don't design both the same.
 
-- [ ] v1: **Static icons/navbar shipped per client** — web and mobile each hardcode their own icon set + navbar. Works; but every change = a new app/web release, and the two platforms drift apart.
-- [ ] v2: **Permission-aware show/hide** — features start carrying permissions, so the icon set stops being the same for everyone. Hide/show each icon by the user's level / role / entitlement. This is where it gets complicated: what to render is now **per-user**, not a fixed list.
-- [ ] v3: **Serve the resolved layout from an API** — a per-user set can't stay hardcoded in each client, so move resolution server-side: the client just renders what the API returns. (Bonus: change what's shown without a client release, and web/mobile stop drifting; the response still carries a per-platform shape.)
-- [ ] v4: **Segment & tier personalization** — go past allow/deny: choose *which* assets to show by tier + user attributes, and surface the promotion/campaign each user is eligible for (the banner = the right campaign for *this* user).
-- [ ] v5: **Eligibility + fallback (graceful degradation)** — evaluate campaign/promo eligibility at request time; when the personalization path fails, times out, or the user is ineligible, fall back to a safe **static default** so the screen never renders blank.
-- [ ] v6: **Cache the hot path** — at ~8K RPS you can't recompute per request. Cache the resolved asset set per segment/user, precompute where you can, and invalidate when the backoffice changes a mapping.
-- [ ] v7: **Split into two planes — serving API vs backoffice** (end-state) — separate the **serving API** (read path: "what should *this* user see right now?" — hot, cached, low-latency, fallback) from the **backoffice** (admin: manage campaigns / banners / icons and map them to segments, placements, and schedules — the write/config side). Two very different shapes: read-heavy & latency-critical vs low-traffic & correctness-critical.
+**Lead-in — why it gets personal (the evolution that forces all this):**
 
-Optional forward angle: A/B variants + CTR-driven selection (which icon/banner performs best per segment).
+- [ ] v1: **Static icons/navbar shipped per client** — web & mobile each hardcode their own set → every change = a release, and the two drift apart.
+- [ ] v2: **Permission-aware show/hide** — features carry permissions, so the set goes **per-user** (the complication).
+- [ ] v3: A per-user set can't live in the client → **serve the resolved layout from an API**.
+- [ ] v4: **Segment & tier personalization** — which assets by tier + attributes, and the campaign/banner each user is eligible for.
+- [ ] v5: **Eligibility + fallback** — on failure / timeout / ineligible, drop to a safe **static default** (never blank).
+
+…which sets up the real shape: **two services, deliberately different.**
+
+**System A — Front-facing serving (read path):**
+
+- [ ] **Cache-first serving** — the request path reads straight from a cache; it never recomputes personalization live.
+- [ ] An **async cache-warming worker** (one deployable, or several) keeps the cache fresh from the source of truth.
+- [ ] **Deploy gate:** a new instance must finish loading its cache **before** it takes traffic (readiness gated on cache-complete) — no half-warm instance serving 8K RPS.
+- [ ] **Fallback** to the static default on cache miss / lookup failure (ties back to v5).
+- [ ] **Cache-location call:** in-memory per instance (fastest, but every deploy re-warms → warm from a snapshot to keep it quick) vs shared Redis (warm once, network hop). Name the tradeoff.
+
+**System B — Backoffice management (write/config path):**
+
+- [ ] Internal **UI** for operators to manage icons / banners / campaigns and map them to segments / placements / schedules.
+- [ ] Two asset-ingestion paths: **upload → validate (format/size/dimensions) → object storage → CDN** (the CDN URL fills in **asynchronously**), OR the operator brings **their own icon URL** (skip storage entirely).
+- [ ] On change, **invalidate / refresh** the front-facing cache.
+- [ ] **Relaxed SLA, stated outright:** the backoffice isn't on the hot path — a ~10-minute propagation delay is fine, so don't over-build it for latency/availability.
+
+**The seam (the only coupling):** backoffice is the source of truth → cache invalidation / the warming worker → front-facing cache. Otherwise the two systems run independently.
+
+Optional forward angle: A/B variants + CTR-driven selection per segment.
 
 Key experience: PayPay personalized asset delivery (Akka -> Spring Boot Kotlin, ~8K RPS)
 
