@@ -77,3 +77,32 @@ flowchart LR
 `} />
 
 The shift that matters here isn't the filtering itself — it's that the answer is now **per-user**. The same page, requested by two different people, comes back as two different layouts. And a per-user answer is exactly the thing you can't bake into a client build.
+
+---
+
+## A per-user layout can't live in the client — serve it from an API
+
+**The problem:** the layout is per-user now, but it's still being assembled on the device. To do that the client has to download the whole catalog *and* the rules to filter it — which is slow, leaks what it shouldn't, and still can't change without a release. The v1 cracks and the v2 per-user need collide right here.
+
+**The fix:** move resolution behind an API. The client calls one endpoint with its auth, the server resolves the slots for that user, and the response *is* the finished layout — what to render, in order, nothing else.
+
+```
+GET /pages/home          (auth: this user)
+->
+{
+  "blocks": [
+    { "id": "shortcuts", "slots": [
+      { "id": "s1", "asset": { "icon": "wallet",   "deeplink": "app://wallet" } },
+      { "id": "s2", "asset": { "icon": "scan",     "deeplink": "app://scan"   } }
+    ]}
+  ]
+}
+```
+
+The client goes dumb on purpose: it draws blocks and fills slots with whatever came back. A few things fall out of this for free:
+
+- **Change without a release** — swap an icon or a banner by changing data, not by shipping an app.
+- **Web and mobile stop drifting** — one resolver, one source of truth; the response just carries a per-platform shape (mobile gets its grid, web gets its layout).
+- **Catalog and rules stay server-side** — the client never sees what it isn't allowed to.
+
+This is the serving API in its first form. It's also where the whole rest of the post lives: every step from here makes that one `(user, page) → layout` call either smarter, faster, or harder to knock over.
