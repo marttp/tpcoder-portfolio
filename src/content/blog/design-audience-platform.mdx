@@ -1,0 +1,265 @@
+---
+title: "Designing an Audience Platform (Start Simple, Then Evolve)"
+description: "Grow a send-time SQL query into an audience platform — nightly batch, Spark over a data lake, near-real-time streaming — that serves one audience logic in two shapes: bulk chunks for delivery and a per-user membership store for serving."
+pubDate: "2026-07-02"
+tags:
+  ["Software Architecture", "Software Engineering", "Backend"]
+heroImage: "/assets/images/blogs/design-audience-platform/audience-two-shapes.png"
+language: "en"
+translationSlug: "design-audience-platform-th"
+servicesNote: true
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+## Introduction
+
+This is the sixth post in the backend system design series — same format: start with the most naive thing that works, then let real-world constraints push it into shape.
+
+This one is the system the last two posts kept pointing at. In the omnichannel post (#3) we said "consume a *prepared, chunked* audience — don't re-derive it here, that's a different system." In the icon-serving post (#5) we said eligibility "comes from the Audience domain — a rule engine that writes a per-user membership store, its own post, next in the series." This is that post. The Audience Platform answers one question — **who?** — and hands the answer to whoever needs it.
+
+The interesting part is *whoever needs it*, because the two consumers we've already built want the answer in completely different shapes:
+
+- **Bulk, chunked list** — the omnichannel backbone wants "campaign C targets these 40M users," split into ~40–60K chunks it can stream through its delivery workflow. It reads the whole audience, once, in order.
+- **Per-user membership store** — the icon serving path wants a point lookup at request time: "is user `10001` eligible for campaign 5, right now?" It reads one user, millions of times a second.
+
+Same audience logic — *gold-tier users in TH who topped up in the last 30 days* — two output shapes with opposite access patterns. That contrast is the spine of this post, the same way "two systems, opposite SLAs" was the spine of the icon post. One brain, two mouths.
+
+<MermaidDiagram chart={`
+flowchart LR
+    R["Audience logic\n(rules over user data)"] --> A["Bulk chunked list\n(#3 Omnichannel)"]
+    R --> B["Per-user membership store\n(#5 Icon serving)"]
+`} />
+
+Here's the road. The first half is the evolution of *how we compute the audience*; the payoff at the end is *how we serve it two ways*.
+
+1. **Inline SQL** at send time — works until the query is 40M rows mid-send
+2. **Precompute on a schedule** — build the segment ahead of time, read it at send
+3. **Spark** — rules and data outgrow a single database
+4. **A data lake** — give Spark something to read that isn't your production DB
+5. **Near-real-time** — "nightly" isn't fresh enough for some rules
+6. **A reusable segmentation service** — stop building a bespoke job per use case
+
+Let's start simple.
+
+---
+
+## The naive version — a SQL query at send time
+
+You want to send a promo to *gold-tier users in Thailand who topped up in the last 30 days*. The honest first version writes exactly that, as a query, at the moment of sending:
+
+```sql
+SELECT user_id
+FROM users
+WHERE tier = 'gold'
+  AND country = 'TH'
+  AND last_topup_at > now() - interval '30 days';
+```
+
+The sender runs it, gets a list of IDs, and starts pushing. For a few thousand users this is completely fine — ship it. The rule lives in one place, it's always fresh (the query runs against live data), and there's nothing to operate.
+
+Then it grows, and three cracks open at once:
+
+- **The query gets heavy.** At tens of millions of rows, with `last_topup_at` from a different table and `tier` derived from yet another, this becomes a multi-join full scan on your **production** database — the same database serving live traffic. One marketing send can stall the app.
+- **The send blocks on it.** The delivery job can't start until the query returns. A query that takes minutes (or times out) means the campaign sits there waiting, and a retry re-runs the whole expensive thing.
+- **You can't reuse it.** The next campaign wants "gold-tier in TH" too, but with a different topup window. Every campaign re-derives its audience from scratch, hammering the DB again, and nobody can answer "how big is this segment?" without running the query.
+
+All three say the same thing: **deriving the audience at send time, on the live DB, doesn't scale.** The fix is to move the computation off the hot path and do it *ahead* of the send.
+
+---
+
+## Precompute on a schedule — build the segment, then read it
+
+**The problem:** the audience query is expensive and we run it at the worst possible moment — right when we need to send. But the inputs barely change minute to minute. "Gold tier in TH, topped up in 30 days" is basically the same list at 2pm as it was at 2am.
+
+**The fix:** run the query *ahead of time* on a schedule, store the result, and let send time just **read** it. A nightly job computes each segment's members and writes them to a `segment_members` table:
+
+```sql
+-- nightly, per segment
+INSERT INTO segment_members (segment_id, user_id, computed_at)
+SELECT 'gold_th_active', user_id, now()
+FROM users
+WHERE tier = 'gold' AND country = 'TH'
+  AND last_topup_at > now() - interval '30 days';
+```
+
+Now a send is a cheap read: `SELECT user_id FROM segment_members WHERE segment_id = 'gold_th_active'`. The heavy lifting happened overnight, when nobody's waiting.
+
+<MermaidDiagram chart={`
+flowchart LR
+    CRON["Nightly job"] --> Q["Run segment query"]
+    Q --> SM[("segment_members")]
+    SEND["Send time"] -->|"cheap read"| SM
+`} />
+
+This buys a lot — the send is fast, the expensive query runs off-peak, and a segment is now a *thing* you can size and reuse. But it trades one problem for two new ones:
+
+- **Freshness.** The list is up to 24 hours stale. A user who topped up this morning won't be "gold-tier active" until tonight's rebuild. For a weekly promo that's fine; for "remind users who *just* abandoned a cart," it's useless. Hold that thought — it's what forces streaming later.
+- **It still runs on the production DB, and it's still one box.** We moved the query off the send path, but a full rebuild of every segment is now a giant nightly batch hitting the same database. As segments multiply and rules get gnarlier (cross joins, windowed aggregates over a year of transactions), a single Postgres doing both live traffic and analytical batch starts to buckle.
+
+The second crack is the structural one. We don't just need to precompute — we need to precompute *somewhere that isn't the transactional database, with an engine built for it.*
+
+---
+
+## Rules and data outgrow one database — move to Spark
+
+**The problem:** the segment rules stopped being simple `WHERE` clauses. Real targeting looks like "users whose **average** transaction over the last 90 days is above X, who used feature Y at least 3 times, who are **not** in the suppression list, joined against a churn score from the data-science team." That's windowed aggregates, multi-table joins, anti-joins, and a model output — over hundreds of millions of users and *billions* of transaction rows. A single relational database can technically express it and will technically die trying.
+
+**The fix:** move the computation to a distributed engine. This is where Spark earns its place — it's built to chew through billions of rows in parallel across a cluster, and (the part I care about most) it lets you write the rule once and let the engine figure out the distribution.
+
+Going deep, because you asked — here's what the audience job actually looks like in Spark, and the things that bite:
+
+**The job, in DataFrame terms.** Read the inputs as DataFrames, apply predicates, join attributes, aggregate, write membership:
+
+```scala
+val users   = spark.read.parquet("s3://lake/users/dt=2026-07-01")
+val txns    = spark.read.parquet("s3://lake/transactions/dt=2026-07-01")
+val churn   = spark.read.parquet("s3://lake/churn_scores/dt=2026-07-01")
+val suppress = spark.read.parquet("s3://lake/suppression/current")
+
+val txn90 = txns
+  .where($"event_date" >= date_sub(current_date(), 90))
+  .groupBy($"user_id")
+  .agg(avg($"amount").as("avg_amt"), count("*").as("txn_count"))
+
+val audience = users
+  .where($"tier" === "gold" && $"country" === "TH")
+  .join(txn90, Seq("user_id"))
+  .join(broadcast(churn), Seq("user_id"))           // small dim → broadcast
+  .where($"avg_amt" > 5000 && $"churn_score" < 0.3)
+  .join(suppress, Seq("user_id"), "left_anti")       // exclude suppressed
+  .select($"user_id")
+```
+
+**Broadcast the small side.** `churn_scores` and `suppression` are small relative to `users`/`transactions`. Marking them `broadcast` ships them to every executor and turns a shuffle-heavy join into a map-side join — the single biggest, easiest win. The default `autoBroadcastJoinThreshold` catches some of this, but be explicit for the ones you know.
+
+**Watch data skew.** Group or join on something lumpy — a few "power users" with millions of transactions, a `country` where 80% of users live — and one partition does all the work while the cluster idles. The whole job runs as slow as that one straggler task. Mitigations: salt the hot keys, enable Adaptive Query Execution (`spark.sql.adaptive.enabled`) so Spark can split skewed partitions at runtime, and pre-aggregate before the join (the `txn90` rollup above shrinks the big side *before* it meets `users`).
+
+**Partition the read, prune at the source.** Notice the inputs are partitioned by `dt=` / `event_date`. Reading `dt=2026-07-01` and filtering `event_date >= today-90` lets Spark **prune** to just the relevant date partitions instead of scanning all of history. This is the difference between reading 90 days and reading five years — and it's why the storage layout (next section) matters as much as the query.
+
+<MermaidDiagram chart={`
+flowchart LR
+    L[("Data lake\n(users / txns / scores)")] --> S["Spark job\n(filter · join · aggregate)"]
+    S --> M["Segment membership\n(user_id per segment)"]
+`} />
+
+Spark fixes the *compute*. But it raised a question by reading from `s3://lake/...` instead of the production DB — **where did that data come from, and why isn't Spark reading Postgres directly?** That's the data lake.
+
+---
+
+## Give Spark something to read — the data lake
+
+**The problem:** Spark needs to read users, transactions, churn scores, feature events — and those live in a dozen different production systems (the payments DB, the auth service, the data-science team's outputs, the event stream). Pointing Spark at each live production database is exactly the load problem we've been running from, multiplied: now an analytical cluster is hammering every transactional system at once. And these jobs need *historical* data ("transactions over 90 days") that the hot OLTP databases prune or archive away.
+
+**The fix:** land a copy of everything in one place built for analytical reads — a **data lake** — and let Spark read only from there. The production systems are never touched by a Spark job again. Going deep on the pieces, since this is where the real engineering lives:
+
+**Columnar file format — Parquet.** Store the lake in a columnar format, not row-oriented CSV/JSON. An audience query touches a few columns (`tier`, `country`, `amount`) out of dozens. Parquet stores each column together, so Spark reads *only those columns* off disk and skips the rest — plus it carries per-row-group min/max statistics so the reader can skip whole chunks that can't match a predicate (**predicate pushdown**). On wide tables this is a 10×+ I/O difference versus row formats.
+
+**Table format — Iceberg / Delta Lake.** Raw Parquet files in a folder get you 80% there but have no notion of a transaction — a reader can catch a half-written table mid-update, schema changes are a manual nightmare, and "what did this table look like yesterday?" is unanswerable. A table format (Apache Iceberg, Delta Lake) layers a metadata log over the Parquet files to give you **ACID snapshots** (readers always see a consistent version), **schema evolution** (add a column without rewriting history), and **time travel** (query `as of` a past snapshot — gold for reproducing "why was this user in the audience last Tuesday?"). For an audience platform whose outputs drive money-spending campaigns, that reproducibility is worth the operational weight.
+
+**Partitioning strategy.** Lay the data out so the common queries prune well. Partition fact tables by **event date** (`dt=YYYY-MM-DD`) so a 90-day window reads 90 directories, not the whole history. Resist partitioning by something high-cardinality like `user_id` — you'll get millions of tiny files and the metadata overhead will dwarf the data (the classic **small-files problem**). When small files do accumulate from incremental writes, run **compaction** to rewrite them into fewer, larger files.
+
+**Getting data in — ingestion.** Two patterns, usually both:
+- **Batch snapshots** — a daily dump of a source table into the lake (`dt=2026-07-01/`). Simple, but a day stale and heavy for big tables.
+- **CDC (change data capture)** — stream the source database's write-ahead log (via Debezium → Kafka) into the lake continuously, so the lake trails production by minutes, not a day. More moving parts, far fresher. This is also the seed of the streaming story in the next step.
+
+**Orchestration.** The lake isn't one job — it's ingest → transform → build-segments → publish, with dependencies between them. An orchestrator (Airflow, Argo Workflows, Dagster) runs that DAG on schedule, handles retries, and won't start the segment build until its inputs for the day have landed.
+
+<MermaidDiagram chart={`
+flowchart LR
+    SRC1[("Payments DB")] -->|"CDC / snapshot"| LAKE[("Data lake\nParquet + Iceberg")]
+    SRC2[("Auth / profile")] -->|"CDC / snapshot"| LAKE
+    SRC3[("DS churn scores")] -->|"batch"| LAKE
+    EV["Event stream"] -->|"Kafka"| LAKE
+    LAKE --> SPARK["Spark segment jobs"]
+    SPARK --> OUT["Segment membership"]
+`} />
+
+The **freshness vs. cost** dial sits right here. A daily batch lake is cheap and simple but a day behind. CDC + compaction is fresh but is real infrastructure to run. Most platforms land in the middle and tune per table: profile data daily is fine, transactions you want within the hour. Which is the perfect setup for the limitation that breaks "nightly" entirely.
+
+---
+
+## "Nightly" isn't fresh enough — refresh every 1–2 hours
+
+**The problem:** a day stale is too stale for a lot of rules. "User topped up this morning → they should be eligible for the topup-bonus banner by lunch, not tomorrow." Marketing reacts within a day, not within a month. Nightly means every segment is, on average, 12 hours behind reality — and for anything tied to recent behavior, that's where the audience is wrong.
+
+**The fix — and this is the honest sweet spot, not the textbook one:** don't jump to second-level streaming. Move to **microbatch**. Refresh every segment on a **1–2 hour cadence** so its result is at most an hour or two old. At any moment you're maintaining anywhere from a few thousand to a few million segment results, each refreshed on that schedule. For the overwhelming majority of targeting rules, "fresh within the hour" is indistinguishable from real-time to the business — and it's *vastly* cheaper and simpler to run than a true streaming stack.
+
+Worth being clear about what microbatch *is*, because it's an approach, not a specific technology. You can implement the same 1–2 hour cadence two ways: as **scheduled batch jobs** (an orchestrator fires the Spark job every hour) or as a **streaming engine running in micro-batch mode** (Spark Structured Streaming with a processing-time trigger, say). Both land at the same place. The batch-vs-streaming argument matters far less than people make it — **the end goal is getting eligibility right within your freshness target.** Pick whichever your team operates well; don't let the label drive the design.
+
+Making a 1–2 hour cadence actually work, going deep:
+
+**Incremental, not full-rebuild.** Recomputing every segment from five years of history every hour would melt the cluster and never finish. Lean on the table format from the last step: read only what *changed* since the last run (Iceberg/Delta incremental reads, or the CDC feed), update the affected users, and leave the rest. The hourly job touches deltas; a heavier full rebuild still runs nightly to correct any drift.
+
+**Idempotent, snapshot-style publishes.** Each run produces a fresh, complete segment result and publishes it as a versioned snapshot the consumers switch to atomically — no half-updated segment ever visible. Same discipline as the icon post's "overwrite, never delete": a failed run leaves the previous good snapshot in place rather than blanking the segment.
+
+**Tier rules by freshness.** Most segments are happy on the 1–2 hour cadence. A few ("abandoned a cart 10 minutes ago") genuinely need seconds — and *those*, and only those, justify a true low-latency streaming path (Flink, or Structured Streaming with a tight trigger, stateful, with event-time watermarks for late events). Treat real-time as the rare opt-in for the handful of rules that earn it, not the default for all of them. Paying streaming costs for "gold tier in TH" would be all cost, no benefit.
+
+<MermaidDiagram chart={`
+flowchart LR
+    LAKE[("Data lake")] --> ETL["ETL (every 1-2h)\nincremental"]
+    ETL --> SEG[("Segment results\nthousands-millions,\nrefreshed hourly")]
+    EV["Event stream"] -.->|"rare real-time rules"| SEG
+`} />
+
+Now the audience is computed at scale and fresh within the hour. The last step is to stop building all of this by hand for every new campaign — and to serve those segment results in the two shapes our consumers need.
+
+---
+
+## Stop rebuilding per campaign — a reusable segmentation service
+
+**The problem:** everything so far is real, but each segment is a hand-written Spark job somebody on the data team ships and babysits. Marketing wants a new audience and files a ticket; an engineer writes Scala, tests it, schedules it, wires its output to the membership store. That's a bottleneck and it doesn't scale past a handful of segments. The campaign platform (#7) can't self-serve audiences if every one needs an engineer.
+
+**The fix:** turn the pile of bespoke jobs into a **platform**. Rules become *configuration*, not code; an engine compiles them to the batch/stream jobs; and the results are materialized into whatever shape the consumer needs.
+
+- **Rules as a DSL / config.** A segment is defined declaratively — predicates, time windows, joins against named attributes, a freshness tier (batch vs. real-time). Something like `tier = gold AND country = TH AND avg_txn_90d > 5000 AND NOT suppressed`, stored as data. Non-engineers (or the #7 UI) compose segments; the platform validates and estimates size before anything runs.
+- **One engine, generated jobs.** The platform translates a rule into the actual Spark plan and, if the rule is tagged real-time, the streaming topology too. The author never touches Scala. New attributes get registered once in a catalog and become available to every rule.
+- **Reusability.** Segments compose — "gold_th_active" can be referenced by ten campaigns and computed once. The platform dedupes the work instead of re-deriving the same audience per campaign, which is exactly the v1 sin, finally killed.
+
+And here's the payoff the whole post has been building to. The ETL's native output is the **segment result** — for each segment/campaign, the list of users in it: `campaign → [users]`. It's written to **object storage** (S3/GCS) as a versioned snapshot every 1–2 hours; that snapshot is the shared artifact everything else reads. From that *one* artifact, the two consumers read in opposite directions:
+
+<MermaidDiagram chart={`
+flowchart TD
+    ENG["Segmentation ETL"] --> SEG[("Segment results in object storage\ncampaign -> [users]")]
+    SEG -->|"read + chunk"| OMNI["#3 Omnichannel\nstream the chunks out"]
+    SEG -->|"invert (add/remove)"| MEM[("Membership index\nuser -> {campaigns}")]
+    MEM --> ICON["#5 Icon serving\npoint lookup per request"]
+`} />
+
+**Shape 1 — delivery reads the segment result and chunks it (for #3 Omnichannel).** The omnichannel backbone reads an entire audience once, in order, to fan a campaign out. The segment result *is* what it consumes: it reads `campaign → [users]` and splits it into ~1K-user chunks to stream through its delivery workflow. For a 40–60M audience that's the ~40–60K chunks the omnichannel post sized its observability around. The audience platform produces the list; delivery does the chunking. One big sequential read — no random access needed.
+
+**Shape 2 — invert the segment result into a per-user membership index (for #5 Icon serving).** The icon path asks the opposite question at request time: given *one* user, which campaigns are they in — in under a millisecond, thousands of times a second. Reading `campaign → [users]` to answer that would mean scanning every campaign's list per request, which is hopeless. So we build the **inverted index**: flip `campaign → [users]` into `user → {campaigns}` and store it for point lookup — a Redis set per user, `10001 -> {1, 2, 3, 4, 5}`. The inversion is a step in the same ETL: as each segment-result snapshot lands in object storage, fan its users out into their per-user sets. This is exactly the membership store the icon-serving post read from — now you can see how it's built: it's the segment results, turned inside out.
+
+**Membership churns — and removals are the trap.** Each 1–2 hour refresh isn't the same list as last time: some users newly **match** a segment, some **drop out** (their last topup aged past 30 days, they hit the suppression list). Adds are easy — `SADD` the campaign to the user's set. Removals are the one people forget: if user `10001` no longer qualifies for campaign 5, you must `SREM` it from their set, or they keep an eligibility they've lost and the icon keeps showing. So the inversion can't be append-only. Two ways to keep it honest:
+
+- **Diff and apply** — compare the new snapshot against the previous one per segment, compute the *added* and *removed* user sets, and apply both (`SADD` the adds, `SREM` the removes). Cheap when churn is small, which it usually is — but it leans on having the prior snapshot and getting the diff right.
+- **Rebuild and swap** — recompute every user's full set from the new snapshots and atomically swap it in (write to a shadow keyspace, flip a pointer). Dead simple and self-correcting — no drift can accumulate — at the cost of rewriting everything each cycle. The 1–2 hour cadence makes this affordable, which is a quiet argument *for* not going real-time.
+
+Either way, the segment result in object storage is the source of truth; the Redis index is a derived, disposable view you can always rebuild from it.
+
+**A word on Bloom filters — I've taken one out of production for exactly this.** It's tempting to shrink the membership check with a Bloom filter: instead of storing every user's full set, keep a compact probabilistic structure that answers "is user X in campaign Y?" in a fraction of the space. The catch is what *probabilistic* means here. A Bloom filter never gives a false negative, but it *will* return false positives at some rate — and for eligibility, a false positive is a user being told they qualify for something they don't: the wrong banner, a benefit they shouldn't get, a campaign that shouldn't reach them. I've shipped one and pulled it back out, because even a low false-positive rate became real business errors at volume. Eligibility is a correctness domain, not a "probably" one, so the membership store stays exact. Bloom filters earn their keep where a false positive is *harmless* — a pre-check in front of an expensive lookup you'll verify anyway — not as the final answer to "is this user eligible?"
+
+Same audience logic, one segment result in object storage, read two ways — sequentially for delivery, inverted for serving. The platform owns the *who*; each consumer gets the *who* in the shape its access pattern demands. That's the win, and the reason audience deserves to be its own system rather than a query bolted onto each sender.
+
+{/* IMAGE PROMPT (audience-two-shapes.png): Clean conceptual diagram, flat vector, light background. CENTER: a single rounded box labeled exactly "Audience engine". From it, TWO arrows branch out. LEFT arrow goes to a stack of small identical rectangles (a chunked list) labeled exactly "Chunked list" with a sublabel below reading exactly "Omnichannel". RIGHT arrow goes to a cylinder/database shape labeled exactly "Membership store" with a sublabel below reading exactly "Icon serving"; inside or beside the cylinder show one tiny example line of text reading exactly "10001 -> {1,2,3}". Convey: one engine, two output shapes. STRICT: render ONLY these labels — "Audience engine", "Chunked list", "Omnichannel", "Membership store", "Icon serving", "10001 -> {1,2,3}" — spelled exactly, each once; no other words; no typos; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
+
+![One audience engine materialized two ways — a chunked list for omnichannel delivery and a per-user membership store for icon serving](/assets/images/blogs/design-audience-platform/audience-two-shapes.png)
+
+---
+
+## Wrapping up
+
+We started with a `WHERE` clause typed at send time and ended with a platform that computes audiences over a data lake and serves them two ways. The path, in order:
+
+1. **Inline SQL at send time** — fine until the query is 40M rows on the production DB, mid-send.
+2. **Precompute on a schedule** — build the segment ahead, read it cheap at send; but it's stale and still pounds the OLTP DB.
+3. **Spark** — distributed compute for rules and data a single database can't handle.
+4. **A data lake** — Parquet + a table format, partitioned and ingested, so Spark never touches production.
+5. **Refresh every 1–2 hours** — incremental ETL keeps thousands-to-millions of segment results fresh within the hour; true streaming stays the rare opt-in.
+6. **A reusable segmentation service** — rules as config, one engine, one segment result read two ways: chunked for delivery, inverted into a per-user index for serving.
+
+The meta-point, same as the rest of the series: **nobody starts here.** A few thousand users and a simple rule? Type the `WHERE` clause and move on. Every layer above earned its place — scale forced precomputation, complexity forced Spark, Spark forced the lake, recency forced streaming, and repetition forced the platform.
+
+And if there's one thing to carry over: the audience platform's job isn't just *computing* the right set of users — it's serving that set in the shape each consumer actually reads. Omnichannel streams it; icon serving point-looks-it-up. Get the computation right and pick the wrong serving shape, and you've built a brilliant brain that can't talk to either mouth.
+
+Next in the series: the **Campaign Management Platform** — the front-of-house where marketing composes the campaigns that drive all of this, and where these segment definitions get authored in the first place.
