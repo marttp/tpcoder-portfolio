@@ -12,9 +12,10 @@ Reference posts: `payment-backend-stripe-integration-en.mdx` (~750 lines), `desi
 | 2 | Push Notification System | Published | pubDate 2026-06-17 | published |
 | 3 | Omnichannel Customer Communication Delivery Backbone | Published | pubDate 2026-06-19 | published |
 | 4 | Webhook Callback System | Published | pubDate 2026-06-22 | published |
-| 5 | Icon Management / Segmentation | Outline drafted | - | - |
+| 5 | Icon Management / Segmentation | Published | pubDate 2026-06-28 | published |
 | 6 | Audience Platform (ETL Pipeline) | Not started | - | - |
 | 7 | Campaign Management Platform | Not started | - | - |
+| 8 | Cashback System | Not started | - | - |
 
 ## Facebook Posts (Thai, copy-paste ready)
 
@@ -232,32 +233,36 @@ The takeaway is the contrast: tune the SLA to the problem; don't design both the
 
 **Lead-in — why it gets personal (the evolution that forces all this):**
 
-- [ ] v1: **Static icons/navbar shipped per client** — web & mobile each hardcode their own set → every change = a release, and the two drift apart.
-- [ ] v2: **Permission-aware show/hide** — features carry permissions, so the set goes **per-user** (the complication).
-- [ ] v3: A per-user set can't live in the client → **serve the resolved layout from an API**.
-- [ ] v4: **Segment & tier personalization** — for each **slot**, pick the asset for this user by tier + attributes + the campaign they're eligible for (user A → asset A, user B → asset B).
-- [ ] v5: **Eligibility + fallback** — every slot has a **default** asset; on no-match / failure / timeout / ineligible, render the slot default (never an empty slot).
+- [x] v1: **Static icons/navbar shipped per client** — web & mobile each hardcode their own set → every change = a release, and the two drift apart.
+- [x] v2: **Permission-aware show/hide** — features carry permissions, so the set goes **per-user** (the complication).
+- [x] v3: A per-user set can't live in the client → **serve the resolved layout from an API**.
+- [x] v4: **Segment & tier personalization** — for each **slot**, pick the asset for this user by tier + attributes + the campaign they're eligible for (user A → asset A, user B → asset B).
+- [x] v5: **Eligibility + fallback** — every slot has a **default** asset; on no-match / failure / timeout / ineligible, render the slot default (never an empty slot).
 
 …which sets up the real shape: **two services, deliberately different.**
 
 **System A — Front-facing serving (read path):**
 
-- [ ] **Cache-first serving** — the request path reads straight from a cache; it never recomputes personalization live.
-- [ ] An **async cache-warming worker** (one deployable, or several) keeps the cache fresh from the source of truth.
-- [ ] **Deploy gate:** a new instance must finish loading its cache **before** it takes traffic (readiness gated on cache-complete) — no half-warm instance serving 8K RPS.
-- [ ] **Fallback** to the static default on cache miss / lookup failure (ties back to v5).
-- [ ] **Cache-location call:** in-memory per instance (fastest, but every deploy re-warms → warm from a snapshot to keep it quick) vs shared Redis (warm once, network hop). Name the tradeoff.
+- [x] **Cache-first serving** — the request path reads straight from a cache; it never recomputes personalization live.
+- [x] **First-eligible-wins resolution** — a slot is an *ordered candidate list*; walk top→bottom, stop at the first eligible one (no scoring). Two memory reads: ordered candidates (serving cache) + the user's eligible campaign set (membership store, keyed per user, e.g. `10001 -> {1,2,3,4,5}`); eligibility itself comes from the **Audience domain** (#6).
+- [x] An **async cache-warming worker** (one deployable, or several) keeps the cache fresh from the source of truth.
+- [x] **Overwrite the cache, never delete it** — a failed rebuild leaves the existing entry in place; stale-but-valid beats a blank or a stampede. Cache only moves forward by overwrite.
+- [x] **Deploy gate:** a new instance must finish loading its cache **before** it takes traffic (readiness gated on cache-complete) — no half-warm instance serving 8K RPS.
+- [x] **Fallback** to the static default on cache miss / lookup failure (ties back to v5).
+- [x] **Cache-location call:** in-memory per instance (fastest, but every deploy re-warms → warm from a snapshot to keep it quick) vs shared Redis (warm once, network hop), with BOTE sizing on the resolved JSON (CDN URL + slot metadata, not image bytes). Name the tradeoff.
 
 **System B — Backoffice management (write/config path):**
 
-- [ ] Internal **UI** for operators to manage icons / banners / campaigns and map them to segments / placements / schedules.
-- [ ] Asset-ingestion paths: **(a) managed upload** → validate (format/size/dimensions) → object storage → CDN (URL fills in **async**); **(b) operator-provided URL**, which itself splits — use the **external link directly** (fast, but you inherit human-error / broken-link / external-dependency risk), or **async-ingest** it (download in the background → re-upload to internal object storage → serve from your own CDN, so you own availability + caching).
-- [ ] On change, **invalidate / refresh** the front-facing cache.
-- [ ] **Relaxed SLA, stated outright:** the backoffice isn't on the hot path — a ~10-minute propagation delay is fine, so don't over-build it for latency/availability.
+- [x] Internal **UI** for operators to manage icons / banners / campaigns and map them to segments / placements / schedules.
+- [x] Asset-ingestion paths: **(a) managed upload** → validate (format/size/dimensions) → object storage → CDN (URL fills in **async**); **(b) operator-provided URL**, which itself splits — use the **external link directly** (fast, but you inherit human-error / broken-link / external-dependency risk), or **async-ingest** it (download in the background → re-upload to internal object storage → serve from your own CDN, so you own availability + caching).
+- [x] On change, **invalidate / refresh** the front-facing cache (publishing = poke the cache). Fun aside: resist making this strongly consistent — it re-couples the two systems and the cache is headache enough.
+- [x] **Relaxed SLA, stated outright:** the backoffice isn't on the hot path — a ~10-minute propagation delay is fine, so don't over-build it for latency/availability.
 
-**The seam (the only coupling):** backoffice is the source of truth → cache invalidation / the warming worker → front-facing cache. Otherwise the two systems run independently.
+**The connection point (the only coupling):** backoffice is the source of truth → cache invalidation / the warming worker → front-facing cache. Otherwise the two systems run independently. (Renamed from "seam" in the published post.)
 
-Optional forward angle: A/B variants + CTR-driven selection per segment.
+- [x] **Last but not least — GenAI for generated content:** belongs on the **backoffice** authoring side (relaxed SLA, human-reviewed), never the read path; effectively a 4th ingestion path — *generate*. Sweet spot = themed sets (company theme; by function: wallet/credit-card/nearby-store/mini-app; by season: halloween/spring/winter), kept at theme/segment granularity so it stays cacheable. Per-user custom icons = the cache-killer (users × slots) → avoid; per-user generative OK only on rarely-updated off-hot-path surfaces (payment-complete screen, virtual-card theme).
+
+Dropped vs. original outline: the A/B-variants + CTR-driven-selection forward angle was not published (replaced by the GenAI section above).
 
 Key experience: PayPay personalized asset delivery (Akka -> Spring Boot Kotlin, ~8K RPS)
 
@@ -293,6 +298,24 @@ Key experience: PayPay campaign management platform (3M yen SMS savings)
 
 ---
 
+### 8. Cashback System
+
+File: `design-cashback-system.mdx` / `-th.mdx`
+
+**Proposed outline (draft — confirm angle before writing):** the reward-back engine that grants a % of a payment back to the user. Sits downstream of #1 Payment (a settled payment is the trigger) and consumes campaign config from #7. Core idea: a payment event → decide how much to give back → owe it → settle it, correctly and idempotently.
+
+- [ ] v1: Naive — synchronous cashback calc inline on the payment path (fixed % added at charge time)
+- [ ] v2: Rules per campaign — rate varies by merchant / category / user tier (a small rules engine, config from #7)
+- [ ] v3: Get it off the hot path — async award pipeline (payment event → queue → cashback worker), so payment latency doesn't pay for reward logic
+- [ ] v4: Correctness — a cashback **ledger** (accrued vs granted vs settled), idempotent on payment-event id (mirrors #1's double-entry discipline)
+- [ ] v5: Caps & budget — per-user cap + campaign budget cap (distributed counting; overlaps #7's budget caps)
+- [ ] v6: Deferred payout + **clawback** — grant after a settlement/return window; reverse cashback when the underlying payment is refunded/disputed (ties to #1 refunds/disputes)
+- [ ] v7: Reconciliation, abuse/fraud guards, production edge cases (double-grant, out-of-order payment vs refund, partial refund proration)
+
+Key experience: PayPay cashback / rewards (to confirm with TP)
+
+---
+
 ## Cross-Linking Strategy
 
 - Each post references the others where relevant
@@ -310,6 +333,7 @@ Key experience: PayPay campaign management platform (3M yen SMS savings)
 | 5 | design-icon-management-segmentation.mdx | design-icon-management-segmentation-th.mdx |
 | 6 | design-audience-platform.mdx | design-audience-platform-th.mdx |
 | 7 | design-campaign-management-platform.mdx | design-campaign-management-platform-th.mdx |
+| 8 | design-cashback-system.mdx | design-cashback-system-th.mdx |
 
 ## Tags
 
