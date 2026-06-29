@@ -1,5 +1,5 @@
-import { Accessor, JSX } from 'solid-js';
-import { Volunteer, VolunteerItem as Item } from '../../data/props';
+import { type Accessor, type JSX } from 'solid-js';
+import type { Volunteer, VolunteerItem as Item } from '../../data/props';
 import InterestingLink from '../InterestingList';
 
 const VolunteerItem = ({
