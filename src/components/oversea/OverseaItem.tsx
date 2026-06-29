@@ -1,5 +1,5 @@
-import { Accessor, JSX } from 'solid-js';
-import { Oversea } from '../../data/props';
+import { type Accessor, type JSX } from 'solid-js';
+import type { Oversea } from '../../data/props';
 import InterestingLink from '../InterestingList';
 
 const OverseaItem = ({
