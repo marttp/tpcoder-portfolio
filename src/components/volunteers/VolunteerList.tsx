@@ -2,7 +2,7 @@ import { For, createMemo } from 'solid-js';
 import SectionTitle from '../SectionTitle';
 import VolunteerItem from './VolunteerItem';
 import GenMentorGroup from './GenMentorGroup';
-import { VolunteerItem as Item } from '../../data/props';
+import type { VolunteerItem as Item } from '../../data/props';
 
 const VolunteerList = ({ data }: { data: Item[] }) => {
   const groupedData = createMemo(() => {
