@@ -4,7 +4,7 @@ import OverseaList from '../oversea/OverseaList';
 import SpeakerList from '../speakers/SpeakerList';
 import VolunteerList from '../volunteers/VolunteerList';
 import CommitmentList from '../commitment/CommitmentList';
-import { Competition, Oversea, Speaker, VolunteerItem, Commitment } from '../../data/props';
+import type { Competition, Oversea, Speaker, VolunteerItem, Commitment } from '../../data/props';
 
 type ActivitySection = 'commitments' | 'competitions' | 'overseas' | 'speakers' | 'volunteers';
 
