@@ -1,7 +1,7 @@
 import { For } from 'solid-js';
 import SectionTitle from '../SectionTitle';
 import CommitmentItem from './CommitmentItem';
-import { Commitment } from '../../data/props';
+import type { Commitment } from '../../data/props';
 
 const CommitmentList = ({ data }: { data: Commitment[] }) => (
   <section>
