@@ -100,7 +100,7 @@ const allTags = [...new Set(posts.flatMap((post) => post.data.tags))].sort();
             >
               <BlogCard
                 post={{
-                  slug: post.slug,
+                  slug: post.id.replace(/\.(md|mdx)$/, ''),
                   title: post.data.title,
                   description: post.data.description,
                   pubDate: post.data.pubDate,
