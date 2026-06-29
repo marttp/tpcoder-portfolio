@@ -1,5 +1,5 @@
-import { Accessor, JSX } from 'solid-js';
-import { Speaker } from '../../data/props';
+import { type Accessor, type JSX } from 'solid-js';
+import type { Speaker } from '../../data/props';
 import InterestingLink from '../InterestingList';
 
 const SpeakerItem = ({
