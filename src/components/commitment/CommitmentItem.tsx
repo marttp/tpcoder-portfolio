@@ -1,5 +1,5 @@
-import { Accessor, JSX } from 'solid-js';
-import { Commitment } from '../../data/props';
+import { type Accessor, type JSX } from 'solid-js';
+import type { Commitment } from '../../data/props';
 
 const CommitmentItem = ({
   commitment,
