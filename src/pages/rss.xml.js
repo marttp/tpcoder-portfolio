@@ -2,7 +2,7 @@ import rss from '@astrojs/rss';
 import { getCollection } from 'astro:content';
 import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
 
-export async function get(context) {
+export async function GET(context) {
   const posts = await getCollection('blog');
   const projects = await getCollection('project');
   return rss({
@@ -12,11 +12,11 @@ export async function get(context) {
     items: [
       ...posts.map((post) => ({
         ...post.data,
-        link: `/blog/${post.slug}/`,
+        link: `/blog/${post.id.replace(/\.(md|mdx)$/, '')}/`,
       })),
       ...projects.map((project) => ({
         ...project.data,
-        link: `/project/${project.slug}/`,
+        link: `/project/${project.id.replace(/\.(md|mdx)$/, '')}/`,
       })),
     ],
   });
