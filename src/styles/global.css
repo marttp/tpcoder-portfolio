@@ -1,3 +1,91 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@source "../**/*.{astro,tsx,ts,js,html}";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Primary palette */
+  --color-primary-light: #0EDCAA;
+  --color-primary: #619C87;
+  --color-primary-dark: #0A453E;
+
+  /* Background palette */
+  --color-background-light: #FFFFFF;
+  --color-background: #D9EDDF;
+  --color-background-dark: #2E2E2E;
+
+  /* Text palette */
+  --color-text-light: #333333;
+  --color-text: #2E2E2E;
+  --color-text-dark: #FFFFFF;
+
+  /* Base colors */
+  --color-white: #FFFFFF;
+  --color-black: #000000;
+
+  /* Gray scale */
+  --color-gray-100: #F2F2F2;
+  --color-gray-200: #E5E5E5;
+  --color-gray-300: #D9D9D9;
+  --color-gray-400: #CCCCCC;
+  --color-gray-500: #BFBFBF;
+  --color-gray-600: #B3B3B3;
+  --color-gray-700: #A6A6A6;
+  --color-gray-800: #999999;
+  --color-gray-900: #8C8C8C;
+
+  /* Green scale */
+  --color-green-100: #E6FFED;
+  --color-green-200: #CFFCEB;
+  --color-green-300: #A5F3FC;
+  --color-green-400: #6EE7B7;
+  --color-green-500: #34D399;
+  --color-green-600: #10B981;
+  --color-green-700: #059669;
+  --color-green-800: #047857;
+  --color-green-900: #065F46;
+
+  /* Blue scale */
+  --color-blue-100: #EFF6FF;
+  --color-blue-200: #DBEAFE;
+  --color-blue-300: #BFDBFE;
+  --color-blue-400: #93C5FD;
+  --color-blue-500: #60A5FA;
+  --color-blue-600: #3B82F6;
+  --color-blue-700: #2563EB;
+  --color-blue-800: #1D4ED8;
+  --color-blue-900: #1E40AF;
+
+  /* Yellow scale */
+  --color-yellow-100: #FEFCE8;
+  --color-yellow-200: #FEF9C3;
+  --color-yellow-300: #FEF08A;
+  --color-yellow-400: #FDE047;
+  --color-yellow-500: #FACC15;
+  --color-yellow-600: #EAB308;
+  --color-yellow-700: #CA8A04;
+  --color-yellow-800: #A16207;
+  --color-yellow-900: #854D0E;
+
+  /* Breakpoints - all in px so Tailwind v4 sorts them correctly */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 700px;
+  --breakpoint-lg: 976px;
+  --breakpoint-xl: 1440px;
+
+  /* Font */
+  --font-sans: Roboto, sans-serif;
+
+  /* Custom spacing */
+  --spacing-128: 32rem;
+  --spacing-144: 36rem;
+
+  /* Custom border radius */
+  --radius-4xl: 2rem;
+}
+
 body {
   font-family: "Roboto", sans-serif;
 }
