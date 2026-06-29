@@ -1,5 +1,5 @@
 import { createSignal, For, Show } from 'solid-js';
-import { VolunteerItem as Item } from '../../data/props';
+import type { VolunteerItem as Item } from '../../data/props';
 import VolunteerItem from './VolunteerItem';
 
 const GenMentorGroup = ({ items }: { items: Item[] }) => {
