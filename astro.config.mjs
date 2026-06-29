@@ -21,6 +21,11 @@ export default defineConfig({
     port: SERVER_PORT
   },
   site: BASE_URL,
+  markdown: {
+    shikiConfig: {
+      theme: 'github-dark',
+    },
+  },
   integrations: [
     mdx(),
     sitemap(),
