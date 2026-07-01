@@ -11,6 +11,7 @@
         "authCaptureSeparation": "https://docs.coda.co/codapay/hosted-payment-page-integration/authorize-and-capture-a-payment-separately"
       },
       "highlights": [
+        "Reduced boilerplate across the Merchant API Service by introducing a Gradle Convention Plugin, standardizing build configuration and enabling new modules to onboard with minimal setup.",
         "Improved payment routing reliability by implementing a Java-based card brand lookup module using BIN pattern matching (inspired by braintree/credit-card-type), providing resilient card brand detection when primary provider responses are unavailable and reducing downstream payment failures.",
         "Owned the Merchant API Service as sole engineer, serving as the primary technical contact for Fraud team stakeholders and delivering the Quarkus (JDK 25) fulfillment callback service from concept to production - replacing a deprecated Lambda notifier, modernizing from batch-scheduled GET to real-time POST webhooks with robust SQS-driven retries, and eliminating sensitive data from URL query parameters.",
         "Partnered with the Fraud team to integrate chargeback notifications into the Merchant API Service, designing and implementing a notification filter that routes incoming webhooks by event type to the correct downstream handler.",
