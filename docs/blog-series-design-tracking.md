@@ -13,7 +13,7 @@ Reference posts: `payment-backend-stripe-integration-en.mdx` (~750 lines), `desi
 | 3 | Omnichannel Customer Communication Delivery Backbone | Published | pubDate 2026-06-19 | published |
 | 4 | Webhook Callback System | Published | pubDate 2026-06-22 | published |
 | 5 | Icon Management / Segmentation | Published | pubDate 2026-06-28 | published |
-| 6 | Audience Platform (ETL Pipeline) | Not started | - | - |
+| 6 | Audience Platform (ETL Pipeline) | EN ready | pubDate 2026-07-01 | not started |
 | 7 | Campaign Management Platform | Not started | - | - |
 | 8 | Cashback System | Not started | - | - |
 
@@ -272,12 +272,16 @@ Key experience: PayPay personalized asset delivery (Akka -> Spring Boot Kotlin, 
 
 File: `design-audience-platform.mdx` / `-th.mdx`
 
-- [ ] v1: Inline SQL query at send time
-- [ ] v2: Nightly batch pre-computation
-- [ ] v3: Spark jobs for complex rules
-- [ ] v4: Data lake integration
-- [ ] v5: Near real-time eligibility (streaming)
-- [ ] v6: Reusable segmentation service
+EN drafted (pubDate 2026-07-01); TH not started.
+
+Published sections (EN):
+
+- [x] Naive — a SQL query at send time (runs against the production DB; the three cracks: heavy query, send blocks on it, no reuse across campaigns)
+- [x] Precompute on a schedule — nightly `segment_members` table, send becomes a cheap read; trades for freshness + still pounds the OLTP DB
+- [x] Move to Spark — when rules become windowed aggregates / anti-joins / model outputs over billions of rows; broadcast the small side, watch data skew (AQE + salt + pre-aggregate), partition-prune at the source
+- [x] The data lake — Parquet columnar (predicate pushdown) + Iceberg/Delta table format (ACID snapshots, time travel), partition by date, CDC ingestion, orchestrator
+- [x] Microbatch, not streaming — the honest sweet spot: refresh every 1–2h, incremental + idempotent snapshots; true streaming stays the rare opt-in for the handful of rules that earn it (deliberate deviation from the original "v5: streaming" outline)
+- [x] A reusable segmentation service — rules as config, one engine, **one segment result materialized two ways**: chunked list → #3 Omnichannel (sequential read), inverted per-user membership index → #5 Icon serving (point lookup); membership-removal (SREM, not just SADD) is the trap; Bloom filter kept out of the final answer (false-positive = wrong eligibility)
 
 Key experience: PayPay Spark-Scala ETL jobs, audience grouping, data lake migration
 
