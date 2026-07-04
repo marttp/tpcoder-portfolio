@@ -226,7 +226,7 @@ Now the audience is computed at scale and fresh within the hour. The last step i
 
 **The problem:** everything so far is real, but each segment is a hand-written Spark job somebody on the data team ships and babysits. Marketing wants a new audience and files a ticket; an engineer writes Scala, tests it, schedules it, wires its output to the membership store. That's a bottleneck and it doesn't scale past a handful of segments. The campaign platform (#7) can't self-serve audiences if every one needs an engineer.
 
-**The fix:** turn the pile of bespoke jobs into a **platform**. Rules become *configuration*, not code; an engine compiles them to the batch/stream jobs; and the results are materialized into whatever shape the consumer needs.
+**The fix:** turn the pile of hand-written jobs into a **platform**. Rules become *configuration*, not code; an engine compiles them to the batch/stream jobs; and the results are materialized into whatever shape the consumer needs.
 
 - **Rules as a DSL / config.** A segment is defined declaratively — predicates, time windows, joins against named attributes, a freshness tier (batch vs. real-time). Something like `tier = gold AND country = TH AND avg_txn_90d > 5000 AND NOT suppressed`, stored as data. Non-engineers (or the #7 UI) compose segments; the platform validates and estimates size before anything runs.
 - **One engine, generated jobs.** The platform translates a rule into the actual Spark plan and, if the rule is tagged real-time, the streaming topology too. The author never touches Scala. New attributes get registered once in a catalog and become available to every rule.
