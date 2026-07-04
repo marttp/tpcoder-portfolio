@@ -191,7 +191,7 @@ The **freshness vs. cost** dial sits right here. A daily batch lake is cheap and
 
 ---
 
-## "Nightly" isn't fresh enough — refresh every 1–2 hours
+## Nightly isn't fresh enough — refresh every 1–2 hours
 
 **The problem:** a day stale is too stale for a lot of rules. "User topped up this morning → they should be eligible for the topup-bonus banner by lunch, not tomorrow." Marketing reacts within a day, not within a month. Nightly means every segment is, on average, 12 hours behind reality — and for anything tied to recent behavior, that's where the audience is wrong.
 
@@ -257,11 +257,11 @@ flowchart TD
 
 Either way, the segment result in object storage is the source of truth; the Redis index is a derived, disposable view you can always rebuild from it.
 
-**A word on Bloom filters — I've taken one out of production for exactly this.** It's tempting to shrink the membership check with a Bloom filter: instead of storing every user's full set, keep a compact probabilistic structure that answers "is user X in campaign Y?" in a fraction of the space. The catch is what *probabilistic* means here. A Bloom filter never gives a false negative, but it *will* return false positives at some rate — and for eligibility, a false positive is a user being told they qualify for something they don't: the wrong banner, a benefit they shouldn't get, a campaign that shouldn't reach them. I've shipped one and pulled it back out, because even a low false-positive rate became real business errors at volume. Eligibility is a correctness domain, not a "probably" one, so the membership store stays exact. Bloom filters earn their keep where a false positive is *harmless* — a pre-check in front of an expensive lookup you'll verify anyway — not as the final answer to "is this user eligible?"
+**A word on Bloom filters — the false-positive trap.** It's tempting to shrink the membership check with a Bloom filter: instead of storing every user's full set, keep a compact probabilistic structure that answers "is user X in campaign Y?" in a fraction of the space. The catch is what *probabilistic* means here. A Bloom filter never gives a false negative, but it *will* return false positives at some rate — and for eligibility, a false positive is a user being told they qualify for something they don't: the wrong banner, a benefit they shouldn't get, a campaign that shouldn't reach them. The reason it bites: even a low false-positive rate becomes real business errors at volume. Eligibility is a correctness domain, not a "probably" one, so the membership store stays exact. Bloom filters earn their keep where a false positive is *harmless* — a pre-check in front of an expensive lookup you'll verify anyway — not as the final answer to "is this user eligible?"
 
 {/* IMAGE PROMPT (bloom-filter-false-positive.png): Clean conceptual diagram, flat vector, light background. CENTER: a funnel/filter shape labeled exactly "Bloom filter". From the LEFT, two user icons approach: one tagged exactly "member" and one tagged exactly "non-member". BOTH pass through the filter to the RIGHT side. The "member" path ends in a green check; the "non-member" path ends with a red warning mark tagged exactly "false positive", leading to a box on the far right labeled exactly "wrong eligibility". Convey: a Bloom filter wrongly lets a non-member through, producing wrong eligibility. STRICT: render ONLY these labels — "Bloom filter", "member", "non-member", "false positive", "wrong eligibility" — spelled exactly, each once; user icons carry no extra text; no other words; no typos; no duplicate labels; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
 
-![A Bloom filter lets a non-member slip through as a false positive — wrong eligibility, which is why it left production](/assets/images/blogs/design-audience-platform/bloom-filter-false-positive.png)
+![A Bloom filter lets a non-member slip through as a false positive — wrong eligibility, which is why it doesn't belong in the final answer](/assets/images/blogs/design-audience-platform/bloom-filter-false-positive.png)
 
 Same audience logic, one segment result in object storage, read two ways — sequentially for delivery, inverted for serving. The platform owns the *who*; each consumer gets the *who* in the shape its access pattern demands. That's the win, and the reason audience deserves to be its own system rather than a query bolted onto each sender.
 
@@ -282,8 +282,6 @@ We started with a `WHERE` clause typed at send time and ended with a platform th
 5. **Refresh every 1–2 hours** — incremental ETL keeps thousands-to-millions of segment results fresh within the hour; true streaming stays the rare opt-in.
 6. **A reusable segmentation service** — rules as config, one engine, one segment result read two ways: chunked for delivery, inverted into a per-user index for serving.
 
-The meta-point, same as the rest of the series: **nobody starts here.** A few thousand users and a simple rule? Type the `WHERE` clause and move on. Every layer above earned its place — scale forced precomputation, complexity forced Spark, Spark forced the lake, recency forced streaming, and repetition forced the platform.
+The meta-point, same as the rest of the series: **nobody starts here.** A few thousand users and a simple rule? Type the `WHERE` clause and move on. Every layer above earned its place — scale forced precomputation, complexity forced Spark, Spark forced the lake, recency forced microbatch, and repetition forced the platform.
 
 And if there's one thing to carry over: the audience platform's job isn't just *computing* the right set of users — it's serving that set in the shape each consumer actually reads. Omnichannel streams it; icon serving point-looks-it-up. Get the computation right and pick the wrong serving shape, and you've built a brilliant brain that can't talk to either mouth.
-
-Next in the series: the **Campaign Management Platform** — the front-of-house where marketing composes the campaigns that drive all of this, and where these segment definitions get authored in the first place.
