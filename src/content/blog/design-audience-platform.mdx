@@ -228,7 +228,7 @@ Now the audience is computed at scale and fresh within the hour. The last step i
 
 **The fix:** turn the pile of hand-written jobs into a **platform**. Rules become *configuration*, not code; an engine compiles them to the batch/stream jobs; and the results are materialized into whatever shape the consumer needs.
 
-- **Rules as a DSL / config.** A segment is defined declaratively — predicates, time windows, joins against named attributes, a freshness tier (batch vs. real-time). Something like `tier = gold AND country = TH AND avg_txn_90d > 5000 AND NOT suppressed`, stored as data. Non-engineers (or the #7 UI) compose segments; the platform validates and estimates size before anything runs.
+- **Rules as a DSL / config.** A segment is defined as data, not code — predicates, time windows, joins against named attributes, a freshness tier (batch vs. real-time). Something like `tier = gold AND country = TH AND avg_txn_90d > 5000 AND NOT suppressed`, stored as data. Non-engineers (or the #7 UI) compose segments; the platform validates and estimates size before anything runs.
 - **One engine, generated jobs.** The platform translates a rule into the actual Spark plan and, if the rule is tagged real-time, the streaming topology too. The author never touches Scala. New attributes get registered once in a catalog and become available to every rule.
 - **Reusability.** Segments compose — "gold_th_active" can be referenced by ten campaigns and computed once. The platform dedupes the work instead of re-deriving the same audience per campaign, which is exactly the v1 sin, finally killed.
 
