@@ -142,7 +142,20 @@ flowchart LR
 
 > **P.S.** Honestly, this might be as far as you need to go. If your segment output already lives outside production — in Redis, a flat file, or its own small database — and a send is just a simple lookup, most teams can stop right here. The next section solves a different problem: the read query itself getting too heavy even for a replica, not where the result is stored.
 
-**Before going further, a quick recap.** Omnichannel wants the whole audience in one **chunk read**, in order; icon serving wants a single user's eligibility as a **real-time read**, a point lookup right now. Neither cares which engine produced the list — both just read whatever lands in the segment table. That's why this rung works without changing anything downstream: the *shape* of the output never changes, only how it gets computed. Next: what happens when the compute itself stops being enough.
+**Before going further, a quick recap.** Two consumers, two read patterns, and neither cares which engine produced the list:
+
+- **Omnichannel** — wants the whole audience in one **chunk read**, in order.
+- **Icon serving** — wants a single user's eligibility as a **real-time read**, a point lookup right now.
+
+<MermaidDiagram chart={`
+flowchart LR
+    E1["Primary / replica"] -.-> SEG[("Segment table")]
+    E2["Warehouse (OLAP)"] -.-> SEG
+    SEG -->|"chunk read"| OMNI["Omnichannel"]
+    SEG -->|"real-time read"| ICON["Icon serving"]
+`} />
+
+Both just read whatever lands in the segment table. That's why this rung works without changing anything downstream: the *shape* of the output never changes, only how it gets computed. Next: what happens when the compute itself stops being enough.
 
 ---
 
