@@ -31,6 +31,8 @@ flowchart LR
     R --> B["Per-user membership store\n(#5 Icon serving)"]
 `} />
 
+> **P.S.** Icon serving is the concrete example, carried over from post #5, but treat it as a stand-in. The pattern is any consumer that needs a real-time, per-user point lookup on top of segmentation — a paywall check, a feature flag, a personalization rule, a fraud gate. Whatever you're building, if it asks "is this one user eligible right now," it reads the membership store the same way.
+
 Here's the road. The first half is the evolution of *how we compute the audience*; the payoff at the end is *how we serve it two ways*.
 
 1. **Inline SQL** at send time — works until the query is 40M rows mid-send
@@ -149,8 +151,7 @@ flowchart LR
 
 <MermaidDiagram chart={`
 flowchart LR
-    E1["Primary / replica"] -.-> SEG[("Segment table")]
-    E2["Warehouse"] -.-> SEG
+    E1["Primary / replica"] -.-> SEG[("Segment store\n (table, file, redis")]
     SEG -->|"chunk read"| OMNI["Omnichannel"]
     SEG -->|"real-time read"| ICON["Icon serving"]
 `} />
