@@ -35,10 +35,11 @@ Here's the road. The first half is the evolution of *how we compute the audience
 
 1. **Inline SQL** at send time — works until the query is 40M rows mid-send
 2. **Precompute on a schedule** — build the segment ahead of time, read it at send
-3. **Spark** — rules and data outgrow a single database
-4. **A data lake** — give Spark something to read that isn't your production DB
-5. **Near-real-time** — "nightly" isn't fresh enough for some rules
-6. **A reusable segmentation service** — stop building a custom job per use case
+3. **A replica, then a warehouse** — squeeze the single-box world before going distributed
+4. **Spark** — rules and data outgrow what SQL-on-one-engine can express
+5. **A data lake** — give Spark something to read that isn't your production DB
+6. **Near-real-time** — "nightly" isn't fresh enough for some rules
+7. **A reusable segmentation service** — stop building a custom job per use case
 
 Let's start simple.
 
@@ -79,13 +80,19 @@ All three say the same thing: **deriving the audience at send time, on the live 
 **The fix:** run the query *ahead of time* on a schedule, store the result, and let send time just **read** it. A nightly job computes each segment's members and writes them to a `segment_members` table:
 
 ```sql
--- nightly, per segment
+-- nightly, per segment: delete + insert in ONE transaction,
+-- so a re-run or a retry rebuilds the segment instead of doubling it
+BEGIN;
+DELETE FROM segment_members WHERE segment_id = 'gold_th_active';
 INSERT INTO segment_members (segment_id, user_id, computed_at)
 SELECT 'gold_th_active', user_id, now()
 FROM users
 WHERE tier = 'gold' AND country = 'TH'
   AND last_topup_at > now() - interval '30 days';
+COMMIT;
 ```
+
+Two boring details in that snippet are doing the real work. First, the job is **idempotent** — a bare `INSERT` alone is the classic footgun here, because the first retry after a crash doubles every member; the delete-and-insert in one transaction (with a primary key on `(segment_id, user_id)` as the backstop) makes re-running always safe. Second, once the audience is precomputed it can silently go stale, so **alert on the age of `max(computed_at)`, not just on job failure** — a nightly job that dies quietly on Friday night means a three-day-stale audience by Monday, and "the job didn't page" is not the same as "the data is fresh."
 
 Now a send is a cheap read: `SELECT user_id FROM segment_members WHERE segment_id = 'gold_th_active'`. The heavy lifting happened overnight, when nobody's waiting.
 
@@ -101,13 +108,38 @@ This buys a lot — the send is fast, the expensive query runs off-peak, and a s
 - **Freshness.** The list is up to 24 hours stale. A user who topped up this morning won't be "gold-tier active" until tonight's rebuild. For a weekly promo that's fine; for "remind users who *just* abandoned a cart," it's useless. Hold that thought — it's what forces streaming later.
 - **It still runs on the production DB, and it's still one box.** We moved the query off the send path, but a full rebuild of every segment is now a giant nightly batch hitting the same database. As segments multiply and rules get gnarlier (cross joins, windowed aggregates over a year of transactions), a single Postgres doing both live traffic and analytical batch starts to buckle.
 
-The second crack is the structural one. We don't just need to precompute — we need to precompute *somewhere that isn't the transactional database, with an engine built for it.*
+The second crack is the structural one. We don't just need to precompute — we need to precompute *somewhere that isn't the live transactional database*. But "somewhere else" doesn't mean a cluster yet, and this next rung is the one most write-ups skip.
+
+---
+
+## Squeeze the single box first — a replica, then a warehouse
+
+Most posts jump from "one Postgres" straight to "a Spark cluster," and readers walk away believing distributed compute is step three. It isn't. There are two cheap rungs in between, and — being honest — a lot of companies could stop on them forever.
+
+**Rung one: point the batch at a read replica.** Nearly every managed database offers one as a checkbox. The primary keeps serving live traffic; the nightly segment build hammers the replica, where it can't hurt anyone. Replication lag of a few seconds is irrelevant for a marketing audience that's already tolerating hours of staleness. This is a one-line infrastructure change that buys years at many companies — take it *early*, the moment the batch visibly competes with live traffic.
+
+**Rung two: move the analytics to an analytical engine.** When the rules become 90-day windowed aggregates and multi-way joins over hundreds of millions of rows, the replica starts taking hours — not because the hardware is weak, but because the **workload shape is wrong**: row-store OLTP engines are built for point reads and writes, not full scans over a few columns. The fix is still not a cluster. A columnar analytical database (ClickHouse, or DuckDB on one beefy machine) or a managed warehouse (BigQuery, Snowflake, Athena) runs the same SQL one or two orders of magnitude faster, and "a scheduled SQL query on the warehouse, output written to a segment table" is — quietly — the mainstream audience platform in 2026. Plenty of teams run exactly that at tens of millions of users and never need more.
+
+**So when do you actually leave a rung?** Rough triggers, not gospel:
+
+| You're on | Move up when |
+|---|---|
+| Inline SQL at send time | audiences pass ~1M users, campaigns multiply, or a send query first slows the app |
+| Precompute on the primary | the batch visibly competes with live traffic — the replica is one config change, take it |
+| Read replica | analytical SQL takes hours on a row store — the shape is wrong, not the hardware |
+| Warehouse / columnar DB | jobs can't finish inside their refresh window, rules need real *code* (custom scoring, ML features) rather than SQL, or the inputs no longer live in one database |
+
+The test in that last row is the one to memorize: **when a job can't finish inside its refresh window, you've outgrown the rung.** An "hourly" segment build that takes 90 minutes isn't hourly, whatever the cron schedule claims.
+
+One more dial that the architecture diagrams never show: **every rung up adds run-rate and on-call surface.** A replica is a checkbox. A warehouse is a bill. The Spark-plus-lake world in the next two sections is a bill *and* a team — clusters to babysit, pipelines to page on, usually a dedicated data engineer. Climb because a trigger fired, not because the next rung looks more interesting on a CV.
+
+If you're on a managed warehouse and it's coping, you can honestly skim the next two sections. The series follows the self-managed path from here because that's the path that breaks in interesting ways at the largest scale — and because the serving story at the end is the same regardless of which engine computed the audience.
 
 ---
 
 ## Rules and data outgrow one database — move to Spark
 
-**The problem:** the segment rules stopped being simple `WHERE` clauses. Real targeting looks like "users whose **average** transaction over the last 90 days is above X, who used feature Y at least 3 times, who are **not** in the suppression list, joined against a churn score from the data-science team." That's windowed aggregates, multi-table joins, anti-joins, and a model output — over hundreds of millions of users and *billions* of transaction rows. A single relational database can technically express it and will technically die trying.
+**The problem:** even the warehouse rung has a ceiling, and it's less about size than about *shape*. Real targeting looks like "users whose **average** transaction over the last 90 days is above X, who used feature Y at least 3 times, who are **not** in the suppression list, joined against a churn score from the data-science team." The windowed aggregates and anti-joins, a warehouse eats for breakfast — but the churn score arrives as files the DS team ships, the feature events live in a stream rather than a table, and the scoring logic the business actually wants is *code*, not a `WHERE` clause. When the inputs stop living in one queryable place and the rules stop being expressible as SQL, you need an engine that treats arbitrary data plus arbitrary logic as the normal case — over hundreds of millions of users and *billions* of transaction rows.
 
 **The fix:** move the computation to a distributed engine. This is where Spark earns its place — it's built to chew through billions of rows in parallel across a cluster, and (the part I care about most) it lets you write the rule once and let the engine figure out the distribution.
 
@@ -151,6 +183,8 @@ flowchart LR
     S --> M["Segment membership\n(user_id per segment)"]
 `} />
 
+One operating note before moving on: this rung is where the audience platform stops being a side quest. A Spark cluster brings job failures, executor OOMs, and version upgrades of its own — in practice it arrives together with the first person whose actual job is running it. Budget the human, not just the cluster.
+
 Spark fixes the *compute*. But it raised a question by reading from `s3://lake/...` instead of the production DB — **where did that data come from, and why isn't Spark reading Postgres directly?** That's the data lake.
 
 ---
@@ -187,7 +221,7 @@ flowchart LR
     SPARK --> OUT["Segment membership"]
 `} />
 
-The **freshness vs. cost** dial sits right here. A daily batch lake is cheap and simple but a day behind. CDC + compaction is fresh but is real infrastructure to run. Most platforms land in the middle and tune per table: profile data daily is fine, transactions you want within the hour. Which is the perfect setup for the limitation that breaks "nightly" entirely.
+The **freshness vs. cost** dial sits right here. A daily batch lake is cheap and simple but a day behind. CDC + compaction is fresh but is real infrastructure to run — Debezium, Kafka connectors, compaction jobs, and the orchestrator each want patching, monitoring, and someone to page. This is the rung where the platform acquires a team, which is exactly why the replica-and-warehouse section told you to make sure a trigger fired first. Most platforms land in the middle and tune per table: profile data daily is fine, transactions you want within the hour. Which is the perfect setup for the limitation that breaks "nightly" entirely.
 
 ---
 
@@ -205,7 +239,7 @@ Worth being clear about what microbatch *is*, because it's an approach, not a sp
 
 Making a 1–2 hour cadence actually work, going deep:
 
-**Incremental, not full-rebuild.** Recomputing every segment from five years of history every hour would melt the cluster and never finish. Lean on the table format from the last step: read only what *changed* since the last run (Iceberg/Delta incremental reads, or the CDC feed), update the affected users, and leave the rest. The hourly job touches deltas; a heavier full rebuild still runs nightly to correct any drift.
+**Incremental, not full-rebuild.** Recomputing every segment from five years of history every hour would melt the cluster and never finish — the refresh-window test again: an hourly job that takes 90 minutes isn't an hourly job. Lean on the table format from the last step: read only what *changed* since the last run (Iceberg/Delta incremental reads, or the CDC feed), update the affected users, and leave the rest. The hourly job touches deltas; a heavier full rebuild still runs nightly to correct any drift.
 
 **Idempotent, snapshot-style publishes.** Each run produces a fresh, complete segment result and publishes it as a versioned snapshot the consumers switch to atomically — no half-updated segment ever visible. Same discipline as the icon post's "overwrite, never delete": a failed run leaves the previous good snapshot in place rather than blanking the segment.
 
@@ -231,6 +265,7 @@ Now the audience is computed at scale and fresh within the hour. The last step i
 - **Rules as a DSL / config.** A segment is defined as data, not code — predicates, time windows, joins against named attributes, a freshness tier (batch vs. real-time). Something like `tier = gold AND country = TH AND avg_txn_90d > 5000 AND NOT suppressed`, stored as data. Non-engineers (or the #7 UI) compose segments; the platform validates and estimates size before anything runs.
 - **One engine, generated jobs.** The platform translates a rule into the actual Spark plan and, if the rule is tagged real-time, the streaming topology too. The author never touches Scala. New attributes get registered once in a catalog and become available to every rule.
 - **Reusability.** Segments compose — "gold_th_active" can be referenced by ten campaigns and computed once. The platform dedupes the work instead of re-deriving the same audience per campaign, which is exactly the v1 sin, finally killed.
+- **Guardrails before the money moves.** Estimating size before a rule runs is half the job; *checking it after* is the half that saves you. A rule edit that flips an `AND` to an `OR` can quietly turn 2M users into 40M, and now a campaign is about to spend real budget on 38M people who shouldn't get it. So the platform holds any segment whose size jumps outside a sane band run-over-run (say ±30%) until a human confirms it, before any consumer — delivery or serving — picks it up. It's a one-line anomaly check guarding the single most expensive mistake this system can make.
 
 And here's the payoff the whole post has been building to. The ETL's native output is the **segment result** — for each segment/campaign, the list of users in it: `campaign → [users]`. It's written to **object storage** (S3/GCS) as a versioned snapshot every 1–2 hours; that snapshot is the shared artifact everything else reads. From that *one* artifact, the two consumers read in opposite directions:
 
@@ -244,7 +279,7 @@ flowchart TD
 
 **Shape 1 — delivery reads the segment result and chunks it (for #3 Omnichannel).** The omnichannel backbone reads an entire audience once, in order, to fan a campaign out. The segment result *is* what it consumes: it reads `campaign → [users]` and splits it into ~1K-user chunks to stream through its delivery workflow. For a 40–60M audience that's the ~40–60K chunks the omnichannel post sized its observability around. The audience platform produces the list; delivery does the chunking. One big sequential read — no random access needed.
 
-**Shape 2 — invert the segment result into a per-user membership index (for #5 Icon serving).** The icon path asks the opposite question at request time: given *one* user, which campaigns are they in — in under a millisecond, thousands of times a second. Reading `campaign → [users]` to answer that would mean scanning every campaign's list per request, which is hopeless. So we build the **inverted index**: flip `campaign → [users]` into `user → {campaigns}` and store it for point lookup — a Redis set per user, `10001 -> {1, 2, 3, 4, 5}`. The inversion is a step in the same ETL: as each segment-result snapshot lands in object storage, fan its users out into their per-user sets. This is exactly the membership store the icon-serving post read from — now you can see how it's built: it's the segment results, turned inside out.
+**Shape 2 — invert the segment result into a per-user membership index (for #5 Icon serving).** The icon path asks the opposite question at request time: given *one* user, which campaigns are they in — in under a millisecond, thousands of times a second. Reading `campaign → [users]` to answer that would mean scanning every campaign's list per request, which is hopeless. So we build the **inverted index**: flip `campaign → [users]` into `user → {campaigns}` and store it for point lookup — a Redis set per user, `10001 -> {1, 2, 3, 4, 5}`. Back-of-envelope before you trust it: 100M users, each holding a set of a few small campaign IDs, lands in the tens of GB — a modest Redis cluster, nothing exotic. The inversion is a step in the same ETL: as each segment-result snapshot lands in object storage, fan its users out into their per-user sets. This is exactly the membership store the icon-serving post read from — now you can see how it's built: it's the segment results, turned inside out.
 
 {/* IMAGE PROMPT (inverted-index.png): Clean conceptual diagram, flat vector, light background. LEFT box header labeled exactly "Segment result" containing two text lines reading exactly "campaign 1 -> [10001, 10002]" and "campaign 2 -> [10001]". A bold arrow in the center labeled exactly "invert" points from LEFT to RIGHT. RIGHT box header labeled exactly "Membership index" containing two text lines reading exactly "10001 -> {1, 2}" and "10002 -> {1}". Convey: flipping campaign-to-users into user-to-campaigns. STRICT: render ONLY this text — "Segment result", "campaign 1 -> [10001, 10002]", "campaign 2 -> [10001]", "invert", "Membership index", "10001 -> {1, 2}", "10002 -> {1}" — spelled exactly, each once; no other words; no typos; no duplicate lines; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
 
@@ -253,9 +288,9 @@ flowchart TD
 **Membership churns — and removals are the trap.** Each 1–2 hour refresh isn't the same list as last time: some users newly **match** a segment, some **drop out** (their last topup aged past 30 days, they hit the suppression list). Adds are easy — `SADD` the campaign to the user's set. Removals are the one people forget: if user `10001` no longer qualifies for campaign 5, you must `SREM` it from their set, or they keep an eligibility they've lost and the icon keeps showing. So the inversion can't be append-only. Two ways to keep it honest:
 
 - **Diff and apply** — compare the new snapshot against the previous one per segment, compute the *added* and *removed* user sets, and apply both (`SADD` the adds, `SREM` the removes). Cheap when churn is small, which it usually is — but it leans on having the prior snapshot and getting the diff right.
-- **Rebuild and swap** — recompute every user's full set from the new snapshots and atomically swap it in (write to a shadow keyspace, flip a pointer). Dead simple and self-correcting — no drift can accumulate — at the cost of rewriting everything each cycle. The 1–2 hour cadence makes this affordable, which is a quiet argument *for* not going real-time.
+- **Rebuild and swap** — recompute every user's full set from the new snapshots and atomically swap it in (write to a shadow keyspace, flip a pointer). Dead simple and self-correcting — no drift can accumulate — at the cost of rewriting everything each cycle. The 1–2 hour cadence makes this affordable, which is a quiet argument *for* not going real-time. The sizing detail people miss: during the swap the shadow and live keyspaces coexist, so peak memory is roughly **double** steady state — size the cluster for the peak, or swap shard by shard.
 
-Either way, the segment result in object storage is the source of truth; the Redis index is a derived, disposable view you can always rebuild from it.
+Either way, the segment result in object storage is the source of truth; the Redis index is a derived, disposable view you can always rebuild from it. And one cheap seatbelt on top of whichever strategy you pick: give every per-user set a TTL slightly longer than the refresh cadence. Then any drift from a missed removal ages out on its own within a cycle or two, instead of persisting until someone notices the wrong banner in production.
 
 **A word on Bloom filters — the false-positive trap.** It's tempting to shrink the membership check with a Bloom filter: instead of storing every user's full set, keep a compact probabilistic structure that answers "is user X in campaign Y?" in a fraction of the space. The catch is what *probabilistic* means here. A Bloom filter never gives a false negative, but it *will* return false positives at some rate — and for eligibility, a false positive is a user being told they qualify for something they don't: the wrong banner, a benefit they shouldn't get, a campaign that shouldn't reach them. The reason it bites: even a low false-positive rate becomes real business errors at volume. Eligibility is a correctness domain, not a "probably" one, so the membership store stays exact. Bloom filters earn their keep where a false positive is *harmless* — a pre-check in front of an expensive lookup you'll verify anyway — not as the final answer to "is this user eligible?"
 
@@ -276,12 +311,13 @@ Same audience logic, one segment result in object storage, read two ways — seq
 We started with a `WHERE` clause typed at send time and ended with a platform that computes audiences over a data lake and serves them two ways. The path, in order:
 
 1. **Inline SQL at send time** — fine until the query is 40M rows on the production DB, mid-send.
-2. **Precompute on a schedule** — build the segment ahead, read it cheap at send; but it's stale and still pounds the OLTP DB.
-3. **Spark** — distributed compute for rules and data a single database can't handle.
-4. **A data lake** — Parquet + a table format, partitioned and ingested, so Spark never touches production.
-5. **Refresh every 1–2 hours** — incremental ETL keeps thousands-to-millions of segment results fresh within the hour; true streaming stays the rare opt-in.
-6. **A reusable segmentation service** — rules as config, one engine, one segment result read two ways: chunked for delivery, inverted into a per-user index for serving.
+2. **Precompute on a schedule** — build the segment ahead (idempotently, with a staleness alarm), read it cheap at send; but it still pounds the OLTP DB.
+3. **A replica, then a warehouse** — the cheap rungs most write-ups skip; a scheduled query on a columnar engine is the mainstream audience platform, and plenty of teams rightly stop here.
+4. **Spark** — for when the rules become code and the inputs stop living in one queryable place.
+5. **A data lake** — Parquet + a table format, partitioned and ingested, so Spark never touches production.
+6. **Refresh every 1–2 hours** — incremental ETL keeps thousands-to-millions of segment results fresh within the hour; true streaming stays the rare opt-in.
+7. **A reusable segmentation service** — rules as config, one engine, guardrails on segment size, one segment result read two ways: chunked for delivery, inverted into a per-user index for serving.
 
-The meta-point, same as the rest of the series: **nobody starts here.** A few thousand users and a simple rule? Type the `WHERE` clause and move on. Every layer above earned its place — scale forced precomputation, complexity forced Spark, Spark forced the lake, recency forced microbatch, and repetition forced the platform.
+The meta-point, same as the rest of the series: **nobody starts here.** A few thousand users and a simple rule? Type the `WHERE` clause and move on. Every layer above earned its place — scale forced precomputation, load forced the replica and the warehouse, code-shaped rules forced Spark, Spark forced the lake, recency forced microbatch, and repetition forced the platform. And each climb had a trigger you can measure — the batch that visibly slows live traffic, the job that can't finish inside its refresh window — not a technology that looked interesting.
 
 And if there's one thing to carry over: the audience platform's job isn't just *computing* the right set of users — it's serving that set in the shape each consumer actually reads. Omnichannel streams it; icon serving point-looks-it-up. Get the computation right and pick the wrong serving shape, and you've built a brilliant brain that can't talk to either mouth.
