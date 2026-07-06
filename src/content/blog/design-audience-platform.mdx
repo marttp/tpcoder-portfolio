@@ -35,11 +35,12 @@ Here's the road. The first half is the evolution of *how we compute the audience
 
 1. **Inline SQL** at send time — works until the query is 40M rows mid-send
 2. **Precompute on a schedule** — build the segment ahead of time, read it at send
-3. **A replica, then a warehouse** — squeeze the single-box world before going distributed
-4. **Spark** — rules and data outgrow what SQL-on-one-engine can express
-5. **A data lake** — give Spark something to read that isn't your production DB
-6. **Near-real-time** — "nightly" isn't fresh enough for some rules
-7. **A reusable segmentation service** — stop building a custom job per use case
+3. **A read replica** — squeeze what a single box can do before going distributed
+4. **An analytical engine** — OLTP stops being enough once the workload is real analytics
+5. **Spark** — rules and data outgrow what SQL-on-one-engine can express
+6. **A data lake** — give Spark something to read that isn't your production DB
+7. **Near-real-time** — "nightly" isn't fresh enough for some rules
+8. **A reusable segmentation service** — stop building a custom job per use case
 
 Let's start simple.
 
@@ -119,11 +120,11 @@ The second crack is the structural one. We don't just need to precompute — we 
 
 ---
 
-## Squeeze the single box first — a replica, then a warehouse
+## Squeeze the single box first — a read replica
 
-Most posts jump from "one Postgres" straight to "a Spark cluster," and readers walk away believing distributed compute is step three. It isn't. There are two cheap rungs in between, and — being honest — a lot of companies could stop on them forever.
+Most posts jump from "one Postgres" straight to "a Spark cluster," and readers walk away believing distributed compute is step three. It isn't. There's a cheap move first, and — being honest — a lot of companies could stop here forever.
 
-**Rung one: get the segment job off the primary — for reads, and for where it lands.** Right now production is doing two different jobs: serving live transactional traffic, and holding the `segment_members` table this batch writes into. Split them apart:
+**Get the segment job off the primary — for reads, and for where it lands.** Right now production is doing two different jobs: serving live transactional traffic, and holding the `segment_members` table this batch writes into. Split them apart:
 
 - **Reads** — point the batch's queries at a **read replica**: a live copy of the primary, kept in sync through replication, that only accepts reads and never writes. Because it's read-only, it can absorb read traffic from anywhere — the live app's own reads as well as this batch job's — while every write, from the app or from this job, still has to go through the primary. Nearly every managed database offers a replica as a checkbox, and replication lag of a few seconds is irrelevant for a marketing audience that already tolerates hours of staleness.
 - **Output** — don't write `segment_members` back into that same box. Land it somewhere else entirely: a small dedicated database used only for segments, a plain file in object storage (S3/GCS) the sender reads directly, or Redis holding the segment as a set.
@@ -139,11 +140,15 @@ flowchart LR
     SEND["Send time"] -->|"read"| EXT
 `} />
 
-> **P.S.** Honestly, this might be as far as you need to go. If your segment output already lives outside production — in Redis, a flat file, or its own small database — and a send is just a simple lookup, most teams can stop right here. The warehouse below solves a different problem: the read query itself getting too heavy even for a replica, not where the result is stored.
+> **P.S.** Honestly, this might be as far as you need to go. If your segment output already lives outside production — in Redis, a flat file, or its own small database — and a send is just a simple lookup, most teams can stop right here. The next section solves a different problem: the read query itself getting too heavy even for a replica, not where the result is stored.
 
-**Rung two: move the analytics to an analytical engine.** Before going further, recall how the two consumers actually read this data: omnichannel wants the whole audience in one **chunk read**, in order; icon serving wants a single user's eligibility as a **real-time read**, a point lookup right now. Neither cares which engine produced the list — both just read whatever lands in the segment table. That's why every rung so far still works without changing anything downstream: the *shape* of the output never changes, only how it gets computed.
+**Before going further, a quick recap.** Omnichannel wants the whole audience in one **chunk read**, in order; icon serving wants a single user's eligibility as a **real-time read**, a point lookup right now. Neither cares which engine produced the list — both just read whatever lands in the segment table. That's why this rung works without changing anything downstream: the *shape* of the output never changes, only how it gets computed. Next: what happens when the compute itself stops being enough.
 
-What's changing is the compute itself. When the rules become 90-day windowed aggregates and multi-way joins over hundreds of millions of rows, the replica starts taking hours — not because the hardware is weak, but because this has quietly turned into real analytical work, and a replica is still built for the wrong job. Worth naming the split plainly: **OLTP** (online transactional processing) is what Postgres/MySQL are built for — many small point reads and writes, one row at a time. **OLAP** (online analytical processing) is built for the opposite — scanning a few columns across millions of rows at once. A read replica is still an OLTP engine wearing a read-only hat; this workload needs an OLAP engine instead.
+---
+
+## Move the analytics to an analytical engine — from OLTP to OLAP
+
+When the rules become 90-day windowed aggregates and multi-way joins over hundreds of millions of rows, the replica starts taking hours — not because the hardware is weak, but because this has quietly turned into real analytical work, and a replica is still built for the wrong job. Worth naming the split plainly: **OLTP** (online transactional processing) is what Postgres/MySQL are built for — many small point reads and writes, one row at a time. **OLAP** (online analytical processing) is built for the opposite — scanning a few columns across millions of rows at once. A read replica is still an OLTP engine wearing a read-only hat; this workload needs an OLAP engine instead.
 
 The fix is still not a cluster. A columnar analytical database (ClickHouse, or DuckDB on one beefy machine) or a managed warehouse (BigQuery, Snowflake, Athena) runs the same SQL one or two orders of magnitude faster, and "a scheduled SQL query on the warehouse, output written to a segment table" is — quietly — the mainstream audience platform in 2026. Plenty of teams run exactly that at tens of millions of users and never need more.
 
@@ -339,12 +344,13 @@ We started with a `WHERE` clause typed at send time and ended with a platform th
 
 1. **Inline SQL at send time** — fine until the query is 40M rows on the production DB, mid-send.
 2. **Precompute on a schedule** — build the segment ahead (idempotently, with a staleness alarm), read it cheap at send; but it still pounds the OLTP DB.
-3. **A replica, then a warehouse** — the cheap rungs most write-ups skip; a scheduled query on a columnar engine is the mainstream audience platform, and plenty of teams rightly stop here.
-4. **Spark** — for when the rules become code and the inputs stop living in one queryable place.
-5. **A data lake** — Parquet + a table format, partitioned and ingested, so Spark never touches production.
-6. **Refresh every 1–2 hours** — incremental ETL keeps thousands-to-millions of segment results fresh within the hour; true streaming stays the rare opt-in.
-7. **A reusable segmentation service** — rules as config, one engine, guardrails on segment size, one segment result read two ways: chunked for delivery, inverted into a per-user index for serving.
+3. **A read replica** — the cheap rung most write-ups skip; split reads and the segment's output off the primary, no new engine yet.
+4. **An analytical engine** — once the workload is real analytics (OLTP vs. OLAP), a columnar DB or warehouse runs the same SQL far faster; plenty of teams rightly stop here.
+5. **Spark** — for when the rules become code and the inputs stop living in one queryable place.
+6. **A data lake** — Parquet + a table format, partitioned and ingested, so Spark never touches production.
+7. **Refresh every 1–2 hours** — incremental ETL keeps thousands-to-millions of segment results fresh within the hour; true streaming stays the rare opt-in.
+8. **A reusable segmentation service** — rules as config, one engine, guardrails on segment size, one segment result read two ways: chunked for delivery, inverted into a per-user index for serving.
 
-The meta-point, same as the rest of the series: **nobody starts here.** A few thousand users and a simple rule? Type the `WHERE` clause and move on. Every layer above earned its place — scale forced precomputation, load forced the replica and the warehouse, code-shaped rules forced Spark, Spark forced the lake, recency forced microbatch, and repetition forced the platform. And each climb had a trigger you can measure — the batch that visibly slows live traffic, the job that can't finish inside its refresh window — not a technology that looked interesting.
+The meta-point, same as the rest of the series: **nobody starts here.** A few thousand users and a simple rule? Type the `WHERE` clause and move on. Every layer above earned its place — scale forced precomputation, load forced the replica, real analytics forced the warehouse, code-shaped rules forced Spark, Spark forced the lake, recency forced microbatch, and repetition forced the platform. And each climb had a trigger you can measure — the batch that visibly slows live traffic, the job that can't finish inside its refresh window — not a technology that looked interesting.
 
 And if there's one thing to carry over: the audience platform's job isn't just *computing* the right set of users — it's serving that set in the shape each consumer actually reads. Omnichannel streams it; icon serving point-looks-it-up. Get the computation right and pick the wrong serving shape, and you've built a brilliant brain that can't talk to either mouth.
