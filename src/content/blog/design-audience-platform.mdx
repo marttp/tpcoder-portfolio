@@ -31,18 +31,23 @@ flowchart LR
     R --> B["Per-user membership store\n(#5 Icon serving)"]
 `} />
 
-> **P.S.** Icon serving is the concrete example, carried over from post #5, but treat it as a stand-in. The pattern is any consumer that needs a real-time, per-user point lookup on top of segmentation — a paywall check, a feature flag, a personalization rule, a fraud gate. Whatever you're building, if it asks "is this one user eligible right now," it reads the membership store the same way.
+> **P.S.** Icon serving is the concrete example, carried over from post #5, but treat it as a stand-in. Whatever you're building, if it asks "is this one user eligible right now," it reads the membership store the same way.
 
 Here's the road. The first half is the evolution of *how we compute the audience*; the payoff at the end is *how we serve it two ways*.
+
+**Lower scale — a single box still works:**
 
 1. **Inline SQL** at send time — works until the query is 40M rows mid-send
 2. **Precompute on a schedule** — build the segment ahead of time, read it at send
 3. **A read replica** — squeeze what a single box can do before going distributed
 4. **An analytical engine** — OLTP stops being enough once the workload is real analytics
-5. **Spark** — rules and data outgrow what SQL-on-one-engine can express
-6. **A data lake** — give Spark something to read that isn't your production DB
-7. **Near-real-time** — "nightly" isn't fresh enough for some rules
-8. **A reusable segmentation service** — stop building a custom job per use case
+
+**Larger scale — now we're in distributed-system territory:**
+
+1. **Spark** — rules and data outgrow what SQL-on-one-engine can express
+2. **A data lake** — give Spark something to read that isn't your production DB
+3. **Near-real-time** — "nightly" isn't fresh enough for some rules
+4. **A reusable segmentation service** — stop building a custom job per use case
 
 Let's start simple.
 
@@ -158,6 +163,7 @@ flowchart LR
 
 Both just read whatever lands in the segment table. That's why this rung works without changing anything downstream: the *shape* of the output never changes, only how it gets computed. Next: what happens when the compute itself stops being enough.
 
+> Most of applications in this world maybe stop it right here already. Please keep in mind.
 ---
 
 ## Move the analytics to an analytical engine — from OLTP to OLAP
