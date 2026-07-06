@@ -125,7 +125,7 @@ Most posts jump from "one Postgres" straight to "a Spark cluster," and readers w
 
 **Rung one: get the segment job off the primary — for reads, and for where it lands.** Right now production is doing two different jobs: serving live transactional traffic, and holding the `segment_members` table this batch writes into. Split them apart:
 
-- **Reads** — point the batch's queries at a read replica. Nearly every managed database offers one as a checkbox, and replication lag of a few seconds is irrelevant for a marketing audience that already tolerates hours of staleness.
+- **Reads** — point the batch's queries at a **read replica**: a live copy of the primary, kept in sync through replication, that only accepts reads and never writes. Because it's read-only, it can absorb read traffic from anywhere — the live app's own reads as well as this batch job's — while every write, from the app or from this job, still has to go through the primary. Nearly every managed database offers a replica as a checkbox, and replication lag of a few seconds is irrelevant for a marketing audience that already tolerates hours of staleness.
 - **Output** — don't write `segment_members` back into that same box. Land it somewhere else entirely: a small dedicated database used only for segments, a plain file in object storage (S3/GCS) the sender reads directly, or Redis holding the segment as a set.
 
 None of these need Spark or a warehouse yet — the computation is still the same SQL query, just moved so production only does the one job it should: live traffic. This is a cheap infrastructure change that buys years at many companies — take it *early*, the moment the batch visibly competes with live traffic.
