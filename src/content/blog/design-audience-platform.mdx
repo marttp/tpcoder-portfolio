@@ -141,7 +141,11 @@ flowchart LR
 
 > **P.S.** Honestly, this might be as far as you need to go. If your segment output already lives outside production — in Redis, a flat file, or its own small database — and a send is just a simple lookup, most teams can stop right here. The warehouse below solves a different problem: the read query itself getting too heavy even for a replica, not where the result is stored.
 
-**Rung two: move the analytics to an analytical engine.** When the rules become 90-day windowed aggregates and multi-way joins over hundreds of millions of rows, the replica starts taking hours — not because the hardware is weak, but because the **workload shape is wrong**: row-store OLTP engines are built for point reads and writes, not full scans over a few columns. The fix is still not a cluster. A columnar analytical database (ClickHouse, or DuckDB on one beefy machine) or a managed warehouse (BigQuery, Snowflake, Athena) runs the same SQL one or two orders of magnitude faster, and "a scheduled SQL query on the warehouse, output written to a segment table" is — quietly — the mainstream audience platform in 2026. Plenty of teams run exactly that at tens of millions of users and never need more.
+**Rung two: move the analytics to an analytical engine.** Before going further, recall how the two consumers actually read this data: omnichannel wants the whole audience in one **chunk read**, in order; icon serving wants a single user's eligibility as a **real-time read**, a point lookup right now. Neither cares which engine produced the list — both just read whatever lands in the segment table. That's why every rung so far still works without changing anything downstream: the *shape* of the output never changes, only how it gets computed.
+
+What's changing is the compute itself. When the rules become 90-day windowed aggregates and multi-way joins over hundreds of millions of rows, the replica starts taking hours — not because the hardware is weak, but because this has quietly turned into real analytical work, and a replica is still built for the wrong job. Worth naming the split plainly: **OLTP** (online transactional processing) is what Postgres/MySQL are built for — many small point reads and writes, one row at a time. **OLAP** (online analytical processing) is built for the opposite — scanning a few columns across millions of rows at once. A read replica is still an OLTP engine wearing a read-only hat; this workload needs an OLAP engine instead.
+
+The fix is still not a cluster. A columnar analytical database (ClickHouse, or DuckDB on one beefy machine) or a managed warehouse (BigQuery, Snowflake, Athena) runs the same SQL one or two orders of magnitude faster, and "a scheduled SQL query on the warehouse, output written to a segment table" is — quietly — the mainstream audience platform in 2026. Plenty of teams run exactly that at tens of millions of users and never need more.
 
 **So when do you actually leave a rung?** Rough triggers, not fixed rules:
 
@@ -156,7 +160,7 @@ The test in that last row is the one to memorize: **when a job can't finish insi
 
 One more dial that the architecture diagrams never show: **every rung up adds ongoing cost and on-call work.** A replica is a checkbox. A warehouse is a bill. The Spark-plus-lake world in the next two sections is a bill *and* a team — clusters to maintain, pipelines that trigger alerts, usually a dedicated data engineer. Climb because a trigger fired, not because the next rung looks more interesting on a resume.
 
-If you're on a managed warehouse and it's coping, you can honestly skim the next two sections. The series follows the self-managed path from here because that's the path that breaks in interesting ways at the largest scale — and because the serving story at the end is the same regardless of which engine computed the audience.
+If you're on a managed warehouse and it's coping, you can honestly skim the next two sections. The series follows the self-managed path from here — Spark, then the data lake underneath it — because that's the path that breaks in interesting ways at the largest scale, and because past this point, efficient progress needs a data lake no matter which engine got you here. The serving story at the end is the same regardless of which engine computed the audience.
 
 ---
 
