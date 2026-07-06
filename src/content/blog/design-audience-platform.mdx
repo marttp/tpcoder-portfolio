@@ -112,8 +112,8 @@ flowchart LR
 
 This buys a lot — the send is fast, the expensive query runs off-peak, and a segment is now a *thing* you can size and reuse. But it trades one problem for two new ones:
 
-- **Freshness.** The list is up to 24 hours stale. A user who topped up this morning won't be "gold-tier active" until tonight's rebuild. For a weekly promo that's fine; for "remind users who *just* abandoned a cart," it's useless. Hold that thought — it's what forces streaming later.
-- **It still runs on the production DB, and it's still one box.** We moved the query off the send path, but a full rebuild of every segment is now a giant nightly batch hitting the same database. As segments multiply and rules get gnarlier (cross joins, windowed aggregates over a year of transactions), a single Postgres doing both live traffic and analytical batch starts to buckle.
+- **Freshness.** The list is only as fresh as the last rebuild — up to however long the job's interval is (nightly means up to 24 hours). A user who topped up this morning won't be "gold-tier active" until the next rebuild. For a weekly promo that's fine; for "remind users who *just* abandoned a cart," it's useless. Hold that thought — it's what forces streaming later.
+- **It still runs on the production DB, and it's still one box.** The rebuild needs somewhere to land: a new table, `segment_members(segment_id, user_id, computed_at)`, written by a job that still hits the same Postgres serving live traffic. And that table isn't small — a user can match more than one segment, so worst case it holds **S × N** rows (S = segments in the org, N = total users). As segments multiply and rules get gnarlier (cross joins, windowed aggregates over a year of transactions), a single box doing both live traffic and this analytical batch starts to buckle.
 
 The second crack is the structural one. We don't just need to precompute — we need to precompute *somewhere that isn't the live transactional database*. But "somewhere else" doesn't mean a cluster yet, and this next rung is the one most write-ups skip.
 
