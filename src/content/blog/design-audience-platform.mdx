@@ -150,7 +150,7 @@ flowchart LR
 <MermaidDiagram chart={`
 flowchart LR
     E1["Primary / replica"] -.-> SEG[("Segment table")]
-    E2["Warehouse (OLAP)"] -.-> SEG
+    E2["Warehouse"] -.-> SEG
     SEG -->|"chunk read"| OMNI["Omnichannel"]
     SEG -->|"real-time read"| ICON["Icon serving"]
 `} />
