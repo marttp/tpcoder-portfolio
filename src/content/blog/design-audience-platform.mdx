@@ -59,7 +59,7 @@ WHERE tier = 'gold'
 
 The sender runs it, gets a list of IDs, and starts pushing. For a few thousand users this is completely fine — ship it. The rule lives in one place, it's always fresh (the query runs against live data), and there's nothing to operate.
 
-**Stop here if that's you.** Under roughly 1,000 users with a rule this simple — one or two conditions, no cross-table joins — this inline query isn't a temporary shortcut, it's the right answer. Nothing in the sections below makes the system more *correct*; they make it survive scale and complexity you don't have yet. Add machinery when the cracks below actually show up, not before.
+> **P.S.** Stop here if that's you. Under roughly 1,000 users with a rule this simple — one or two conditions, no cross-table joins — this inline query isn't a temporary shortcut, it's the right answer. Nothing in the sections below makes the system more *correct*; they make it survive scale and complexity you don't have yet. Add machinery when the cracks below actually show up, not before.
 
 Then it grows, and three cracks open at once:
 
@@ -73,7 +73,7 @@ All three say the same thing: **deriving the audience at send time, on the live 
 
 ![A heavy marketing query on the production database starves the live-user traffic it shares](/assets/images/blogs/design-audience-platform/send-time-query-load.png)
 
-Before reaching for "precompute it ahead of time," though, it's worth asking honestly: **how fresh does this audience actually need to be?** If a user losing gold tier at 9am can still see the promo until the next scheduled run, that lag is acceptable — precompute solves everything in the next few sections. If eligibility has to flip the moment the underlying fact changes — a fraud flag, a balance crossing a threshold — no amount of precomputing on a schedule gets you there, and you're really looking at the near-real-time path later in this post, not this one. Most audience use cases tolerate the lag, which is why precompute is the right next step for most people — but that's a decision worth making on purpose, not by default.
+> **P.S.** Before reaching for "precompute it ahead of time," though, it's worth asking honestly: how fresh does this audience actually need to be? If a user losing gold tier at 9am can still see the promo until the next scheduled run, that lag is acceptable — precompute solves everything in the next few sections. If eligibility has to flip the moment the underlying fact changes — a fraud flag, a balance crossing a threshold — no amount of precomputing on a schedule gets you there, and you're really looking at the near-real-time path later in this post, not this one. Most audience use cases tolerate the lag, which is why precompute is the right next step for most people — but that's a decision worth making on purpose, not by default.
 
 ---
 
