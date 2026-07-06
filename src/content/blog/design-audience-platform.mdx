@@ -96,7 +96,10 @@ WHERE tier = 'gold' AND country = 'TH'
 COMMIT;
 ```
 
-Two boring details in that snippet are doing the real work. First, the job is **idempotent** — a bare `INSERT` alone is the classic footgun here, because the first retry after a crash doubles every member; the delete-and-insert in one transaction (with a primary key on `(segment_id, user_id)` as the backstop) makes re-running always safe. Second, once the audience is precomputed it can silently go stale, so **alert on the age of `max(computed_at)`, not just on job failure** — a nightly job that dies quietly on Friday night means a three-day-stale audience by Monday, and "the job didn't page" is not the same as "the data is fresh."
+Two boring details in that snippet are doing the real work:
+
+- The job is **idempotent** — a bare `INSERT` alone is the classic footgun here, because the first retry after a crash doubles every member; the delete-and-insert in one transaction (with a primary key on `(segment_id, user_id)` as the backstop) makes re-running always safe.
+- Once the audience is precomputed it can silently go stale, so **alert on the age of `max(computed_at)`, not just on job failure** — a nightly job that dies quietly on Friday night means a three-day-stale audience by Monday, and "the job didn't page" is not the same as "the data is fresh."
 
 Now a send is a cheap read: `SELECT user_id FROM segment_members WHERE segment_id = 'gold_th_active'`. The heavy lifting happened overnight, when nobody's waiting.
 
