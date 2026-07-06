@@ -21,7 +21,7 @@ This one is the system the last two posts kept pointing at. In the omnichannel p
 The interesting part is *whoever needs it*, because the two consumers we've already built want the answer in completely different shapes:
 
 - **Bulk, chunked list** — the omnichannel backbone wants "campaign C targets these 40M users," split into ~40–60K chunks it can stream through its delivery workflow. It reads the whole audience, once, in order.
-- **Per-user membership store** — the icon serving path wants a point lookup at request time: "is user `10001` eligible for campaign 5, right now?" It reads one user, millions of times a second.
+- **Per-user membership store** — the icon serving path wants a point lookup at request time: "is user `10001` eligible for campaign 5, right now?"
 
 Same audience logic — *gold-tier users in TH who topped up in the last 30 days* — two output shapes with opposite access patterns. That contrast is the spine of this post, the same way "two systems, opposite SLAs" was the spine of the icon post. One brain, two mouths.
 
@@ -59,6 +59,8 @@ WHERE tier = 'gold'
 
 The sender runs it, gets a list of IDs, and starts pushing. For a few thousand users this is completely fine — ship it. The rule lives in one place, it's always fresh (the query runs against live data), and there's nothing to operate.
 
+**Stop here if that's you.** Under roughly 1,000 users with a rule this simple — one or two conditions, no cross-table joins — this inline query isn't a temporary shortcut, it's the right answer. Nothing in the sections below makes the system more *correct*; they make it survive scale and complexity you don't have yet. Add machinery when the cracks below actually show up, not before.
+
 Then it grows, and three cracks open at once:
 
 - **The query gets heavy.** At tens of millions of rows, with `last_topup_at` from a different table and `tier` derived from yet another, this becomes a multi-join full scan on your **production** database — the same database serving live traffic. One marketing send can stall the app.
@@ -70,6 +72,8 @@ All three say the same thing: **deriving the audience at send time, on the live 
 {/* IMAGE PROMPT (send-time-query-load.png): Clean conceptual diagram, flat vector, light background. CENTER: a database cylinder labeled exactly "Production DB", drawn under visible strain (a couple of small stress marks). From the LEFT, an arrow labeled exactly "Marketing query" points into the database (draw it thick/heavy). Going DOWN from the database to a small row of phone icons labeled exactly "Live users", draw a thin struggling arrow with a tag reading exactly "slow". Convey: a heavy marketing query on the live database starves real user traffic. STRICT: render ONLY these labels — "Production DB", "Marketing query", "Live users", "slow" — spelled exactly, each once; phone icons carry no text; no other words; no typos; no duplicate boxes; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
 
 ![A heavy marketing query on the production database starves the live-user traffic it shares](/assets/images/blogs/design-audience-platform/send-time-query-load.png)
+
+Before reaching for "precompute it ahead of time," though, it's worth asking honestly: **how fresh does this audience actually need to be?** If a user losing gold tier at 9am can still see the promo until the next scheduled run, that lag is acceptable — precompute solves everything in the next few sections. If eligibility has to flip the moment the underlying fact changes — a fraud flag, a balance crossing a threshold — no amount of precomputing on a schedule gets you there, and you're really looking at the near-real-time path later in this post, not this one. Most audience use cases tolerate the lag, which is why precompute is the right next step for most people — but that's a decision worth making on purpose, not by default.
 
 ---
 
