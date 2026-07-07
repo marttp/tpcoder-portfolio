@@ -164,14 +164,15 @@ flowchart LR
 
 <MermaidDiagram chart={`
 flowchart LR
-    E1["Primary / replica"] -.-> SEG[("Segment store\n (table, file, redis")]
+    E1["Primary / replica"] -.-> SEG[("Segment store\n(table, file, redis)")]
     SEG -->|"chunk read"| OMNI["Omnichannel"]
     SEG -->|"real-time read"| ICON["Icon serving"]
 `} />
 
 Both just read whatever lands in the segment table. That's why this rung works without changing anything downstream: the *shape* of the output never changes, only how it gets computed. Next: what happens when the compute itself stops being enough.
 
-> Most of applications in this world maybe stop it right here already. Please keep in mind.
+> Most applications in the world can stop right here. Keep that in mind.
+
 ---
 
 ## Move the analytics to an analytical engine — from OLTP to OLAP
@@ -252,9 +253,9 @@ Now there's one place to read from, without ever touching production again. What
 **The job, in DataFrame terms.** Read the inputs, apply predicates, join attributes, aggregate, write membership:
 
 ```scala
-val users   = spark.read.parquet("s3://lake/users/dt=2026-07-01")
-val txns    = spark.read.parquet("s3://lake/transactions/dt=2026-07-01")
-val churn   = spark.read.parquet("s3://lake/churn_scores/dt=2026-07-01")
+val users   = spark.read.parquet("s3://lake/users/dt=2026-07-01")        // today's snapshot
+val txns    = spark.read.parquet("s3://lake/transactions")               // partitioned by event_date
+val churn   = spark.read.parquet("s3://lake/churn_scores/dt=2026-07-01") // today's snapshot
 val suppress = spark.read.parquet("s3://lake/suppression/current")
 
 val txn90 = txns
@@ -279,7 +280,7 @@ val audience = users
 
 ![Data skew — one worker does all the work on a hot partition while the others idle](/assets/images/blogs/design-audience-platform/spark-data-skew.png)
 
-**Prune at the source.** The inputs are partitioned by `dt=`/`event_date`. Reading `dt=2026-07-01` and filtering `event_date >= today-90` lets Spark read only the relevant partitions — 90 days instead of five years, straight from the layout the last section set up.
+**Prune at the source.** Two kinds of input, two kinds of pruning. `users` and `churn_scores` are daily snapshots — reading `dt=2026-07-01` picks up just today's copy. `transactions` is history partitioned by `event_date`, so the job reads the whole table path and lets the `event_date >= today-90` filter prune it down to the last 90 partitions — 90 days instead of five years, straight from the layout the last section set up.
 
 <MermaidDiagram chart={`
 flowchart LR
