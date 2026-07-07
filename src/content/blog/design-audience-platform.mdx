@@ -168,9 +168,9 @@ Both just read whatever lands in the segment table. That's why this rung works w
 
 ## Move the analytics to an analytical engine — from OLTP to OLAP
 
-When the rules become 90-day windowed aggregates and multi-way joins over hundreds of millions of rows, the replica starts taking hours — not because the hardware is weak, but because this has quietly turned into real analytical work, and a replica is still built for the wrong job. Worth naming the split plainly: **OLTP** (online transactional processing) is what Postgres/MySQL are built for — many small point reads and writes, one row at a time. **OLAP** (online analytical processing) is built for the opposite — scanning a few columns across millions of rows at once. A read replica is still an OLTP engine wearing a read-only hat; this workload needs an OLAP engine instead.
+Same move as the last rung — precompute, then read from somewhere that isn't the hot path — just pointed at something else. Instead of reading from a replica, read from an **OLAP** engine.
 
-The fix is still not a cluster. A columnar analytical database (ClickHouse, or DuckDB on one beefy machine) or a managed warehouse (BigQuery, Snowflake, Athena) runs the same SQL one or two orders of magnitude faster, and "a scheduled SQL query on the warehouse, output written to a segment table" is — quietly — the mainstream audience platform in 2026. Plenty of teams run exactly that at tens of millions of users and never need more.
+Here's why. Once rules become 90-day windowed aggregates and multi-way joins over hundreds of millions of rows, even a replica starts taking hours — not because the hardware is weak, but because this is real analytical work now. A replica is still an **OLTP** engine (Postgres/MySQL: built for many small point reads and writes, one row at a time). **OLAP** engines are built for the opposite — scanning a few columns across millions of rows at once. That's the fix, and it's still not a cluster: a columnar analytical database (ClickHouse, or DuckDB on one beefy machine) or a managed warehouse (BigQuery, Snowflake, Athena) runs the same SQL one or two orders of magnitude faster. "A scheduled SQL query on the warehouse, output written to a segment table" is — quietly — the mainstream audience platform in 2026. Plenty of teams run exactly that at tens of millions of users and never need more.
 
 **So when do you actually leave a rung?** Rough triggers, not fixed rules:
 
@@ -181,11 +181,9 @@ The fix is still not a cluster. A columnar analytical database (ClickHouse, or D
 | Read replica | analytical SQL takes hours on a row store — the shape is wrong, not the hardware |
 | Warehouse / columnar DB | jobs can't finish inside their refresh window, rules need real *code* (custom scoring, ML features) rather than SQL, or the inputs no longer live in one database |
 
-The test in that last row is the one to memorize: **when a job can't finish inside its refresh window, you've outgrown the rung.** An "hourly" segment build that takes 90 minutes isn't hourly, whatever the cron schedule claims.
+One more dial: **every rung up adds ongoing cost and on-call work.** A replica is a checkbox; a warehouse is a bill; the Spark-plus-lake world ahead is a bill *and* a team. Climb because a trigger fired, not because the next rung looks interesting on a resume.
 
-One more dial that the architecture diagrams never show: **every rung up adds ongoing cost and on-call work.** A replica is a checkbox. A warehouse is a bill. The Spark-plus-lake world in the next two sections is a bill *and* a team — clusters to maintain, pipelines that trigger alerts, usually a dedicated data engineer. Climb because a trigger fired, not because the next rung looks more interesting on a resume.
-
-If you're on a managed warehouse and it's coping, you can honestly skim the next two sections. The series follows the self-managed path from here — Spark, then the data lake underneath it — because that's the path that breaks in interesting ways at the largest scale, and because past this point, efficient progress needs a data lake no matter which engine got you here. The serving story at the end is the same regardless of which engine computed the audience.
+If you're on a managed warehouse and it's coping, skim the next two sections. The series follows the self-managed path from here — Spark, then the data lake underneath it — because that's where things break in interesting ways at the largest scale, and because past this point, efficient progress needs a data lake no matter which engine got you here.
 
 ---
 
