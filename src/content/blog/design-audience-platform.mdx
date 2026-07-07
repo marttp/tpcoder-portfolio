@@ -177,7 +177,7 @@ Worth being precise here, so "just point at something else" doesn't undersell wh
 - **Replica** — same OLTP engine, just a synced copy. It only separates *where reads happen* from *where writes happen*; the data itself never leaves the OLTP world, and staying in sync is native database replication.
 - **OLAP engine** — a different storage engine entirely, built to hold data in a shape suited for analytics. It doesn't fill itself through replication — something has to move the data in: an initial bulk copy, a scheduled Spark job, or CDC (streaming the OLTP write log into the OLAP store continuously).
 
-Same job, same SQL query — but a different source, and populating that source is its own problem. If you're not already running an OLAP store, a replica is the simpler, honest answer. If you do reach for OLAP, that data-movement problem is exactly the ingestion story the data lake section covers in full.
+Same job, the same *kind* of query — but a different source, and populating that source is its own problem. (The exact SQL text usually needs rewriting too — Postgres, ClickHouse, BigQuery, Snowflake, and Redshift each speak their own SQL dialect.) If you're not already running an OLAP store, a replica is the simpler, honest answer. If you do reach for OLAP, that data-movement problem is exactly the ingestion story the data lake section covers in full.
 
 **So when do you actually leave a rung?** Rough triggers, not fixed rules:
 
