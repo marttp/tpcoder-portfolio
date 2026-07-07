@@ -215,7 +215,7 @@ If you're on a managed warehouse and it's coping, skim the next two sections. Th
 
 **The fix:** land a copy of everything in one place built for analytical reads — a **data lake**. Production gets queried once, for ingestion — never again for compute.
 
-**Columnar format — Parquet.** Store data by column, not row. A query touching 3 of 30 columns only reads those 3 off disk, and Parquet's min/max stats let it skip whole chunks that can't match (**predicate pushdown**). On wide tables that's a 10×+ I/O win over row formats.
+**Columnar format — Parquet.** Store data by column, not row. A query touching 3 of 30 columns only reads those 3 off disk, and Parquet's min/max stats let it skip whole chunks that can't match (**predicate pushdown**). On a wide table, that means reading 10 times less data off disk than a row format would — often more.
 
 {/* IMAGE PROMPT (parquet-columnar.png): Clean conceptual comparison, flat vector, light background, two panels side by side, each showing a simple table grid of blank cells. LEFT panel header labeled exactly "Row storage": highlight whole HORIZONTAL rows across the grid, with a tag below reading exactly "reads every column". RIGHT panel header labeled exactly "Columnar (Parquet)": on an identical grid, highlight only a few VERTICAL columns, with a tag below reading exactly "reads only what it needs". Convey: columnar storage reads only the needed columns off disk. STRICT: render ONLY these labels — "Row storage", "reads every column", "Columnar (Parquet)", "reads only what it needs" — spelled exactly, each once; grid cells contain no text; no other words; no typos; no duplicate labels; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
 
