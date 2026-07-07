@@ -33,6 +33,15 @@ flowchart LR
 
 > **P.S.** Icon serving is the concrete example, carried over from post #5, but treat it as a stand-in. Whatever you're building, if it asks "is this one user eligible right now," it reads the membership store the same way.
 
+Campaigns are the running example, but the **who?** question shows up far beyond marketing. The same platform, unchanged, also backs:
+
+- **Feature rollouts** — ship a new feature to a small segment first ("gold-tier in TH"), then widen it.
+- **Experimentation** — put users into A/B test groups and keep those groups stable across sessions.
+- **Personalization** — decide which banner, recommendation shelf, or offer a user sees, per segment.
+- **Risk and compliance lists** — fraud watchlists and opt-out suppression: the same membership lookup, used to *exclude* instead of include.
+
+It also appears under other names: the segment engine inside a **CDP** (Customer Data Platform), a **DMP** (Data Management Platform) in ad tech, or the targeting part of a feature-flag service. Different labels, same design.
+
 Here's the road. The first half is the evolution of *how we compute the audience*; the payoff at the end is *how we serve it two ways*.
 
 **Lower scale — a single box still works:**
