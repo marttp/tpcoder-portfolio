@@ -44,8 +44,8 @@ Here's the road. The first half is the evolution of *how we compute the audience
 
 **Larger scale — now we're in distributed-system territory:**
 
-1. **Spark** — rules and data outgrow what SQL-on-one-engine can express
-2. **A data lake** — give Spark something to read that isn't your production DB
+1. **A data lake** — land data from a dozen systems in one place built for analytical reads
+2. **Spark** — rules become code once SQL can't express the logic anymore
 3. **Near-real-time** — "nightly" isn't fresh enough for some rules
 4. **A reusable segmentation service** — stop building a custom job per use case
 
@@ -205,19 +205,51 @@ Same job, the same *kind* of query — but a different source, and populating th
 
 One more dial: **every rung up adds ongoing cost and on-call work.** A replica is a checkbox; a warehouse is a bill; the Spark-plus-lake world ahead is a bill *and* a team. Climb because a trigger fired, not because the next rung looks interesting on a resume.
 
-If you're on a managed warehouse and it's coping, skim the next two sections. The series follows the self-managed path from here — Spark, then the data lake underneath it — because that's where things break in interesting ways at the largest scale, and because past this point, efficient progress needs a data lake no matter which engine got you here.
+If you're on a managed warehouse and it's coping, skim the next two sections. The series follows the self-managed path from here — the data lake, then Spark on top of it — because that's where things break in interesting ways at the largest scale, and because past this point, efficient progress needs a data lake no matter which engine got you here.
 
 ---
 
-## Rules and data outgrow one database — move to Spark
+## Land the data in one place — the data lake
 
-**The problem:** even the warehouse rung has a ceiling, and it's less about size than about *shape*. Real targeting looks like "users whose **average** transaction over the last 90 days is above X, who used feature Y at least 3 times, who are **not** in the suppression list, joined against a churn score from the data-science team." The windowed aggregates and anti-joins are easy work for a warehouse — but the churn score arrives as files the DS team ships, the feature events live in a stream rather than a table, and the scoring logic the business actually wants is *code*, not a `WHERE` clause. When the inputs stop living in one queryable place and the rules stop being expressible as SQL, you need an engine that treats arbitrary data plus arbitrary logic as the normal case — over hundreds of millions of users and *billions* of transaction rows.
+**The problem:** the data an audience rule needs now lives in a dozen systems — the payments DB, the auth service, data-science file exports, an event stream. Querying each one live, for every segment build, is the load problem again — an analytical job hammering every production system at once. These jobs also need *history* ("transactions over 90 days") that hot OLTP databases prune away.
 
-**The fix:** move the computation to a distributed engine. This is where Spark earns its place — it's built to process billions of rows in parallel across a cluster, and (the part I care about most) it lets you write the rule once and let the engine figure out the distribution.
+**The fix:** land a copy of everything in one place built for analytical reads — a **data lake**. Production gets queried once, for ingestion — never again for compute.
 
-Going deep, because you asked — here's what the audience job actually looks like:
+**Columnar format — Parquet.** Store data by column, not row. A query touching 3 of 30 columns only reads those 3 off disk, and Parquet's min/max stats let it skip whole chunks that can't match (**predicate pushdown**). On wide tables that's a 10×+ I/O win over row formats.
 
-**The job, in DataFrame terms.** Read the inputs as DataFrames, apply predicates, join attributes, aggregate, write membership:
+{/* IMAGE PROMPT (parquet-columnar.png): Clean conceptual comparison, flat vector, light background, two panels side by side, each showing a simple table grid of blank cells. LEFT panel header labeled exactly "Row storage": highlight whole HORIZONTAL rows across the grid, with a tag below reading exactly "reads every column". RIGHT panel header labeled exactly "Columnar (Parquet)": on an identical grid, highlight only a few VERTICAL columns, with a tag below reading exactly "reads only what it needs". Convey: columnar storage reads only the needed columns off disk. STRICT: render ONLY these labels — "Row storage", "reads every column", "Columnar (Parquet)", "reads only what it needs" — spelled exactly, each once; grid cells contain no text; no other words; no typos; no duplicate labels; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
+
+![Row storage reads every column off disk; columnar Parquet reads only the columns the query needs](/assets/images/blogs/design-audience-platform/parquet-columnar.png)
+
+**Table format — Iceberg / Delta Lake.** Raw Parquet files alone have no notion of a transaction — a reader can catch a half-written table, schema changes are manual, "what did this look like yesterday?" is unanswerable. A table format adds **ACID snapshots**, **schema evolution**, and **time travel** (query a past snapshot) — worth the extra infrastructure once your output drives money-spending campaigns.
+
+**Partitioning.** Partition by **event date** (`dt=YYYY-MM-DD`) so a 90-day query reads 90 folders, not the whole history. Don't partition by something high-cardinality like `user_id` — millions of tiny files, metadata bigger than the data itself (the **small-files problem**). Run **compaction** to merge them back down.
+
+**Ingestion — getting data in.** Usually both: **batch snapshots** (a daily dump, simple, a day stale) and **CDC** (stream the source DB's write-ahead log via Debezium → Kafka, minutes stale instead of a day — also where streaming later starts from).
+
+**Orchestration.** Ingest → transform → build-segments → publish, each depending on the last. An orchestrator (Airflow, Dagster) runs it on schedule and won't start a segment build before that day's inputs land.
+
+<MermaidDiagram chart={`
+flowchart LR
+    SRC1[("Payments DB")] -->|"CDC / snapshot"| LAKE[("Data lake\nParquet + Iceberg")]
+    SRC2[("Auth / profile")] -->|"CDC / snapshot"| LAKE
+    SRC3[("DS churn scores")] -->|"batch"| LAKE
+    EV["Event stream"] -->|"Kafka"| LAKE
+`} />
+
+Freshness vs. cost trades off right here: daily batch is cheap and simple but a day behind; CDC is fresh but real infrastructure — Debezium, Kafka, compaction, an orchestrator, all wanting monitoring and someone to page. This is the rung where the platform gets a team, which is why the OLAP section told you to wait for a real trigger first. Most platforms land in the middle: some tables daily, others within the hour.
+
+Now there's one place to read from, without ever touching production again. What still can't be expressed here is the *logic* itself — that's next.
+
+---
+
+## Rules become code — move to Spark
+
+**The problem:** even with everything in one lake, the warehouse rung still has a ceiling — not size, but *shape*. Real targeting looks like "users whose **average** transaction over 90 days is above X, who used feature Y at least 3 times, are **not** suppressed, joined against a churn score from data science." Windowed aggregates and anti-joins are easy for a warehouse — but the scoring logic the business actually wants is *code*, not a `WHERE` clause. Once rules stop being expressible in SQL, you need an engine built for arbitrary logic as the normal case, over hundreds of millions of users and *billions* of rows.
+
+**The fix:** move the computation to a distributed engine — Spark. It processes billions of rows in parallel across a cluster, and (the part I care about most) lets you write the rule once while the engine handles the distribution.
+
+**The job, in DataFrame terms.** Read the inputs, apply predicates, join attributes, aggregate, write membership:
 
 ```scala
 val users   = spark.read.parquet("s3://lake/users/dt=2026-07-01")
@@ -239,15 +271,15 @@ val audience = users
   .select($"user_id")
 ```
 
-**Broadcast the small side.** `churn_scores` and `suppression` are small relative to `users`/`transactions`. Marking them `broadcast` ships them to every executor and turns a shuffle-heavy join into a map-side join — the single biggest, easiest win. The default `autoBroadcastJoinThreshold` catches some of this, but be explicit for the ones you know.
+**Broadcast the small side.** `churn_scores` and `suppression` are small versus `users`/`transactions`. Marking them `broadcast` ships them to every executor, turning a shuffle-heavy join into a map-side join — the easiest, biggest win. `autoBroadcastJoinThreshold` catches some of this automatically; be explicit for the ones you know.
 
-**Watch data skew.** Group or join on something lumpy — a few "power users" with millions of transactions, a `country` where 80% of users live — and one partition does all the work while the cluster idles. The whole job runs as slow as that one straggler task. What helps: salt the hot keys, enable Adaptive Query Execution (`spark.sql.adaptive.enabled`) so Spark can split skewed partitions at runtime, and pre-aggregate before the join (the `txn90` rollup above shrinks the big side *before* it meets `users`).
+**Watch data skew.** A few power users with millions of transactions, or a country holding 80% of users — one partition does all the work while the rest idle, and the whole job runs as slow as that one straggler. What helps: salt the hot keys, enable Adaptive Query Execution (`spark.sql.adaptive.enabled`), and pre-aggregate before the join (the `txn90` rollup above shrinks the big side first).
 
 {/* IMAGE PROMPT (spark-data-skew.png): Clean conceptual diagram, flat vector, light background. A row of FOUR worker boxes labeled exactly "Worker 1", "Worker 2", "Worker 3", "Worker 4". Above each worker draw a vertical workload bar: the bar above Worker 1 is very tall (towering); the bars above Worker 2, Worker 3, Worker 4 are tiny. Place a small tag pointing at Worker 1 reading exactly "hot partition", and one tag near the small bars reading exactly "idle". Convey: data skew dumps all the work on one worker while the rest sit idle. STRICT: render ONLY these labels — "Worker 1", "Worker 2", "Worker 3", "Worker 4", "hot partition", "idle" — spelled exactly, each once; no other words; no numbers on the bars; no typos; no duplicate labels; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
 
 ![Data skew — one worker does all the work on a hot partition while the others idle](/assets/images/blogs/design-audience-platform/spark-data-skew.png)
 
-**Partition the read, prune at the source.** Notice the inputs are partitioned by `dt=` / `event_date`. Reading `dt=2026-07-01` and filtering `event_date >= today-90` lets Spark **prune** to just the relevant date partitions instead of scanning all of history. This is the difference between reading 90 days and reading five years — and it's why the storage layout (next section) matters as much as the query.
+**Prune at the source.** The inputs are partitioned by `dt=`/`event_date`. Reading `dt=2026-07-01` and filtering `event_date >= today-90` lets Spark read only the relevant partitions — 90 days instead of five years, straight from the layout the last section set up.
 
 <MermaidDiagram chart={`
 flowchart LR
@@ -255,45 +287,9 @@ flowchart LR
     S --> M["Segment membership\n(user_id per segment)"]
 `} />
 
-One operating note before moving on: this rung is where the audience platform stops being a small side project. A Spark cluster brings job failures, executor OOMs, and version upgrades of its own — in practice it arrives together with the first person whose actual job is running it. Budget the human, not just the cluster.
+This rung is where the audience platform stops being a small side project. A Spark cluster brings job failures, executor OOMs, and version upgrades of its own — in practice it arrives together with the first person whose actual job is running it. Budget the human, not just the cluster.
 
-Spark fixes the *compute*. But it raised a question by reading from `s3://lake/...` instead of the production DB — **where did that data come from, and why isn't Spark reading Postgres directly?** That's the data lake.
-
----
-
-## Give Spark something to read — the data lake
-
-**The problem:** Spark needs to read users, transactions, churn scores, feature events — and those live in a dozen different production systems (the payments DB, the auth service, the data-science team's outputs, the event stream). Pointing Spark at each live production database is exactly the load problem we've been running from, multiplied: now an analytical cluster is hammering every transactional system at once. And these jobs need *historical* data ("transactions over 90 days") that the hot OLTP databases prune or archive away.
-
-**The fix:** land a copy of everything in one place built for analytical reads — a **data lake** — and let Spark read only from there. The production systems are never touched by a Spark job again. Going deep on the pieces, since this is where the real engineering lives:
-
-**Columnar file format — Parquet.** Store the lake in a columnar format, not row-oriented CSV/JSON. An audience query touches a few columns (`tier`, `country`, `amount`) out of dozens. Parquet stores each column together, so Spark reads *only those columns* off disk and skips the rest. It also carries per-row-group min/max statistics, so the reader can skip whole chunks that can't match a predicate (**predicate pushdown**). On wide tables this is a 10×+ I/O difference versus row formats.
-
-{/* IMAGE PROMPT (parquet-columnar.png): Clean conceptual comparison, flat vector, light background, two panels side by side, each showing a simple table grid of blank cells. LEFT panel header labeled exactly "Row storage": highlight whole HORIZONTAL rows across the grid, with a tag below reading exactly "reads every column". RIGHT panel header labeled exactly "Columnar (Parquet)": on an identical grid, highlight only a few VERTICAL columns, with a tag below reading exactly "reads only what it needs". Convey: columnar storage reads only the needed columns off disk. STRICT: render ONLY these labels — "Row storage", "reads every column", "Columnar (Parquet)", "reads only what it needs" — spelled exactly, each once; grid cells contain no text; no other words; no typos; no duplicate labels; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
-
-![Row storage reads every column off disk; columnar Parquet reads only the columns the query needs](/assets/images/blogs/design-audience-platform/parquet-columnar.png)
-
-**Table format — Iceberg / Delta Lake.** Raw Parquet files in a folder get you 80% there but have no notion of a transaction — a reader can catch a half-written table mid-update, schema changes are a manual nightmare, and "what did this table look like yesterday?" is unanswerable. A table format (Apache Iceberg, Delta Lake) layers a metadata log over the Parquet files to give you **ACID snapshots** (readers always see a consistent version), **schema evolution** (add a column without rewriting history), and **time travel** (query `as of` a past snapshot — valuable for reproducing "why was this user in the audience last Tuesday?"). For an audience platform whose outputs drive money-spending campaigns, that reproducibility is worth the extra infrastructure to run.
-
-**Partitioning strategy.** Lay the data out so the common queries prune well. Partition fact tables by **event date** (`dt=YYYY-MM-DD`) so a 90-day window reads 90 directories, not the whole history. Resist partitioning by something high-cardinality like `user_id` — you'll get millions of tiny files and the metadata overhead will be far bigger than the data itself (the classic **small-files problem**). When small files do accumulate from incremental writes, run **compaction** to rewrite them into fewer, larger files.
-
-**Getting data in — ingestion.** Two patterns, usually both:
-- **Batch snapshots** — a daily dump of a source table into the lake (`dt=2026-07-01/`). Simple, but a day stale and heavy for big tables.
-- **CDC (change data capture)** — stream the source database's write-ahead log (via Debezium → Kafka) into the lake continuously, so the lake trails production by minutes, not a day. More moving parts, far fresher. This is also the starting point for the streaming approach in the next step.
-
-**Orchestration.** The lake isn't one job — it's ingest → transform → build-segments → publish, with dependencies between them. An orchestrator (Airflow, Argo Workflows, Dagster) runs that DAG on schedule, handles retries, and won't start the segment build until its inputs for the day have landed.
-
-<MermaidDiagram chart={`
-flowchart LR
-    SRC1[("Payments DB")] -->|"CDC / snapshot"| LAKE[("Data lake\nParquet + Iceberg")]
-    SRC2[("Auth / profile")] -->|"CDC / snapshot"| LAKE
-    SRC3[("DS churn scores")] -->|"batch"| LAKE
-    EV["Event stream"] -->|"Kafka"| LAKE
-    LAKE --> SPARK["Spark segment jobs"]
-    SPARK --> OUT["Segment membership"]
-`} />
-
-The **freshness vs. cost** dial sits right here. A daily batch lake is cheap and simple but a day behind. CDC + compaction is fresh but is real infrastructure to run — Debezium, Kafka connectors, compaction jobs, and the orchestrator each want patching, monitoring, and someone to page. This is the rung where the platform acquires a team, which is exactly why the replica-and-warehouse section told you to make sure a trigger fired first. Most platforms land in the middle and tune per table: profile data daily is fine, transactions you want within the hour. This leads directly to the limitation that breaks "nightly" entirely.
+Spark fixes the compute; the lake means it never touches production again. What's left is cadence — how often does any of this actually run?
 
 ---
 
@@ -309,7 +305,7 @@ Worth being clear about what microbatch *is*, because it's an approach, not a sp
 
 Making a 1–2 hour cadence actually work, going deep:
 
-**Incremental, not full-rebuild.** Recomputing every segment from five years of history every hour would overload the cluster and never finish — the refresh-window test again: an hourly job that takes 90 minutes isn't an hourly job. Lean on the table format from the last step: read only what *changed* since the last run (Iceberg/Delta incremental reads, or the CDC feed), update the affected users, and leave the rest. The hourly job touches deltas; a heavier full rebuild still runs nightly to correct any drift.
+**Incremental, not full-rebuild.** Recomputing every segment from five years of history every hour would overload the cluster and never finish — the refresh-window test again: an hourly job that takes 90 minutes isn't an hourly job. Lean on the table format the data lake gave you: read only what *changed* since the last run (Iceberg/Delta incremental reads, or the CDC feed), update the affected users, and leave the rest. The hourly job touches deltas; a heavier full rebuild still runs nightly to correct any drift.
 
 **Idempotent, snapshot-style publishes.** Each run produces a fresh, complete segment result and publishes it as a versioned snapshot the consumers switch to atomically — no half-updated segment ever visible. Same discipline as the icon post's "overwrite, never delete": a failed run leaves the previous good snapshot in place rather than blanking the segment.
 
@@ -384,11 +380,11 @@ We started with a `WHERE` clause typed at send time and ended with a platform th
 2. **Precompute on a schedule** — build the segment ahead (idempotently, with a staleness alarm), read it cheap at send; but it still pounds the OLTP DB.
 3. **A read replica** — the cheap rung most write-ups skip; split reads and the segment's output off the primary, no new engine yet.
 4. **An analytical engine** — once the workload is real analytics (OLTP vs. OLAP), a columnar DB or warehouse runs the same SQL far faster; plenty of teams rightly stop here.
-5. **Spark** — for when the rules become code and the inputs stop living in one queryable place.
-6. **A data lake** — Parquet + a table format, partitioned and ingested, so Spark never touches production.
+5. **A data lake** — Parquet + a table format, partitioned and ingested, landing a dozen systems' data in one place.
+6. **Spark** — for when the rules themselves need to be code, not SQL.
 7. **Refresh every 1–2 hours** — incremental ETL keeps thousands-to-millions of segment results fresh within the hour; true streaming stays the rare opt-in.
 8. **A reusable segmentation service** — rules as config, one engine, guardrails on segment size, one segment result read two ways: chunked for delivery, inverted into a per-user index for serving.
 
-The meta-point, same as the rest of the series: **nobody starts here.** A few thousand users and a simple rule? Type the `WHERE` clause and move on. Every layer above earned its place — scale forced precomputation, load forced the replica, real analytics forced the warehouse, code-shaped rules forced Spark, Spark forced the lake, recency forced microbatch, and repetition forced the platform. And each climb had a trigger you can measure — the batch that visibly slows live traffic, the job that can't finish inside its refresh window — not a technology that looked interesting.
+The meta-point, same as the rest of the series: **nobody starts here.** A few thousand users and a simple rule? Type the `WHERE` clause and move on. Every layer above earned its place — scale forced precomputation, load forced the replica, real analytics forced the warehouse, fragmented data forced the lake, code-shaped rules forced Spark, recency forced microbatch, and repetition forced the platform. And each climb had a trigger you can measure — the batch that visibly slows live traffic, the job that can't finish inside its refresh window — not a technology that looked interesting.
 
 And if there's one thing to carry over: the audience platform's job isn't just *computing* the right set of users — it's serving that set in the shape each consumer actually reads. Omnichannel streams it; icon serving point-looks-it-up. Get the computation right and pick the wrong serving shape, and you've built a brilliant brain that can't talk to either mouth.
