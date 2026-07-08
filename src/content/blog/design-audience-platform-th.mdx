@@ -80,13 +80,13 @@ WHERE tier = 'gold'
 
 > **P.S.** ถ้านี่คือเรา หยุดจุดนี้ได้เลย ต่ำกว่าพันคนกับ rule แค่หนึ่งสองเงื่อนไข ไม่มี join ข้ามตาราง inline query เอาแค่นี้ก็พอ ถ้าเราไม่ได้ใช้ทำท่าอะไรยาก ของข้างล่างคงไม่ได้ทำให้ระบบ **ถูกต้อง** ขึ้นหรอก แค่ทำให้รอด scale กับความซับซ้อนที่เราในตอนนี้ยังไม่มีต่างหาก
 
-แล้วพอมันโตขึ้น ปัญหาสามอย่างก็โผล่มาพร้อมกันเลย:
+อ่ะคราวนี้ ถ้ามันใหญ่ขึ้นล่ะ? ปัญหาสามอย่างก็จะโผล่มาพร้อมกัน:
 
-- **query เริ่มหนัก** พอ row ไปแตะหลักสิบล้านเข้า แถม `last_topup_at` ก็มาจากอีกตาราง `tier` ก็มาจากอีกตารางหนึ่งอีก มันเลยกลายเป็น multi-join full scan บน **production database** ตัวเดียวกับที่รับ live traffic อยู่นั่นแหละ การส่ง marketing ทีนึงก็เลยอาจทำแอปสะดุดได้เลย
+- **query เริ่มหนัก** พอ row ไปแตะหลักล้านเข้า แถม `last_topup_at` ก็มาจากอีกตาราง `tier` ก็มาจากอีกตารางหนึ่งอีก มันเลยกลายเป็น multi-join full scan บน **production database** ตัวเดียวกับที่รับ live traffic อยู่นั่นแหละ การส่ง marketing ทีนึงก็เลยอาจทำแอปสะดุดได้เลย
 - **การส่งไปค้างเติ่งรอมันอยู่** delivery job เริ่มงานไม่ได้จนกว่า query จะคืนค่ามา พอ query กินเวลาเป็นนาที (หรือ timeout ไปเลย) campaign ก็เลยนั่งรอเฉย ๆ แล้วพอ retry ทีก็ต้องรันของแพง ๆ ก้อนนี้ใหม่ทั้งดุ้นอีกรอบ
 - **reuse ไม่ได้เลย** campaign ถัดไปก็อยาก gold-tier ใน TH เหมือนกัน แค่ topup window ต่างกันนิดเดียว ทุก campaign ก็เลยต้องมานั่งคำนวณ audience ใหม่จากศูนย์ กระหน่ำ DB ซ้ำอีกรอบ แล้วไม่มีใครตอบได้เลยว่า segment นี้ใหญ่แค่ไหน ถ้าไม่ลองรัน query ดูก่อน
 
-ทั้งสามอย่างพูดเรื่องเดียวกันหมด: **การคำนวณ audience ตอนส่ง บน DB ที่ live อยู่ มันไม่ scale** ทางแก้ก็คือย้ายการคำนวณออกจาก hot path แล้วทำมันไว้ **ก่อน** ที่จะถึงเวลาส่ง
+จะเห็นว่าปัญหาที่มี: **การคำนวณ audience ตอนส่ง บน DB ที่ live อยู่ มันไม่ scale** ทางแก้ก็คือย้ายการคำนวณออกจาก hot path แล้วทำมันไว้ **ก่อน** ที่จะถึงเวลาส่ง
 
 {/* IMAGE PROMPT (send-time-query-load.png): Clean conceptual diagram, flat vector, light background. CENTER: a database cylinder labeled exactly "Production DB", drawn under visible strain (a couple of small stress marks). From the LEFT, an arrow labeled exactly "Marketing query" points into the database (draw it thick/heavy). Going DOWN from the database to a small row of phone icons labeled exactly "Live users", draw a thin struggling arrow with a tag reading exactly "slow". Convey: a heavy marketing query on the live database starves real user traffic. STRICT: render ONLY these labels — "Production DB", "Marketing query", "Live users", "slow" — spelled exactly, each once; phone icons carry no text; no other words; no typos; no duplicate boxes; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
 

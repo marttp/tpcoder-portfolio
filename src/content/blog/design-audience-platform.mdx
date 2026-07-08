@@ -80,7 +80,7 @@ The sender runs it, gets a list of IDs, and starts pushing. For a few thousand u
 
 Then it grows, and three cracks open at once:
 
-- **The query gets heavy.** At tens of millions of rows, with `last_topup_at` from a different table and `tier` derived from yet another, this becomes a multi-join full scan on your **production** database — the same database serving live traffic. One marketing send can stall the app.
+- **The query gets heavy.** Past around a million rows, with `last_topup_at` from a different table and `tier` derived from yet another, this becomes a multi-join full scan on your **production** database — the same database serving live traffic. One marketing send can stall the app.
 - **The send blocks on it.** The delivery job can't start until the query returns. A query that takes minutes (or times out) means the campaign sits there waiting, and a retry re-runs the whole expensive thing.
 - **You can't reuse it.** The next campaign wants "gold-tier in TH" too, but with a different topup window. Every campaign re-derives its audience from scratch, hammering the DB again, and nobody can answer "how big is this segment?" without running the query.
 
