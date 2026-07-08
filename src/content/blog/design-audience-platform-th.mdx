@@ -1,0 +1,394 @@
+---
+title: "การออกแบบ Audience Platform แบบเริ่มจากง่าย แล้วค่อย evolve"
+description: "พาดูการออกแบบ audience platform ที่ขยายจาก SQL query ตอนส่งแคมเปญ ไปจนเป็นระบบที่คำนวณ audience ผ่าน nightly batch, Spark บน data lake, แล้วก็ near-real-time streaming — โดยให้ audience logic เดียว ออกมาเป็นสองรูปแบบ: bulk chunk สำหรับการส่ง แล้วก็ per-user membership store สำหรับ serving"
+pubDate: "2026-07-08"
+tags:
+  ["Software Architecture", "Software Engineering", "Backend"]
+heroImage: "/assets/images/blogs/design-audience-platform/audience-two-shapes.png"
+language: "th"
+translationSlug: "design-audience-platform"
+servicesNote: true
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+## Introduction
+
+โพสต์นี้เป็นตัวที่หกของซีรีส์ backend system design แล้วนะ สูตรเดิมเหมือนเคย: เริ่มจากของที่ทื่อที่สุดเท่าที่มันจะ work ได้ แล้วก็ปล่อยให้ข้อจำกัดหน้างานค่อย ๆ ดันมันให้เข้ารูปเข้ารอย
+
+ตัวนี้คือระบบที่สองโพสต์ก่อนหน้าชี้นิ้วมาที่มันตลอดเลย ในโพสต์ omnichannel (#3) เราบอกไว้ว่า `กิน audience ที่เตรียมไว้แล้วเป็น chunk แทนที่จะมา query เอง — นั่นมันเป็นระบบอีกตัวนึง` ส่วนในโพสต์ icon serving (#5) เราบอกว่า eligibility `มาจาก Audience domain — rule engine ที่เขียนออกมาเป็น per-user membership store โพสต์ของมันเองที่จะมาต่อในซีรีส์นี้` นี่แหละคือโพสต์นั้น Audience Platform ตอบคำถามอยู่ข้อเดียว — **ใคร?** — แล้วส่งคำตอบนั้นให้ใครก็ตามที่ต้องการมันไป
+
+จุดที่น่าสนใจคือคำว่า `ใครก็ตามที่ต้องการมัน` นี่แหละ เพราะ consumer สองตัวที่เรา build มาก่อนหน้านี้ อยากได้คำตอบคนละทรงกันเลย:
+
+- **Bulk, chunked list** — ฝั่ง omnichannel backbone อยากได้ประมาณ `campaign C เล็งไป user 40M คนนี้` แล้วซอยเป็น chunk ราว ๆ 40–60K ก้อน ให้มันไล่ยิงผ่าน delivery workflow ได้ — อ่าน audience ทั้งก้อนรวดเดียว เรียงลำดับ
+- **Per-user membership store** — ฝั่ง icon serving อยากได้ point lookup ตอน request มาถึง: user `10001` มีสิทธิ์กับ campaign 5 มั้ย เดี๋ยวนี้เลย
+
+audience logic ชุดเดียวกันเป๊ะ — gold-tier user ใน TH ที่เติมเงินมาภายใน 30 วัน — แต่ออกมาเป็นสอง output shape ที่ access pattern สวนทางกันคนละขั้ว ความขัดแย้งอันนี้แหละคือแกนหลักของทั้งโพสต์ เหมือนกับที่ `สองระบบ SLA สวนทางกัน` เป็นแกนของโพสต์ icon serving ไปแล้ว สมองก้อนเดียว สองปาก
+
+<MermaidDiagram chart={`
+flowchart LR
+    R["Audience logic\n(rules over user data)"] --> A["Bulk chunked list\n(#3 Omnichannel)"]
+    R --> B["Per-user membership store\n(#5 Icon serving)"]
+`} />
+
+> **P.S.** icon serving คือตัวอย่างที่จับต้องได้ ยกมาจากโพสต์ #5 แต่มองมันเป็นตัวแทนเฉย ๆ นะ ไม่ว่าเรากำลัง build อะไรอยู่ ถ้ามันต้องถามว่า `user คนนี้มีสิทธิ์เดี๋ยวนี้มั้ย` มันก็อ่าน membership store แบบเดียวกันนี้แหละ
+
+campaign คือตัวอย่างหลักที่เราใช้ไล่ตลอดทั้งโพสต์ แต่คำถาม **ใคร?** นี่โผล่ไปไกลกว่าเรื่อง marketing เยอะเลย platform ตัวเดียวกันนี้ ไม่ต้องแก้อะไรเลย ก็ไปรับใช้งานพวกนี้ได้ด้วย:
+
+- **Feature rollout** — ปล่อย feature ใหม่ให้ segment เล็ก ๆ ก่อน (เช่น gold-tier ใน TH) แล้วค่อยขยายวงกว้างขึ้น
+- **Experimentation** — แบ่ง user เข้ากลุ่ม A/B test แล้วรักษาให้กลุ่มนั้นนิ่งอยู่ข้าม session
+- **Personalization** — ตัดสินว่า banner, recommendation shelf, หรือ offer แบบไหนที่ user แต่ละ segment ควรเห็น
+- **Risk แล้วก็ compliance list** — fraud watchlist กับ opt-out suppression list ก็เป็น membership lookup แบบเดียวกันนี้แหละ แค่เอาไปใช้ **กันคนออก** แทนที่จะรับเข้า
+
+แล้วมันก็โผล่มาในชื่ออื่นด้วยนะ — segment engine ที่อยู่ข้างใน **CDP** (Customer Data Platform), **DMP** (Data Management Platform) ในวงการ ad tech, หรือส่วน targeting ของ feature-flag service ชื่อเรียกต่างกัน แต่ design เดียวกันเป๊ะ
+
+นี่คือเส้นทางที่จะเดิน ครึ่งแรกคือวิวัฒนาการของ **วิธีคำนวณ audience** ส่วน payoff ตอนท้ายคือ **วิธี serve มันออกไปสองทาง**
+
+**Scale ต่ำ — กล่องเดียวยังพอไหว:**
+
+1. **Inline SQL** ตอนส่ง — work จนกว่า query จะโตไป 40M row กลางที่ส่งอยู่
+2. **Precompute ตาม schedule** — สร้าง segment ไว้ล่วงหน้า แล้วมาอ่านตอนส่ง
+3. **Read replica** — บีบเอาสิ่งที่กล่องเดียวทำได้ให้สุดก่อนไปทาง distributed
+4. **Analytical engine** — พอ workload มันกลายเป็น analytics เต็มตัว OLTP ก็เริ่มไม่พอ
+
+**Scale สูง — ตอนนี้เข้าเขต distributed system เต็มตัว:**
+
+1. **Data lake** — เอาข้อมูลจากสิบกว่าระบบมากองไว้ที่เดียว build มาเพื่อ analytical read โดยเฉพาะ
+2. **Spark** — พอ SQL เริ่มพูด logic ไม่ไหว rule ก็ต้องกลายเป็น code
+3. **Near-real-time** — บาง rule นั้น `nightly` มันสดไม่พอ
+4. **Reusable segmentation service** — เลิก build job แยกทีละ use case
+
+เริ่มจากของง่าย ๆ กันก่อน
+
+---
+
+## The naive version — a SQL query at send time
+
+สมมติเราอยากส่งโปรโมชันหา gold-tier user ในไทยที่เติมเงินมาภายใน 30 วันที่ผ่านมา เวอร์ชันแรกแบบซื่อ ๆ ที่สุด ก็คือเขียนตามนั้นเป๊ะ ๆ เป็น query แล้วรันตอนที่กำลังจะส่งเลย:
+
+```sql
+SELECT user_id
+FROM users
+WHERE tier = 'gold'
+  AND country = 'TH'
+  AND last_topup_at > now() - interval '30 days';
+```
+
+ฝั่ง sender รัน query นี้ ได้ list ของ ID มา แล้วก็เริ่มยิงเลย ถ้ามีแค่หลักพันคนแบบนี้มัน work ดีมาก ๆ — ship ไปได้เลย rule อยู่ที่เดียว, สดตลอดเวลา (เพราะ query วิ่งบนข้อมูล live), แล้วก็ไม่มีอะไรต้องคอยดูแล
+
+> **P.S.** ถ้านี่คือเรานะ หยุดจุดนี้ได้เลย ต่ำกว่าพันคนกับ rule ง่าย ๆ แบบนี้ — แค่หนึ่งหรือสองเงื่อนไข ไม่มี join ข้ามตาราง — inline query แบบนี้ไม่ใช่ทางลัดชั่วคราวนะ มันคือคำตอบที่ถูกแล้ว ทุกอย่างในหัวข้อข้างล่างนี้ไม่ได้ทำให้ระบบ **ถูกต้อง** ขึ้นเลย มันแค่ทำให้ระบบรอด scale แล้วก็ความซับซ้อนที่เรายังไม่มีต่างหาก เพิ่มเครื่องจักรเมื่อรอยร้าวข้างล่างโผล่มาให้เห็นเอง ไม่ใช่ก่อนหน้านั้น
+
+แล้วพอมันโตขึ้น รอยร้าวสามจุดก็เปิดพร้อมกันเลย:
+
+- **query เริ่มหนัก** พอไป tens of millions row เข้า แถม `last_topup_at` มาจากอีกตาราง กับ `tier` ก็มาจากอีกตารางหนึ่ง มันกลายเป็น multi-join full scan บน **production database** — ฐานข้อมูลตัวเดียวกับที่รับ live traffic อยู่ การส่ง marketing ทีนึงอาจทำแอปสะดุดได้เลย
+- **การส่งไปติดรอมันอยู่** delivery job เริ่มงานไม่ได้จนกว่า query จะคืนค่า query ที่กินเวลาเป็นนาที (หรือ timeout ไปเลย) แปลว่า campaign นั่งรออยู่เฉย ๆ แล้วพอ retry ก็ต้องรันของแพง ๆ ก้อนนี้ใหม่ทั้งดุ้น
+- **reuse ไม่ได้เลย** campaign ถัดไปก็อยาก gold-tier ใน TH เหมือนกัน แค่ topup window ต่างกันนิดเดียว ทุก campaign ก็เลยต้องมานั่งคำนวณ audience ใหม่จากศูนย์ กระหน่ำ DB ซ้ำอีกรอบ แล้วไม่มีใครตอบได้เลยว่า segment นี้ใหญ่แค่ไหน ถ้าไม่ลองรัน query ดูก่อน
+
+ทั้งสามอย่างพูดเรื่องเดียวกันหมด: **การคำนวณ audience ตอนส่ง บน DB ที่ live อยู่ มันไม่ scale** ทางแก้ก็คือย้ายการคำนวณออกจาก hot path แล้วทำมันไว้ **ก่อน** ที่จะถึงเวลาส่ง
+
+{/* IMAGE PROMPT (send-time-query-load.png): Clean conceptual diagram, flat vector, light background. CENTER: a database cylinder labeled exactly "Production DB", drawn under visible strain (a couple of small stress marks). From the LEFT, an arrow labeled exactly "Marketing query" points into the database (draw it thick/heavy). Going DOWN from the database to a small row of phone icons labeled exactly "Live users", draw a thin struggling arrow with a tag reading exactly "slow". Convey: a heavy marketing query on the live database starves real user traffic. STRICT: render ONLY these labels — "Production DB", "Marketing query", "Live users", "slow" — spelled exactly, each once; phone icons carry no text; no other words; no typos; no duplicate boxes; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
+
+![query การตลาดหนัก ๆ บน production database แย่ง resource จนทราฟฟิกของ user ฝั่ง live ที่แชร์ฐานเดียวกันซวนเซ](/assets/images/blogs/design-audience-platform/send-time-query-load.png)
+
+> **P.S.** ก่อนจะกระโดดไปที่ `precompute มันไว้ล่วงหน้า` ลองถามตัวเองก่อนสักนิด — audience ก้อนนี้ต้องสดแค่ไหนกันแน่? ถ้า user หลุด gold tier ตอน 9 โมงเช้า แต่ยังเห็นโปรโมชันได้จนกว่ารอบ schedule ถัดไปจะมาถึง lag แบบนั้นรับได้ — precompute ในหัวข้อถัดไปแก้ปัญหาได้หมด แต่ถ้า eligibility ต้องพลิกทันทีที่ fact เบื้องหลังมันเปลี่ยน — fraud flag, ยอดเงินข้ามเกณฑ์ — ต่อให้ precompute ถี่แค่ไหนก็ไปไม่ถึงจุดนั้นหรอก แล้วเราก็กำลังมองหาทาง near-real-time ที่อยู่ท้ายโพสต์นี้ต่างหาก ไม่ใช่ทางนี้ use case ส่วนใหญ่ทน lag ได้แหละ นั่นแหละคือเหตุผลที่ precompute เป็นก้าวถัดไปที่ถูกสำหรับคนส่วนมาก — แต่มันก็ควรเป็นการตัดสินใจที่ตั้งใจเลือก ไม่ใช่ default ที่ไม่ได้คิด
+
+---
+
+## Precompute on a schedule — build the segment, then read it
+
+**ปัญหา:** audience query มันแพง แล้วเราดันไปรันมันตอนที่แย่ที่สุดพอดี — ตอนที่กำลังจะส่งเป๊ะ ๆ ทั้งที่ input ของมันแทบไม่ขยับเลยในระดับนาที gold tier ใน TH ที่เติมเงินมา 30 วัน ก็แทบเป็น list เดียวกันไม่ว่าจะเช็คตอนบ่ายสองหรือตีสอง
+
+**วิธีแก้:** รัน query **ล่วงหน้า** ตาม schedule เก็บผลลัพธ์ไว้ แล้วให้ตอนส่งแค่ **อ่าน** มันเฉย ๆ nightly job ตัวนึงคำนวณ member ของแต่ละ segment แล้วเขียนลงตาราง `segment_members`:
+
+```sql
+-- nightly, per segment: delete + insert in ONE transaction,
+-- so a re-run or a retry rebuilds the segment instead of doubling it
+BEGIN;
+DELETE FROM segment_members WHERE segment_id = 'gold_th_active';
+INSERT INTO segment_members (segment_id, user_id, computed_at)
+SELECT 'gold_th_active', user_id, now()
+FROM users
+WHERE tier = 'gold' AND country = 'TH'
+  AND last_topup_at > now() - interval '30 days';
+COMMIT;
+```
+
+สองรายละเอียดที่ดูน่าเบื่อในนี้แหละที่ทำงานเป็นตัวหลัก:
+
+- job นี้ต้อง **idempotent** — ความผิดพลาดคลาสสิกคือใช้แค่ `INSERT` เดี่ยว ๆ เพราะ retry รอบแรกหลัง crash จะเพิ่ม member ซ้ำสองเท่าทันที การ delete-แล้ว-insert อยู่ใน transaction เดียว (มี primary key บน `(segment_id, user_id)` เป็นตัวกันหลัง) ทำให้ re-run กี่ครั้งก็ปลอดภัยเสมอ
+- พอ audience ถูก precompute ไว้แล้ว มันก็เก่าไปได้แบบเงียบ ๆ เพราะงั้น **alert ให้ดูจากอายุของ `max(computed_at)` เป็นหลัก อย่าพึ่งแค่ alert ตอน job fail** — nightly job ที่ตายไปเงียบ ๆ คืนวันศุกร์ แปลว่า audience เก่าไป 3 วันแล้วตอนถึงวันจันทร์ แล้ว `job ไม่ page มาหาเรา` มันไม่ได้แปลว่า `ข้อมูลยังสด` เลยนะ
+
+ตอนนี้การส่งก็เลยเป็นแค่ read ถูก ๆ: `SELECT user_id FROM segment_members WHERE segment_id = 'gold_th_active'` งานหนัก ๆ มันเกิดไปตั้งแต่เมื่อคืนแล้ว ตอนที่ไม่มีใครนั่งรออยู่
+
+<MermaidDiagram chart={`
+flowchart LR
+    CRON["Nightly job"] --> Q["Run segment query"]
+    Q --> SM[("segment_members")]
+    SEND["Send time"] -->|"cheap read"| SM
+`} />
+
+จุดนี้ได้มาเยอะเลยนะ — การส่งกลายเป็นแค่ `segment_id` lookup ธรรมดาแทนที่จะเป็น multi-join scan, query แพง ๆ ก็ไปรันตอน off-peak, แล้ว segment ก็กลายเป็น `ของ` ที่เราวัดขนาดแล้วก็ reuse ได้แล้ว แต่มันก็แลกปัญหาเก่าไปกับปัญหาใหม่สองอันแทน:
+
+- **Freshness.** list มันสดได้แค่เท่าที่ rebuild ล่าสุดพาไปเท่านั้น รัน batch job (cron job) วันละครั้ง list ก็เก่าได้ถึง 24 ชั่วโมง — ไม่สำคัญหรอกว่า job จะรันเที่ยงคืน ตีหนึ่ง หรือตีสาม สิ่งที่กำหนด staleness คือ **ความถี่ที่มันรัน** ไม่ใช่เวลาที่รันเป๊ะ ๆ user ที่เติมเงินไปเมื่อเช้านี้ ก็จะยังไม่ `gold-tier active` จนกว่า rebuild รอบถัดไปจะมาถึง สำหรับโปรโมรายสัปดาห์นี่ไม่มีปัญหาเลย แต่ถ้าเป็น `เตือน user ที่เพิ่ง abandon cart ไป` มันใช้ไม่ได้เลยนะ จำจุดนี้ไว้ดี ๆ — นี่แหละคือสิ่งที่จะบังคับให้ต้อง streaming ทีหลัง
+- **มันก็ยังรันบน production DB อยู่ดี แล้วก็ยังเป็นกล่องเดียว** ตัว rebuild ต้องมีที่ให้ลง — ตารางใหม่ `segment_members(segment_id, user_id, computed_at)` ที่เขียนโดย job ที่ยังไปแตะ Postgres ตัวเดียวกับที่รับ live traffic อยู่ดี แล้วตารางนี้ก็ไม่เล็กด้วยนะ — user คนนึงเข้าได้หลาย segment เพราะงั้น worst case มันถือได้ถึง **S × N** row (S = จำนวน segment ในองค์กร, N = จำนวน user ทั้งหมด) พอ segment เพิ่มขึ้นแล้ว rule ก็ซับซ้อนขึ้น (cross join, windowed aggregate ข้ามปีของ transaction) กล่องเดียวที่แบกทั้ง live traffic แล้วก็ batch analytical นี้ก็เริ่มช้าลงแล้วก็เริ่มพังในที่สุด
+
+ก่อนจะไปหยิบอะไรที่หนักกว่านี้ ขอพูดถึงทางแก้ freshness ที่ถูกที่สุดก่อน: **แค่รัน job ให้ถี่ขึ้น** ไม่มีอะไรห้ามเราจากการรัน delete-and-insert ก้อนเดิมทุกชั่วโมงแทนที่จะรันคืนละครั้งเลยนะ — production DB เดิม, ตารางเดิม, ไม่ต้องมี infrastructure ใหม่เลยสักตัว แค่ตั้ง interval ให้สั้นลงบน cron schedule เดิม เราแลก compute เพิ่มขึ้นนิดหน่อย เอา freshness ที่ดีขึ้นเยอะมาแบบฟรี ๆ
+
+{/* IMAGE PROMPT (freshness-cadence.png): Clean conceptual diagram, flat vector, light background. Two stacked horizontal timelines that share a single left-to-right arrow as the time axis. TOP timeline labeled exactly "Nightly": a single refresh dot at the far left, then a long empty stretch, with a tag reading exactly "up to 24h stale". BOTTOM timeline labeled exactly "Microbatch": many evenly spaced refresh dots along the line, with a tag reading exactly "fresh within 1-2h". Convey: frequent refreshes stay fresh versus one nightly rebuild. STRICT: render ONLY these labels — "Nightly", "up to 24h stale", "Microbatch", "fresh within 1-2h" — spelled exactly, each once; the dots carry no text; no other words; no typos; no duplicate labels; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
+
+![nightly ปล่อยให้ audience เก่าได้ถึงวันนึง; การ rebuild แบบเดิมแต่รันถี่ขึ้นทำให้สดอยู่ในหลักชั่วโมง](/assets/images/blogs/design-audience-platform/freshness-cadence.png)
+
+ท่านี้ใช้ได้จนกว่า full rebuild เองจะกินเวลานานเกินกว่าที่ window มันเหลือให้ — คำนวณทุกอย่างจากศูนย์ทุกชั่วโมง สุดท้ายมันก็ใช้เวลามากกว่าหนึ่งชั่วโมงที่มันมี นั่นแหละคือ trigger ของ **incremental refresh** ที่ซีรีส์นี้จะย้อนกลับมาพูดถึงอีกที ตอนที่มี data lake ให้พึ่งพิงแล้ว
+
+รอยร้าวที่สองเป็นเรื่องเชิงโครงสร้างแล้ว การ precompute อย่างเดียวไม่พอ — มันต้องไปเกิดใน **ที่ที่ไม่ใช่ live transactional database** ด้วย แต่ `ที่อื่น` ไม่ได้แปลว่า cluster ตั้งแต่ตอนนี้นะ แล้ว rung ถัดไปนี่แหละคือตัวที่บทความส่วนใหญ่มักข้ามไป
+
+---
+
+## Squeeze the single box first — a read replica
+
+โพสต์ส่วนใหญ่กระโดดจาก `Postgres ตัวเดียว` ไปที่ `Spark cluster` เลย แล้วคนอ่านก็เดินจากไปโดยเข้าใจว่า distributed compute คือ step ที่สาม ซึ่งมันไม่ใช่ มีท่าที่ถูกกว่านั้นก่อน แล้วบอกกันตามเนื้อผ้าเลยนะ — หลายบริษัทหยุดอยู่จุดนี้ได้ไปตลอดกาลเลยด้วยซ้ำ
+
+**เอา segment job ออกจาก primary — ทั้งฝั่ง read แล้วก็ที่ที่มันไปลง** ตอนนี้ production กำลังทำสองงานที่ต่างกันอยู่ในตัวเดียว: รับ live transactional traffic แล้วก็ถือตาราง `segment_members` ที่ batch นี้เขียนเข้าไป แยกมันออกจากกันซะ:
+
+- **Reads** — ชี้ query ของ batch ไปที่ **read replica**: สำเนาที่ live ของ primary คอยซิงค์ผ่าน replication รับได้แต่ read อย่างเดียว ไม่รับ write เลย เพราะมันเป็น read-only มันเลยรับ read traffic มาจากไหนก็ได้ — ทั้งจากตัว app เองแล้วก็จาก batch job ตัวนี้ — ส่วน write ทุกตัว ไม่ว่าจาก app หรือจาก job นี้ ก็ยังต้องวิ่งผ่าน primary อยู่ดี แทบทุก managed database มี replica ให้เปิดใช้แบบติ๊กช่องเดียวจบ แล้ว replication lag แค่ไม่กี่วินาทีก็ไม่มีผลอะไรเลย สำหรับ audience การตลาดที่ทนความเก่าเป็นชั่วโมงอยู่แล้ว
+- **Output** — อย่าเขียน `segment_members` กลับเข้ากล่องเดิมนั้น เอาไปลงที่อื่นไปเลย: database เล็ก ๆ ที่ dedicate ไว้เก็บ segment โดยเฉพาะ, plain file บน object storage (S3/GCS) ที่ sender อ่านเองได้เลย, หรือ Redis ที่เก็บ segment เป็น set
+
+ทั้งหมดนี้ยังไม่ต้องใช้ Spark หรือ warehouse เลยนะ — การคำนวณก็ยังเป็น SQL query ตัวเดิม แค่ย้ายที่ ให้ production ทำแค่งานเดียวที่มันควรทำ: รับ live traffic นี่คือการเปลี่ยน infrastructure ที่ถูกมาก ๆ แล้วซื้อเวลาให้หลายบริษัทได้เป็นปี ๆ — คว้ามันมาใช้ **ตั้งแต่เนิ่น ๆ** ตั้งแต่วินาทีที่ batch เริ่มแย่ง resource กับ live traffic ให้เห็นได้ชัด
+
+<MermaidDiagram chart={`
+flowchart LR
+    APP["Live traffic"] --> PRIMARY[("Production primary")]
+    PRIMARY -->|"replicate"| REPLICA[("Read replica")]
+    BATCH["Batch job"] -->|"read"| REPLICA
+    BATCH -->|"write"| EXT[("External store\ndedicated DB / S3 file / Redis")]
+    SEND["Send time"] -->|"read"| EXT
+`} />
+
+> **P.S.** บอกกันตามเนื้อผ้าเลยนะ นี่อาจจะไกลสุดเท่าที่เราต้องไปแล้วก็ได้ ถ้า output ของ segment เราอยู่นอก production อยู่แล้ว — ใน Redis, flat file, หรือ database เล็ก ๆ ของมันเอง — แล้วการส่งก็แค่ lookup ธรรมดา ทีมส่วนใหญ่หยุดจุดนี้ได้เลย หัวข้อถัดไปแก้ปัญหาคนละแบบ — คือตัว read query เองที่หนักเกินกว่า replica จะไหว ไม่ใช่เรื่องที่ผลลัพธ์ไปเก็บไว้ที่ไหน
+
+**ก่อนจะไปต่อ ขอ recap สักหน่อย** สอง consumer, สอง read pattern แล้วทั้งคู่ไม่สนใจเลยว่า list มันมาจาก engine ตัวไหน:
+
+- **Omnichannel** — อยากได้ audience ทั้งก้อนในรอบเดียว เป็น **chunk read** เรียงลำดับ
+- **Icon serving** — อยากได้ eligibility ของ user คนเดียวแบบ **real-time read** เป็น point lookup เดี๋ยวนี้เลย
+
+<MermaidDiagram chart={`
+flowchart LR
+    E1["Primary / replica"] -.-> SEG[("Segment store\n(table, file, redis)")]
+    SEG -->|"chunk read"| OMNI["Omnichannel"]
+    SEG -->|"real-time read"| ICON["Icon serving"]
+`} />
+
+ทั้งคู่แค่อ่านสิ่งที่ไปลงในตาราง segment เฉย ๆ นั่นแหละคือเหตุผลที่ rung นี้ work ได้โดยไม่ต้องแก้อะไรที่ downstream เลย — **shape ของ output ไม่เปลี่ยนเลย เปลี่ยนแค่วิธีคำนวณมัน** ต่อไป: จะเกิดอะไรขึ้นตอนที่ตัวคำนวณเองเริ่มไม่พอ
+
+> ส่วนใหญ่ของ application บนโลกนี้หยุดอยู่จุดนี้ได้เลยนะ จำจุดนี้ไว้ดี ๆ
+
+---
+
+## Move the analytics to an analytical engine — from OLTP to OLAP
+
+ท่าเดิมกับ rung ที่แล้วเป๊ะ — precompute แล้วก็อ่านจากที่ที่ไม่ใช่ hot path — แค่ชี้ไปที่อย่างอื่นแทน แทนที่จะอ่านจาก replica ก็อ่านจาก **OLAP** engine แทน
+
+เหตุผลคือ พอ rule กลายเป็น windowed aggregate 90 วัน กับ multi-way join บนหลักร้อยล้าน row แม้แต่ replica ก็เริ่มกินเวลาเป็นชั่วโมง — ไม่ใช่เพราะ hardware อ่อนนะ แต่เพราะนี่คืองาน analytical ของแท้แล้ว replica ก็ยังเป็น **OLTP** engine อยู่ดี (Postgres/MySQL: สร้างมาเพื่อ read/write จุดเล็ก ๆ ทีละ row) ส่วน **OLAP** engine สร้างมาเพื่อสิ่งที่สวนทางกันเลย — scan ไม่กี่ column ข้าม row เป็นล้าน ๆ ทีเดียว นั่นแหละคือทางแก้ แล้วก็ยังไม่ใช่ cluster ด้วยนะ:
+
+- **Columnar analytical database** — ClickHouse หรือ DuckDB บนเครื่องแรง ๆ ตัวเดียว
+- **Managed warehouse** — BigQuery, Snowflake, Redshift, Athena
+
+ทั้งคู่รัน query แบบเดียวกันได้เร็วขึ้นหนึ่งถึงสอง order of magnitude เลยนะ `scheduled SQL query บน warehouse output เขียนลงตาราง segment` — เงียบ ๆ แบบนี้แหละ — คือ audience platform กระแสหลักของปี 2026 หลายทีมรันแบบนี้เป๊ะ ๆ ที่ user หลักสิบล้านคน แล้วไม่ต้องการอะไรมากไปกว่านี้เลย
+
+> **P.S.** ถ้าทีมเราเป็นสาย Java/Spring อยู่แล้ว มีอีกทางที่คุ้มลองก่อนจะไปหา OLAP store แยกต่างหาก: scale ตัว batch job เองด้วย **Spring Batch** chunked read, transaction, checkpointing, restart-from-failure, แล้วก็ remote partitioning ที่กระจายงานข้ามหลาย JVM ได้ถ้าจำเป็น — มันดัน read replica ไปได้ไกลกว่า query ทื่อ ๆ โดยไม่ต้องมี storage engine ใหม่เลยสักตัว มันจะเริ่มไม่พอที่ trigger เดียวกับที่เหลือของ rung นี้แหละ — พอ workload เป็น OLAP-shape เต็มตัว หรือพอต้องการ distributed join แบบที่ Spark มีในตัวข้ามหลักพันล้าน row Spring Batch ก็ไม่มีของพวกนี้ built-in ให้
+
+ขอขยายความจุดนี้ให้ชัดหน่อย เพราะคำว่า `แค่ชี้ไปที่อย่างอื่น` มันฟังดูเบาไปสำหรับสิ่งที่เปลี่ยนไป read replica กับ OLAP engine แก้ **ปัญหาคนละอย่างกัน**:
+
+- **Replica** — engine OLTP ตัวเดิม แค่เป็นสำเนาที่ sync ไว้ มันแค่แยก *ที่ read เกิด* ออกจาก *ที่ write เกิด* — ตัวข้อมูลไม่เคยหลุดออกจากโลก OLTP เลย แล้วการ sync ก็เป็น native database replication
+- **OLAP engine** — เป็น storage engine คนละตัวไปเลย build มาเพื่อเก็บข้อมูลในทรงที่เหมาะกับ analytics มันไม่เติมตัวเองผ่าน replication นะ — ต้องมีคนย้ายข้อมูลเข้าไปเอง: bulk copy รอบแรก, scheduled Spark job, หรือ CDC (stream write log ของ OLTP เข้า OLAP store ต่อเนื่อง)
+
+งานเดียวกัน query แบบเดียวกัน — แต่มา source ต่างกัน แล้วการเติมข้อมูลลง source นั้นก็เป็นปัญหาของมันเองเลย (แล้ว SQL text เองก็มักต้องเขียนใหม่ด้วยนะ — Postgres, ClickHouse, BigQuery, Snowflake, Redshift ต่างก็พูด SQL dialect ของตัวเอง) ถ้าเรายังไม่ได้รัน OLAP store อยู่ replica คือคำตอบที่ง่ายกว่าแล้วก็ซื่อกว่า ถ้าเราจะไปหา OLAP แบบเต็มตัว ปัญหาการย้ายข้อมูลจุดนี้แหละคือเรื่อง ingestion เต็ม ๆ ที่หัวข้อ data lake จะพูดถึงต่อไป
+
+**แล้วเราจะรู้ได้ยังไงว่าถึงเวลาต้องขยับขึ้น rung** trigger คร่าว ๆ ไม่ใช่กฎตายตัว:
+
+| ตอนนี้เราอยู่ที่ | ขยับขึ้นเมื่อ |
+|---|---|
+| Inline SQL ตอนส่ง | audience โตเกิน ~1M user, campaign เพิ่มขึ้นเรื่อย ๆ หรือ send query เริ่มทำแอปช้าลง |
+| Precompute บน primary | batch แย่ง resource กับ live traffic ให้เห็นชัด — replica แค่ config เดียวเปลี่ยน คว้ามันมาใช้เลย |
+| Read replica | analytical SQL กินเวลาเป็นชั่วโมงบน row store — shape มันผิด ไม่ใช่ hardware อ่อน |
+| Warehouse / columnar DB | job รันไม่จบใน refresh window, rule ต้องการ code แท้ ๆ (custom scoring, ML feature) แทนที่จะเป็น SQL หรือ input ไม่ได้อยู่ในฐานเดียวอีกต่อไป |
+
+อีกเรื่องนึงที่ต้องชั่งน้ำหนัก: **ทุก rung ที่ปีนขึ้นไป แบก cost แล้วก็งาน on-call เพิ่มตลอด** replica ก็แค่ติ๊กช่องเดียว, warehouse ก็คือบิลค่าใช้ ส่วนโลกของ Spark-กับ-lake ข้างหน้าคือทั้งบิล **แล้วก็** ทีมงานเลย ปีนขึ้นเพราะ trigger มันเกิดขึ้นเอง ไม่ใช่เพราะ rung ถัดไปมันดูน่าสนใจในเรซูเม่
+
+ถ้าเราอยู่บน managed warehouse แล้วมันรับไหวอยู่ ข้ามอ่านผ่าน ๆ สองหัวข้อถัดไปได้เลย ซีรีส์นี้จะเดินตามทาง self-managed ต่อจากนี้ — data lake แล้วก็ Spark ทับบนมัน — เพราะนั่นแหละคือจุดที่ของมันพังแบบน่าสนใจที่ scale ใหญ่สุด แล้วก็เพราะพ้นจุดนี้ไป การเดินหน้าแบบมีประสิทธิภาพต้องมี data lake อยู่ดี ไม่ว่า engine ไหนพาเรามาถึงจุดนี้
+
+---
+
+## Land the data in one place — the data lake
+
+**ปัญหา:** ข้อมูลที่ audience rule ต้องใช้ ตอนนี้กระจายอยู่ในสิบกว่าระบบ — payments DB, auth service, ไฟล์ export จาก data science, event stream ถ้าไป query แต่ละที่แบบ live ทุกครั้งที่สร้าง segment มันก็กลับไปเป็นปัญหาเรื่อง load เดิม — job analytical ตัวเดียวที่ไปกระหน่ำทุก production system พร้อมกัน แล้ว job พวกนี้ยังต้องการ **history** ด้วย (`transaction ย้อนหลัง 90 วัน`) ที่ OLTP database ร้อน ๆ มักตัดทิ้งไปแล้ว
+
+**วิธีแก้:** เอาสำเนาของทุกอย่างไปกองไว้ที่เดียว build มาเพื่อ analytical read โดยเฉพาะ — **data lake** production ถูก query แค่ครั้งเดียว เพื่อ ingestion เท่านั้น — ไม่ต้อง query ซ้ำเพื่อ compute อีกเลย
+
+**Columnar format — Parquet** เก็บข้อมูลแยกตาม column ไม่ใช่ตาม row query ที่แตะแค่ 3 จาก 30 column ก็อ่านแค่ 3 column นั้นจาก disk แล้ว min/max stats ของ Parquet ยังช่วยให้มันข้าม chunk ที่ไม่มีทางแมตช์ไปได้เลย (**predicate pushdown**) บนตารางกว้าง ๆ นั่นแปลว่าอ่านข้อมูลจาก disk **น้อยกว่า row format ถึง 10 เท่า** — บ่อยครั้งก็มากกว่านั้นอีก
+
+{/* IMAGE PROMPT (parquet-columnar.png): Clean conceptual comparison, flat vector, light background, two panels side by side, each showing a simple table grid of blank cells. LEFT panel header labeled exactly "Row storage": highlight whole HORIZONTAL rows across the grid, with a tag below reading exactly "reads every column". RIGHT panel header labeled exactly "Columnar (Parquet)": on an identical grid, highlight only a few VERTICAL columns, with a tag below reading exactly "reads only what it needs". Convey: columnar storage reads only the needed columns off disk. STRICT: render ONLY these labels — "Row storage", "reads every column", "Columnar (Parquet)", "reads only what it needs" — spelled exactly, each once; grid cells contain no text; no other words; no typos; no duplicate labels; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
+
+![row storage อ่านทุก column จาก disk; columnar Parquet อ่านแค่ column ที่ query ต้องการเท่านั้น](/assets/images/blogs/design-audience-platform/parquet-columnar.png)
+
+**Table format — Iceberg / Delta Lake** ไฟล์ Parquet ดิบ ๆ เฉย ๆ ไม่มีแนวคิดเรื่อง transaction เลย — reader อาจไปจับตารางที่เขียนค้างครึ่งเดียวได้, schema change ต้องทำมือ, `เมื่อวานมันหน้าตายังไง` ก็ตอบไม่ได้เลย table format มาเติม **ACID snapshot**, **schema evolution**, แล้วก็ **time travel** (query snapshot ย้อนหลังได้) ให้ — คุ้มกับ infrastructure ที่เพิ่มขึ้น ตอนที่ output ของเราไปขับเคลื่อน campaign ที่มีเม็ดเงินอยู่ด้วย
+
+**Partitioning** partition ด้วย **event date** (`dt=YYYY-MM-DD`) ให้ query 90 วันอ่านแค่ 90 folder ไม่ใช่ทั้ง history อย่า partition ด้วยอะไรที่ cardinality สูงอย่าง `user_id` — จะได้ไฟล์เล็ก ๆ เป็นล้านไฟล์ metadata ใหญ่กว่าตัวข้อมูลเองซะอีก (**small-files problem**) รัน **compaction** เพื่อรวมมันกลับเข้าด้วยกัน
+
+**Ingestion — เอาข้อมูลเข้ามา** ปกติใช้ทั้งคู่: **batch snapshot** (dump รายวัน ง่าย เก่าได้วันนึง) กับ **CDC** (stream write-ahead log ของ source DB ผ่าน Debezium → Kafka เก่าแค่ระดับนาทีแทนที่จะเป็นวัน — แล้วก็เป็นจุดที่ streaming ทีหลังจะเริ่มต้นจากจุดนี้ด้วย)
+
+**Orchestration** Ingest → transform → build-segment → publish แต่ละสเตจ depend กับสเตจก่อนหน้า ตัว orchestrator (Airflow, Dagster) รันตาม schedule แล้วจะไม่เริ่ม build segment จนกว่า input ของวันนั้นจะมาถึงก่อน
+
+<MermaidDiagram chart={`
+flowchart LR
+    SRC1[("Payments DB")] -->|"CDC / snapshot"| LAKE[("Data lake\nParquet + Iceberg")]
+    SRC2[("Auth / profile")] -->|"CDC / snapshot"| LAKE
+    SRC3[("DS churn scores")] -->|"batch"| LAKE
+    EV["Event stream"] -->|"Kafka"| LAKE
+`} />
+
+freshness กับ cost มันแลกกันจุดนี้แหละ: daily batch ถูกแล้วก็ง่าย แต่ตามหลังอยู่วันนึง; CDC สดกว่า แต่เป็น infrastructure เต็มรูปแบบ — Debezium, Kafka, compaction, orchestrator ทุกตัวอยากได้ monitoring แล้วก็คนคอย page นี่แหละคือ rung ที่ platform เริ่มมีทีมงานเป็นของตัวเอง ซึ่งเป็นเหตุผลที่หัวข้อ OLAP บอกให้รอ trigger ที่ชัดก่อน ส่วนใหญ่ platform ลงเอยอยู่ระดับกลาง ๆ: บางตารางรัน daily บางตารางรันภายในชั่วโมง
+
+ตอนนี้เรามีที่เดียวให้อ่านแล้ว โดยไม่ต้องแตะ production อีกเลย สิ่งที่ยังพูดจุดนี้ไม่ได้คือตัว **logic** เอง — นั่นคือหัวข้อถัดไป
+
+---
+
+## Rules become code — move to Spark
+
+**ปัญหา:** ต่อให้ทุกอย่างอยู่ใน lake เดียวแล้ว rung ของ warehouse ก็ยังมีเพดานอยู่ดี — เพดานที่ว่านี้ไม่ใช่เรื่องขนาด แต่เป็นเรื่อง **shape** targeting ที่ธุรกิจต้องการมันหน้าตาแบบนี้: `user ที่ค่าเฉลี่ย transaction 90 วันสูงกว่า X, ใช้ feature Y อย่างน้อย 3 ครั้ง, ไม่โดน suppress, แล้วก็ join กับ churn score จาก data science` windowed aggregate กับ anti-join warehouse ทำง่ายอยู่แล้ว — แต่ scoring logic ที่ธุรกิจต้องการมันคือ **code** ไม่ใช่ `WHERE` clause พอ rule เริ่มพูดผ่าน SQL ไม่ได้แล้ว เราก็ต้องการ engine ที่ build มาเพื่อ logic แบบไหนก็ได้เป็นเรื่องปกติ บน user หลักร้อยล้านคน แล้วก็ row เป็น **พันล้าน**
+
+**วิธีแก้:** ย้ายการคำนวณไปที่ distributed engine — **Spark** มันประมวลผล row เป็นพันล้านแบบขนานข้าม cluster ได้ แล้ว (ส่วนที่ผมแคร์ที่สุด) มันให้เราเขียน rule แค่ครั้งเดียว ส่วน engine ไปจัดการเรื่อง distribution ให้เองหมด
+
+**ตัว job ในแบบ DataFrame** อ่าน input มา, apply predicate, join attribute, aggregate, แล้วเขียน membership ออกมา:
+
+```scala
+val users   = spark.read.parquet("s3://lake/users/dt=2026-07-01")        // today's snapshot
+val txns    = spark.read.parquet("s3://lake/transactions")               // partitioned by event_date
+val churn   = spark.read.parquet("s3://lake/churn_scores/dt=2026-07-01") // today's snapshot
+val suppress = spark.read.parquet("s3://lake/suppression/current")
+
+val txn90 = txns
+  .where($"event_date" >= date_sub(current_date(), 90))
+  .groupBy($"user_id")
+  .agg(avg($"amount").as("avg_amt"), count("*").as("txn_count"))
+
+val audience = users
+  .where($"tier" === "gold" && $"country" === "TH")
+  .join(txn90, Seq("user_id"))
+  .join(broadcast(churn), Seq("user_id"))           // small dim → broadcast
+  .where($"avg_amt" > 5000 && $"churn_score" < 0.3)
+  .join(suppress, Seq("user_id"), "left_anti")       // exclude suppressed
+  .select($"user_id")
+```
+
+**Broadcast ฝั่งที่เล็กกว่า** `churn_scores` กับ `suppression` เล็กกว่า `users`/`transactions` เยอะ การ mark ว่า `broadcast` คือส่งมันไปให้ทุก executor เก็บไว้ เปลี่ยน join ที่ shuffle หนัก ๆ ให้กลายเป็น map-side join — ชนะง่ายที่สุดแล้วก็ใหญ่ที่สุดในบรรดาเทคนิคทั้งหมด `autoBroadcastJoinThreshold` จับบางเคสให้อัตโนมัติอยู่แล้ว แต่ระบุชัด ๆ ไปเลยสำหรับตัวที่เรารู้อยู่แล้วว่าเล็ก
+
+**ระวัง data skew** power user ไม่กี่คนที่มี transaction เป็นล้าน หรือประเทศเดียวที่ถือ user 80% — partition เดียวแบกงานทั้งหมด ส่วนที่เหลือนั่งว่าง แล้ว job ทั้งก้อนก็ช้าเท่ากับ partition ที่ช้าที่สุดตัวเดียวนั้นแหละ ที่ช่วยได้: salt hot key, เปิด Adaptive Query Execution (`spark.sql.adaptive.enabled`), แล้วก็ pre-aggregate ก่อน join (rollup `txn90` ข้างบนนั่นแหละ ที่ช่วยย่อฝั่งใหญ่ให้เล็กลงก่อน)
+
+{/* IMAGE PROMPT (spark-data-skew.png): Clean conceptual diagram, flat vector, light background. A row of FOUR worker boxes labeled exactly "Worker 1", "Worker 2", "Worker 3", "Worker 4". Above each worker draw a vertical workload bar: the bar above Worker 1 is very tall (towering); the bars above Worker 2, Worker 3, Worker 4 are tiny. Place a small tag pointing at Worker 1 reading exactly "hot partition", and one tag near the small bars reading exactly "idle". Convey: data skew dumps all the work on one worker while the rest sit idle. STRICT: render ONLY these labels — "Worker 1", "Worker 2", "Worker 3", "Worker 4", "hot partition", "idle" — spelled exactly, each once; no other words; no numbers on the bars; no typos; no duplicate labels; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
+
+![data skew — worker ตัวเดียวแบกงานทั้งหมดบน hot partition ส่วนตัวอื่นนั่งว่าง](/assets/images/blogs/design-audience-platform/spark-data-skew.png)
+
+**Prune ตั้งแต่ต้นทาง** input มีสองแบบ ก็เลย prune คนละแบบ `users` กับ `churn_scores` เป็น daily snapshot — อ่าน `dt=2026-07-01` ก็ได้สำเนาของวันนั้นวันเดียว ส่วน `transactions` เป็น history ที่ partition ด้วย `event_date` เพราะงั้น job อ่านทั้ง path ของตาราง แล้วปล่อยให้ filter `event_date >= today-90` ไป prune ให้เหลือแค่ 90 partition ล่าสุด — 90 วันแทนที่จะเป็น 5 ปี สืบเนื่องมาจาก layout ที่หัวข้อก่อนหน้าวางไว้เลย
+
+<MermaidDiagram chart={`
+flowchart LR
+    L[("Data lake\n(users / txns / scores)")] --> S["Spark job\n(filter · join · aggregate)"]
+    S --> M["Segment membership\n(user_id per segment)"]
+`} />
+
+rung นี้แหละคือจุดที่ audience platform เลิกเป็นแค่ side project เล็ก ๆ Spark cluster พก job failure, executor OOM, แล้วก็ version upgrade มาเป็นของตัวเองด้วย ในทางปฏิบัติมันมักมาพร้อมกับคนแรกที่งานหลักของเขาคือดูแลมันนี่แหละ budget ทั้งคนแล้วก็ cluster ไปด้วยกัน
+
+Spark แก้เรื่อง compute ให้ ส่วน lake ทำให้ไม่ต้องแตะ production อีกเลย ที่เหลือคือเรื่อง **cadence** — ของพวกนี้รันถี่แค่ไหนกันแน่?
+
+---
+
+## Nightly isn't fresh enough — refresh every 1–2 hours
+
+**ปัญหา:** เก่าไปวันนึงมันเก่าเกินไปสำหรับหลาย rule เลย `เติมเงินเช้านี้ → มีสิทธิ์เห็น bonus banner ตอนเที่ยง ไม่ใช่พรุ่งนี้` nightly แปลว่าทุก segment เก่ากว่าสถานะปัจจุบันเฉลี่ย 12 ชั่วโมง
+
+**วิธีแก้:** ยังไม่ต้องกระโดดไป streaming หรอก ไปที่ **microbatch** ก่อน — refresh ทุก segment ทุก 1–2 ชั่วโมง ให้ไม่มีอะไรเก่าเกินชั่วโมงสองชั่วโมง ได้ freshness win แบบเดียวกับที่รัน cron job ให้ถี่ขึ้นใน precompute rung เมื่อกี้ แค่ทำให้มันรับมือได้ที่ scale ระดับ data lake มันเป็น **แนวทาง** ไม่ใช่ technology ตัวใดตัวหนึ่งนะ — จะเป็น scheduled batch job หรือ streaming engine ที่รันแบบ micro-batch mode ก็ลงเอยที่จุดเดียวกัน **เป้าหมายคือทำให้ eligibility ถูกต้องภายใน freshness target ที่ตั้งไว้** ไม่ใช่การได้ label ที่เจาะจงว่าเป็นอะไร
+
+ที่ทำให้มันใช้งานได้ในทางปฏิบัติ:
+
+- **Incremental ไม่ใช่ full-rebuild** full rebuild ทุกชั่วโมงที่ scale ระดับ data lake มันรันไม่จบใน window หรอก อ่านแค่ส่วนที่ **เปลี่ยน** (Iceberg/Delta incremental read หรือ CDC feed) update เฉพาะ user ที่ได้รับผลกระทบ ที่เหลือปล่อยไว้ ส่วน full rebuild ที่หนักกว่าก็ยังรัน nightly ต่อไปเพื่อแก้ drift
+- **Idempotent, publish แบบ snapshot** ทุกรอบที่รันจะ publish versioned snapshot ที่ consumer สลับไปใช้แบบ atomic — ไม่มี segment ที่ update ค้างครึ่งทางให้เห็นเลย แล้วถ้ารอบไหน fail ก็แค่ปล่อยให้ snapshot ล่าสุดที่ดีอยู่คงอยู่ต่อไป
+- **แบ่ง tier ตาม freshness** segment ส่วนใหญ่โอเคกับ 1–2 ชั่วโมงอยู่แล้ว มีบางตัว (`abandon cart ไป 10 นาทีที่แล้ว`) ที่ต้องการระดับวินาที — นั่นแหละคือ opt-in ที่หายาก สำหรับ streaming ของแท้ (Flink หรือ Structured Streaming trigger ที่ตั้งไว้ถี่มาก) ไม่ใช่ default
+
+<MermaidDiagram chart={`
+flowchart LR
+    LAKE[("Data lake")] --> ETL["ETL (every 1-2h)\nincremental"]
+    ETL --> SEG[("Segment results\nthousands-millions,\nrefreshed hourly")]
+    EV["Event stream"] -.->|"rare real-time rules"| SEG
+`} />
+
+ตอนนี้ audience ก็คำนวณที่ scale แล้วก็สดในหลักชั่วโมงแล้ว step สุดท้าย: เลิก build มันด้วยมือทีละ campaign แล้ว serve มันออกมาเป็นสอง shape ที่ consumer ต้องการ
+
+---
+
+## Stop rebuilding per campaign — a reusable segmentation service
+
+**ปัญหา:** ทุก segment ยังเป็น Spark job ที่เขียนด้วยมือ ให้ engineer คนนึงมา ship แล้วก็ดูแลอยู่ดี — พอมี segment เกินกำมือเดียว มันก็กลายเป็น bottleneck ทันที campaign platform (#7) ก็ self-serve audience เองไม่ได้ ถ้าทุก segment ต้องรอ engineer
+
+**วิธีแก้:** เปลี่ยน hand-written job ให้กลายเป็น **platform** rule กลายเป็น **configuration** ไม่ใช่ code:
+
+- **Rule เป็น DSL / config** segment คือ data ไม่ใช่ code — predicate, time window, freshness tier `tier = gold AND country = TH AND avg_txn_90d > 5000 AND NOT suppressed` เก็บไว้เป็นข้อมูล ไม่ใช่เขียนโค้ด platform validate แล้วก็ประเมินขนาดให้ก่อนที่จะรันด้วย
+- **Engine เดียว, job ที่ generate เอง** platform compile rule ให้กลายเป็น Spark plan เต็มรูปแบบ (แล้วก็ streaming topology ถ้า tag ไว้ว่าเป็น real-time) attribute ใหม่ลง register ใน catalog แค่ครั้งเดียว แล้วใช้ได้ทุกที่เลย
+- **Reusability** segment ประกอบกันได้ — `gold_th_active` คำนวณครั้งเดียว แล้วถูก campaign สิบตัวอ้างอิงไปใช้ แทนที่จะมานั่งคำนวณใหม่ทีละ campaign — ความผิดพลาดของ v1 ที่ในที่สุดก็ถูกแก้แล้ว
+- **Guardrail ก่อนเงินจะขยับ** rule ที่แค่พลิก `AND` เป็น `OR` อาจเปลี่ยน user 2M คน ให้กลายเป็น 40M แบบเงียบ ๆ — campaign กำลังจะเผา budget ก้อนโตกับ 38M คนที่ไม่ควรได้รับเลย platform เลยกัก segment ที่ขนาดกระโดดออกนอกช่วงที่สมเหตุสมผล (±30%) ไว้ก่อน จนกว่าคนจะมายืนยัน — ก่อนที่ consumer ไหนจะหยิบไปใช้ด้วยซ้ำ เช็คที่ถูกที่สุดกันความผิดพลาดที่แพงที่สุดที่ระบบนี้ทำได้เลย
+
+นี่แหละคือ payoff ที่ทั้งโพสต์นี้ build มาถึง output ดั้งเดิมของ ETL คือ **segment result** — `campaign → [users]` — เขียนลง **object storage** เป็น versioned snapshot ทุก 1–2 ชั่วโมง artifact ก้อนเดียวนี้ป้อนให้ consumer ทั้งสองตัวเลย อ่านคนละทิศทางกัน:
+
+<MermaidDiagram chart={`
+flowchart TD
+    ENG["Segmentation ETL"] --> SEG[("Segment results in object storage\ncampaign -> [users]")]
+    SEG -->|"read + chunk"| OMNI["#3 Omnichannel\nstream the chunks out"]
+    SEG -->|"invert (add/remove)"| MEM[("Membership index\nuser -> {campaigns}")]
+    MEM --> ICON["#5 Icon serving\npoint lookup per request"]
+`} />
+
+- **Chunk read (#3 Omnichannel)** อ่านทั้ง list `campaign → [users]` รอบเดียว เรียงลำดับ แล้วซอยเป็น chunk ละ ~1K user — สำหรับ audience 40–60M ก็เป็น chunk ราว ๆ 40–60K ก้อน ที่โพสต์ omnichannel ใช้ตั้ง observability ไว้พอดี read แบบ sequential รอบเดียว ไม่มี random access
+- **Inverted index (#5 Icon serving)** พลิก `campaign → [users]` ให้กลายเป็น `user → {campaigns}` — Redis set ราย user แบบ `10001 -> {1, 2, 3, 4, 5}` back-of-envelope: user 100M คน แต่ละคนถือ campaign ID ไม่กี่ตัว ก็ตกอยู่หลักสิบ GB — cluster ขนาดกลาง ๆ ก็พอ build เป็น step นึงใน ETL เดียวกันเลย: segment-result snapshot แต่ละก้อนมาถึง แล้วก็ fan-out user ของมันออกไปลง per-user set ของแต่ละคน นี่แหละคือ membership store ตัวเดียวกับที่ #5 อ่านอยู่ แค่พลิกกลับด้านเท่านั้นเอง
+
+{/* IMAGE PROMPT (inverted-index.png): Clean conceptual diagram, flat vector, light background. LEFT box header labeled exactly "Segment result" containing two text lines reading exactly "campaign 1 -> [10001, 10002]" and "campaign 2 -> [10001]". A bold arrow in the center labeled exactly "invert" points from LEFT to RIGHT. RIGHT box header labeled exactly "Membership index" containing two text lines reading exactly "10001 -> {1, 2}" and "10002 -> {1}". Convey: flipping campaign-to-users into user-to-campaigns. STRICT: render ONLY this text — "Segment result", "campaign 1 -> [10001, 10002]", "campaign 2 -> [10001]", "invert", "Membership index", "10001 -> {1, 2}", "10002 -> {1}" — spelled exactly, each once; no other words; no typos; no duplicate lines; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
+
+![การ invert — campaign-to-users พลิกกลับเป็น per-user user-to-campaigns index สำหรับ point lookup](/assets/images/blogs/design-audience-platform/inverted-index.png)
+
+**Churn คือกับดัก** ทุกรอบ refresh มีทั้ง add แล้วก็ remove member — บาง user เพิ่ง **match** เข้ามาใหม่ บาง user **หลุด** ออกไป ฝั่ง add ง่าย: `SADD` campaign เข้า set ของ user นั้นไปเลย ฝั่ง remove นี่แหละที่คนมักลืม: ลืม `SREM` ไป user ก็ยังถือ eligibility ที่เขาหลุดไปแล้วอยู่ดี มีสองท่าที่ทำให้มันถูกต้อง:
+
+- **Diff and apply** — คำนวณ set ที่ **added** กับ **removed** ต่อ segment แล้ว apply ทั้งคู่ ถูกมากตอน churn มันน้อย แต่ต้องพึ่ง snapshot ก่อนหน้าแล้วก็ต้อง diff ให้ถูกด้วย ที่ scale ใหญ่ ๆ โหลด snapshot ทั้งสองก้อนเป็น **Roaring Bitmap** แล้วให้การลบ bitmap ทำเลขให้เลย — `added = new.andNot(old)`, `removed = old.andNot(new)` — แม่นยำแล้วก็เร็ว แม้ที่ระดับ ID หลักสิบล้าน
+- **Rebuild and swap** — คำนวณทุก set ใหม่หมด แล้ว swap เข้าไปแบบ atomic (shadow keyspace, flip pointer) self-correcting เอง ไม่มี drift ตกค้าง — แลกกับการต้องเขียนทุกอย่างใหม่ทุกรอบ memory peak จะเพิ่มขึ้นเกือบ **เท่าตัว** ตอน swap เพราะ shadow กับ live อยู่พร้อมกัน — size ให้พอรองรับจุดนั้น หรือไม่ก็ swap ทีละ shard แทน
+
+ไม่ว่าจะเลือกทางไหน object storage คือ source of truth ส่วน Redis เป็นแค่ view ที่ทิ้งได้ rebuild ใหม่ได้ตลอด ทั้งสองกลยุทธ์มี safety net เดียวกันวางทับไว้อีกชั้น: ตั้ง TTL ของแต่ละ per-user set ให้นานกว่า refresh cadence นิดหน่อย เพื่อให้ removal ที่พลาดไป มันหมดอายุไปเองแทนที่จะค้างอยู่จนกว่าจะมีคนสังเกตเห็น banner ผิด ๆ ใน production
+
+**เรื่อง Bloom filter สักหน่อย** มันน่าดึงดูดอยู่นะ — ย่อการเช็คให้เหลือแค่ probabilistic structure เล็ก ๆ แทนที่จะเป็น set เต็ม ๆ แต่จุดที่ต้องระวังคือความหมายของคำว่า **probabilistic** เอง — Bloom filter ไม่มีทาง false-negative เลย แต่มันจะ **false-positive** ในอัตราหนึ่งเสมอ แล้วสำหรับ eligibility นั่นแปลว่า user ถูกบอกว่าเข้าเกณฑ์ทั้งที่ตัวเองไม่เข้า ต่อให้ rate ต่ำแค่ไหน พอมาถึง volume ใหญ่ ๆ ก็กลายเป็น error ทางธุรกิจได้เลย eligibility ต้อง exact เท่านั้น Bloom filter คุ้มค่าใช้แค่ตอนที่ false positive มันไม่เป็นอันตรายอะไร — เป็น pre-check ก่อน lookup ที่เราจะ verify ซ้ำอยู่แล้ว — ไม่ใช่คำตอบสุดท้ายเด็ดขาด
+
+{/* IMAGE PROMPT (bloom-filter-false-positive.png): Clean conceptual diagram, flat vector, light background. CENTER: a funnel/filter shape labeled exactly "Bloom filter". From the LEFT, two user icons approach: one tagged exactly "member" and one tagged exactly "non-member". BOTH pass through the filter to the RIGHT side. The "member" path ends in a green check; the "non-member" path ends with a red warning mark tagged exactly "false positive", leading to a box on the far right labeled exactly "wrong eligibility". Convey: a Bloom filter wrongly lets a non-member through, producing wrong eligibility. STRICT: render ONLY these labels — "Bloom filter", "member", "non-member", "false positive", "wrong eligibility" — spelled exactly, each once; user icons carry no extra text; no other words; no typos; no duplicate labels; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
+
+![Bloom filter ปล่อยให้ non-member หลุดผ่านมาเป็น false positive — eligibility ผิด นี่แหละคือเหตุผลที่มันไม่ควรเป็นคำตอบสุดท้าย](/assets/images/blogs/design-audience-platform/bloom-filter-false-positive.png)
+
+segment result ก้อนเดียว อ่านได้สองแบบ — sequential สำหรับ delivery, inverted สำหรับ serving นี่แหละคือเหตุผลที่ audience สมควรเป็นระบบของตัวเองต่างหาก ไม่ใช่ query ที่แปะติดอยู่กับ sender แต่ละตัวเฉย ๆ
+
+{/* IMAGE PROMPT (audience-two-shapes.png): Clean conceptual diagram, flat vector, light background. CENTER: a single rounded box labeled exactly "Audience engine". From it, TWO arrows branch out. LEFT arrow goes to a stack of small identical rectangles (a chunked list) labeled exactly "Chunked list" with a sublabel below reading exactly "Omnichannel". RIGHT arrow goes to a cylinder/database shape labeled exactly "Membership store" with a sublabel below reading exactly "Icon serving"; inside or beside the cylinder show one tiny example line of text reading exactly "10001 -> {1,2,3}". Convey: one engine, two output shapes. STRICT: render ONLY these labels — "Audience engine", "Chunked list", "Omnichannel", "Membership store", "Icon serving", "10001 -> {1,2,3}" — spelled exactly, each once; no other words; no typos; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
+
+![audience engine ตัวเดียว materialize ออกมาสองทาง — chunked list สำหรับ omnichannel delivery แล้วก็ per-user membership store สำหรับ icon serving](/assets/images/blogs/design-audience-platform/audience-two-shapes.png)
+
+---
+
+## Wrapping up
+
+เราเริ่มจาก `WHERE` clause ที่พิมพ์ตอนส่ง แล้วมาจบที่ platform ที่คำนวณ audience บน data lake แล้วก็ serve มันออกมาสองทาง เส้นทางทั้งหมด เรียงตามลำดับ:
+
+1. **Inline SQL ตอนส่ง** — โอเคจนกว่า query จะโตไป 40M row บน production DB กลางที่กำลังส่งอยู่
+2. **Precompute ตาม schedule** — สร้าง segment ไว้ล่วงหน้า (idempotent, มี alarm เรื่อง staleness) อ่านมันถูก ๆ ตอนส่ง — แต่ก็ยังกระหน่ำ OLTP DB อยู่ดี
+3. **Read replica** — rung ถูก ๆ ที่บทความส่วนใหญ่มักข้ามไป แยก read แล้วก็ output ของ segment ออกจาก primary โดยยังไม่ต้องมี engine ใหม่
+4. **Analytical engine** — พอ workload กลายเป็น analytics เต็มตัว (OLTP vs. OLAP) columnar DB หรือ warehouse ก็รัน SQL ตัวเดิมได้เร็วกว่าเดิมเยอะ หลายทีมหยุดจุดนี้ได้อย่างถูกต้องแล้ว
+5. **Data lake** — Parquet + table format, partition แล้วก็ ingest ไว้ เอาข้อมูลจากสิบกว่าระบบมากองที่เดียว
+6. **Spark** — สำหรับตอนที่ rule เองต้องกลายเป็น code ไม่ใช่ SQL
+7. **Refresh ทุก 1–2 ชั่วโมง** — incremental ETL รักษา segment result หลักพันถึงหลักล้านให้สดในหลักชั่วโมง ส่วน streaming ของแท้ยังเป็น opt-in ที่หายาก
+8. **Reusable segmentation service** — rule เป็น config, engine เดียว, guardrail คุมขนาด segment, segment result ก้อนเดียวอ่านได้สองทาง: chunk สำหรับ delivery, invert เป็น per-user index สำหรับ serving
+
+ประเด็นใหญ่ก็ยังเหมือนที่เหลือของซีรีส์นี้: **ไม่มีใครเริ่มที่จุดนี้หรอก** user แค่หลักพันคน กับ rule ง่าย ๆ? พิมพ์ `WHERE` clause แล้วเดินหน้าต่อไปได้เลย ทุก layer ข้างบนได้ที่ทางของมันมาด้วยเหตุผลรองรับทั้งนั้น — scale บังคับให้ precompute, load บังคับให้มี replica, analytics เต็มตัวบังคับให้มี warehouse, ข้อมูลที่กระจัดกระจายบังคับให้มี lake, rule ที่ต้องเป็น code บังคับให้มี Spark, ความสดบังคับให้มี microbatch, แล้วก็การทำซ้ำ ๆ บังคับให้มี platform แล้วทุกครั้งที่ปีนขึ้น ก็มี trigger ที่วัดออกมาเป็นตัวเลขได้เสมอ — batch ที่ทำให้ live traffic ช้าลงให้เห็นชัด, job ที่รันไม่จบใน refresh window — ไม่ใช่ technology ที่แค่ดูน่าสนใจ
+
+แล้วถ้ามีอะไรสักอย่างที่อยากให้เราจำติดตัวไป: งานของ audience platform มีสองขาเสมอ — **คำนวณ** ให้ได้ user ที่ถูกต้อง แล้วก็ **serve** set นั้นออกมาในรูปแบบที่ consumer แต่ละตัวอ่านได้เอง omnichannel stream มันออกไป ส่วน icon serving ก็ point-lookup มัน คำนวณถูกแต่เลือก serving shape ผิด เราก็แค่สร้างสมองที่ฉลาดมาก แต่คุยกับปากไหนก็ไม่ได้สักปาก
+
