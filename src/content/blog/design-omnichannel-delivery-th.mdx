@@ -34,7 +34,7 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 
 1. **list + worker** ตัวนึงที่อ่านแล้วก็ส่ง
 2. **ยิงตาม schedule** ตื่นมาทำทีละ chunk
-3. **กิน audience ที่เตรียมไว้แล้วเป็น chunk** แทนที่จะมา query เอง
+3. **ใช้ audience ที่เตรียมไว้แล้วเป็น chunk** แทนที่จะมา query เอง
 4. **ส่งให้ถึงมากกว่าหนึ่งช่องทาง** — push, email, SMS (แล้วก็ inbox service)
 5. **delivery workflow** (chunk → worker, หรือ parent/child workflow)
 6. **frequency cap แล้วก็ cost-aware routing**
@@ -263,7 +263,7 @@ flowchart LR
 **เตรียมแล้วก็ซอย audience — [Apache Spark](https://spark.apache.org/)** (หรือ Flink)
 
 - batch job อ่านข้อมูลต้นทาง, apply กฎการ segment, แล้วเขียน recipient list ออกมาเป็น chunk — ทั้งหมดนอกเส้นทางวิกฤต ทำไว้ล่วงหน้าก่อนยิง
-- เหมาะเมื่อ: audience ใหญ่มาก แล้วการ segment ก็หนัก (อันนี้คือ Audience Platform ฝั่ง upstream เลย — เป็นโพสต์ของมันเอง — แล้ว delivery backbone ก็แค่กิน chunk ของมันมาใช้)
+- เหมาะเมื่อ: audience ใหญ่มาก แล้วการ segment ก็หนัก (อันนี้คือ Audience Platform ฝั่ง upstream เลย — เป็นโพสต์ของมันเอง — แล้ว delivery backbone ก็แค่ใช้ chunk ของมันเลย)
 
 ไม่มีตัวไหนเป็น `คำตอบ` ในตัวมันเองหรอก — แต่ละตัว map กับหนึ่ง pattern จับเครื่องมือให้เข้ากับข้อจำกัด ไม่ใช่เข้ากับกระแส
 
@@ -289,7 +289,7 @@ flowchart LR
 เราเริ่มจากไฟล์กับ worker ตัวนึงที่ loop list แล้วส่งบนช่องทางเดียว แล้วมาจบที่ backbone ที่ยิงตาม schedule, อ่าน audience ที่เตรียมไว้ทีละ chunk, แล้วก็ขับ recipient แต่ละคนผ่าน omnichannel workflow เส้นทางทั้งหมด เรียงตามลำดับ:
 
 1. **แยก scheduling ออกจาก sending** เพื่อให้การส่งยิงได้น่าเชื่อถือ แล้วงานก็ระบายเป็น chunk ได้
-2. **กิน audience ที่เตรียมไว้แล้วเป็น chunk** แทนที่จะมา query 60M row ตอนที่การส่งกำลังยิง
+2. **ใช้ audience ที่เตรียมไว้แล้วเป็น chunk** แทนที่จะมา query 60M row ตอนที่การส่งกำลังยิง
 3. **dispatch ข้ามช่องทาง** — push, email, SMS — หลัง interface เดียว โดยเคารพว่ามันไม่สมมาตรกัน
 4. **มอง inbox เป็น service เพื่อนบ้าน** ที่เราเขียนลงไป ไม่ใช่ช่องทางที่เรายิง
 5. **ทำ delivery ให้เป็น workflow ของแท้** — กระจาย chunk ไปหา worker (ผ่าน Kafka) หรือไปหา child workflow; fallback เป็นของแถม
