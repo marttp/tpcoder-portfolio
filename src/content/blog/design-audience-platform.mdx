@@ -140,7 +140,7 @@ Worth naming the cheapest possible fix for freshness, before reaching for anythi
 
 That works until the full rebuild itself takes too long to finish inside the window — recomputing everything from scratch every hour eventually costs more than an hour has. That's the trigger for the *incremental* refresh this series comes back to once there's a data lake to lean on.
 
-The second crack is the structural one. We don't just need to precompute — we need to precompute *somewhere that isn't the live transactional database*. But "somewhere else" doesn't mean a cluster yet, and this next rung is the one most write-ups skip.
+The second crack is the structural one. We don't just need to precompute — we need to precompute *somewhere that isn't the live transactional database*. But "somewhere else" doesn't mean a cluster yet, and this next step is the one most write-ups skip.
 
 ---
 
@@ -178,7 +178,7 @@ flowchart LR
     SEG -->|"real-time read"| ICON["Icon serving"]
 `} />
 
-Both just read whatever lands in the segment table. That's why this rung works without changing anything downstream: the *shape* of the output never changes, only how it gets computed. Next: what happens when the compute itself stops being enough.
+Both just read whatever lands in the segment table. That's why this step works without changing anything downstream: the *shape* of the output never changes, only how it gets computed. Next: what happens when the compute itself stops being enough.
 
 > Most applications in the world can stop right here. Keep that in mind.
 
@@ -186,7 +186,7 @@ Both just read whatever lands in the segment table. That's why this rung works w
 
 ## Move the analytics to an analytical engine — from OLTP to OLAP
 
-Same move as the last rung — precompute, then read from somewhere that isn't the hot path — just pointed at something else. Instead of reading from a replica, read from an **OLAP** engine.
+Same move as the last step — precompute, then read from somewhere that isn't the hot path — just pointed at something else. Instead of reading from a replica, read from an **OLAP** engine.
 
 Here's why. Once rules become 90-day windowed aggregates and multi-way joins over hundreds of millions of rows, even a replica starts taking hours — not because the hardware is weak, but because this is real analytical work now. A replica is still an **OLTP** engine (Postgres/MySQL: built for many small point reads and writes, one row at a time). **OLAP** engines are built for the opposite — scanning a few columns across millions of rows at once. That's the fix, and it's still not a cluster:
 
@@ -195,7 +195,7 @@ Here's why. Once rules become 90-day windowed aggregates and multi-way joins ove
 
 Either runs the same kind of query one or two orders of magnitude faster. "A scheduled SQL query on the warehouse, output written to a segment table" is — quietly — the mainstream audience platform in 2026. Plenty of teams run exactly that at tens of millions of users and never need more.
 
-> **P.S.** If your team is already Java/Spring, there's a lever worth pulling before reaching for a separate OLAP store: scale the batch job itself with **Spring Batch**. Chunked reads, transactions, checkpointing, restart-from-failure, and remote partitioning to spread the work across more than one JVM if needed — it can push a read replica further than a naive query would, with no new storage engine involved. It stops being enough at the same trigger as the rest of this rung: once the workload is genuinely OLAP-shaped, or once you need Spark's built-in distributed joins across billions of rows, Spring Batch doesn't have those baked in.
+> **P.S.** If your team is already Java/Spring, there's a lever worth pulling before reaching for a separate OLAP store: scale the batch job itself with **Spring Batch**. Chunked reads, transactions, checkpointing, restart-from-failure, and remote partitioning to spread the work across more than one JVM if needed — it can push a read replica further than a naive query would, with no new storage engine involved. It stops being enough at the same trigger as the rest of this step: once the workload is genuinely OLAP-shaped, or once you need Spark's built-in distributed joins across billions of rows, Spring Batch doesn't have those baked in.
 
 Worth being precise here, so "just point at something else" doesn't undersell what changed. A read replica and an OLAP engine solve *different* problems:
 
@@ -204,7 +204,7 @@ Worth being precise here, so "just point at something else" doesn't undersell wh
 
 Same job, the same *kind* of query — but a different source, and populating that source is its own problem. (The exact SQL text usually needs rewriting too — Postgres, ClickHouse, BigQuery, Snowflake, and Redshift each speak their own SQL dialect.) If you're not already running an OLAP store, a replica is the simpler, honest answer. If you do reach for OLAP, that data-movement problem is exactly the ingestion story the data lake section covers in full.
 
-**So when do you actually leave a rung?** Rough triggers, not fixed rules:
+**So when do you actually leave a step?** Rough triggers, not fixed rules:
 
 | You're on | Move up when |
 |---|---|
@@ -213,7 +213,7 @@ Same job, the same *kind* of query — but a different source, and populating th
 | Read replica | analytical SQL takes hours on a row store — the shape is wrong, not the hardware |
 | Warehouse / columnar DB | jobs can't finish inside their refresh window, rules need real *code* (custom scoring, ML features) rather than SQL, or the inputs no longer live in one database |
 
-One more dial: **every rung up adds ongoing cost and on-call work.** A replica is a checkbox; a warehouse is a bill; the Spark-plus-lake world ahead is a bill *and* a team. Climb because a trigger fired, not because the next rung looks interesting on a resume.
+One more dial: **every step up adds ongoing cost and on-call work.** A replica is a checkbox; a warehouse is a bill; the Spark-plus-lake world ahead is a bill *and* a team. Climb because a trigger fired, not because the next step looks interesting on a resume.
 
 If you're on a managed warehouse and it's coping, skim the next two sections. The series follows the self-managed path from here — the data lake, then Spark on top of it — because that's where things break in interesting ways at the largest scale, and because past this point, efficient progress needs a data lake no matter which engine got you here.
 
@@ -247,7 +247,7 @@ flowchart LR
     EV["Event stream"] -->|"Kafka"| LAKE
 `} />
 
-Freshness vs. cost trades off right here: daily batch is cheap and simple but a day behind; CDC is fresh but real infrastructure — Debezium, Kafka, compaction, an orchestrator, all wanting monitoring and someone to page. This is the rung where the platform gets a team, which is why the OLAP section told you to wait for a real trigger first. Most platforms land in the middle: some tables daily, others within the hour.
+Freshness vs. cost trades off right here: daily batch is cheap and simple but a day behind; CDC is fresh but real infrastructure — Debezium, Kafka, compaction, an orchestrator, all wanting monitoring and someone to page. This is the step where the platform gets a team, which is why the OLAP section told you to wait for a real trigger first. Most platforms land in the middle: some tables daily, others within the hour.
 
 Now there's one place to read from, without ever touching production again. What still can't be expressed here is the *logic* itself — that's next.
 
@@ -255,7 +255,7 @@ Now there's one place to read from, without ever touching production again. What
 
 ## Rules become code — move to Spark
 
-**The problem:** even with everything in one lake, the warehouse rung still has a ceiling — not size, but *shape*. Real targeting looks like "users whose **average** transaction over 90 days is above X, who used feature Y at least 3 times, are **not** suppressed, joined against a churn score from data science." Windowed aggregates and anti-joins are easy for a warehouse — but the scoring logic the business actually wants is *code*, not a `WHERE` clause. Once rules stop being expressible in SQL, you need an engine built for arbitrary logic as the normal case, over hundreds of millions of users and *billions* of rows.
+**The problem:** even with everything in one lake, the warehouse step still has a ceiling — not size, but *shape*. Real targeting looks like "users whose **average** transaction over 90 days is above X, who used feature Y at least 3 times, are **not** suppressed, joined against a churn score from data science." Windowed aggregates and anti-joins are easy for a warehouse — but the scoring logic the business actually wants is *code*, not a `WHERE` clause. Once rules stop being expressible in SQL, you need an engine built for arbitrary logic as the normal case, over hundreds of millions of users and *billions* of rows.
 
 **The fix:** move the computation to a distributed engine — Spark. It processes billions of rows in parallel across a cluster, and (the part I care about most) lets you write the rule once while the engine handles the distribution.
 
@@ -297,7 +297,7 @@ flowchart LR
     S --> M["Segment membership\n(user_id per segment)"]
 `} />
 
-This rung is where the audience platform stops being a small side project. A Spark cluster brings job failures, executor OOMs, and version upgrades of its own — in practice it arrives together with the first person whose actual job is running it. Budget the human, not just the cluster.
+This step is where the audience platform stops being a small side project. A Spark cluster brings job failures, executor OOMs, and version upgrades of its own — in practice it arrives together with the first person whose actual job is running it. Budget the human, not just the cluster.
 
 Spark fixes the compute; the lake means it never touches production again. What's left is cadence — how often does any of this actually run?
 
@@ -307,7 +307,7 @@ Spark fixes the compute; the lake means it never touches production again. What'
 
 **The problem:** a day stale is too stale for a lot of rules. "Topped up this morning → eligible for the bonus banner by lunch, not tomorrow." Nightly means every segment is, on average, 12 hours behind reality.
 
-**The fix:** don't jump to streaming. Move to **microbatch** — refresh every segment on a **1–2 hour cadence**, so nothing is more than an hour or two stale. Same freshness win as running the cron job more often back in the precompute rung, just made to hold up at data-lake scale. It's an approach, not a technology — scheduled batch jobs or a streaming engine in micro-batch mode both land at the same place. **The goal is getting eligibility right within your freshness target**, not a specific label.
+**The fix:** don't jump to streaming. Move to **microbatch** — refresh every segment on a **1–2 hour cadence**, so nothing is more than an hour or two stale. Same freshness win as running the cron job more often back in the precompute step, just made to hold up at data-lake scale. It's an approach, not a technology — scheduled batch jobs or a streaming engine in micro-batch mode both land at the same place. **The goal is getting eligibility right within your freshness target**, not a specific label.
 
 Making it actually work:
 
@@ -381,7 +381,7 @@ We started with a `WHERE` clause typed at send time and ended with a platform th
 
 1. **Inline SQL at send time** — fine until the query is 40M rows on the production DB, mid-send.
 2. **Precompute on a schedule** — build the segment ahead (idempotently, with a staleness alarm), read it cheap at send; but it still pounds the OLTP DB.
-3. **A read replica** — the cheap rung most write-ups skip; split reads and the segment's output off the primary, no new engine yet.
+3. **A read replica** — the cheap step most write-ups skip; split reads and the segment's output off the primary, no new engine yet.
 4. **An analytical engine** — once the workload is real analytics (OLTP vs. OLAP), a columnar DB or warehouse runs the same SQL far faster; plenty of teams rightly stop here.
 5. **A data lake** — Parquet + a table format, partitioned and ingested, landing a dozen systems' data in one place.
 6. **Spark** — for when the rules themselves need to be code, not SQL.
