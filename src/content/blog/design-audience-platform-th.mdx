@@ -195,9 +195,9 @@ flowchart LR
 - **Columnar analytical database** — ClickHouse หรือ DuckDB บนเครื่องแรง ๆ ตัวเดียว
 - **Managed warehouse** — BigQuery, Snowflake, Redshift, Athena
 
-ทั้งคู่รัน query แบบเดียวกัน แต่บน engine ที่ build มาเพื่อสิ่งนี้โดยเฉพาะ — scan เป็น column แทนที่จะฝืนให้ row store ทำงานที่มันไม่ได้ถูกออกแบบมาให้ทำ แล้วรูปแบบ `scheduled SQL query บน warehouse เขียนผลลัพธ์ลงตาราง segment` เงียบ ๆ แบบนี้แหละ คือ audience platform ที่ดีพอแล้ว ต่อให้เป็นปี 2026 ก็ตาม หลายทีมใช้วิธีนี้กับ user หลักสิบล้านคน แล้วก็ไม่ต้องการอะไรมากไปกว่านี้เลย
+ทั้งคู่รัน query แบบเดียวกัน แต่บน engine ที่ build มาเพื่อสิ่งนี้โดยเฉพาะ — scan เป็น column แทนที่จะฝืนให้ row store ทำงานที่มันไม่ได้ถูกออกแบบมาให้ทำ แล้วรูปแบบ `scheduled SQL query บน warehouse เขียนผลลัพธ์ลงตาราง segment` แบบนี้แหละ คือ audience platform ที่ดีพอแล้ว ต่อให้เป็นปี 2026 ก็ตาม หลายทีมใช้วิธีนี้กัน แล้วก็ไม่ต้องการอะไรมากไปกว่านี้เลย
 
-ขอขยายความอีกนิด เพราะคำว่า `แค่ชี้ไปที่อย่างอื่น` มันเบาไปหน่อย เทียบกับสิ่งที่เปลี่ยนไปทั้งหมด read replica กับ OLAP engine แก้ **คนละปัญหากันเลย**:
+ขอขยายความอีกนิด เพราะคำว่า `แค่ชี้ไปที่อย่างอื่น` มันน่าจะไม่พอซักเท่าไหร่ ขอเอาเทียบ read replica กับ OLAP engine ก่อน ว่ามัน**แก้คนละปัญหากัน**:
 
 - **Replica** — engine OLTP ตัวเดิม แค่เป็นสำเนาที่ sync ไว้ แยกแค่ว่า *read เกิดที่ไหน* กับ *write เกิดที่ไหน* ข้อมูลไม่เคยหลุดออกจากโลก OLTP เลย แล้วการ sync ก็เป็น native database replication ล้วน ๆ
 - **OLAP engine** — storage engine คนละตัวไปเลย build มาเก็บข้อมูลในทรงที่เหมาะกับ analytics โดยเฉพาะ มันไม่เติมตัวเองผ่าน replication นะ ต้องมีคนย้ายข้อมูลเข้าไปเอง ไม่ว่าจะ bulk copy รอบแรก, scheduled Spark job, หรือ CDC (stream write log ของ OLTP เข้า OLAP store ต่อเนื่อง)
