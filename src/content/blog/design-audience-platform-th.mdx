@@ -92,13 +92,13 @@ WHERE tier = 'gold'
 
 ![query การตลาดหนัก ๆ บน production database แย่ง resource จนทราฟฟิกของ user ฝั่ง live ที่แชร์ฐานเดียวกันซวนเซ](/assets/images/blogs/design-audience-platform/send-time-query-load.png)
 
-> **P.S.** ก่อนไปหา precompute ลองถามตัวเองก่อนสักนิด — audience นี้ต้องสดแค่ไหนกันแน่? ถ้า user หลุด gold tier ตอน 9 โมง แต่ยังเห็นโปรโมชันได้จนกว่ารอบถัดไปจะมาถึง แบบนี้รับได้ precompute ในหัวข้อถัดไปตอบโจทย์ได้เลย แต่ถ้า eligibility ต้องพลิกทันทีที่ fact เปลี่ยน อย่าง fraud flag หรือยอดเงินข้ามเกณฑ์ ต่อให้ precompute ถี่แค่ไหนก็ไปไม่ถึง ต้องไปทาง near-real-time ท้ายโพสต์แทน ส่วนใหญ่ทน lag ได้ นั่นแหละคือเหตุผลที่ precompute เป็นก้าวถัดไปที่ถูกสำหรับคนส่วนมาก แต่ก็ควรเลือกแบบตั้งใจ ไม่ใช่ default ที่ไม่ได้คิด
+> **P.S.** ก่อนไปหา precompute ลองถามตัวเองก่อนสักนิด — audience นี้ต้อง fresh มากแค่ไหน? ถ้า user หลุด gold tier ตอน 9 โมง แต่ยังเห็นโปรโมชันได้จนกว่ารอบถัดไปจะมาถึง แบบนี้รับได้ precompute ในหัวข้อถัดไปตอบโจทย์ได้เลย แต่ถ้า eligibility ต้องเปลี่ยนทันทีที่ fact เปลี่ยน อย่าง fraud flag หรือยอดเงินข้ามเกณฑ์ ต่อให้ precompute ถี่แค่ไหนก็ไปไม่ถึง ต้องไปทาง near-real-time ท้ายโพสต์แทน ส่วนใหญ่ทน lag ได้ นั่นแหละคือเหตุผลที่ precompute เป็นก้าวถัดไปที่ถูกสำหรับคนส่วนมาก แต่ก็ควรเลือกแบบตั้งใจ ไม่ใช่ default ที่ไม่ได้คิด
 
 ---
 
 ## Precompute on a schedule — build the segment, then read it
 
-**ปัญหา:** audience query มันแพง แล้วเราดันไปรันมันตอนที่แย่ที่สุดพอดี คือตอนกำลังจะส่งนี่แหละ ทั้งที่ input ของมันแทบไม่ขยับเลยในระดับนาที gold tier ใน TH ที่เติมเงินมา 30 วัน ก็แทบเป็น list เดียวกันไม่ว่าจะเช็คตอนบ่ายสองหรือตีสอง
+**ปัญหา:** audience query มันถูกคาดหวังว่า มันน่าจะหนักพอสมควร แล้วเราดันไปรันมันตอนที่แย่ที่สุดพอดี คือตอนกำลังจะส่งนี่แหละ ทั้งที่ input ของมันแทบไม่ขยับเลยในระดับนาที gold tier ใน TH ที่เติมเงินมา 30 วัน ก็แทบเป็น list เดียวกันไม่ว่าจะเช็คตอนบ่ายสองหรือตีสอง
 
 **วิธีแก้:** รัน query **ล่วงหน้า** ตาม schedule เก็บผลลัพธ์ไว้ แล้วให้ตอนส่งแค่ **อ่าน** มันเฉย ๆ nightly job ตัวนึงคำนวณ member ของแต่ละ segment แล้วเขียนลงตาราง `segment_members`:
 
@@ -115,10 +115,10 @@ WHERE tier = 'gold' AND country = 'TH'
 COMMIT;
 ```
 
-สองรายละเอียดที่ดูน่าเบื่อในนี้แหละที่ทำงานเป็นตัวหลัก:
+รายละเอียดที่ต้องคำนึงถึง:
 
 - job นี้ต้อง **idempotent** — ความผิดพลาดคลาสสิกคือใช้แค่ `INSERT` เดี่ยว ๆ เพราะ retry รอบแรกหลัง crash จะเพิ่ม member ซ้ำสองเท่าทันที การ delete-แล้ว-insert อยู่ใน transaction เดียว (มี primary key บน `(segment_id, user_id)` เป็นตัวกันหลัง) ทำให้ re-run กี่ครั้งก็ปลอดภัยเสมอ
-- พอ audience ถูก precompute ไว้แล้ว มันก็เก่าไปได้แบบเงียบ ๆ เพราะงั้น **alert ให้ดูจากอายุของ `max(computed_at)` เป็นหลัก อย่าพึ่งแค่ alert ตอน job fail** เพราะ nightly job ที่ตายไปเงียบ ๆ คืนวันศุกร์ แปลว่า audience เก่าไป 3 วันแล้วตอนถึงวันจันทร์ แล้ว `job ไม่ page มาหาเรา` ก็ไม่ได้แปลว่า `ข้อมูลยังสด` เลยนะ
+- พอ audience ถูก precompute ไว้แล้ว มันก็ data stale ไปได้แบบเงียบ ๆ เพราะงั้น **alert ให้ดูจากอายุของ `max(computed_at)` เป็นหลัก อย่าพึ่งแค่ alert ตอน job fail** เพราะ nightly job ที่ตายไปเงียบ ๆ คืนวันศุกร์ แปลว่า audience เก่าไป 3 วันแล้วตอนถึงวันจันทร์ แล้ว `job ไม่ page มาหาเรา` ก็ไม่ได้แปลว่า `ข้อมูลยังสด` เลยนะ
 
 ตอนนี้การส่งก็เลยเป็นแค่ read ถูก ๆ: `SELECT user_id FROM segment_members WHERE segment_id = 'gold_th_active'` งานหนัก ๆ มันเกิดไปตั้งแต่เมื่อคืนแล้ว ตอนที่ไม่มีใครนั่งรออยู่
 
@@ -129,12 +129,12 @@ flowchart LR
     SEND["Send time"] -->|"cheap read"| SM
 `} />
 
-จุดนี้ได้มาเยอะเลยนะ การส่งกลายเป็นแค่ `segment_id` lookup ธรรมดา ไม่ใช่ multi-join scan อีกต่อไปแล้ว query แพง ๆ ก็ไปรันตอน off-peak แทน แล้ว segment ก็กลายเป็น `ของ` ที่เราวัดขนาดแล้วก็ reuse ได้ด้วย แต่มันก็แลกปัญหาเก่าไปกับปัญหาใหม่สองอันแทน:
+จุดนี้ได้มาเยอะเลยนะ การส่งกลายเป็นแค่ `segment_id` lookup ธรรมดา ไม่ใช่ multi-join scan อีกต่อไปแล้ว query แพง ๆ ก็ไปรันตอน off-peak แทน แล้ว segment ก็กลายเป็นของที่เรา reuse ได้ด้วย แต่มันก็แลกปัญหาเก่าไปกับปัญหาใหม่สองอันแทน:
 
 - **Freshness.** list มันสดได้แค่เท่าที่ rebuild ล่าสุดพาไปเท่านั้น รัน batch job (cron job) วันละครั้ง list ก็เก่าได้ถึง 24 ชั่วโมง ไม่สำคัญหรอกว่า job จะรันเที่ยงคืน ตีหนึ่ง หรือตีสาม สิ่งที่กำหนด staleness คือ **ความถี่ที่มันรัน** ไม่ใช่เวลาที่รันเป๊ะ ๆ user ที่เติมเงินไปเมื่อเช้านี้ ก็จะยังไม่ `gold-tier active` จนกว่า rebuild รอบถัดไปจะมาถึง สำหรับโปรโมรายสัปดาห์นี่ไม่มีปัญหาเลย แต่ถ้าเป็น `เตือน user ที่เพิ่ง abandon cart ไป` มันใช้ไม่ได้เลยนะ จำจุดนี้ไว้ดี ๆ นี่แหละคือสิ่งที่จะบังคับให้ต้อง streaming ทีหลัง
-- **มันก็ยังรันบน production DB อยู่ดี แล้วก็ยังเป็นกล่องเดียว** ตัว rebuild ต้องมีที่ให้ลง ตารางใหม่ `segment_members(segment_id, user_id, computed_at)` ที่เขียนโดย job ที่ยังไปแตะ Postgres ตัวเดียวกับที่รับ live traffic อยู่ดี แล้วตารางนี้ก็ไม่เล็กด้วยนะ user คนนึงเข้าได้หลาย segment เพราะงั้น worst case มันถือได้ถึง **S × N** row (S = จำนวน segment ในองค์กร, N = จำนวน user ทั้งหมด) พอ segment เพิ่มขึ้นแล้ว rule ก็ซับซ้อนขึ้น (cross join, windowed aggregate ข้ามปีของ transaction) กล่องเดียวที่แบกทั้ง live traffic แล้วก็ batch analytical นี้ก็เริ่มช้าลงแล้วก็เริ่มพังในที่สุด
+- **มันก็ยังรันบน production DB อยู่ดี** ตัว rebuild ต้องมีที่ให้ลง ตารางใหม่ `segment_members(segment_id, user_id, computed_at)` ที่เขียนโดย job ที่ยังไปแตะ Postgres ตัวเดียวกับที่รับ live traffic อยู่ดี แล้วตารางนี้ก็ไม่เล็กด้วยนะ user คนนึงเข้าได้หลาย segment เพราะงั้น worst case มันถือได้ถึง **S × N** row (S = จำนวน segment ในองค์กร, N = จำนวน user ทั้งหมด) พอ segment เพิ่มขึ้นแล้ว rule ก็ซับซ้อนขึ้น (cross join, windowed aggregate ข้ามปีของ transaction) กล่องเดียวที่แบกทั้ง live traffic แล้วก็ batch analytical นี้ก็เริ่มช้าลงแล้วก็เริ่มพังในที่สุด
 
-ก่อนจะไปหยิบอะไรที่หนักกว่านี้ ขอพูดถึงทางแก้ freshness ที่ถูกที่สุดก่อน นั่นคือ **แค่รัน job ให้ถี่ขึ้น** ไม่มีอะไรห้ามเราจากการรัน delete-and-insert ก้อนเดิมทุกชั่วโมงแทนที่จะรันคืนละครั้งเลยนะ production DB เดิม ตารางเดิม ไม่ต้องมี infrastructure ใหม่เลยสักตัว แค่ตั้ง interval ให้สั้นลงบน cron schedule เดิมเท่านั้นเอง เราแลก compute เพิ่มขึ้นนิดหน่อย ได้ freshness ที่ดีขึ้นเยอะมาแบบฟรี ๆ เลย
+ก่อนจะไปหยิบอะไรที่หนักกว่านี้ ขอพูดถึงทางแก้ freshness ที่ถูกที่สุดก่อน นั่นคือ **แค่รัน job ให้ถี่ขึ้น** ไม่มีอะไรห้ามเราจากการรัน delete-and-insert ก้อนเดิมทุกชั่วโมงแทนที่จะรันคืนละครั้งเลยนะ production DB เดิม ตารางเดิม ไม่ต้องมี infrastructure ใหม่เลยสักตัว แค่ตั้ง interval ให้สั้นลงบน cron schedule เดิมเท่านั้นเอง แต่คำว่า `ฟรี` จุดนี้มีเงื่อนไขซ่อนอยู่นะ — มันฟรีได้ก็ต่อเมื่อ traffic กับจำนวน row ยังน้อยอยู่ แบบ user ต่ำกว่าพันคนกับ rule ง่าย ๆ ที่บอกไปตอนต้น ถ้าไม่ใช่ การรันถี่ขึ้นก็ไม่ได้หนีปัญหา load ไปไหนเลย แค่ทำให้ production DB ของเราเองต้องรับ query แพง ๆ ก้อนนั้นบ่อยขึ้นเท่านั้นเอง
 
 {/* IMAGE PROMPT (freshness-cadence.png): Clean conceptual diagram, flat vector, light background. Two stacked horizontal timelines that share a single left-to-right arrow as the time axis. TOP timeline labeled exactly "Nightly": a single refresh dot at the far left, then a long empty stretch, with a tag reading exactly "up to 24h stale". BOTTOM timeline labeled exactly "Microbatch": many evenly spaced refresh dots along the line, with a tag reading exactly "fresh within 1-2h". Convey: frequent refreshes stay fresh versus one nightly rebuild. STRICT: render ONLY these labels — "Nightly", "up to 24h stale", "Microbatch", "fresh within 1-2h" — spelled exactly, each once; the dots carry no text; no other words; no typos; no duplicate labels; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
 
