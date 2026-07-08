@@ -195,8 +195,6 @@ Here's why. Once rules become 90-day windowed aggregates and multi-way joins ove
 
 Either runs the same kind of query on an engine actually built for it — scanning columns instead of forcing a row store to do work it was never designed for. "A scheduled SQL query on the warehouse, output written to a segment table" is — quietly — a good-enough audience platform, even in 2026. Plenty of teams run exactly that at tens of millions of users and never need more.
 
-> **P.S.** If your team is already Java/Spring, there's a lever worth pulling before reaching for a separate OLAP store: scale the batch job itself with **Spring Batch**. Chunked reads, transactions, checkpointing, restart-from-failure, and remote partitioning to spread the work across more than one JVM if needed — it can push a read replica further than a naive query would, with no new storage engine involved. It stops being enough at the same trigger as the rest of this step: once the workload is genuinely OLAP-shaped, or once you need Spark's built-in distributed joins across billions of rows, Spring Batch doesn't have those baked in.
-
 Worth being precise here, so "just point at something else" doesn't undersell what changed. A read replica and an OLAP engine solve *different* problems:
 
 - **Replica** — same OLTP engine, just a synced copy. It only separates *where reads happen* from *where writes happen*; the data itself never leaves the OLTP world, and staying in sync is native database replication.

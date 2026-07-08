@@ -197,8 +197,6 @@ flowchart LR
 
 ทั้งคู่รัน query แบบเดียวกัน แต่บน engine ที่ build มาเพื่อสิ่งนี้โดยเฉพาะ — scan เป็น column แทนที่จะฝืนให้ row store ทำงานที่มันไม่ได้ถูกออกแบบมาให้ทำ แล้วรูปแบบ `scheduled SQL query บน warehouse เขียนผลลัพธ์ลงตาราง segment` เงียบ ๆ แบบนี้แหละ คือ audience platform ที่ดีพอแล้ว ต่อให้เป็นปี 2026 ก็ตาม หลายทีมใช้วิธีนี้กับ user หลักสิบล้านคน แล้วก็ไม่ต้องการอะไรมากไปกว่านี้เลย
 
-> **P.S.** ถ้าทีมเราถนัดสาย Java/Spring อยู่แล้ว มีอีกทางที่คุ้มลองก่อนจะไปหา OLAP store แยกต่างหาก คือ scale ตัว batch job เองด้วย **Spring Batch** — มันมี chunked read, transaction, checkpointing, restart-from-failure, แล้วก็ remote partitioning ให้กระจายงานข้ามหลาย JVM ได้ถ้าจำเป็น ดัน read replica ไปได้ไกลกว่า query ทื่อ ๆ โดยไม่ต้องมี storage engine ใหม่เลยสักตัว แต่ก็เริ่มไม่พอที่ trigger เดียวกับ step นี้แหละ พอ workload เป็น OLAP-shape เต็มตัว หรือต้องการ distributed join แบบที่ Spark มีในตัวข้ามหลักพันล้าน row Spring Batch ก็ไม่มีของพวกนี้ built-in ให้
-
 ขอขยายความอีกนิด เพราะคำว่า `แค่ชี้ไปที่อย่างอื่น` มันเบาไปหน่อย เทียบกับสิ่งที่เปลี่ยนไปทั้งหมด read replica กับ OLAP engine แก้ **คนละปัญหากันเลย**:
 
 - **Replica** — engine OLTP ตัวเดิม แค่เป็นสำเนาที่ sync ไว้ แยกแค่ว่า *read เกิดที่ไหน* กับ *write เกิดที่ไหน* ข้อมูลไม่เคยหลุดออกจากโลก OLTP เลย แล้วการ sync ก็เป็น native database replication ล้วน ๆ
