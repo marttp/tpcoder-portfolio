@@ -142,20 +142,20 @@ flowchart LR
 
 ท่านี้ใช้ได้จนกว่า full rebuild เองจะกินเวลานานเกินกว่าที่ window เหลือให้ พอคำนวณทุกอย่างจากศูนย์ทุกชั่วโมง สุดท้ายมันก็กินเวลานานกว่าหนึ่งชั่วโมงที่มีซะเอง นั่นแหละคือ trigger ของ **incremental refresh** ที่ซีรีส์นี้จะย้อนกลับมาพูดถึงอีกที ตอนที่มี data lake ให้พึ่งพิงแล้ว
 
-ปัญหาที่สองเป็นเรื่องเชิงโครงสร้างแล้ว การ precompute อย่างเดียวไม่พอ มันต้องไปเกิดใน **ที่ที่ไม่ใช่ live transactional database** ด้วย แต่ `ที่อื่น` ไม่ได้แปลว่า cluster ตั้งแต่ตอนนี้นะ แล้ว step ถัดไปนี่แหละคือตัวที่บทความส่วนใหญ่มักข้ามไป
+ปัญหาที่สองเป็นเรื่องเชิงโครงสร้างแล้ว การ precompute อย่างเดียวไม่พอ มันต้องไปเกิดใน **ที่ที่ไม่ใช่ live transactional database** ด้วย แต่ `ที่อื่น` ไม่ได้แปลว่า cluster ตั้งแต่ตอนนี้นะ แล้ว step ถัดไป ก็เป็นแค่การบอกว่า ขอแยกจาก live traffic เฉย ๆ
 
 ---
 
 ## Squeeze the single box first — a read replica
 
-โพสต์ส่วนใหญ่ชอบกระโดดจาก `Postgres ตัวเดียว` ไปที่ `Spark cluster` เลย คนอ่านก็เลยเข้าใจไปว่า distributed compute คือ step ที่สาม ทั้งที่มันไม่ใช่เลย มีท่าที่ถูกกว่านั้นรออยู่ก่อน แล้วบอกกันตามเนื้อผ้าเลยนะ หลายบริษัทหยุดอยู่จุดนี้ไปได้ตลอดกาลด้วยซ้ำ
+โพสต์ส่วนใหญ่ชอบกระโดดจาก `Postgres ตัวเดียว` ไปที่ `Spark cluster` เลย คนอ่านก็เลยเข้าใจไปว่า distributed compute คือ step ที่สาม ทั้งที่มันไม่ใช่เลย มีท่าที่ประหยัดกว่านั้นอยู่
 
-**เอา segment job ออกจาก primary — ทั้งฝั่ง read แล้วก็ที่ที่มันไปลง** ตอนนี้ production กำลังทำสองงานที่ต่างกันอยู่ในตัวเดียว: รับ live transactional traffic แล้วก็ถือตาราง `segment_members` ที่ batch นี้เขียนเข้าไป แยกมันออกจากกันซะ:
+**เอา segment job ออกจาก primary** ตอนนี้ production กำลังทำสองงานที่ต่างกันอยู่ในตัวเดียว: รับ live transactional traffic แล้วก็ถือตาราง `segment_members` ที่ batch นี้เขียนเข้าไป แยกมันออกจากกันซะ:
 
-- **Reads** — ชี้ query ของ batch ไปที่ **read replica**: สำเนาที่ live ของ primary คอยซิงค์ผ่าน replication รับได้แต่ read อย่างเดียว ไม่รับ write เลย เพราะมันเป็น read-only มันเลยรับ read traffic มาจากไหนก็ได้ ทั้งจากตัว app เองแล้วก็จาก batch job ตัวนี้ ส่วน write ทุกตัว ไม่ว่าจาก app หรือจาก job นี้ ก็ยังต้องวิ่งผ่าน primary อยู่ดี แทบทุก managed database มี replica ให้เปิดใช้แบบติ๊กช่องเดียวจบ แล้ว replication lag แค่ไม่กี่วินาทีก็ไม่มีผลอะไรเลย สำหรับ audience การตลาดที่ทนความเก่าเป็นชั่วโมงอยู่แล้ว
-- **Output** — อย่าเขียน `segment_members` กลับเข้ากล่องเดิมนั้น เอาไปลงที่อื่นไปเลย: database เล็ก ๆ ที่ dedicate ไว้เก็บ segment โดยเฉพาะ, plain file บน object storage (S3/GCS) ที่ sender อ่านเองได้เลย, หรือ Redis ที่เก็บ segment เป็น set
+- **Reads** — ชี้ query ของ batch ไปที่ **read replica**: สำเนาที่ live ของ primary คอยซิงค์ผ่าน replication รับได้แต่ read อย่างเดียว ไม่รับ write เลย เพราะมันเป็น read-only มันเลยรับ read traffic มาจากไหนก็ได้ ทั้งจากตัว app เองแล้วก็จาก batch job ตัวนี้ ส่วน write ทุกตัว ไม่ว่าจาก app หรือจาก job นี้ ก็ยังต้องวิ่งผ่าน primary อยู่ดี แทบทุก managed database มี replica ให้เปิดใช้แบบติ๊กช่องเดียวจบ แล้ว replication lag แค่ไม่กี่วินาทีก็ไม่มีผลอะไรเลย สำหรับ audience use case
+- **Output** — เปลี่ยนจาก `segment_members` ใน DB เอาไปลงที่อื่นไปเลย: database เล็ก ๆ ที่ dedicate ไว้เก็บ segment โดยเฉพาะ, plain file บน object storage (S3/GCS) ที่ sender อ่านเองได้เลย, หรือ Redis ที่เก็บ segment เป็น set
 
-ทั้งหมดนี้ยังไม่ต้องใช้ Spark หรือ warehouse เลยนะ การคำนวณก็ยังเป็น SQL query ตัวเดิมเป๊ะ แค่ย้ายที่อยู่ ให้ production ทำแค่งานเดียวที่มันควรทำคือรับ live traffic นี่คือการเปลี่ยน infrastructure ที่ถูกมาก ๆ แต่ซื้อเวลาให้หลายบริษัทได้เป็นปี ๆ เลย เพราะงั้นคว้ามันมาใช้ **ตั้งแต่เนิ่น ๆ** เถอะ ตั้งแต่วินาทีที่ batch เริ่มแย่ง resource กับ live traffic ให้เห็นได้ชัด
+ทั้งหมดนี้ยังไม่ต้องใช้ Spark หรือ warehouse เลยนะ การคำนวณก็ยังเป็น SQL query ตัวเดิมเป๊ะ แค่ย้ายที่อยู่ ให้ production ทำแค่งานเดียวที่มันควรทำคือรับ live traffic นี่คือการเปลี่ยน infrastructure ที่ถูกมาก ๆ แต่ซื้อเวลาให้หลายบริษัทได้เป็นปี ๆ เลย
 
 <MermaidDiagram chart={`
 flowchart LR
@@ -166,7 +166,7 @@ flowchart LR
     SEND["Send time"] -->|"read"| EXT
 `} />
 
-> **P.S.** บอกกันตามเนื้อผ้าเลยนะ นี่อาจจะไกลสุดเท่าที่เราต้องไปแล้วก็ได้ ถ้า output ของ segment เราอยู่นอก production อยู่แล้ว ไม่ว่าจะเป็น Redis, flat file, หรือ database เล็ก ๆ ของมันเอง แล้วการส่งก็แค่ lookup ธรรมดา ทีมส่วนใหญ่หยุดจุดนี้ได้เลย หัวข้อถัดไปแก้ปัญหาคนละเรื่องกันเลยนะ คือตัว read query เองที่หนักเกินกว่า replica จะไหว ไม่ใช่เรื่องที่ผลลัพธ์ไปเก็บไว้ที่ไหน
+> **P.S.** นี่อาจจะไกลสุดเท่าที่เราต้องไปแล้วก็ได้ ถ้า output ของ segment เราอยู่นอก production อยู่แล้ว ไม่ว่าจะเป็น Redis, flat file, หรือ database เล็ก ๆ ของมันเอง แล้วการส่งก็แค่ lookup ธรรมดา ทีมส่วนใหญ่หยุดจุดนี้ได้เลย หัวข้อถัดไปแก้ปัญหาคนละเรื่องกันเลยนะ คือตัว read query เองที่หนักเกินกว่า replica จะไหว ไม่ใช่เรื่องที่ผลลัพธ์ไปเก็บไว้ที่ไหน
 
 **ก่อนจะไปต่อ ขอ recap สักหน่อย** สอง consumer, สอง read pattern แล้วทั้งคู่ไม่สนใจเลยว่า list มันมาจาก engine ตัวไหน:
 
@@ -190,21 +190,21 @@ flowchart LR
 
 ท่าเดิมกับ step ที่แล้วเป๊ะเลย คือ precompute แล้วก็อ่านจากที่ที่ไม่ใช่ hot path แค่คราวนี้ชี้ไปที่อย่างอื่นแทน แทนที่จะอ่านจาก replica ก็เปลี่ยนไปอ่านจาก **OLAP** engine แทน
 
-เหตุผลก็คือ พอ rule กลายเป็น windowed aggregate 90 วัน กับ multi-way join บนหลักร้อยล้าน row เข้า แม้แต่ replica ก็เริ่มกินเวลาเป็นชั่วโมงแล้ว ไม่ใช่เพราะ hardware อ่อนนะ แต่เพราะนี่มันงาน analytical ของแท้แล้วต่างหาก replica ก็ยังเป็น **OLTP** engine อยู่ดี (Postgres/MySQL สร้างมาเพื่อ read/write จุดเล็ก ๆ ทีละ row) ส่วน **OLAP** engine นี่สร้างมาเพื่อทำอะไรที่สวนทางกันไปเลย คือ scan ไม่กี่ column ข้าม row เป็นล้าน ๆ ทีเดียว นั่นแหละคือทางแก้ แล้วก็ยังไม่ใช่ cluster ด้วยนะ:
+เหตุผลก็คือ พอ rule กลายเป็น windowed aggregate 90 วัน กับ multi-way join บนหลักร้อยล้าน row เข้า แม้แต่ replica ก็เริ่มกินเวลาเป็นชั่วโมงแล้ว ไม่ใช่เพราะ hardware อ่อนนะ แต่เพราะนี่มันงาน analytical ของแท้แล้วต่างหาก replica ก็ยังเป็น **OLTP** engine อยู่ดี (Postgres/MySQL สร้างมาเพื่อ read/write จุดเล็ก ๆ ทีละ row) ส่วน **OLAP** engine นี่สร้างมาเพื่อทำอะไรที่สวนทางกันไปเลย คือ scan ไม่กี่ column ข้าม row เป็นล้าน ๆ ทีเดียว
 
 - **Columnar analytical database** — ClickHouse หรือ DuckDB บนเครื่องแรง ๆ ตัวเดียว
 - **Managed warehouse** — BigQuery, Snowflake, Redshift, Athena
 
-ทั้งคู่รัน query แบบเดียวกันได้เร็วขึ้นหนึ่งถึงสอง order of magnitude เลยนะ `scheduled SQL query บน warehouse output เขียนลงตาราง segment` เงียบ ๆ แบบนี้แหละ คือ audience platform กระแสหลักของปี 2026 หลายทีมรันแบบนี้เป๊ะ ๆ ที่ user หลักสิบล้านคน แล้วไม่ต้องการอะไรมากไปกว่านี้เลย
+ทั้งคู่รัน query แบบเดียวกันได้เร็วขึ้นหนึ่งถึงสอง order of magnitude เลย แล้วรูปแบบ `scheduled SQL query บน warehouse เขียนผลลัพธ์ลงตาราง segment` เงียบ ๆ แบบนี้แหละ คือ audience platform กระแสหลักของปี 2026 หลายทีมใช้วิธีนี้กับ user หลักสิบล้านคน แล้วก็ไม่ต้องการอะไรมากไปกว่านี้เลย
 
-> **P.S.** ถ้าทีมเราเป็นสาย Java/Spring อยู่แล้ว มีอีกทางที่คุ้มลองก่อนจะไปหา OLAP store แยกต่างหาก: scale ตัว batch job เองด้วย **Spring Batch** chunked read, transaction, checkpointing, restart-from-failure, แล้วก็ remote partitioning ที่กระจายงานข้ามหลาย JVM ได้ถ้าจำเป็น มันดัน read replica ไปได้ไกลกว่า query ทื่อ ๆ โดยไม่ต้องมี storage engine ใหม่เลยสักตัว มันจะเริ่มไม่พอที่ trigger เดียวกับที่เหลือของ step นี้แหละ พอ workload เป็น OLAP-shape เต็มตัว หรือพอต้องการ distributed join แบบที่ Spark มีในตัวข้ามหลักพันล้าน row Spring Batch ก็ไม่มีของพวกนี้ built-in ให้
+> **P.S.** ถ้าทีมเราถนัดสาย Java/Spring อยู่แล้ว มีอีกทางที่คุ้มลองก่อนจะไปหา OLAP store แยกต่างหาก คือ scale ตัว batch job เองด้วย **Spring Batch** — มันมี chunked read, transaction, checkpointing, restart-from-failure, แล้วก็ remote partitioning ให้กระจายงานข้ามหลาย JVM ได้ถ้าจำเป็น ดัน read replica ไปได้ไกลกว่า query ทื่อ ๆ โดยไม่ต้องมี storage engine ใหม่เลยสักตัว แต่ก็เริ่มไม่พอที่ trigger เดียวกับ step นี้แหละ พอ workload เป็น OLAP-shape เต็มตัว หรือต้องการ distributed join แบบที่ Spark มีในตัวข้ามหลักพันล้าน row Spring Batch ก็ไม่มีของพวกนี้ built-in ให้
 
-ขอขยายความจุดนี้ให้ชัดอีกนิดนึง เพราะคำว่า `แค่ชี้ไปที่อย่างอื่น` มันฟังดูเบาไปหน่อย เทียบกับสิ่งที่เปลี่ยนไปทั้งหมด read replica กับ OLAP engine นี่แก้ **ปัญหาคนละอย่างกันเลย**:
+ขอขยายความอีกนิด เพราะคำว่า `แค่ชี้ไปที่อย่างอื่น` มันเบาไปหน่อย เทียบกับสิ่งที่เปลี่ยนไปทั้งหมด read replica กับ OLAP engine แก้ **คนละปัญหากันเลย**:
 
-- **Replica** — engine OLTP ตัวเดิม แค่เป็นสำเนาที่ sync ไว้ มันแค่แยก *ที่ read เกิด* ออกจาก *ที่ write เกิด* ตัวข้อมูลไม่เคยหลุดออกจากโลก OLTP เลย แล้วการ sync ก็เป็น native database replication
-- **OLAP engine** — เป็น storage engine คนละตัวไปเลย build มาเพื่อเก็บข้อมูลในทรงที่เหมาะกับ analytics มันไม่เติมตัวเองผ่าน replication นะ ต้องมีคนย้ายข้อมูลเข้าไปเอง: bulk copy รอบแรก, scheduled Spark job, หรือ CDC (stream write log ของ OLTP เข้า OLAP store ต่อเนื่อง)
+- **Replica** — engine OLTP ตัวเดิม แค่เป็นสำเนาที่ sync ไว้ แยกแค่ว่า *read เกิดที่ไหน* กับ *write เกิดที่ไหน* ข้อมูลไม่เคยหลุดออกจากโลก OLTP เลย แล้วการ sync ก็เป็น native database replication ล้วน ๆ
+- **OLAP engine** — storage engine คนละตัวไปเลย build มาเก็บข้อมูลในทรงที่เหมาะกับ analytics โดยเฉพาะ มันไม่เติมตัวเองผ่าน replication นะ ต้องมีคนย้ายข้อมูลเข้าไปเอง ไม่ว่าจะ bulk copy รอบแรก, scheduled Spark job, หรือ CDC (stream write log ของ OLTP เข้า OLAP store ต่อเนื่อง)
 
-งานเดียวกัน query แบบเดียวกัน แค่มา source ต่างกัน แล้วการเติมข้อมูลลง source นั้นก็เป็นปัญหาของมันเองไปเลย (แล้ว SQL text เองก็มักต้องเขียนใหม่ด้วยนะ Postgres, ClickHouse, BigQuery, Snowflake, Redshift ต่างก็พูด SQL dialect ของตัวเองทั้งนั้น) ถ้าเรายังไม่ได้รัน OLAP store อยู่ replica คือคำตอบที่ง่ายกว่าแล้วก็ซื่อกว่า ถ้าเราจะไปหา OLAP แบบเต็มตัว ปัญหาการย้ายข้อมูลจุดนี้แหละคือเรื่อง ingestion เต็ม ๆ ที่หัวข้อ data lake จะพูดถึงต่อไป
+งานเดียวกัน query แบบเดียวกัน แค่มาจาก source คนละที่ แล้วการเติมข้อมูลลง source นั้นก็กลายเป็นปัญหาใหม่ของมันเอง (SQL text เองก็มักต้องเขียนใหม่ด้วยนะ เพราะ Postgres, ClickHouse, BigQuery, Snowflake, Redshift ต่างก็พูด SQL dialect ของตัวเองทั้งนั้น) ถ้ายังไม่ได้รัน OLAP store อยู่ replica คือคำตอบที่ง่ายกว่าแล้วก็ซื่อกว่า แต่ถ้าจะไปหา OLAP แบบเต็มตัว ปัญหาการย้ายข้อมูลนี่แหละคือเรื่อง ingestion เต็ม ๆ ที่หัวข้อ data lake จะพูดถึงต่อไป
 
 **แล้วเราจะรู้ได้ยังไงว่าถึงเวลาต้องขยับขึ้น step** trigger คร่าว ๆ ไม่ใช่กฎตายตัว:
 
