@@ -253,7 +253,7 @@ Now there's one place to read from, without ever touching production again. What
 
 ## Rules become code — move to Spark
 
-**The problem:** even with everything in one lake, the warehouse step still has a ceiling — not size, but *shape*. Real targeting looks like "users whose **average** transaction over 90 days is above X, who used feature Y at least 3 times, are **not** suppressed, joined against a churn score from data science." Windowed aggregates and anti-joins are easy for a warehouse — but the scoring logic the business actually wants is *code*, not a `WHERE` clause. Once rules stop being expressible in SQL, you need an engine built for arbitrary logic as the normal case, over hundreds of millions of users and *billions* of rows.
+**The problem:** even with everything in one lake, the warehouse step still has a ceiling — not size, but *shape*. Real targeting looks like "users whose transaction count over the last 30 days is above X, who topped up via QR at least once in the past month, who hold gold tier, are **not** suppressed, joined against a churn score from data science." Windowed aggregates and anti-joins are easy for a warehouse — but the scoring logic the business actually wants is *code*, not a `WHERE` clause. Once rules stop being expressible in SQL, you need an engine built for arbitrary logic as the normal case, over hundreds of millions of users and *billions* of rows.
 
 **The fix:** move the computation to a distributed engine — Spark. It processes billions of rows in parallel across a cluster, and (the part I care about most) lets you write the rule once while the engine handles the distribution.
 
