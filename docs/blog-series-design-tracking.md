@@ -13,9 +13,7 @@ Reference posts: `payment-backend-stripe-integration-en.mdx` (~750 lines), `desi
 | 3 | Omnichannel Customer Communication Delivery Backbone | Published | pubDate 2026-06-19 | published |
 | 4 | Webhook Callback System | Published | pubDate 2026-06-22 | published |
 | 5 | Icon Management / Segmentation | Published | pubDate 2026-06-28 | published |
-| 6 | Audience Platform (ETL Pipeline) | EN ready | pubDate 2026-07-01 | not started |
-| 7 | Campaign Management Platform | Not started | - | - |
-| 8 | Cashback System | Not started | - | - |
+| 6 | Audience Platform (ETL Pipeline) | Published | pubDate 2026-07-09 | published |
 
 ## Facebook Posts (Thai, copy-paste ready)
 
@@ -97,17 +95,6 @@ Blog: <TH title>
 Link URL: https://portfolio.tpcoder.dev/blog/design-audience-platform-th/
 
 มาถึง Domain ที่ 6 เป็นเรื่อง Audience Platform — ระบบที่คัดว่าจะส่งหาใคร (ตัวที่ป้อน chunk ให้ Omnichannel ใน Domain 3) เริ่มจาก query ตอนส่ง แล้วค่อย evolve ไปเรื่อง batch ล่วงหน้า, Spark, data lake, ไปจนถึง segment แบบ near real-time
-
-หวังว่าจะมีประโยชน์ไม่มากก็น้อยนะครับ ขอให้ทุกคนมีความสุข 🙇‍♂️
-```
-
-### #7 Campaign Management Platform (draft — finalize angle at publish)
-
-```
-Blog: <TH title>
-Link URL: https://portfolio.tpcoder.dev/blog/design-campaign-management-platform-th/
-
-มาถึง Domain ที่ 7 เป็นเรื่อง Campaign Management Platform — หน้าบ้านที่ทีม marketing ใช้สร้างแล้วก็คุม campaign เริ่มจาก CRUD ง่าย ๆ แล้วค่อย evolve ไปเรื่อง scheduling, approval workflow, budget cap, ไปจนถึง A/B test และ multi-tenant
 
 หวังว่าจะมีประโยชน์ไม่มากก็น้อยนะครับ ขอให้ทุกคนมีความสุข 🙇‍♂️
 ```
@@ -272,51 +259,21 @@ Key experience: PayPay personalized asset delivery (Akka -> Spring Boot Kotlin, 
 
 File: `design-audience-platform.mdx` / `-th.mdx`
 
-EN drafted (pubDate 2026-07-01); TH not started.
+Published (EN + TH), pubDate 2026-07-09.
 
-Published sections (EN):
+Published sections (EN + TH):
 
 - [x] Naive — a SQL query at send time (runs against the production DB; the three cracks: heavy query, send blocks on it, no reuse across campaigns)
 - [x] Precompute on a schedule — nightly `segment_members` table, send becomes a cheap read; trades for freshness + still pounds the OLTP DB
-- [x] Move to Spark — when rules become windowed aggregates / anti-joins / model outputs over billions of rows; broadcast the small side, watch data skew (AQE + salt + pre-aggregate), partition-prune at the source
+- [x] Squeeze the single box first — a read replica (cheap step most write-ups skip)
+- [x] Move the analytics to an analytical engine — from OLTP to OLAP (replica vs. OLAP solve different problems; managed warehouse/columnar DB as the mainstream-enough stopping point)
 - [x] The data lake — Parquet columnar (predicate pushdown) + Iceberg/Delta table format (ACID snapshots, time travel), partition by date, CDC ingestion, orchestrator
-- [x] Microbatch, not streaming — the honest sweet spot: refresh every 1–2h, incremental + idempotent snapshots; true streaming stays the rare opt-in for the handful of rules that earn it (deliberate deviation from the original "v5: streaming" outline)
-- [x] A reusable segmentation service — rules as config, one engine, **one segment result materialized two ways**: chunked list → #3 Omnichannel (sequential read), inverted per-user membership index → #5 Icon serving (point lookup); membership-removal (SREM, not just SADD) is the trap; Bloom filter kept out of the final answer (false-positive = wrong eligibility)
+- [x] Rules become code — move to Spark — when rules become windowed aggregates / anti-joins / model outputs over billions of rows; broadcast the small side, watch data skew (AQE + salt + pre-aggregate), partition-prune at the source
+- [x] Microbatch, not streaming — the honest sweet spot: refresh every 1–2h, incremental + idempotent snapshots; true streaming stays the rare opt-in for the handful of rules that earn it
+- [x] Stop hand-writing a job per segment — rules become configuration — DSL/config with a concrete rule schema (field/op/value + draft/approved_by state), rule aggregation (segments composing other segments), guardrails reframed around accountability (not just money), and the config-has-a-ceiling caveat (new attributes still need an engineer)
+- [x] Prepare once, deliver by type — decoupling the processor — the file-vs-feature-store trade-off made explicit with measurable numbers (few minutes vs. ~2.8 hours), one segment result materialized two ways: chunked export → #3 Omnichannel (sequential read), partial-update store → #5 Icon serving (point lookup, shared across consumers); membership-removal (SREM, not just SADD) is the trap; Bloom filter kept out of the final answer (false-positive = wrong eligibility)
 
 Key experience: PayPay Spark-Scala ETL jobs, audience grouping, data lake migration
-
----
-
-### 7. Campaign Management Platform
-
-File: `design-campaign-management-platform.mdx` / `-th.mdx`
-
-- [ ] v1: Simple CRUD app
-- [ ] v2: Scheduling + concurrent campaigns
-- [ ] v3: Approval workflow (state machine)
-- [ ] v4: Budget caps (distributed counting)
-- [ ] v5: A/B testing + traffic splitting
-- [ ] v6: Multi-tenant with access control
-
-Key experience: PayPay campaign management platform (3M yen SMS savings)
-
----
-
-### 8. Cashback System
-
-File: `design-cashback-system.mdx` / `-th.mdx`
-
-**Proposed outline (draft — confirm angle before writing):** the reward-back engine that grants a % of a payment back to the user. Sits downstream of #1 Payment (a settled payment is the trigger) and consumes campaign config from #7. Core idea: a payment event → decide how much to give back → owe it → settle it, correctly and idempotently.
-
-- [ ] v1: Naive — synchronous cashback calc inline on the payment path (fixed % added at charge time)
-- [ ] v2: Rules per campaign — rate varies by merchant / category / user tier (a small rules engine, config from #7)
-- [ ] v3: Get it off the hot path — async award pipeline (payment event → queue → cashback worker), so payment latency doesn't pay for reward logic
-- [ ] v4: Correctness — a cashback **ledger** (accrued vs granted vs settled), idempotent on payment-event id (mirrors #1's double-entry discipline)
-- [ ] v5: Caps & budget — per-user cap + campaign budget cap (distributed counting; overlaps #7's budget caps)
-- [ ] v6: Deferred payout + **clawback** — grant after a settlement/return window; reverse cashback when the underlying payment is refunded/disputed (ties to #1 refunds/disputes)
-- [ ] v7: Reconciliation, abuse/fraud guards, production edge cases (double-grant, out-of-order payment vs refund, partial refund proration)
-
-Key experience: PayPay cashback / rewards (to confirm with TP)
 
 ---
 
@@ -336,8 +293,6 @@ Key experience: PayPay cashback / rewards (to confirm with TP)
 | 4 | design-webhook-callback-system.mdx | design-webhook-callback-system-th.mdx |
 | 5 | design-icon-management-segmentation.mdx | design-icon-management-segmentation-th.mdx |
 | 6 | design-audience-platform.mdx | design-audience-platform-th.mdx |
-| 7 | design-campaign-management-platform.mdx | design-campaign-management-platform-th.mdx |
-| 8 | design-cashback-system.mdx | design-cashback-system-th.mdx |
 
 ## Tags
 
