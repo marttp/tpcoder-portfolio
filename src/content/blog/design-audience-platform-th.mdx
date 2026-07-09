@@ -390,7 +390,7 @@ flowchart TD
 
 ![การ invert — campaign-to-users พลิกกลับเป็น per-user user-to-campaigns index สำหรับ point lookup](/assets/images/blogs/design-audience-platform/inverted-index.png)
 
-**Churn คือกับดัก** ทุกรอบ refresh มีทั้ง add แล้วก็ remove member บาง user เพิ่ง **match** เข้ามาใหม่ บาง user **หลุด** ออกไป ฝั่ง add ง่าย: `SADD` campaign เข้า set ของ user นั้นไปเลย ฝั่ง remove นี่แหละที่คนมักลืม: ลืม `SREM` ไป user ก็ยังถือ eligibility ที่เขาหลุดไปแล้วอยู่ดี มีสองท่าที่ทำให้มันถูกต้อง:
+**Churn คือกับดักที่มองข้ามง่าย** ทุกรอบ refresh มีทั้ง add แล้วก็ remove member บาง user เพิ่ง **match** เข้ามาใหม่ บาง user **หลุด** ออกไป ฝั่ง add ง่าย: `SADD` campaign เข้า set ของ user นั้นไปเลย ฝั่ง remove นี่แหละที่คนมักลืม: ลืม `SREM` ไป user ก็ยังถือ eligibility ที่เขาหลุดไปแล้วอยู่ดี มีสองท่าที่ทำให้มันถูกต้อง:
 
 - **Diff and apply** คำนวณ set ที่ **added** กับ **removed** ต่อ segment แล้ว apply ทั้งคู่ ถูกมากตอน churn มันน้อย แต่ต้องพึ่ง snapshot ก่อนหน้าแล้วก็ต้อง diff ให้ถูกด้วย ที่ scale ใหญ่ ๆ โหลด snapshot ทั้งสองก้อนเป็น **Roaring Bitmap** แล้วให้การลบ bitmap ทำเลขให้เลย `added = new.andNot(old)`, `removed = old.andNot(new)` แม่นยำแล้วก็เร็ว แม้ที่ระดับ ID หลักสิบล้าน
 - **Rebuild and swap** คำนวณทุก set ใหม่หมด แล้ว swap เข้าไปแบบ atomic (shadow keyspace, flip pointer) self-correcting เอง ไม่มี drift ตกค้าง แลกกับการต้องเขียนทุกอย่างใหม่ทุกรอบ memory peak จะเพิ่มขึ้นเกือบ **เท่าตัว** ตอน swap เพราะ shadow กับ live อยู่พร้อมกัน size ให้พอรองรับจุดนั้น หรือไม่ก็ swap ทีละ shard แทน
