@@ -364,7 +364,9 @@ flowchart LR
 
 ## Prepare once, deliver by type — decoupling the processor
 
-**ปัญหา:** platform ตอนนี้คำนวณ segment ได้ถูกและปลอดภัยแล้ว แต่ *ผลลัพธ์จะไปลงที่ไหน* ก็เป็นโจทย์ design ของมันเองอีกที แล้ว storage เดียวก็ไม่มีทางรับใช้ consumer ทั้งสองแบบได้ดีพร้อมกัน ถ้าเก็บ segment เป็นไฟล์บน object storage การอ่านแบบ bulk ของ omnichannel ก็ง่ายมาก — sequential, รอบเดียวจบ ไม่มี random access — แต่ทุกรอบ refresh ต้องเขียนไฟล์ทั้งก้อนใหม่ เพราะไฟล์ทำ partial update ไม่ได้ ถ้าเปลี่ยนไปเก็บใน feature store (Redis, KV store) แทน partial update ก็ถูกมาก — set key เดียว, ลบ key เดียว — แต่ทีนี้ omnichannel จะต้องมานั่งอ่านทีละ key เป็นล้าน ๆ key เพื่อประกอบกลับเป็น list ก้อนใหญ่ ซึ่งเป็น access pattern ที่ผิดสำหรับ key-value store ที่ scale นี้
+**ปัญหา:** platform ตอนนี้คำนวณ segment ได้ถูกและปลอดภัยแล้ว แต่ *ผลลัพธ์จะไปลงที่ไหน* ก็เป็นโจทย์ design ของมันเองอีกที — storage แต่ละแบบเหมาะกับงานนึงเท่านั้น ไม่ใช่ทั้งสองงานพร้อมกัน ไฟล์บน object storage คือของที่เหมาะกับงานของ omnichannel เป๊ะ: อ่านแบบ sequential รอบเดียว ไฟล์ที่มี row 40–60 ล้านแถวอ่านจาก S3 จบในไม่กี่นาทีที่ throughput ระดับหลายร้อย MB/s แต่ทุกรอบ refresh ก็ยังต้องเขียนไฟล์ทั้งก้อนใหม่อยู่ดี เพราะไฟล์ทำ partial update ไม่ได้ — แล้วถ้า icon serving ลองมา point lookup user คนเดียวจากไฟล์ก้อนเดียวกันนี้ ทุก request ก็ต้อง scan ทั้งไฟล์หรือบางส่วนของ 40–60 ล้านแถว จาก lookup ที่ควรจบใน 100ms กลายเป็นกินเวลาเป็นวินาทีแทน
+
+ส่วน feature store (Redis, KV store) ก็เป็นภาพสะท้อนกลับกัน: เหมาะกับงานของ icon serving เป๊ะ `SADD`/`SREM` ทีละ key จบในระดับ sub-millisecond แต่ถ้า omnichannel ลองไปประกอบ list ก้อนใหญ่กลับจาก Redis แทน — อ่านทีละ key เป็น 100 ล้าน key — ต่อให้ pipeline เร็วระดับ 10,000 key/วินาที ก็ยังกินเวลาราว 2.8 ชั่วโมงต่อการ export หนึ่ง segment แถมแย่ง capacity ของ Redis ตัวเดียวกับที่ live traffic ของ icon serving ต้องพึ่งอยู่ตลอดเวลาที่ทำ
 
 **วิธีแก้:** เลิกให้ storage ตัวเดียวแบกสองงานพร้อมกัน แยกงานออกเป็น **prepare** แล้วก็ **deliver by type**:
 
