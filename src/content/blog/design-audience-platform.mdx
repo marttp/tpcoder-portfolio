@@ -309,7 +309,7 @@ Spark fixes the compute; the lake means it never touches production again. What'
 
 Making it actually work:
 
-- **Incremental, not full-rebuild.** A full rebuild every hour at data-lake scale won't finish inside its window. Read only what *changed* (Iceberg/Delta incremental reads, or the CDC feed), update the affected users, leave the rest. A heavier full rebuild still runs nightly to correct any drift.
+- **Incremental, not full-rebuild.** A full rebuild every hour at data-lake scale won't finish inside its window — and re-scanning the whole table every cycle isn't just slow, it's a cloud bill that explodes once you're past a billion rows. The fix: store a watermark (the last-read timestamp or offset) somewhere durable, and read only what *changed* since then (Iceberg/Delta incremental reads, or the CDC feed), updating just the affected users. Re-reading everything each cycle is still the simpler, valid choice at smaller scale — reach for incremental only once the row count makes full scans genuinely expensive. A heavier full rebuild still runs nightly to correct any drift.
 - **Idempotent, snapshot-style publishes.** Each run publishes a versioned snapshot consumers switch to atomically — no half-updated segment ever visible, and a failed run just leaves the last good one in place.
 - **Tier rules by freshness.** Most segments are fine on 1–2 hours. A few ("abandoned a cart 10 minutes ago") genuinely need seconds — that's the rare opt-in for true streaming (Flink, or a tight Structured Streaming trigger), not the default.
 
