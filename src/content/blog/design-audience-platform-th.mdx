@@ -202,15 +202,15 @@ flowchart LR
 - **Replica** — engine OLTP ตัวเดิม แค่เป็นสำเนาที่ sync ไว้ แยกแค่ว่า *read เกิดที่ไหน* กับ *write เกิดที่ไหน* ข้อมูลไม่เคยหลุดออกจากโลก OLTP เลย แล้วการ sync ก็เป็น native database replication ล้วน ๆ
 - **OLAP engine** — storage engine คนละตัวไปเลย build มาเก็บข้อมูลในทรงที่เหมาะกับ analytics โดยเฉพาะ มันไม่เติมตัวเองผ่าน replication นะ ต้องมีคนย้ายข้อมูลเข้าไปเอง ไม่ว่าจะ bulk copy รอบแรก, scheduled Spark job, หรือ CDC (stream write log ของ OLTP เข้า OLAP store ต่อเนื่อง)
 
-งานเดียวกัน query แบบเดียวกัน แค่มาจาก source คนละที่ แล้วการเติมข้อมูลลง source นั้นก็กลายเป็นปัญหาใหม่ของมันเอง (SQL text เองก็มักต้องเขียนใหม่ด้วยนะ เพราะ Postgres, ClickHouse, BigQuery, Snowflake, Redshift ต่างก็พูด SQL dialect ของตัวเองทั้งนั้น) ถ้ายังไม่ได้รัน OLAP store อยู่ replica คือคำตอบที่ง่ายกว่าแล้วก็ซื่อกว่า แต่ถ้าจะไปหา OLAP แบบเต็มตัว ปัญหาการย้ายข้อมูลนี่แหละคือเรื่อง ingestion เต็ม ๆ ที่หัวข้อ data lake จะพูดถึงต่อไป
+งานเดียวกัน query แบบเดียวกัน แค่มาจาก source คนละที่ แล้วการเติมข้อมูลลง source นั้นก็กลายเป็นปัญหาใหม่ของมันเอง (SQL text เองก็มักต้องเขียนใหม่ด้วยนะ เพราะ Postgres, ClickHouse, BigQuery, Snowflake, Redshift ต่างก็พูด SQL dialect ของตัวเองทั้งนั้น) ถ้ายังไม่ได้รัน OLAP store อยู่ replica คือคำตอบที่ง่ายกว่า แต่ถ้าจะไปหา OLAP แบบเต็มตัว **ปัญหาการย้ายข้อมูลนี่แหละคือเรื่อง ingestion เต็ม ๆ** ที่หัวข้อ data lake จะพูดถึงต่อไป
 
-**แล้วเราจะรู้ได้ยังไงว่าถึงเวลาต้องขยับขึ้น step** trigger คร่าว ๆ ไม่ใช่กฎตายตัว:
+**แล้วเราจะรู้ได้ยังไงว่าถึงเวลาต้องขยับ** step trigger คร่าว ๆ:
 
 | ตอนนี้เราอยู่ที่ | ขยับขึ้นเมื่อ |
 |---|---|
 | Inline SQL ตอนส่ง | audience โตเกิน ~1 ล้าน user, campaign เพิ่มขึ้นเรื่อย ๆ หรือ send query เริ่มทำแอปช้าลง |
 | Precompute บน primary | batch แย่ง resource กับ live traffic ให้เห็นชัด replica แค่ config เดียวเปลี่ยน คว้ามันมาใช้เลย |
-| Read replica | analytical SQL กินเวลาเป็นชั่วโมงบน row store shape มันผิด ไม่ใช่ hardware อ่อน |
+| Read replica | analytical SQL กินเวลาเป็นชั่วโมงบน row store เพราะ shape มันผิด ไม่ใช่ hardware อ่อน |
 | Warehouse / columnar DB | job รันไม่จบใน refresh window, rule ต้องการ code แท้ ๆ (custom scoring, ML feature) แทนที่จะเป็น SQL หรือ input ไม่ได้อยู่ในฐานเดียวอีกต่อไป |
 
 อีกเรื่องนึงที่ต้องชั่งน้ำหนัก: **ทุก step ที่ปีนขึ้นไป แบก cost แล้วก็งาน on-call เพิ่มตลอด** replica ก็แค่ติ๊กช่องเดียว, warehouse ก็คือบิลค่าใช้ ส่วนโลกของ Spark-กับ-lake ข้างหน้าคือทั้งบิล **บวกกับ** ทีมงานเลย ปีนขึ้นเพราะ trigger มันเกิดขึ้นเอง ไม่ใช่เพราะ step ถัดไปมันดูน่าสนใจในเรซูเม่ของเรา
