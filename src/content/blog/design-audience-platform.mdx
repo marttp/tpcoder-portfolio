@@ -23,7 +23,7 @@ The interesting part is *whoever needs it*, because the two consumers we've alre
 - **Bulk, chunked list** — the omnichannel backbone wants "campaign C targets these 40M users," split into ~40–60K chunks it can stream through its delivery workflow. It reads the whole audience, once, in order.
 - **Per-user membership store** — the icon serving path wants a point lookup at request time: "is user `10001` eligible for campaign 5, right now?"
 
-Same audience logic — *gold-tier users in TH who topped up in the last 30 days* — two output shapes with opposite access patterns. That contrast is the spine of this post, the same way "two systems, opposite SLAs" was the spine of the icon post. One brain, two mouths.
+Same audience logic — *gold-tier users in TH who topped up in the last 30 days* — but two output shapes with opposite access patterns.
 
 <MermaidDiagram chart={`
 flowchart LR
@@ -381,7 +381,7 @@ flowchart TD
     MEM --> ICON["#5 Icon serving\npoint lookup per request"]
 `} />
 
-- **Chunked export (#3 Omnichannel).** Reads the whole `campaign → [users]` list once, in order, and splits it into ~1K-user chunks — for a 40–60M audience, the ~40–60K chunks the omnichannel post sized its observability around. One sequential read, no random access — exactly what a file is good at, and exactly why a file is the wrong fit for the other consumer.
+- **Chunked export (#3 Omnichannel).** Reads the whole `campaign → [users]` list once, in order, and splits it into ~1K-user chunks — for a 40–60M audience, the ~40–60K chunks the omnichannel post sized its observability around. One sequential read, no random access — exactly what a file is good at, which is also why a file is the wrong fit for the other consumer.
 - **Partial-update store (#5 Icon serving).** Flips `campaign → [users]` into `user → {campaigns}` — a Redis set per user, `10001 -> {1, 2, 3, 4, 5}`. Back-of-envelope: 100M users, each holding a few campaign IDs, lands in the tens of GB — a modest cluster. Built as a step in the same ETL: each segment-result snapshot lands, then fans its users out into their per-user sets. This is exactly the membership store #5 read from, turned inside out — and it's shared, not single-purpose: icon serving is the first tenant, not the only one. Any other consumer that just needs "is this user eligible for X right now" reads the same store the same way.
 
 {/* IMAGE PROMPT (inverted-index.png): Clean conceptual diagram, flat vector, light background. LEFT box header labeled exactly "Segment result" containing two text lines reading exactly "campaign 1 -> [10001, 10002]" and "campaign 2 -> [10001]". A bold arrow in the center labeled exactly "invert" points from LEFT to RIGHT. RIGHT box header labeled exactly "Membership index" containing two text lines reading exactly "10001 -> {1, 2}" and "10002 -> {1}". Convey: flipping campaign-to-users into user-to-campaigns. STRICT: render ONLY this text — "Segment result", "campaign 1 -> [10001, 10002]", "campaign 2 -> [10001]", "invert", "Membership index", "10001 -> {1, 2}", "10002 -> {1}" — spelled exactly, each once; no other words; no typos; no duplicate lines; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
@@ -425,4 +425,4 @@ We started with a `WHERE` clause typed at send time and ended with a platform th
 
 The meta-point, same as the rest of the series: **nobody starts here.** A few thousand users and a simple rule? Type the `WHERE` clause and move on. Every layer above earned its place — scale forced precomputation, load forced the replica, real analytics forced the warehouse, fragmented data forced the lake, code-shaped rules forced Spark, recency forced microbatch, repetition forced configuration, and the mismatch between bulk reads and point lookups forced the delivery split. And each climb had a trigger you can measure — the batch that visibly slows live traffic, the job that can't finish inside its refresh window — not a technology that looked interesting.
 
-And if there's one thing to carry over: the audience platform's job isn't just *computing* the right set of users — it's serving that set in the shape each consumer actually reads. Omnichannel streams it; icon serving point-looks-it-up. Get the computation right and pick the wrong serving shape, and you've built a brilliant brain that can't talk to either mouth.
+And if there's one thing to carry over: the audience platform's job isn't just *computing* the right set of users — it's serving that set in the shape each consumer actually reads. Omnichannel streams it; icon serving point-looks-it-up. Get the computation right and pick the wrong serving shape, and the system still doesn't work.
