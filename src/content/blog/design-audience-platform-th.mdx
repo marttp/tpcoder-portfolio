@@ -332,10 +332,32 @@ flowchart LR
 
 **วิธีแก้:** เปลี่ยน hand-written job ให้กลายเป็น **platform** rule กลายเป็น **configuration** ไม่ใช่ code:
 
-- **Rule เป็น DSL / config** segment คือ data ไม่ใช่ code predicate, time window, freshness tier `tier = gold AND country = TH AND avg_txn_90d > 5000 AND NOT suppressed` เก็บไว้เป็นข้อมูล ไม่ใช่เขียนโค้ด platform validate แล้วก็ประเมินขนาดให้ก่อนที่จะรันด้วย
+- **Rule เป็น DSL / config** segment คือ data ไม่ใช่ code predicate, time window, freshness tier ในทางปฏิบัติมันหน้าตาเป็น schema แบบนี้ ไม่ใช่ query ที่เขียนมือ:
+
+  ```json
+  {
+    "segment_id": "gold_th_active",
+    "status": "draft",
+    "owner": "marketing_user_42",
+    "freshness_tier": "1h",
+    "rule": {
+      "operator": "AND",
+      "conditions": [
+        { "field": "tier",          "op": "=", "value": "gold" },
+        { "field": "country",       "op": "=", "value": "TH" },
+        { "field": "avg_txn_90d",   "op": ">", "value": 5000 },
+        { "field": "suppressed",    "op": "=", "value": false }
+      ]
+    },
+    "estimated_size": null,
+    "approved_by": null
+  }
+  ```
+
+  `field`, `op`, กับ `value` คือสามอย่างที่ marketing ต้องแตะเอง — เลือก attribute ที่ register ไว้แล้ว เลือก operator ที่ platform รองรับกับ type ของ attribute นั้น แล้วก็พิมพ์ value เข้าไป ไม่มีจุดไหนเป็น query เลยสักบรรทัด มันคือฟอร์มดี ๆ นี่เอง platform validate แล้วก็ประเมินขนาดให้ก่อนที่จะรันด้วย
 - **Config เดียว, job ที่ generate เอง** DSL ไม่สนหรอกว่าเราอยู่ step ไหน platform compile rule เดิมให้กลายเป็นสิ่งที่ segment นั้นต้องการเป๊ะ ๆ — ถ้ายังเป็น replica หรือ warehouse ก็ compile ออกมาเป็น SQL query ธรรมดา พอถึง step Spark ก็ compile เป็น Spark plan เต็มรูปแบบ (แล้วก็ streaming topology ถ้า tag ไว้ว่าเป็น real-time) เรื่อง batch หรือ Spark เป็นแค่รายละเอียดการทำงานที่ config layer ซ่อนไว้ marketing ไม่จำเป็นต้องรู้เลยด้วยซ้ำ พอ engineer เพิ่ม attribute ใหม่เข้ามา งานนั้นทำแค่ครั้งเดียวจบ register เข้า catalog ทีเดียว แล้ว rule ไหนก็หยิบไปใช้ได้เลยตั้งแต่นั้น
 - **Reusability** segment ประกอบกันได้ `gold_th_active` คำนวณครั้งเดียว แล้วถูก campaign สิบตัวอ้างอิงไปใช้ แทนที่จะมานั่งคำนวณใหม่ทีละ campaign ความผิดพลาดของ v1 ที่ในที่สุดก็ถูกแก้แล้ว
-- **Guardrail ก่อนเงินจะขยับ** rule ที่แค่พลิก `AND` เป็น `OR` ก็เปลี่ยน user 2 ล้านคน ให้กลายเป็น 40 ล้านคนแบบเงียบ ๆ ได้เลยนะ นั่นแปลว่า campaign กำลังจะเผา budget ก้อนโตกับคน 38 ล้านคนที่ไม่ควรได้รับ platform เลยกัก segment ที่ขนาดกระโดดออกนอกช่วงที่สมเหตุสมผล (±30%) ไว้ก่อน จนกว่าจะมีคนมายืนยัน ก่อนที่ consumer ไหนจะหยิบไปใช้ด้วยซ้ำ นี่แหละคือเช็คที่ถูกที่สุด กันความผิดพลาดที่แพงที่สุดที่ระบบนี้ทำพลาดได้เลย
+- **Guardrail คือเรื่องความรับผิดชอบ ไม่ใช่เรื่องเงินเพียงอย่างเดียว** ใครก็ตามที่เขียน rule — จะเป็นทีมงานเอง หรือ AI agent ที่มาช่วย draft segment ให้ — การมีสิทธิ์ *เขียน* rule ไม่ได้แปลว่ามีสิทธิ์ *ปล่อยมันขึ้นไปใช้งาน* ด้วย นั่นแหละคือเหตุผลที่ segment ใหม่หรือ segment ที่แก้ไข จะถูกสร้างเป็น `draft` ก่อนเสมอ ไม่ใช่ live ทันที platform ประเมินขนาดให้ แล้วก็ flag อะไรที่กระโดดออกนอกช่วงที่สมเหตุสมผล (±30% — เคสคลาสสิกคือ rule ที่แค่พลิก `AND` เป็น `OR` แล้วเปลี่ยน user 2 ล้านคนให้กลายเป็น 40 ล้านคนแบบเงียบ ๆ) แต่เช็คอัตโนมัตินี้แค่ป้อนข้อมูลให้คนตัดสินใจเท่านั้น segment จะออกจาก `draft` ไปถึง consumer ไหนไม่ได้ จนกว่าจะมีคนกดอนุมัติเอง ไม่ว่าใคร — หรืออะไร — จะเป็นคนเสนอ rule นั้นมา สุดท้ายก็ต้องมีคนรับผิดชอบสิ่งที่ปล่อยออกไปอยู่ดี
 - **Configurable ก็มีเพดานของมัน** marketing self-serve rule ไหนก็ได้ ตราบใดที่มันประกอบจาก attribute ที่ catalog มีอยู่แล้ว จะเปลี่ยน threshold ใหม่ หรือผสม field เดิมแบบไหนก็ทำเองได้ ไม่ต้องรอ engineer แต่พอถึง rule ที่ต้องการ attribute ที่ยังไม่มีใครเอาเข้ามา — field ที่ lake ยังไม่มี, source ที่ยังไม่เคย wire เข้า ingestion — จุดนั้นยังเป็นงาน code อยู่ดี ต้องมี engineer ไปเพิ่ม source แล้ว register เข้า catalog ก่อน configuration ถึงจะไปถึงมันได้ configuration แก้ bottleneck ให้เฉพาะแกนที่เรา build ไว้แล้วเท่านั้น ไม่ได้แก้งานเพิ่มแกนใหม่
 
 ---

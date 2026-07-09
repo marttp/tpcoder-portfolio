@@ -330,10 +330,32 @@ Now the audience is computed at scale and fresh within the hour. Last step: stop
 
 **The fix:** turn hand-written jobs into a **platform**. Rules become *configuration*, not code:
 
-- **Rules as a DSL / config.** A segment is data, not code — predicates, time windows, a freshness tier. `tier = gold AND country = TH AND avg_txn_90d > 5000 AND NOT suppressed`, stored, not coded. The platform validates and estimates size before anything runs.
+- **Rules as a DSL / config.** A segment is data, not code — predicates, time windows, a freshness tier. In practice that's a schema like this, not a hand-written query:
+
+  ```json
+  {
+    "segment_id": "gold_th_active",
+    "status": "draft",
+    "owner": "marketing_user_42",
+    "freshness_tier": "1h",
+    "rule": {
+      "operator": "AND",
+      "conditions": [
+        { "field": "tier",          "op": "=", "value": "gold" },
+        { "field": "country",       "op": "=", "value": "TH" },
+        { "field": "avg_txn_90d",   "op": ">", "value": 5000 },
+        { "field": "suppressed",    "op": "=", "value": false }
+      ]
+    },
+    "estimated_size": null,
+    "approved_by": null
+  }
+  ```
+
+  `field`, `op`, and `value` are the three things marketing actually touches — pick a registered attribute, pick an operator the platform supports for that attribute's type, type in a value. Nothing here is a query; it's a form. The platform validates it and estimates size before anything runs.
 - **One config, generated jobs.** The DSL doesn't care which rung you're on — the platform compiles the same rule into whatever the segment actually needs: a plain SQL query if a replica or warehouse is still doing the job, the actual Spark plan (and streaming topology, if tagged real-time) once you're on Spark. Batch versus Spark is an execution detail the config layer hides, not something marketing should ever need to know. When an engineer adds a new attribute, it's a one-time job — register it in the catalog once, and every rule can use it from then on.
 - **Reusability.** Segments compose — "gold_th_active" is computed once and referenced by ten campaigns, instead of re-derived per campaign — the v1 mistake, finally fixed.
-- **Guardrails before the money moves.** A rule edit that flips `AND` to `OR` can quietly turn 2M users into 40M — a campaign about to spend real budget on 38M people who shouldn't get it. The platform holds any segment whose size jumps outside a sane band (±30%) until a human confirms it, before any consumer picks it up — the cheapest check against the single most expensive mistake this system can make.
+- **Guardrails are about accountability, not just money.** Whoever authors a rule — a teammate, or increasingly an AI agent helping draft a segment — being able to *write* a rule doesn't mean it should be able to *ship* one. That's why every new or edited segment is created in `draft`, never live: the platform estimates its size and flags anything that jumps outside a sane band (±30% — the classic case is a rule edit that flips `AND` to `OR` and quietly turns 2M users into 40M), but that automated check just feeds a human decision. A segment can't leave `draft` and reach any consumer until someone explicitly approves it — whoever, or whatever, proposed the rule, a person still owns what ships.
 - **Configurable has a ceiling.** Marketing self-serves any rule built from attributes the catalog already carries — a new threshold, a new combination of existing fields, no engineer needed. But the moment a rule needs an attribute nobody's piped in yet — a field the lake doesn't have, a source that was never wired into ingestion — that's still a code change: someone has to add the source and register it before config can reach it. Configuration removes the bottleneck on the axes you've already built, not the work of adding a new one.
 
 ---
