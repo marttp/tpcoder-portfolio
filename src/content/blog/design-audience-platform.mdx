@@ -324,7 +324,7 @@ Now the audience is computed at scale and fresh within the hour. Last step: stop
 
 ---
 
-## Stop rebuilding per campaign — a reusable segmentation service
+## Stop rebuilding per campaign — rules become configuration
 
 **The problem:** every segment is still a hand-written Spark job an engineer ships and maintains — a bottleneck past a handful of segments. Campaign and marketing teams can't self-serve audiences if every one needs an engineer.
 
@@ -334,19 +334,29 @@ Now the audience is computed at scale and fresh within the hour. Last step: stop
 - **One engine, generated jobs.** The platform compiles a rule into the actual Spark plan (and streaming topology, if tagged real-time). New attributes register once in a catalog and become available everywhere.
 - **Reusability.** Segments compose — "gold_th_active" is computed once and referenced by ten campaigns, instead of re-derived per campaign — the v1 mistake, finally fixed.
 - **Guardrails before the money moves.** A rule edit that flips `AND` to `OR` can quietly turn 2M users into 40M — a campaign about to spend real budget on 38M people who shouldn't get it. The platform holds any segment whose size jumps outside a sane band (±30%) until a human confirms it, before any consumer picks it up — the cheapest check against the single most expensive mistake this system can make.
+- **Configurable has a ceiling.** Marketing self-serves any rule built from attributes the catalog already carries — a new threshold, a new combination of existing fields, no engineer needed. But the moment a rule needs an attribute nobody's piped in yet — a field the lake doesn't have, a source that was never wired into ingestion — that's still a code change: someone has to add the source and register it before config can reach it. Configuration removes the bottleneck on the axes you've already built, not the work of adding a new one.
 
-Here's the payoff the whole post has been building to. The ETL's native output is the **segment result** — `campaign → [users]` — written to **object storage** as a versioned snapshot every 1–2 hours. That one artifact feeds both consumers, read in opposite directions:
+---
+
+## Prepare once, deliver by type — decoupling the processor
+
+**The problem:** the platform now computes segments cheaply and safely, but *where the result lands* is its own design question, and one storage can't cleanly serve both consumers. Land the segment as a file in object storage, and omnichannel's bulk read is trivial — sequential, one pass, no random access — but every refresh has to rewrite the whole file, because files don't do partial updates. Land it in a feature store (Redis, a KV store) instead, and partial updates are cheap — set one key, delete one key — but now omnichannel would have to read millions of individual keys just to reconstruct one bulk list, the wrong access pattern for a key-value store at that scale.
+
+**The fix:** stop asking one storage to do both jobs. Split the work into **prepare**, then **deliver by type**:
+
+- **Prepare.** The ETL runs once, computing the segment result the same way no matter who reads it next — the **segment result**, `campaign → [users]`, written to **object storage** as a versioned snapshot every 1–2 hours.
+- **Deliver by type.** Each segment declares what it needs to become: a **chunked export** for consumers that read the whole thing in bulk, or a **partial-update store** for consumers that need per-user point lookups. Same base snapshot either way — what's decoupled is the processor that reshapes it, not the computation that produced it.
 
 <MermaidDiagram chart={`
 flowchart TD
-    ENG["Segmentation ETL"] --> SEG[("Segment results in object storage\ncampaign -> [users]")]
-    SEG -->|"read + chunk"| OMNI["#3 Omnichannel\nstream the chunks out"]
-    SEG -->|"invert (add/remove)"| MEM[("Membership index\nuser -> {campaigns}")]
+    ENG["Segmentation ETL\n(prepare)"] --> SEG[("Segment results in object storage\ncampaign -> [users]")]
+    SEG -->|"chunked export"| OMNI["#3 Omnichannel\nstream the chunks out"]
+    SEG -->|"partial-update processor\n(invert, diff, apply)"| MEM[("Membership index\nuser -> {campaigns}")]
     MEM --> ICON["#5 Icon serving\npoint lookup per request"]
 `} />
 
-- **Chunk read (#3 Omnichannel).** Reads the whole `campaign → [users]` list once, in order, and splits it into ~1K-user chunks — for a 40–60M audience, the ~40–60K chunks the omnichannel post sized its observability around. One sequential read, no random access.
-- **Inverted index (#5 Icon serving).** Flips `campaign → [users]` into `user → {campaigns}` — a Redis set per user, `10001 -> {1, 2, 3, 4, 5}`. Back-of-envelope: 100M users, each holding a few campaign IDs, lands in the tens of GB — a modest cluster. Built as a step in the same ETL: each segment-result snapshot lands, then fans its users out into their per-user sets. This is exactly the membership store #5 read from, turned inside out.
+- **Chunked export (#3 Omnichannel).** Reads the whole `campaign → [users]` list once, in order, and splits it into ~1K-user chunks — for a 40–60M audience, the ~40–60K chunks the omnichannel post sized its observability around. One sequential read, no random access — exactly what a file is good at, and exactly why a file is the wrong fit for the other consumer.
+- **Partial-update store (#5 Icon serving).** Flips `campaign → [users]` into `user → {campaigns}` — a Redis set per user, `10001 -> {1, 2, 3, 4, 5}`. Back-of-envelope: 100M users, each holding a few campaign IDs, lands in the tens of GB — a modest cluster. Built as a step in the same ETL: each segment-result snapshot lands, then fans its users out into their per-user sets. This is exactly the membership store #5 read from, turned inside out — and it's shared, not single-purpose: icon serving is the first tenant, not the only one. Any other consumer that just needs "is this user eligible for X right now" reads the same store the same way.
 
 {/* IMAGE PROMPT (inverted-index.png): Clean conceptual diagram, flat vector, light background. LEFT box header labeled exactly "Segment result" containing two text lines reading exactly "campaign 1 -> [10001, 10002]" and "campaign 2 -> [10001]". A bold arrow in the center labeled exactly "invert" points from LEFT to RIGHT. RIGHT box header labeled exactly "Membership index" containing two text lines reading exactly "10001 -> {1, 2}" and "10002 -> {1}". Convey: flipping campaign-to-users into user-to-campaigns. STRICT: render ONLY this text — "Segment result", "campaign 1 -> [10001, 10002]", "campaign 2 -> [10001]", "invert", "Membership index", "10001 -> {1, 2}", "10002 -> {1}" — spelled exactly, each once; no other words; no typos; no duplicate lines; no meta/style words. Flat vector, soft shadows, 2-3 accent colors, no photorealism. */}
 
@@ -384,8 +394,9 @@ We started with a `WHERE` clause typed at send time and ended with a platform th
 5. **A data lake** — Parquet + a table format, partitioned and ingested, landing a dozen systems' data in one place.
 6. **Spark** — for when the rules themselves need to be code, not SQL.
 7. **Refresh every 1–2 hours** — incremental ETL keeps thousands-to-millions of segment results fresh within the hour; true streaming stays the rare opt-in.
-8. **A reusable segmentation service** — rules as config, one engine, guardrails on segment size, one segment result read two ways: chunked for delivery, inverted into a per-user index for serving.
+8. **Rules become configuration** — a DSL lets marketing self-serve any rule built from attributes already in the catalog, with guardrails on segment size; a brand-new attribute still needs an engineer.
+9. **Prepare once, deliver by type** — one segment result, decoupled into a chunked export for bulk delivery and a partial-update store for point lookups, because no single storage handles both access patterns well.
 
-The meta-point, same as the rest of the series: **nobody starts here.** A few thousand users and a simple rule? Type the `WHERE` clause and move on. Every layer above earned its place — scale forced precomputation, load forced the replica, real analytics forced the warehouse, fragmented data forced the lake, code-shaped rules forced Spark, recency forced microbatch, and repetition forced the platform. And each climb had a trigger you can measure — the batch that visibly slows live traffic, the job that can't finish inside its refresh window — not a technology that looked interesting.
+The meta-point, same as the rest of the series: **nobody starts here.** A few thousand users and a simple rule? Type the `WHERE` clause and move on. Every layer above earned its place — scale forced precomputation, load forced the replica, real analytics forced the warehouse, fragmented data forced the lake, code-shaped rules forced Spark, recency forced microbatch, repetition forced configuration, and the mismatch between bulk reads and point lookups forced the delivery split. And each climb had a trigger you can measure — the batch that visibly slows live traffic, the job that can't finish inside its refresh window — not a technology that looked interesting.
 
 And if there's one thing to carry over: the audience platform's job isn't just *computing* the right set of users — it's serving that set in the shape each consumer actually reads. Omnichannel streams it; icon serving point-looks-it-up. Get the computation right and pick the wrong serving shape, and you've built a brilliant brain that can't talk to either mouth.
