@@ -56,7 +56,8 @@ Here's the road. The first half is the evolution of *how we compute the audience
 1. **A data lake** — land data from a dozen systems in one place built for analytical reads
 2. **Spark** — rules become code once SQL can't express the logic anymore
 3. **Near-real-time** — "nightly" isn't fresh enough for some rules
-4. **A reusable segmentation service** — stop building a custom job per use case
+4. **Rules become configuration** — stop hand-writing a job per segment
+5. **Prepare once, deliver by type** — one segment result, delivered differently depending on who's reading it
 
 Let's start simple.
 
@@ -353,7 +354,7 @@ Now the audience is computed at scale and fresh within the hour. Last step: stop
   ```
 
   `field`, `op`, and `value` are the three things marketing actually touches — pick a registered attribute, pick an operator the platform supports for that attribute's type, type in a value. Nothing here is a query; it's a form. The platform validates it and estimates size before anything runs.
-- **One config, generated jobs.** The DSL doesn't care which rung you're on — the platform compiles the same rule into whatever the segment actually needs: a plain SQL query if a replica or warehouse is still doing the job, the actual Spark plan (and streaming topology, if tagged real-time) once you're on Spark. Batch versus Spark is an execution detail the config layer hides, not something marketing should ever need to know. When an engineer adds a new attribute, it's a one-time job — register it in the catalog once, and every rule can use it from then on.
+- **One config, generated jobs.** The DSL doesn't care which step you're on — the platform compiles the same rule into whatever the segment actually needs: a plain SQL query if a replica or warehouse is still doing the job, the actual Spark plan (and streaming topology, if tagged real-time) once you're on Spark. Batch versus Spark is an execution detail the config layer hides, not something marketing should ever need to know. When an engineer adds a new attribute, it's a one-time job — register it in the catalog once, and every rule can use it from then on.
 - **Reusability.** Segments compose — "gold_th_active" is computed once and referenced by ten campaigns, instead of re-derived per campaign — the v1 mistake, finally fixed.
 - **Rules can aggregate other rules.** A new segment doesn't have to start from raw fields every time — it can reference an already-defined segment and build on top of it. `IN segment(gold_th_active) AND NOT IN segment(fraud_watchlist)` composes two existing, already-approved segments into a new, narrower one, without touching the underlying predicates at all. Marketing gets increasingly specific targeting by combining vetted building blocks, instead of re-deriving `tier = gold AND country = TH ...` from scratch every time a campaign needs a slightly different angle.
 - **Guardrails are about accountability, not just money.** Whoever authors a rule — a teammate, or increasingly an AI agent helping draft a segment — being able to *write* a rule doesn't mean it should be able to *ship* one. That's why every new or edited segment is created in `draft`, never live: the platform estimates its size and flags anything that jumps outside a sane band, but that automated check just feeds a human decision. A segment can't leave `draft` and reach any consumer until someone explicitly approves it — whoever, or whatever, proposed the rule, a person still owns what ships.
