@@ -16,17 +16,27 @@ import MermaidDiagram from "../../components/blog/MermaidDiagram.astro";
 
 ![Mid-level 2026 hero banner](/assets/images/blogs/mid-level-2026/hero-banner.png)
 
-In the [last post about fundamentals](/blog/fundamentals-how-much-you-need-early-career-2026), I made one claim that I want to pick up again: the entry-level floor hasn't moved much, but the ceiling has. That post was written for people standing at the floor. This one is written for people who cleared it — you have a job, you ship features, you can debug most things that land on your desk — and are now asking the next version of the same question: *what does the bar look like from here?*
+In the [last post about fundamentals](/blog/fundamentals-how-much-you-need-early-career-2026), I made one claim that I want to pick up again: the entry-level floor hasn't moved much, but the ceiling has. That post was for people trying to get their footing. This one starts a little later. You already have the job. You ship features, debug most things that land on your desk, and can usually get through a normal sprint without someone walking you through every step. Then a new question starts showing up: *what does the bar look like from here?*
+
+Before continuing, I want to clarify how the two posts fit together:
+
+- **Entry-level does not mean knowing every item in the fundamentals post.** That post is a map of what to build toward, not a checklist you must finish before applying for a job.
+- **By mid-level, most of that map should no longer feel unfamiliar.** You may still need documentation, help, or a refresher, but you should understand most of the concepts well enough to use them in normal work.
+- **The main change in this post is mindset, not a replacement syllabus.** The fundamentals still apply; now you use them with less instruction, more ambiguity, and more responsibility for the outcome.
 
 That post also ended the "Reading a Ticket" section with a sentence that was quietly the setup for this whole article: *the input becomes less structured as you grow, and the ability to create structure from ambiguity is what separates engineers who execute from engineers who lead.* This post is what happens when you take that sentence seriously for the next few years.
 
-Two honest notes before we start.
+Two notes before we get into it.
 
-First, on titles. "Mid-level" and "senior" mean wildly different things between companies. A senior at a 10-person startup and a senior at a bank are different jobs. So this post describes **behavior**, not titles. The pattern I've seen is consistent: the behavior comes first, and the title follows it — sometimes at your current company, sometimes at the next one. It almost never works in the other direction.
+First, titles are messy. "Mid-level" and "senior" mean wildly different things between companies. Someone assessed as mid-level in one company could operate as a senior in another; someone carrying a senior title could also be assessed as mid-level after moving to a company with a different scale, system complexity, or ownership bar. Neither direction automatically says that the person improved or went backwards. The measuring system changed.
+
+Both labels cover a wide market range. Two mid-level roles can differ significantly in scope, expectations, and compensation, and the same is true for senior roles. A senior at a 10-person startup and a senior at a bank may spend their week doing very different work. Some large companies also have room for strong mid-level engineers to stay focused on driving and execution for a long time. That is a valid job shape, not a failed career. So I am describing **behavior**, not trying to settle the title debate. In my experience, the behavior usually appears before the title catches up — sometimes at your current company, sometimes at the next one.
 
 Second, on the title of this post. Every step described here has a price, and most career content skips that part. So each section below ends with the cost, stated plainly. Not to scare you — the costs are worth paying, and I'll argue why at the end. But you should know what you're signing up for.
 
 One more thing, on scope: this post is deliberately not about AI agents or coding workflows. I've written about that side elsewhere. The skills here are the ones that set the bar regardless of what generates the code.
+
+I am also not covering another group that is becoming more visible: people outside software engineering who know their domain deeply and can now code and deploy a useful solution. If that describes you, your starting point is different. You may already have years of judgment in finance, operations, design, education, or another field; the new capability is turning that knowledge into working software. That deserves a separate post, and I will write it as one rather than squeezing it into an engineering-level ladder where it does not quite fit.
 
 ---
 
@@ -36,7 +46,7 @@ The junior-to-mid transition was mostly about **understanding** — can you unde
 
 The mid-to-senior transition is about something different: **ownership of outcomes**.
 
-The clearest way I can describe it is as a trust radius. At every level, the question your team is silently answering about you is: *what can we hand this person and trust that it comes back done?* The ladder looks like this:
+The most useful way I have found to describe it is a trust radius. Your team may never use that phrase, but they are answering a version of this question every week: *what can we hand this person without checking every step?* The ladder looks like this:
 
 <MermaidDiagram
   chart={`
@@ -51,7 +61,7 @@ flowchart LR
 - **Problem**: nobody decided anything yet. You get a symptom or a goal, and you come back with a diagnosis, a plan, and eventually a shipped fix.
 - **Area**: nobody hands you anything. You watch a part of the system, notice what it needs, and drive the work yourself.
 
-Nobody announces this transition. There is no meeting where someone says "you are now trusted with problems." You notice it in the inputs: the tickets get vaguer, the requirements arrive as two sentences in a chat message, the tech lead starts asking "what do you think we should do?" instead of telling you. If your inputs are getting less structured, you are being promoted in practice — the paperwork just hasn't caught up.
+Nobody announces this transition. There is no calendar invite called "You are now trusted with problems." It shows up in ordinary moments instead: a ticket has only two sentences, product brings you a complaint instead of a requirement, or the tech lead asks, "What do you think we should do?" and waits for your answer. Less structure in the input often means more trust in you, even if the paperwork has not caught up.
 
 {/* IMAGE PROMPT (trust-radius.png): Flat vector illustration, light background, soft shadows, 2-3 accent colors (purple, teal), no photorealism. Four concentric circles, smallest in the center, expanding outward. Label each ring exactly, spell exactly, from innermost to outermost: "Task", "Feature", "Problem", "Area". A small engineer figure stands in the center. Render each label exactly once. Do not render any other words. Do not print style instructions as text in the image. No duplicate labels, no typos. */}
 
@@ -59,7 +69,7 @@ Nobody announces this transition. There is no meeting where someone says "you ar
 
 Here's the uncomfortable part, and the reason this post looks so different from the fundamentals one: **almost none of the remaining growth is about writing code better.** The code was the entry fee. You still need it — everything below assumes you can build what you design — but the skills that expand your trust radius from here are scoping, sequencing, operating, judging, and communicating. That's the list this post walks through.
 
-**The cost:** you lose the comfort of clear instructions. Forever. The better you get, the less anyone tells you what to do — and the more it's your fault when the wrong thing gets built.
+**The cost:** clear instructions become less common. You will still get tickets, of course, but more of the work starts before the ticket exists. That freedom is useful; it also means you share responsibility when the team builds the wrong thing.
 
 ---
 
@@ -79,7 +89,7 @@ Take a real-shaped example from the wallet domain. Product says: *"We want users
 
 Notice what happened: one product sentence became five pieces, each with an owner-independent definition of done, and the risky assumptions (async confirmation, duplicate webhooks, reconciliation) surfaced *during decomposition* — not in week three as a surprise.
 
-The tool for the larger version of this is the **design doc**. Not a formality — a machine for being wrong early. A design doc that people can disagree with is doing its job: every objection raised on paper is an incident that didn't happen in production. If you find yourself avoiding writing the doc because someone might poke holes in it, that's exactly backwards. The holes are the product.
+For larger work, the practical tool is a **design doc**. I do not mean a ten-page template that nobody reads. One or two pages can be enough: the problem, the constraints, a couple of options, the trade-offs, and the choice. Its job is to make disagreement cheap. A question raised in a comment on Tuesday is much easier to handle than the same question appearing as an incident three weeks later.
 
 And the final piece: **cutting scope on purpose.** A mid-level engineer who can say "we ship pieces 1–4 now, reconciliation follows next sprint, and here's why that's safe" is doing senior work. Shipping 70% deliberately beats shipping 100% late — but only when you can articulate *which* 70% and why the missing 30% doesn't bite.
 
@@ -89,7 +99,7 @@ And the final piece: **cutting scope on purpose.** A mid-level engineer who can 
 
 ## Milestones — The Skill Devs Are Never Taught
 
-Here's a gap that almost nobody trains engineers for: most developers never deal with timelines. There's a project manager, or a tech lead, or a quarterly plan — and the timeline is something that happens *to* you. You get dates. You report status against dates someone else set.
+Here is a gap I did not see discussed much early in my career: many developers do not get to practice building timelines. A project manager, tech lead, or quarterly plan provides the dates, and your part is to report status against them. That works until somebody asks you, "How would you split this up, and when can we verify the first useful part?"
 
 Then people wonder why the engineers who grow fastest all seem to have this one ability: **breaking work into milestones with measurable outcomes.** It's not a coincidence, and it's not a PM skill wearing an engineering costume. Milestone design *is* engineering:
 
@@ -132,13 +142,15 @@ Put the scariest unknown in the **earliest** milestone, in the thinnest form tha
 
 Milestones make your progress legible without anyone having to ask. Think back to the trust radius: trust grows when people can *see* work coming back done. An engineer whose work is visible as a chain of verified checkpoints gets handed the next, bigger problem — not because of politics, but because handing them things is observably safe. The engineer whose status is a permanent "going well, about 80%" stays at the same radius for years, regardless of how good their code is.
 
-**The cost:** you become visibly wrong. A missed milestone is a miss everyone can see, on a date you set yourself. There's no hiding in "still in progress." That visibility feels risky — but invisible progress is worth almost nothing to your growth, so this is the single best trade on this page.
+**The cost:** your estimates and sequencing become visible. Sometimes you will miss a date you suggested yourself, and that is uncomfortable. The useful part is that a visible miss can be discussed and corrected early; "still in progress" gives the team much less to work with.
 
 ---
 
 ## Depth — Own a Slice End to End
 
 Breadth got you through early career: a bit of database, a bit of networking, a bit of everything, enough to function. The mid-level move is different: pick a slice of your system and know it **completely**.
+
+The fundamentals post already covers how to [read sequence diagrams and trace a flow](/blog/fundamentals-how-much-you-need-early-career-2026#sequence-diagrams--what-happens-when-a-payment-is-processed). The expectation changes here: you should be able to produce that map for a feature you own, then use it to explain where the flow can fail or change.
 
 For a wallet system, owning the top-up slice end to end means you can trace, from memory, everything that happens between the user tapping "confirm" and the balance changing: the API layer and its validation, the idempotency check, the PENDING transaction insert, the provider call and its timeout configuration, the webhook that confirms it, the state transition rules, the ledger entry, the cache invalidation, the analytics event. And at every hop, you know the failure behavior — what retries, what doesn't, where a duplicate can enter, where money could theoretically be lost or created.
 
@@ -154,7 +166,51 @@ Depth shows up in two other behaviors worth building deliberately:
 
 **Knowing why it is this way.** Every system carries decisions that look wrong until you know their history — the weird double-write, the field nobody dares rename, the retry count of exactly 7. Someone on the team knows which of these are load-bearing and which are fossils. Becoming that person for your slice is quiet, unglamorous work: reading old PRs, asking the people who were there, writing down what you learn. It also makes you the person consulted before anyone changes anything — which is what owning an area looks like from the inside.
 
-**The cost:** depth is slow, and it pays nothing in novelty. While you're reading a settlement reconciliation edge case for the third time, someone on your feed is posting about a shiny new framework. Depth doesn't demo well at meetups. It only shows up in the moments that matter — incidents, design reviews, the questions nobody else can answer.
+**The cost:** depth is slow, and it pays nothing in novelty. While you're reading a settlement reconciliation edge case for the third time, someone on your feed is posting about a shiny new framework. Depth is hard to show in a sprint demo. It tends to appear in less glamorous moments: an incident, a design review, or the afternoon when everyone is trying to understand why one retry setting is exactly seven.
+
+---
+
+## Designing for Change — Boundaries, Coupling, and Contracts
+
+Knowing a flow end to end is one skill. Shaping it so the next change stays local is another.
+
+Consider ordinary product work: changing an email provider should not require editing signup rules; adding a CSV export should not add another branch to one giant service; changing a database table should not silently change the public API response. When one requirement touches controllers, business rules, storage, integrations, and tests at once, the problem is usually not the number of files. It is that the system has no boundary around the thing that changes.
+
+{/* IMAGE PROMPT (change-boundaries.png): Simple flat vector conceptual illustration on a warm light background with soft shadows and teal, purple, and muted navy accents. Show a calm, protected central software module connected through clean plug-like interfaces to several replaceable outer modules. One small engineer replaces an outer module while the center remains unchanged. No text, labels, letters, numbers, code, logos, watermarks, duplicate figures, photorealism, or printed style instructions. */}
+
+![A stable software core with replaceable outer modules](/assets/images/blogs/mid-level-2026/change-boundaries.png)
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    R1["Requirement changes"] --> WIDE["Change spreads across\nController · Service · Database\nProvider · Tests"]
+    R2["Same requirement changes"] --> C["Stable contract"]
+    C --> LOCAL["Change stays inside\none adapter or module"]
+`}
+  size="medium"
+/>
+
+Three concepts help here:
+
+- **Coupling** asks how much one part must know about another. If business logic knows provider error codes or database column names, those details have leaked farther than they need to.
+- **Cohesion** asks whether rules that change together live together. Permission checks copied across five controllers are hard to change safely because one rule has five homes.
+- **Contracts** define what a module promises while hiding how it delivers that promise. A useful contract gives callers what they need without exposing the implementation they should not depend on.
+
+Patterns such as Adapter, Strategy, Facade, dependency inversion, and contract tests are tools for creating these boundaries. Do not start with the pattern name. Start with the change you expect. A boundary earns its maintenance cost when it contains that change; otherwise it is another layer the team has to understand.
+
+### Practice: review the blast radius of one change
+
+Take one requirement your team shipped recently and ask:
+
+1. How many modules changed?
+2. Which rule had to be updated in more than one place?
+3. Which infrastructure detail leaked into business or API code?
+4. Is this kind of change likely to happen again?
+5. What is the smallest interface or module boundary that would keep the next one local?
+
+You do not need to refactor the whole system. Find one repeated source of change, contain it, and see whether the next change becomes easier. That feedback is more useful than applying an architecture template everywhere.
+
+**The cost:** every boundary adds another concept, interface, and place to navigate. Too few boundaries make change spread everywhere; too many make simple work feel ceremonial. The judgment is choosing where change is expensive enough to deserve one.
 
 ---
 
@@ -176,6 +232,37 @@ Dashboards existing is not observability. The test is whether you can answer spe
 
 If answering any of these means grepping raw logs for an hour, the observability work *is* the engineering work — it's not a nice-to-have after the feature. Structured logs with a request ID that flows through every hop, metrics on the business operation (top-ups attempted, succeeded, failed — not just HTTP 200s), and traces across service boundaries. The fundamentals post called networking the failure vocabulary; observability is the failure *evidence*.
 
+### Debugging as hypothesis reduction
+
+Logs, metrics, and traces do not debug the system for you. The next skill is using that evidence without jumping between random fixes.
+
+{/* IMAGE PROMPT (debugging-hypothesis-reduction.png): Simple flat vector conceptual illustration on a warm light background with soft shadows and teal, purple, muted navy, and a small amber accent. Show many faint possible paths narrowing through a magnifying lens into one clear path, one fault marker, and a verified green check. Include one small engineer examining the paths. No text, labels, letters, numbers, code, dashboards, logos, watermarks, duplicate icons, photorealism, or printed style instructions. */}
+
+![Debugging narrows many possibilities into one verified cause](/assets/images/blogs/mid-level-2026/debugging-hypothesis-reduction.png)
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    S["Define the symptom"] --> SC["Narrow the scope"]
+    SC --> H["Form one hypothesis"]
+    H --> E["Check the cheapest evidence"]
+    E -->|"Disproved"| H
+    E -->|"Supported"| M["Mitigate or fix"]
+    M --> V["Verify and document"]
+`}
+  size="medium"
+/>
+
+A practical investigation looks like this:
+
+1. **Define the symptom precisely.** “The API is slow” is too broad. “Requests for accounts with more than 10,000 records exceed two seconds” gives you something to test.
+2. **Narrow the scope.** When did it start? Which version, region, tenant, request type, or data shape is affected? What still works?
+3. **Form one falsifiable hypothesis.** Write what you think is happening and what evidence would prove you wrong.
+4. **Check the cheapest evidence first.** Compare a working and failing request, inspect a trace, check deployment timing, run `EXPLAIN`, or use `git bisect`. Avoid changing three variables at once.
+5. **Verify recovery.** Confirm the original symptom is gone, watch for recurrence, and record which missing signal would have shortened the investigation.
+
+The fundamentals post gives you the individual tools—network failure vocabulary, database query plans, connection limits, and [external-dependency failure questions](/blog/fundamentals-how-much-you-need-early-career-2026#failure-modes--the-questions-you-must-ask). The mid-level step is combining them into a repeatable investigation when the answer is not obvious.
+
 ### Deploys and the rollback question
 
 Before any rollout, one question: **if this is wrong, how do we get back?** Sometimes the answer is "redeploy the previous version" — fine. But data makes it interesting. A schema change can't be un-deployed. The standard discipline for changing a live schema without downtime:
@@ -190,17 +277,26 @@ flowchart LR
 
 Expand, migrate, contract. Every phase is individually reversible, which is the whole point — at no moment is there a step you can't walk back. Renaming a column on a wallet transactions table with the naive `ALTER TABLE` approach means one bad deploy where old code writes to a column that no longer exists. The three-phase version is more work and completely boring. Boring is the goal.
 
+Before calling a change safe, run a short compatibility check:
+
+- Can old and new application versions run at the same time?
+- Can both versions read existing records?
+- Can the rollout stop halfway without corrupting data?
+- Is any backfill resumable and safe to run again?
+- What evidence proves the migration completed?
+- When is it safe to remove the old path?
+
 ### Incident behavior
 
 When production breaks, the order of operations is fixed: **stabilize first, understand second, prevent third.** Mitigate now (roll back, flip the flag, fail over) even before you fully understand the cause — a mitigated incident you don't understand yet beats a perfectly understood outage. Understanding comes after, and it gets written down as a postmortem focused on the system, not the person: what signals we missed, what guardrail was absent, what we change. The engineer who writes a clear, blameless postmortem after a rough day is doing one of the most senior-visible things there is.
 
-**The cost:** ownership of production means being on the hook — sometimes literally on call, always emotionally on call. When your slice breaks at a bad hour, "not my problem" stops being available to you. That weight is real, and it is exactly the weight that trust is made of.
+**The cost:** ownership of production means being on the hook — sometimes literally on call, sometimes simply being the person who follows the issue through the next morning. When your slice breaks, you cannot stop at "my code worked." You help stabilize it, understand it, and leave the system safer than you found it. That responsibility can be tiring, so healthy ownership also needs rotation, documentation, and a team that does not depend on one hero.
 
 ---
 
 ## Correctness Under Failure — The Senior Upgrade of Transactions
 
-The fundamentals post covered transactions and isolation levels. The mid-level upgrade is realizing that ACID protects you inside one database — and almost every interesting failure happens **between** systems, where no transaction spans the gap.
+The fundamentals post covered [transactions and isolation levels](/blog/fundamentals-how-much-you-need-early-career-2026#transactions-and-acid), [race conditions](/blog/fundamentals-how-much-you-need-early-career-2026#race-conditions-and-the-basic-patterns-to-prevent-them), and [message-queue delivery guarantees](/blog/fundamentals-how-much-you-need-early-career-2026#message-queues--asynchrony-and-decoupling). The mid-level upgrade is recognizing when those mechanisms interact: ACID protects you inside one database, while many interesting failures happen **between** systems, where no transaction spans the gap.
 
 These are domain facts of any money-adjacent system. Done wrong, each one costs real money:
 
@@ -232,7 +328,7 @@ sequenceDiagram
 
 **The money must add up — provably.** The final layer is reconciliation: a routine, automated check that your COMPLETED transactions match the provider's settlement records, that the sum of all ledger entries for a wallet equals its balance. Not because you expect bugs — because this is the mechanism that *finds* the bug you didn't expect, in days instead of quarters.
 
-**The cost:** this work is invisible when it succeeds. Nobody celebrates the double-charge that didn't happen; there's no demo for the race condition that can't occur. You're building negative space. The recognition arrives slowly and indirectly — as the reputation that things you build don't lose money.
+**The cost:** this work is quiet when it succeeds. Nobody sees the duplicate charge that never happened, and "the reconciliation still matches" is not an exciting demo. Keep the evidence anyway: tests, reconciliation results, incident trends, and clear runbooks. Reliability becomes easier to value when the team can see how it is maintained.
 
 ---
 
@@ -240,15 +336,15 @@ sequenceDiagram
 
 Everything so far has been learnable mechanics. This one is slower: **judgment** — making good calls when nobody knows the right answer and every option costs something.
 
-**Build vs buy.** The engineer's instinct is to build — it's more fun and looks free because your salary is already paid. The judgment call prices in what the naive comparison misses: building means owning maintenance, edge cases, security patches, and on-call *forever*. Payment providers exist because "moving money correctly" is a decade-deep problem; you integrate one and spend your building budget on what makes your product different. But *buy* isn't automatically right either — the domain that IS your product's edge is exactly the thing you shouldn't outsource. The skill isn't the answer; it's pricing the whole trade honestly.
+- **Build vs buy.** The engineer's instinct is to build — it's more fun and looks free because your salary is already paid. The judgment call prices in what the naive comparison misses: building means owning maintenance, edge cases, security patches, and on-call *forever*. Payment providers exist because "moving money correctly" is a decade-deep problem; you integrate one and spend your building budget on what makes your product different. But *buy* isn't automatically right either — the domain that IS your product's edge is exactly the thing you shouldn't outsource. The skill isn't the answer; it's pricing the whole trade honestly.
 
-**Boring technology.** For anything that must not lose data, the question isn't "what's the best tool" — it's **"what can this team operate correctly at 3am?"** PostgreSQL, a mainstream queue, a boring cache: their failure modes are documented, hiring for them is easy, and the answer to most problems is a search away. Every novel technology you adopt spends from a limited innovation budget — spend it where novelty actually buys you something.
+- **Boring technology.** For anything that must not lose data, the question isn't "what's the best tool" — it's **"what can this team operate correctly at 3am?"** PostgreSQL, a mainstream queue, a boring cache: their failure modes are documented, hiring for them is easy, and the answer to most problems is a search away. Every novel technology you adopt spends from a limited innovation budget — spend it where novelty actually buys you something.
 
-**When not to refactor.** Mid-level is the peak of the rewrite urge: you're now good enough to see everything wrong with the old code, but not yet scarred enough to know what the mess is protecting you from. Working code that's ugly encodes years of fixed edge cases — rewrite it and you get to rediscover them one incident at a time. I wrote a whole post on this — [The Rewrite Mindset](/blog/the-rewrite-mindset-when-its-worth-it-and-when-its-not) — so here, just the summary: refactor when the mess measurably slows current work; leave it when it's merely offensive to your taste.
+- **When not to refactor.** Mid-level is the peak of the rewrite urge: you're now good enough to see everything wrong with the old code, but not yet scarred enough to know what the mess is protecting you from. Working code that's ugly encodes years of fixed edge cases — rewrite it and you get to rediscover them one incident at a time. I wrote a whole post on this — [The Rewrite Mindset](/blog/the-rewrite-mindset-when-its-worth-it-and-when-its-not) — so here, just the summary: refactor when the mess measurably slows current work; leave it when it's merely offensive to your taste.
 
-**Recognizing good enough.** Some code needs to be bulletproof — the balance update, the idempotency path. Some code needs to exist by Thursday — the internal admin report. Applying bulletproof standards uniformly is not rigor; it's a failure to prioritize, and it silently spends correctness budget where correctness doesn't pay. Knowing *which* standard applies *where* is the judgment.
+- **Recognizing good enough.** Some code needs to be bulletproof — the balance update, the idempotency path. Some code needs to exist by Thursday — the internal admin report. Applying bulletproof standards uniformly is not rigor; it's a failure to prioritize, and it silently spends correctness budget where correctness doesn't pay. Knowing *which* standard applies *where* is the judgment.
 
-One tell that judgment is developing: your designs start getting simpler, and they ship with a list of things you deliberately did **not** do — with reasons. Junior complexity impresses juniors. Senior simplicity ships.
+One sign that judgment is developing is that your designs often get simpler. They also come with a short list of things you deliberately did **not** do, and why. This is less dramatic than a big architecture diagram, but it is usually much easier for a team to ship and operate.
 
 **The cost:** judgment means accountability for the road not taken. Execute someone else's decision and the decision's outcome belongs to them. Make the call — buy instead of build, defer instead of refactor — and when it turns out wrong, there's no ticket to point at. "I decided, and here's why" is a sentence you have to be able to say on your worst day, not just your best.
 
@@ -273,6 +369,37 @@ Levels 3 and 4 are where mid-level review lives, and they're exactly the questio
 
 The flip side matters equally: **producing reviewable work.** A 2,000-line PR gets a "LGTM" because no human can actually review it — which means it gets *no* review, which should worry you. Small PRs, one concern each, with a description that says *why* and calls out the part you're unsure about. Making your work easy to review properly is a form of respect for your reviewers and insurance for yourself.
 
+### Test the risk, not the method
+
+Coverage tells you which lines ran. It does not tell you whether the expensive failure was tested at the boundary where it can happen. The useful question is: **what are we afraid will break, and what is the smallest test that can prove it?**
+
+{/* IMAGE PROMPT (test-the-risk.png): Simple flat vector conceptual illustration on a warm light background with soft shadows and teal, purple, muted navy, and a small amber accent. Show one small engineer directing a focused inspection beam toward the fragile joint of a larger modular software structure. Reinforce that risky joint with a shield while low-risk pieces receive lighter checks. No text, labels, letters, numbers, test pyramids, code, logos, watermarks, duplicate figures, photorealism, or printed style instructions. */}
+
+![Testing effort focused on the most expensive failure risk](/assets/images/blogs/mid-level-2026/test-the-risk.png)
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    R["What risk are we testing?"] --> RULE["Pure business rule\nUnit test"]
+    R --> DB["Database or transaction\nIntegration test"]
+    R --> CONTRACT["Service contract\nContract test"]
+    R --> JOURNEY["Critical user journey\nSmall E2E test"]
+    R --> CONCURRENCY["Ordering or duplicates\nRepeated or concurrent test"]
+`}
+  size="medium"
+/>
+
+Match the test to the risk:
+
+- A pricing or permission rule usually needs a fast unit test.
+- A query, constraint, or transaction boundary should run against the real database engine.
+- An external integration needs a contract fixture, mock server, sandbox check, or consumer-driven contract.
+- A critical user journey may justify a small end-to-end test, but not every branch needs a browser.
+- Ordering, duplicate delivery, and race conditions need repeated or concurrent execution; a single happy-path call proves very little.
+- Legacy behavior you do not yet understand can be protected with characterization tests before refactoring.
+
+For one PR, identify the most expensive plausible failure, the boundary where it appears, which dependency must be real, and which can be replaced safely. That is a better testing strategy than adding mocks until the coverage number turns green.
+
 And one paragraph on the obvious 2026 point, as promised: an increasing share of code arriving in review — including your own PRs — started life generated. The review skill is identical; the *volume* is what changed. Generated code is confidently plausible, which makes level-2-through-4 review more valuable, not less. The engineers whose trust radius grows fastest right now are reviewing at level 4 regardless of who or what wrote the first draft. That's all this post needs to say about AI in review.
 
 **The cost:** great review work is slow, and it produces no commits with your name on them. A quarter of careful level-4 reviews will not show up in any personal metric — only in the team's incident count going down. You have to believe in that invisible ledger, because the payoff is real but unattributed.
@@ -281,19 +408,19 @@ And one paragraph on the obvious 2026 point, as promised: an increasing share of
 
 ## Making Your Work Legible — The People Layer
 
-Here's a fact that feels unfair until you accept it: **work that isn't legible to others barely counts.** Not because your manager is careless, but because nobody can trust, build on, or reward what they can't see. Legibility isn't self-promotion — it's engineering communication, and it runs on artifacts, the same ones this post has been accumulating:
+Here is an awkward workplace reality: **people cannot use work they cannot see or understand.** Your manager cannot plan around it, another engineer cannot build on it, and the next person on call cannot operate it. Making work legible is not the same as promoting yourself. It is ordinary engineering communication, and it runs on artifacts like the ones this post has been accumulating:
 
 {/* IMAGE PROMPT (legibility-artifacts.png): Flat vector illustration, light background, soft shadows, 2-3 accent colors (purple, teal), no photorealism. Four document cards arranged in a two-by-two grid, each card showing a few abstract text lines and one small icon (a diagram icon, a checklist icon, a warning-triangle icon, a flag icon respectively). Label each card exactly, spell exactly, one label per card: "Design Doc", "Runbook", "Postmortem", "Milestone Plan". Render each label exactly once. Do not render any other words. Do not print style instructions as text in the image. No duplicate labels, no typos. */}
 
 ![The artifacts that make engineering work legible](/assets/images/blogs/mid-level-2026/legibility-artifacts.png)
 
-**Write things down.** The decision made in a call yesterday is gone in a week unless it lands somewhere permanent. The senior habit is reflexive: a design decision becomes three sentences in the doc — what we chose, what we rejected, why. A debugging session that took a day becomes a short runbook, and next time it takes ten minutes — for anyone. The message that answers a question in the team channel instead of a DM answers it for everyone watching, twice over when it's written clearly.
+- **Write things down.** The decision made in a call yesterday is gone in a week unless it lands somewhere permanent. The senior habit is reflexive: a design decision becomes three sentences in the doc — what we chose, what we rejected, why. A debugging session that took a day becomes a short runbook, and next time it takes ten minutes — for anyone. The message that answers a question in the team channel instead of a DM answers it for everyone watching, twice over when it's written clearly.
 
-**Disagree without drama.** You will watch designs you disagree with move forward. The junior moves are silence or a complaint at lunch. The move that builds trust has a shape: state the concern concretely (*"if the provider webhook arrives before our transaction commits, this design double-credits — can we walk through that path?"*), offer the alternative with its own honest costs, and — this is the senior half — once the decision is made, commit to it fully, even when it went the other way. Being wrong gracefully in a design discussion costs you nothing; being right ungracefully costs you the next discussion.
+- **Disagree without drama.** You will watch designs you disagree with move forward. The junior moves are silence or a complaint at lunch. The move that builds trust has a shape: state the concern concretely (*"if the provider webhook arrives before our transaction commits, this design double-credits — can we walk through that path?"*), offer the alternative with its own honest costs, and — this is the senior half — once the decision is made, commit to it fully, even when it went the other way. Being wrong gracefully in a design discussion costs you nothing; being right ungracefully costs you the next discussion.
 
-**Raise the slip early.** The milestone is Thursday and on Monday you already know it won't hold. Saying so on Monday is mildly uncomfortable and gives everyone options — cut scope, move help, adjust the date. Saying so on Thursday is a crisis with no options left. Bad news early is a gift; bad news late is damage. Engineers who consistently surface slips early get *more* trust, not less — because everyone learns that with you, silence reliably means things are fine.
+- **Raise the slip early.** The milestone is Thursday and on Monday you already know it will not hold. A useful update sounds like: "The provider sandbox is still blocking the end-to-end test. If it is not resolved by Tuesday afternoon, we should either move the demo or show the stubbed path." That message is uncomfortable, but it gives the team options. Waiting until Thursday removes most of them.
 
-**Unblock juniors — with questions.** Fifteen of your minutes can save a junior's entire day, and how you spend them matters. Handing over the answer fixes today. Walking through *how you'd find* the answer — what you'd check first, why, what the error actually says — fixes every future instance. The measure of your seniority is not what you can do alone; it's what stops being hard for the people around you.
+- **Unblock juniors — with questions.** Fifteen of your minutes can save a junior's entire day, and how you spend them matters. Handing over the answer fixes today. Walking through *how you'd find* the answer — what you'd check first, why, what the error actually says — fixes every future instance. The measure of your seniority is not what you can do alone; it's what stops being hard for the people around you.
 
 **The cost:** hours that produce no code. The doc, the review comments, the fifteen minutes, the runbook — a growing share of your best work stops being measurable in commits at all. Early on this feels like falling behind as an engineer. It isn't. It's what the multiplier levels actually look like from the inside.
 
@@ -329,7 +456,9 @@ It also transforms how you argue for technical work — the most immediately pra
 
 A post about engineering in 2026 owes you one honest paragraph on this, so here it is.
 
-Nothing in this post is generated by a model. Scoping a problem, sequencing risk into milestones, owning a slice, carrying production, making judgment calls, reviewing at level 4, making work legible, pricing decisions in business cost — this is the work that surrounds the code, and it's exactly the work that became *more* valuable as generating the code itself got cheap. The bar didn't move because of a tool; the bar moved *up the stack*, and this post is a map of the stack it moved to.
+AI can help draft a ticket, summarize logs, sketch a test, or challenge a design. I use tools where they help too. But scoping the problem, deciding which risk to test first, owning the production result, and explaining the trade-off to the team still need an accountable engineer. As code becomes cheaper to produce, this surrounding work takes up more of the job — and more of the bar.
+
+This also changes the risk for teams that rely heavily on mid-level execution. A coding agent can let one engineer produce a much larger change, much faster, without automatically improving that engineer's understanding of the surrounding system. The answer is not to block the tools or demand that everyone become senior overnight. The answer is a more controllable path to production: clear ownership, review boundaries, scoped permissions, automated checks, traceable agent actions, staged rollouts, and a rollback path. Large companies already use governance to let many people ship safely; coding agents make that governance more important because the amount of change one person can create has grown.
 
 I've written separately about the workflow side — [how engineering culture shifts toward orchestration](/blog/the-shift-from-code-to-orchestration-building-ai-native-engineering-culture) and [what the career landscape looks like](/blog/the-future-of-software-engineering-career) — so I won't repeat it here. For this post, one sentence carries everything: **the parts of the job described above were never about typing, which is why they're the parts still setting the bar.**
 
@@ -339,7 +468,7 @@ I've written separately about the workflow side — [how engineering culture shi
 
 Time to address the anxiety honestly, because pretending it doesn't exist would make everything above less credible.
 
-Yes, the market is competitive. Hiring bars moved up, teams run leaner, and mid-level is the widest part of the pyramid — the level with the most people and the most overlap in skills. That's the situation as it is, and no mindset post changes it.
+Yes, the market is competitive. Hiring bars moved up, teams run leaner, and mid-level is the widest part of the pyramid — the level with the most people and the most overlap in skills. Senior is a wide band too: the title alone does not tell you the size of the system, the decisions owned, or the support available. That wide range is why comparing titles across job listings can be misleading. Compare the expected behavior, scope, and operating context instead. That's the situation as it is, and no mindset post changes it.
 
 But here's what the anxiety gets wrong, and it matters: **the bar described in this post lives in you, not in a badge.** Every skill above — decomposing ambiguity, milestone thinking, production ownership, correctness under failure, judgment, legibility — is fully portable. None of it requires a famous employer to build, and none of it stays behind when you leave.
 
@@ -355,27 +484,24 @@ And the honest limit of a blog post: I can't decide your future from here, and I
 
 ---
 
-## A Realistic Path — Artifacts, Not Courses
+## A Realistic Path — Start With Work You Already Own
 
-The fundamentals post gave a study path; the equivalent here can't be one, because nothing above lives in a course. It lives in **artifacts produced on your real system, at work, starting now.** Five, one per month:
+The earlier version of this section suggested a postmortem and a migration plan. On reflection, that asks for opportunities many engineers cannot create for themselves. You may not have an incident worth documenting, permission to plan a schema migration, or even a formal design-doc process. A useful path should work in almost any company without waiting for the perfect project.
 
-{/* IMAGE PROMPT (artifact-path-roadmap.png): Flat vector illustration, light background, soft shadows, 2-3 accent colors (purple, teal), no photorealism. A gently winding path from bottom left to top right with five milestone markers along it, evenly spaced. Label each marker exactly, spell exactly, one label per marker, in this order from start to end: "Month 1: Design Doc", "Month 2: Milestone Plan", "Month 3: Postmortem", "Month 4: Migration Plan", "Month 5: Level-4 Review". A small star shines at the top right end of the path. Render each label exactly once. Do not render any other words. Do not print style instructions as text in the image. No duplicate labels, no typos. */}
+Start with one system, service, or feature that you already touch. Then repeat this four-step loop:
 
-![Five months, five artifacts on your real system](/assets/images/blogs/mid-level-2026/artifact-path-roadmap.png)
+{/* IMAGE PROMPT (ownership-practice-loop.png): Flat vector illustration, light background, soft shadows, 2-3 accent colors (purple, teal), no photorealism. Four simple connected cards forming a clockwise loop. Label each card exactly once, spell exactly, in this order: "DESCRIBE", "BREAK DOWN", "PRIORITIZE", "SHARE & ADJUST". Add one small engineer figure in the center. Render each label exactly once. Do not render any other words. Do not print style instructions as text in the image. No duplicate labels, no typos. */}
 
-**Month 1 — a design doc** for something you'd normally just start coding. One page: the problem, two options, the trade-offs, your pick, what you're deliberately not doing. Share it and invite disagreement. The discomfort of the first one is precisely the "thinking made public" cost from earlier — pay it small, on purpose, before a big design forces you to pay it large.
+![A practical ownership loop: describe, break down, prioritize, and adjust](/assets/images/blogs/mid-level-2026/ownership-practice-loop.png)
 
-**Month 2 — a milestone plan** for your next feature. Three or four checkpoints, each verifiable by demo, test, or metric — scariest unknown first. Share it before anyone asks. This is the fastest trust-radius move on this list, because it's visible immediately.
+1. **Describe what you own.** Pick one slice and explain it in plain language: what starts the flow, which components it touches, where data changes, what can fail, how you would notice, and how you would recover. This can be one page, a diagram, or a README. The format matters less than whether another engineer can follow it.
+2. **Break down one larger task.** Take the next feature or problem that feels too large for one ticket. Split it into pieces with clear boundaries and a checkable definition of done. If the work still cannot be explained piece by piece, keep breaking it down before coding.
+3. **Prioritize the pieces.** Ask which piece carries the most uncertainty, which blocks the others, which creates user value, and which is easiest to reverse. Propose an order and explain why. You do not need authority over the whole roadmap; prioritizing your own slice is already useful practice.
+4. **Share, then adjust.** Put the breakdown and proposed order somewhere your team can see. As you learn, update it: what changed, what is blocked, and what decision is needed. The goal is not to predict everything on day one. The goal is to make the work understandable while it moves.
 
-**Month 3 — a postmortem writeup** for any incident, even a small one. What happened, what signals were missed, what changes — system-focused, zero blame. If your team has no incidents worth writing up, take a near-miss; they're free incidents.
+If your job later gives you a postmortem, migration, or large design opportunity, take it. Those are valuable practice, but they are optional extensions of the same loop—not prerequisites. The loop above can start with the work already on your desk this week.
 
-**Month 4 — a migration plan on paper.** Take a schema change your team will eventually need and write the expand-migrate-contract sequence: order of operations, verification at each step, the rollback story for each phase. You'll learn more about your data layer in one plan than in a quarter of feature work.
-
-**Month 5 — a level-4 review pass** on an already-merged PR. Only operational questions: what happens when this times out, what if two run at once, how would we notice it failing. Write down what you find. Then start asking those questions on live PRs.
-
-Five months, five artifacts, all on the system you already work on. Each one is simultaneously practice, a visible signal of the mindset this post describes, and — not a small thing — exactly the material that makes your next design discussion or performance conversation concrete instead of vibes.
-
-And the honesty note, same as last time: I have 7 years of experience. This post describes the mid-to-senior stretch because I've lived it and watched it closely; beyond that, the paths fork too much for me to map honestly, and the previous post already said what I believe about that — from there, self-reflection is the most reliable tool you have.
+And the honesty note, same as last time: I have 7 years of experience. This post describes the mid-to-senior stretch because I've lived it and watched it closely; beyond that, the paths fork too much for me to map honestly. From there, self-reflection is the most reliable tool I know.
 
 ---
 
