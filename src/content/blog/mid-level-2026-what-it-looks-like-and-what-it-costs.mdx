@@ -144,6 +144,10 @@ For a wallet system, owning the top-up slice end to end means you can trace, fro
 
 That last phrase is the test. **In any money system, the deep question is always: where can value appear or disappear?** If you can answer that for your slice, you own it. If you can't, you work near it.
 
+{/* IMAGE PROMPT (depth-own-a-slice.png): Flat vector illustration, light background, soft shadows, 2-3 accent colors (purple, teal), no photorealism. A software system drawn as four horizontal stacked layers, labeled exactly, spell exactly, one label per layer, top to bottom: "API", "Service", "Database", "Provider". The layers are drawn in muted, faded colors. One vertical slice cuts down through all four layers, highlighted in a bright accent color so it stands out, labeled exactly once at the top of the slice: "Your Slice". A small magnifying glass icon hovers over the highlighted slice. Render each label exactly once. Do not render any other words. Do not print style instructions as text in the image. No duplicate labels, no typos. */}
+
+![Owning one vertical slice through every layer](/assets/images/blogs/mid-level-2026/depth-own-a-slice.png)
+
 Depth shows up in two other behaviors worth building deliberately:
 
 **Reading the source of your dependencies.** At some point the documentation runs out — the ORM does something odd with connection reuse, the HTTP client retries when you didn't ask it to, the queue library acks earlier than you assumed. Mid-level engineers file an issue and wait. The ones growing past it open the library's source and find out. It's almost never as hard as it looks, and it compounds: every trip into a dependency's internals makes the next one faster.
@@ -157,6 +161,10 @@ Depth shows up in two other behaviors worth building deliberately:
 ## Production Ownership — Done Means Observable
 
 Early career, "done" means merged and deployed. The senior definition is stricter: **done means running in production, observable, and you know how you'd roll it back.**
+
+{/* IMAGE PROMPT (done-means-observable.png): Flat vector illustration, light background, soft shadows, 2-3 accent colors (purple, teal), no photorealism. Four ascending steps from left to right, each step taller than the previous. Label each step exactly, spell exactly, one label per step, left to right: "Merged", "Deployed", "Observable", "Rollback-ready". The first two steps are drawn in muted colors, the last two in bright accent colors. A small flag stands on the tallest final step. Render each label exactly once. Do not render any other words. Do not print style instructions as text in the image. No duplicate labels, no typos. */}
+
+![Done means observable and rollback-ready, not just merged](/assets/images/blogs/mid-level-2026/done-means-observable.png)
 
 ### Observability that answers questions
 
@@ -275,6 +283,10 @@ And one paragraph on the obvious 2026 point, as promised: an increasing share of
 
 Here's a fact that feels unfair until you accept it: **work that isn't legible to others barely counts.** Not because your manager is careless, but because nobody can trust, build on, or reward what they can't see. Legibility isn't self-promotion — it's engineering communication, and it runs on artifacts, the same ones this post has been accumulating:
 
+{/* IMAGE PROMPT (legibility-artifacts.png): Flat vector illustration, light background, soft shadows, 2-3 accent colors (purple, teal), no photorealism. Four document cards arranged in a two-by-two grid, each card showing a few abstract text lines and one small icon (a diagram icon, a checklist icon, a warning-triangle icon, a flag icon respectively). Label each card exactly, spell exactly, one label per card: "Design Doc", "Runbook", "Postmortem", "Milestone Plan". Render each label exactly once. Do not render any other words. Do not print style instructions as text in the image. No duplicate labels, no typos. */}
+
+![The artifacts that make engineering work legible](/assets/images/blogs/mid-level-2026/legibility-artifacts.png)
+
 **Write things down.** The decision made in a call yesterday is gone in a week unless it lands somewhere permanent. The senior habit is reflexive: a design decision becomes three sentences in the doc — what we chose, what we rejected, why. A debugging session that took a day becomes a short runbook, and next time it takes ten minutes — for anyone. The message that answers a question in the team channel instead of a DM answers it for everyone watching, twice over when it's written clearly.
 
 **Disagree without drama.** You will watch designs you disagree with move forward. The junior moves are silence or a complaint at lunch. The move that builds trust has a shape: state the concern concretely (*"if the provider webhook arrives before our transaction commits, this design double-credits — can we walk through that path?"*), offer the alternative with its own honest costs, and — this is the senior half — once the decision is made, commit to it fully, even when it went the other way. Being wrong gracefully in a design discussion costs you nothing; being right ungracefully costs you the next discussion.
@@ -347,6 +359,10 @@ And the honest limit of a blog post: I can't decide your future from here, and I
 
 The fundamentals post gave a study path; the equivalent here can't be one, because nothing above lives in a course. It lives in **artifacts produced on your real system, at work, starting now.** Five, one per month:
 
+{/* IMAGE PROMPT (artifact-path-roadmap.png): Flat vector illustration, light background, soft shadows, 2-3 accent colors (purple, teal), no photorealism. A gently winding path from bottom left to top right with five milestone markers along it, evenly spaced. Label each marker exactly, spell exactly, one label per marker, in this order from start to end: "Month 1: Design Doc", "Month 2: Milestone Plan", "Month 3: Postmortem", "Month 4: Migration Plan", "Month 5: Level-4 Review". A small star shines at the top right end of the path. Render each label exactly once. Do not render any other words. Do not print style instructions as text in the image. No duplicate labels, no typos. */}
+
+![Five months, five artifacts on your real system](/assets/images/blogs/mid-level-2026/artifact-path-roadmap.png)
+
 **Month 1 — a design doc** for something you'd normally just start coding. One page: the problem, two options, the trade-offs, your pick, what you're deliberately not doing. Share it and invite disagreement. The discomfort of the first one is precisely the "thinking made public" cost from earlier — pay it small, on purpose, before a big design forces you to pay it large.
 
 **Month 2 — a milestone plan** for your next feature. Three or four checkpoints, each verifiable by demo, test, or metric — scariest unknown first. Share it before anyone asks. This is the fastest trust-radius move on this list, because it's visible immediately.
@@ -366,6 +382,10 @@ And the honesty note, same as last time: I have 7 years of experience. This post
 ## Closing — Every Cost Is a Transfer
 
 Look back at the costs this post collected: the comfort of clear instructions, the safety of private thinking, the option to be invisibly late, the dopamine of novelty, freedom from the pager, credit measurable in commits, the technically perfect work not done. Line them up and a pattern is hard to miss — **every single one is a piece of comfort, and what you receive for each is a piece of trust.** That's the entire transaction behind the word "senior." The title is what companies call the accumulated trust; the costs above are how it's actually paid for. There is no version where you keep all the comfort and receive the trust anyway.
+
+{/* IMAGE PROMPT (comfort-trust-transfer.png): Flat vector illustration, light background, soft shadows, 2-3 accent colors (purple, teal), no photorealism. A classic two-pan balance scale in the center. The left pan holds a soft cushion icon and is positioned higher. The right pan holds a shield icon and is positioned lower, as if heavier. Label the left pan exactly once: "Comfort". Label the right pan exactly once: "Trust". A small arrow curves from the left pan toward the right pan, suggesting transfer. Render each label exactly once. Do not render any other words. Do not print style instructions as text in the image. No duplicate labels, no typos. */}
+
+![Every cost is a transfer from comfort to trust](/assets/images/blogs/mid-level-2026/comfort-trust-transfer.png)
 
 The good news: nothing here requires permission. No manager assigns you milestone thinking. No promotion committee approves you writing a design doc. Every behavior in this post is available to you on Monday, at whatever company you're already at, on whatever system you already work on.
 
