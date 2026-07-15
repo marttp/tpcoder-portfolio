@@ -75,9 +75,9 @@ Here's the uncomfortable part, and the reason this post looks so different from 
 
 ## From Ticket to Problem — You Write the Tickets Now
 
-The fundamentals post taught reading a ticket: how large is this, what are the subproblems, how do you frame each one in a plain sentence. At mid-level, that skill flips direction. You're no longer the person receiving well-shaped tickets. You're the person **producing** them — for your team, for juniors, and for your future self.
+The fundamentals post taught reading a ticket: how large is this, what are the subproblems, how do you frame each one in a plain sentence. At mid-level, that skill flips direction. You're no longer the person receiving well-shaped tickets. You're the person **creating** them — for your team, for juniors, and for your future self.
 
-This is harder than it sounds, for one specific reason: decomposing work for *yourself* lets you keep half the plan in your head. Decomposing work for *other people* forces everything out of your head. The boundaries between tasks have to be explicit. The interfaces between pieces have to be named. "Done" has to be defined per piece, in a way that the person doing it can check without asking you.
+This is harder than it sounds: decomposing work for *yourself* lets you keep half the plan in your head. Decomposing work for *other people* forces everything out of your head. The boundaries between tasks have to be explicit. The interfaces between pieces have to be named. "Done" has to be defined per piece, in a way that the person doing it can check without asking you.
 
 Take a real-shaped example from the wallet domain. Product says: *"We want users to top up their wallet from a linked bank account."* One sentence. Turning that into work your team can execute means producing something like:
 
@@ -87,11 +87,11 @@ Take a real-shaped example from the wallet domain. Product says: *"We want users
 4. **Webhook handling for async confirmation** — because bank transfers don't confirm instantly. Done when: a replayed webhook doesn't double-credit.
 5. **Reconciliation report** — daily check that our COMPLETED sum matches the provider's settlement file. Done when: the report runs and a deliberately injected mismatch gets flagged.
 
-Notice what happened: one product sentence became five pieces, each with an owner-independent definition of done, and the risky assumptions (async confirmation, duplicate webhooks, reconciliation) surfaced *during decomposition* — not in week three as a surprise.
+Notice what happened: one product sentence became five pieces, each with an owner-independent definition of done, and the assumptions (async confirmation, duplicate webhooks, reconciliation) surfaced *during decomposition* — not as a surprise down the road.
 
-For larger work, the practical tool is a **design doc**. I do not mean a ten-page template that nobody reads. One or two pages can be enough: the problem, the constraints, a couple of options, the trade-offs, and the choice. Its job is to make disagreement cheap. A question raised in a comment on Tuesday is much easier to handle than the same question appearing as an incident three weeks later.
+For larger work, the practical tool is a **design doc**. I do not mean a ten-page template that nobody reads. One or two pages can be enough: the problem, the constraints, a couple of options, the trade-offs, and the choice. Its job is to make disagreement cheap. A question raised in a comment early in the week is much easier to handle than the same question appearing as an incident three weeks later.
 
-And the final piece: **cutting scope on purpose.** A mid-level engineer who can say "we ship pieces 1–4 now, reconciliation follows next sprint, and here's why that's safe" is doing senior work. Shipping 70% deliberately beats shipping 100% late — but only when you can articulate *which* 70% and why the missing 30% doesn't bite.
+And the final piece: **cutting scope on purpose.** A mid-level engineer who can say "we ship pieces 1–4 now, reconciliation follows next sprint, and here's why that's safe — it won't fall apart" is doing senior work. Shipping 70% deliberately beats shipping 100% late — but only when you can articulate *which* 70% and why the missing 30% doesn't bite.
 
 **The cost:** your thinking becomes public and criticizable. A plan in your head can't be wrong out loud. A ticket breakdown, a design doc, a scope cut — those have your name on them, and people will disagree with them. That exposure is the point, and it never fully stops being uncomfortable.
 
