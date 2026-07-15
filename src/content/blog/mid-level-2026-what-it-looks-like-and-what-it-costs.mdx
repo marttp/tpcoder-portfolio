@@ -122,19 +122,18 @@ A milestone is verified by a **demo**, a **passing test someone else can run**, 
 
 ### Sequencing is risk management
 
-The instinct everyone starts with: do the comfortable, well-understood work first, and leave the scary unknown — the external provider, the data migration, the new infrastructure — for the end. It feels like momentum. It's actually the worst possible order, because the thing most likely to explode your timeline is the thing you learn about last.
+There's no universally right order here — it depends on your working style, and reasonable engineers land on different answers. But it's worth being honest about the actual tradeoff between the two instincts:
 
-<MermaidDiagram
-  chart={`
-flowchart TD
-    subgraph Comfort["Comfortable order — risk discovered last"]
-        C1["Week 1-2: CRUD, models, UI\nfamiliar work, feels fast"] --> C2["Week 3: state machine\nstill fine"] --> C3["Week 4: bank provider integration\nsurprise: async-only confirmation\nredesign needed"] --> C4["Week 5-7: rework everything\ntimeline exploded"]
-    end
-    subgraph Senior["Risk-first order — risk discovered early"]
-        S1["Week 1: thinnest possible path\nthrough the bank sandbox\nlearn how confirmation really works"] --> S2["Week 2: state machine designed\naround reality, not assumption"] --> S3["Week 3-4: CRUD, UI, polish\nno surprises left"]
-    end
-`}
-/>
+| | Familiar work first | Unfamiliar work first |
+|---|---|---|
+| What it feels like | Momentum. Visible progress in week one. | Slower start. Less to show early on. |
+| When you discover the real risk | Late — often after the rest of the plan is already built on top of a wrong assumption. | Early — while there's still time to change direction. |
+| Worst case | The unknown turns out harder than expected in week four, and everything built on the wrong assumption gets reworked. | You get stuck early. But you find out early, too. |
+| Best case | Nothing hides. Either you got lucky, or the "unfamiliar" part genuinely wasn't risky. | The wall you hit becomes a known, solvable problem in week one — not a surprise in week five. |
+
+My honest recommendation: attack the part you're unfamiliar with first. Not because the familiar work is worthless — it's because familiar work gets zero benefit from being done early. You already know you can finish it fast, whether you do it in week one or week four. The unfamiliar part is the only place real risk hides, so that's the only place front-loading actually pays off.
+
+The practical version of this isn't "suffer through the scary part alone for a week before saying anything." It's: try the unfamiliar part first. The moment you hit a wall you can't get past on your own, ask. Then, while you wait for an answer, go finish the familiar work you already know you can complete. You're never sitting blocked — you're just always working on whichever piece happens to be unblocked at that moment.
 
 Put the scariest unknown in the **earliest** milestone, in the thinnest form that touches reality. For the wallet top-up: the first milestone is not the data model — it's one hardcoded request making it through the bank's sandbox and one confirmation coming back. That single spike answers the question that decides the whole design.
 
