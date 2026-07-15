@@ -131,7 +131,7 @@ There's no universally right order here — it depends on your working style, an
 | Worst case | The unknown turns out harder than expected, and everything built on the wrong assumption gets reworked. | You get stuck early. But you find out early, too. |
 | Best case | Nothing hides. Either you got lucky, or the "unfamiliar" part genuinely wasn't risky. | The wall you hit becomes a known, solvable problem early — not a late surprise. |
 
-My honest recommendation: attack the part you're unfamiliar with first. Not because the familiar work is worthless — it's because familiar work gets zero benefit from being done early. You already know you can finish it fast, whether you do it in week one or week four. The unfamiliar part is the only place real risk hides, so that's the only place front-loading actually pays off.
+My honest recommendation: attack the part you're unfamiliar with first. Not because the familiar work is worthless — it's because familiar work gets zero benefit from being done early. You already know you can finish it fast, whether you do it now or later. The unfamiliar part is the only place real risk hides, so that's the only place front-loading actually pays off.
 
 The practical version of this isn't "suffer through the scary part alone for a week before saying anything." It's: try the unfamiliar part first. The moment you hit a wall you can't get past on your own, ask. Then, while you wait for an answer, go finish the familiar work you already know you can complete. You're never sitting blocked — you're just always working on whichever piece happens to be unblocked at that moment.
 
@@ -341,7 +341,7 @@ Everything so far has been learnable mechanics. This one is slower: **judgment**
 
 - **When not to refactor.** Mid-level is the peak of the rewrite urge: you're now good enough to see everything wrong with the old code, but not yet scarred enough to know what the mess is protecting you from. Working code that's ugly encodes years of fixed edge cases — rewrite it and you get to rediscover them one incident at a time. I wrote a whole post on this — [The Rewrite Mindset](/blog/the-rewrite-mindset-when-its-worth-it-and-when-its-not) — so here, just the summary: refactor when the mess measurably slows current work; leave it when it's merely offensive to your taste.
 
-- **Recognizing good enough.** Some code needs to be bulletproof — the balance update, the idempotency path. Some code needs to exist by Thursday — the internal admin report. Applying bulletproof standards uniformly is not rigor; it's a failure to prioritize, and it silently spends correctness budget where correctness doesn't pay. Knowing *which* standard applies *where* is the judgment.
+- **Recognizing good enough.** Some code needs to be bulletproof — the balance update, the idempotency path. Some code just needs to exist by a deadline — the internal admin report. Applying bulletproof standards uniformly is not rigor; it's a failure to prioritize, and it silently spends correctness budget where correctness doesn't pay. Knowing *which* standard applies *where* is the judgment.
 
 One sign that judgment is developing is that your designs often get simpler. They also come with a short list of things you deliberately did **not** do, and why. This is less dramatic than a big architecture diagram, but it is usually much easier for a team to ship and operate.
 
@@ -417,7 +417,7 @@ Here is an awkward workplace reality: **people cannot use work they cannot see o
 
 - **Disagree without drama.** You will watch designs you disagree with move forward. The junior moves are silence or a complaint at lunch. The move that builds trust has a shape: state the concern concretely (*"if the provider webhook arrives before our transaction commits, this design double-credits — can we walk through that path?"*), offer the alternative with its own honest costs, and — this is the senior half — once the decision is made, commit to it fully, even when it went the other way. Being wrong gracefully in a design discussion costs you nothing; being right ungracefully costs you the next discussion.
 
-- **Raise the slip early.** The milestone is Thursday and on Monday you already know it will not hold. A useful update sounds like: "The provider sandbox is still blocking the end-to-end test. If it is not resolved by Tuesday afternoon, we should either move the demo or show the stubbed path." That message is uncomfortable, but it gives the team options. Waiting until Thursday removes most of them.
+- **Raise the slip early.** The milestone is due at the end of the week, and early on you already know it will not hold. A useful update sounds like: "The provider sandbox is still blocking the end-to-end test. If it is not resolved soon, we should either move the demo or show the stubbed path." That message is uncomfortable, but it gives the team options. Waiting until the deadline removes most of them.
 
 - **Unblock juniors — with questions.** Fifteen of your minutes can save a junior's entire day, and how you spend them matters. Handing over the answer fixes today. Walking through *how you'd find* the answer — what you'd check first, why, what the error actually says — fixes every future instance. The measure of your seniority is not what you can do alone; it's what stops being hard for the people around you.
 
@@ -512,7 +512,7 @@ Look back at the costs this post collected: the comfort of clear instructions, t
 
 ![Every cost is a transfer from comfort to trust](/assets/images/blogs/mid-level-2026/comfort-trust-transfer.png)
 
-The good news: nothing here requires permission. No manager assigns you milestone thinking. No promotion committee approves you writing a design doc. Every behavior in this post is available to you on Monday, at whatever company you're already at, on whatever system you already work on.
+The good news: nothing here requires permission. No manager assigns you milestone thinking. No promotion committee approves you writing a design doc. Every behavior in this post is available to you right now, at whatever company you're already at, on whatever system you already work on.
 
 So, the same closing device as last time, one rung up. Find one decision in the system you work on — a schema shape, a retry policy, a build-vs-buy call — that you could not defend to a skeptical senior engineer if they asked you *why is it like this, and what happens when it fails?* Not a topic. A specific decision, in your actual system. Then build the defense: trace it, understand what it protects, write one page. Whether the decision turns out right or wrong matters less than you'd think. The engineer who can defend the decisions in their system is the engineer who gets handed the next one.
 
