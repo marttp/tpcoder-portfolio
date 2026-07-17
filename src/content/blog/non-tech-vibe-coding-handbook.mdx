@@ -1,0 +1,1172 @@
+---
+title: "The Non-Tech Vibe-Coding Handbook & Fundamentals"
+description: "A practical handbook for domain experts building software with AI: business models, architecture, data, APIs, security, testing, prompting, scaling, and the tools that can handle each part."
+pubDate: "2026-07-17"
+tags:
+  ["Vibe Coding", "Software Engineering"]
+heroImage: "/assets/images/blogs/non-tech-vibe-coding-handbook/hero-banner.png"
+language: "en"
+translationSlug: "non-tech-vibe-coding-handbook-th"
+servicesNote: true
+---
+
+import MermaidDiagram from "../../components/blog/MermaidDiagram.astro";
+
+{/* IMAGE PROMPT (hero-banner.png): Flat vector illustration, light background, soft shadows, 2-3 accent colors (purple, teal), no photorealism. A wide hero banner. On the left, a person in casual clothes (not an engineer stereotype) stands at a workbench assembling a small glowing app window out of building blocks. On the right, faint outlines of larger structures behind the app window: a cylinder shape, a cloud shape, a shield shape, suggesting hidden infrastructure. Render the text "VIBE-CODING HANDBOOK" exactly once, in the upper left area, spell exactly. Do not render any other words. Do not print style instructions as text in the image. No duplicate labels, no typos. */}
+
+![Non-tech vibe-coding handbook hero banner](/assets/images/blogs/non-tech-vibe-coding-handbook/hero-banner.png)
+
+In [the mid-level post](/blog/mid-level-2026-what-it-looks-like-and-what-it-costs), I wrote about a group I did not cover: people outside software engineering who know their work well and can now build useful software with AI. I said that group needs a different post. This is that post.
+
+Maybe you work in finance, operations, HR, design, sales, education, or you run your own business. You have watched AI coding tools get good enough that you can describe a problem in plain language and receive working software back. You have probably already built something — a small tool, an automation, a dashboard — and it works. That moment is new. Ten years ago, the usual way to get custom software was to hire someone or learn to program for months first.
+
+But there is a gap. Some tools guide you step by step. [Lovable](https://lovable.dev/), for example, can help you add [Google login](https://developers.google.com/identity) or [Stripe](https://stripe.com/) payment. With a more open tool like [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview), you must ask for each part. **You cannot ask for something if you do not know it exists.** In Thai builder groups, I see the same questions: How do I put this online? What is [GitHub](https://github.com/)? Where should I keep my data? These are good questions. This post will answer them.
+
+I will use tech words because you will see them in AI tools. But I will explain each word with simple steps and work examples. I will cover data structures, algorithms, APIs, architecture, and concurrency. You do not need to study them like a Computer Science student. You only need to know what problem each idea solves.
+
+If a section feels obvious to you, skip it. This is a handbook, not a novel. Read the business and architecture sections once; come back to the database, security, testing, prompting, and market sections when the project reaches them.
+
+One note about me: I am a backend engineer with around seven years of work, mostly in payment and wallet systems. I know the parts of software that users do not see. This post is my way to explain those parts. It is one engineer's view, not the only view.
+
+---
+
+## The World Your Software Lives In — B2C, B2B, and Internal Tools
+
+Before any tech topic, start here: **what your software needs depends on who uses it and what happens when it breaks.**
+
+Software people sort the world into three rough categories:
+
+- **Internal tools** — software used by you and your colleagues. A leave-request form, a report generator, a dashboard for the sales team.
+- **B2C (business to consumer)** — software used by the public. A booking page for your restaurant, a small app anyone can sign up for.
+- **B2B (business to business)** — software that another company uses and usually pays for. A tool you sell to other businesses.
+
+{/* IMAGE PROMPT (three-worlds.png): Flat vector illustration, light background, soft shadows, 2-3 accent colors (purple, teal), no photorealism. Three simple buildings side by side, small to large from left to right. Above the first building, a few small person icons. Above the second building, a large crowd of tiny person icons. Above the third building, two briefcase icons and a document with a signature line. Label each building exactly once below it, spell exactly, left to right: "Internal", "B2C", "B2B". Render each label exactly once. Do not render any other words. Do not print style instructions as text in the image. No duplicate labels, no typos. */}
+
+![Internal tools, B2C, and B2B are three different worlds](/assets/images/blogs/non-tech-vibe-coding-handbook/three-worlds.png)
+
+Why does this matter to you? Because the same feature has a completely different "good enough" bar in each world:
+
+| | Internal tool | B2C | B2B |
+|---|---|---|---|
+| Who uses it | Your colleagues | Strangers on the internet | Another company's staff |
+| If it crashes for an hour | Annoying; someone walks to your desk | Customers leave and may not come back | You may be breaking a promise in a contract |
+| If data leaks | Bad, but contained inside the company | Real people's personal data exposed; legal problems | Another company's business data exposed; possibly the end of the deal |
+| Login needs | Often just your company's Google accounts | Public sign-up, password reset, the works | Their company's login system (this is where SSO appears — more later) |
+| How polished it must look | Honestly, not very | Quite — trust is visual | Professional, but function beats beauty |
+
+These labels can change. A report tool may start with one user. Later, twenty people in your company use it. One day, you may sell it to other companies. At each step, you need new rules for data, login, support, and downtime.
+
+There are four business questions worth answering before the feature list:
+
+1. **Who uses it?** The person clicking the buttons is the user.
+2. **Who pays for it?** The buyer may be the same person in B2C, a manager in B2B, or simply your department's budget for an internal tool.
+3. **Who owns the data?** A customer may enter the data while their employer legally controls it. This matters when someone asks for an export or deletion.
+4. **Which work needs it?** A fun calculator can stop tomorrow. A tool for payroll or delivery can stop the whole team.
+
+The last question matters a lot. When people stop using the old spreadsheet, your tool is no longer a demo. The team now needs it for work.
+
+This table explains two mistakes I see non-tech builders make in both directions:
+
+- **Building too much:** spending weeks to support millions of users when only five people use the tool.
+- **Building too little:** moving a quick internal tool to the public. People outside your team make more mistakes, double-click, lose passwords, and may try to attack it.
+
+Before you build, say which world it lives in. Tell the AI: *"This is an internal tool for my team."* That one sentence helps the AI make better choices.
+
+For many non-tech builders, an internal tool is a good first project. The users sit near you. You can ask what went wrong. A small tool that saves three hours every week has clear value.
+
+### Start from the workflow, not the app idea
+
+People often start with screens: *I need a dashboard, a form, and an admin page.* A tech team will first ask how the work moves from start to end:
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    T["Trigger\nWhat starts the work?"] --> I["Input\nWhat information arrives?"] --> D["Decision\nWhich business rules apply?"] --> A["Action\nWhat changes or gets sent?"] --> O["Outcome\nHow do we know it finished?"]
+`}
+  size="medium"
+/>
+
+Suppose the idea is *an expense approval app*. The workflow is more useful than the phrase:
+
+- **Trigger:** an employee submits an expense.
+- **Input:** amount, date, category, receipt, and explanation.
+- **Decision:** under THB 5,000 goes to the manager; above that also goes to finance.
+- **Action:** approve, reject, or return it for missing information.
+- **Outcome:** the employee is notified, the decision is recorded, and the approved item appears in the payment queue.
+
+This flow shows questions that a nice screen can hide. What if there is no manager? Can a person approve their own request? What if they send the same receipt twice? When you answer these questions, you are already doing software design.
+
+---
+
+## What You Think You Can't Do — But Can, Now
+
+AI can now do more than many people think.
+
+{/* IMAGE PROMPT (what-you-can-build.png): Flat vector editorial illustration, light warm background, soft shadows, purple and teal accents, no photorealism. A wide two-panel before-and-after scene. Left: one tired office worker copies rows between a spreadsheet, email, and paper form. Right: the same calm worker uses one simple web tool that sends work into a clear report and team message. Do not render any words, letters, numbers, code, logos, or watermarks. Do not print style instructions as text. No duplicate person or fake text. */}
+
+![A manual spreadsheet process becoming one simple web tool](/assets/images/blogs/non-tech-vibe-coding-handbook/what-you-can-build.png)
+
+With an AI tool, you can now:
+
+- **Turn a painful spreadsheet process into a small web tool.** The weekly report that takes someone three hours of copy-paste. The form that collects the same data by email every month. These are real software projects, and they are within reach.
+- **Build a dashboard from data you already have.** Connect to a spreadsheet or a file export, show the numbers that matter, update it automatically.
+- **Connect tools.** When a form arrives, send a message to the team chat and add a row to a sheet.
+- **Build a real prototype to show, not describe.** If you have ever tried to explain a product idea with slides, you know the difference between "imagine a screen where…" and handing someone a working link. Investors, bosses, and customers all understand a working link.
+- **Ask about old systems.** Paste an error, formula, or macro into AI. Ask what it does in simple words.
+
+But be careful with:
+
+- **Handling other people's money at scale.** Accepting payments through a service like Stripe is within reach. Building your own payment or wallet logic — calculating balances, moving money between accounts — is where small mistakes become financial losses. This is my day job. I still use AI to help write code, but I do not let it decide the money rules or add code I cannot explain. I trust logic that I can explain and test. Someone from the software team should review the change in a pull request (PR) before it goes live. It is fine if you do not know every part yet. The important thing is to know where you need help, ask the right people to review it, and be careful about what you deliver.
+- **Storing sensitive personal data.** Health records, ID card numbers, financial details. Laws like PDPA apply to you whether or not you knew about them. This does not mean "never" — it means this is a checkpoint where you bring in someone who has done it before.
+- **Large public systems that people must trust.** If thousands of people need it at the same time, many more things can go wrong.
+
+The limit is no longer only about hard code. It is about **what happens when the code is wrong**. AI makes code easier to write. The person or team that puts it online still owns the result. The next parts help you lower those risks.
+
+### AI gives a likely answer, not a fixed answer
+
+You may hear the word **probabilistic**. It means AI works with chance. It does not always give the same answer from the same kind of input.
+
+Let us use a marketing example. You give AI 10 leads. You ask it to pick the leads that are ready now. This time, it sends 2 leads to the sales team. The other 8 wait for the next round. If you run it again, it may pick a different 2. The answer is based on what looks likely, not on a fixed rule like `amount > 5,000`.
+
+{/* IMAGE PROMPT (probabilistic-ten-leads.png): Flat vector infographic, light warm background, soft shadows, purple and teal accents, no photorealism. Show exactly ten lead cards as the input. Exactly two cards move to one tray for this round. Exactly eight cards stay in a second tray for the next round. Render the exact labels "10 LEADS", "2 GO NOW", and "8 WAIT" once each, spell exactly. Do not render other words, letters, or numbers. Do not print style instructions as text. No wrong counts, duplicate labels, typos, logos, or watermarks. */}
+
+![Ten leads, with two moving now and eight waiting for the next round](/assets/images/blogs/non-tech-vibe-coding-handbook/probabilistic-ten-leads.png)
+
+This can be useful for a draft, a score, a group, or a suggestion. It is risky as the final judge for payment, hiring, health, law, or account access.
+
+Use a simple pattern:
+
+1. Let AI suggest or score.
+2. Keep a clear rule for what happens next.
+3. Let a person check high-risk cases.
+4. Save the input and result, so you can review a bad choice later.
+
+This pattern is called **human-in-the-loop**. AI helps with the work, but a person checks the result before a high-risk action continues.
+
+**Ask your AI:** *"Which parts of this system use a fixed rule, and which parts use an AI answer that may change? Show this in simple words. Add human review before any high-risk action."*
+
+---
+
+## Pure Vibe Coding Can Hide the Choices
+
+**Pure vibe coding** means you describe what you want, accept the code, and keep asking for changes without learning what the tool chose. This can be fine for a quick demo. The drawback starts when the demo becomes a tool that people depend on.
+
+Ask an AI builder for a web app and you will often see [JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript), [TypeScript](https://www.typescriptlang.org/), or [Python](https://www.python.org/about/). These can all be good choices. The problem is not the language. The problem is that the first answer can become your final choice before you know there was a choice.
+
+You do not need to write every line by hand. You do need to know that other tools exist and ask why one fits your work.
+
+### What is a programming language?
+
+A **programming language** is a set of words and rules used to tell a computer what to do. The language changes more than how the code looks. It can change:
+
+- where the app can run;
+- which mistakes are found before the app runs;
+- how the app uses memory;
+- which ready-made libraries you can use;
+- how you put the app online;
+- and which people can support it later.
+
+**A type** says what kind of value something is, such as text, a number, or a date. Type checks can stop some wrong values before the app goes online.
+
+**Memory** is the computer's short-term work area. A memory mistake can crash a program or open a safety hole. **Memory safety** means the language helps block unsafe use of that work area. [Rust](https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html), for example, checks which part of the program owns each piece of memory. This gives memory-safety guarantees without a garbage collector. A garbage collector is a part that finds and frees memory the program no longer uses.
+
+**Enterprise** does not simply mean *large*. It often means a system must live for years, connect to many company systems, follow strict rules, and be supported by many teams. [Java](https://www.oracle.com/java/technologies/) and [C# with .NET](https://dotnet.microsoft.com/en-us/learn/dotnet/what-is-dotnet) are common in this world because they have been used for many years and have strong tools, libraries, data checks, and support. Other languages can also run large company systems.
+
+{/* IMAGE PROMPT (programming-language-paths.png): Flat vector educational illustration, light warm background, soft shadows, purple and teal accents, no photorealism. Put one simple app window in the center. Around it, show five equal alternative tool cards: a browser window for JS / TS, an automation gear and data chart for PYTHON, a safety shield for RUST, a stable office server building for JAVA / C#, and a small cloud service for GO. Connect every card to the same app. No card is larger or shown as the winner. Render the exact labels "ONE APP, MANY PATHS", "JS / TS", "PYTHON", "RUST", "JAVA / C#", and "GO" once each, spell exactly. Do not render any other words, letters, or numbers. Do not print style instructions as text. No official logos, mascots, fake text, watermarks, duplicate cards, or typos. */}
+
+![One application can take different programming-language paths](/assets/images/blogs/non-tech-vibe-coding-handbook/programming-language-paths.png)
+
+Here is a simple map. It is not a ranking:
+
+| Language | A common fit | What it can give you | What to watch |
+|---|---|---|---|
+| JavaScript / TypeScript | Browser screens and full web apps | The browser runs JavaScript. TypeScript adds checks that can catch some data-shape mistakes while you work. | The web world changes fast. Ready-made code packages, tests, and updates still need care. |
+| Python | Automation, data work, AI work, scripts, and web backends | It is quick to read and has many ready-made libraries. | Some mistakes appear only when that path runs, unless the team adds type checks and tests. |
+| Rust | System tools and parts where memory safety, speed, and close control matter | Strong memory safety without a garbage collector and careful control of computer resources. | It takes more time to learn. A small business tool may not need this cost. |
+| Java | Long-lived backends, payment systems, and large company systems | Strong data checks, tools and libraries used by many teams, and long-term support releases. | It may add more structure and setup than a tiny internal tool needs. |
+| C# / .NET | Business systems, APIs, Microsoft environments, desktop apps, and games | Strong data checks, tools used by many teams, automatic memory cleanup, and support across common operating systems. | It fits best when the team can support the .NET tool world. |
+| [Go](https://go.dev/solutions/use-cases) | Internal backends, APIs, cloud services, command-line tools, and operations tools | A small language, fast builds, and good support for work happening at the same time. A small internal service can grow without a language change. | It is usually not the language for the browser screen. Simple code still needs good data and access rules. |
+
+There is no best language for every app. Rust is not the right answer only because memory safety matters. Java or C# is not the right answer only because the buyer is a large company. Python is not only for small scripts. Go is not useful only after an app becomes large.
+
+Start with your situation:
+
+1. **Where must it run?** A browser, phone, company server, cloud service, or small device?
+2. **What can go wrong?** A slow report, lost money, a data leak, or a short delay?
+3. **What does your team already know?** A familiar language is often safer than a clever new choice nobody can review.
+4. **Which systems must it connect to?** Check that the language has stable libraries for them.
+5. **Who will support it next year?** Code is not finished when the first version works.
+
+Suppose your company already has ten Java services and engineers who review Java every day. A new language may add more work than value. Suppose you are making one internal data-cleaning tool. Python may be enough. Suppose a small Go service starts with one team and later serves the whole company. Growth alone does not mean you must rewrite it.
+
+Programming language is only one hidden choice. Pure vibe coding can also hide:
+
+- the **framework**, which shapes how the code is built and updated;
+- the **database**, which shapes how your business records connect and move;
+- the **vendor**, which controls cost, limits, and how easily you can leave;
+- the **login system**, which controls who can enter and what they can see;
+- the **libraries**, which need safety updates and may stop being supported;
+- and the **test, backup, and alert plan**, which matters after the first demo works.
+
+A working screen does not show these decisions. You do not need to make every choice alone. Ask the AI to name each choice, explain why it chose that option, and show other useful options. Bring in the right reviewer when the result handles money, private data, public users, or key company work.
+
+**Ask your AI:** *"Before you write code, list the important technical choices you are about to make. For the programming language, compare at least three good options for my users, team, risk, current systems, and future support. Explain why each one fits or does not fit in simple words. Tell me which option you recommend and which facts could change that answer."*
+
+---
+
+## Architecture — A Map of Responsibilities
+
+**Architecture** means the map of your app: **which part does each job, and how do the parts talk?**
+
+Think about a restaurant. The front takes the order. The kitchen cooks. The store room keeps food. A supplier brings what the restaurant cannot make. Your app also has parts with different jobs.
+
+{/* IMAGE PROMPT (architecture-restaurant.png): Flat vector editorial illustration, light warm background, soft shadows, purple and teal accents, no photorealism. A wide restaurant cutaway with four clear connected jobs: a front counter takes the order, a kitchen cooks, a store room keeps supplies, and an outside delivery service brings a package. Beside the restaurant, show matching simple app symbols for a screen, server, database, and outside cloud service, joined by dotted lines. Do not render any words, letters, numbers, code, logos, or watermarks. Do not print style instructions as text. No duplicate areas or fake text. */}
+
+![A restaurant used as a simple picture of app architecture](/assets/images/blogs/non-tech-vibe-coding-handbook/architecture-restaurant.png)
+
+A small web application has a similar map:
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    U["User"] --> F["Frontend\nScreens in the browser"]
+    F -->|"request"| B["Backend\nRules and trusted actions"]
+    B -->|"read / write"| DB[("Database\nBusiness records")]
+    B -->|"API call"| X["External services\nEmail, payment, AI, maps"]
+    X -->|"result / event"| B
+    B -->|"response"| F
+`}
+  size="medium"
+/>
+
+### Frontend — what runs in the user's hands
+
+The **frontend** is what the user sees: pages, buttons, forms, and tables. It runs in the user's browser. It can show data and take input. Do not trust it with secrets or final decisions, because a user can change what the browser sends.
+
+Suppose an expense form hides the **Approve** button from ordinary employees. That improves the interface, but hiding a button is not security. Someone can still send the same approval request manually. The backend must check the person's role again before changing the record.
+
+**Useful rule:** the frontend may suggest what is allowed; the backend decides what is allowed.
+
+### Backend — the part you trust with the rules
+
+The **backend** runs on a computer you control or rent. It gets a request, checks the user and their right to act, uses the business rules, saves data, and sends an answer. In the expense app, it checks that the manager can approve this request and that the request still waits for approval.
+
+The backend is also where secret work belongs: calling a paid AI model, charging through Stripe, sending an email, or using a private database key. If a secret is placed in frontend code, it is no longer a secret because every browser must download that code.
+
+### Database — memory that outlives one request
+
+The **database** keeps the business records: who sent the expense, its status, who approved it, and when. The backend does the work. The database is the book where it reads and writes records.
+
+### External services — rent the solved problems
+
+Most apps use services from other companies. Stripe can take payments. Google or [Microsoft](https://learn.microsoft.com/en-us/entra/identity-platform/) can handle login. [Resend](https://resend.com/) or [Postmark](https://postmarkapp.com/) can send email. An AI company runs the AI model. A map service finds places and routes.
+
+This is a normal way to build. You build the part that makes your product useful. You rent the other parts. But each service adds a bill and a new way to fail. For each service, write down:
+
+- what data you send to it;
+- what happens if it is unavailable;
+- how you export or replace your data;
+- who owns the account and receives the bill.
+
+### API — the agreed doorway between parts
+
+An **API (application programming interface)** is a set way for one system to ask another system to do a job. For example, your booking app sends an address to a map API. The API sends back a place on the map.
+
+A request usually contains:
+
+- **where** it is going — an address called an endpoint, such as `/expenses/123`;
+- **what action** it wants — read, create, update, or delete;
+- **who is asking** — authentication information;
+- **the input** — perhaps the approval decision and a comment.
+
+The response usually contains a result and a **status code**. You do not need to memorize the codes, but the families are useful: `2xx` means the request worked, `4xx` means the caller sent something invalid or was not allowed, and `5xx` means the receiving system failed.
+
+An API is like an order form. Both sides must use the same fields. If `amount` was a number and becomes text, the other side may break. Keep one example request, one example answer, and a list of required fields.
+
+### One application is often the best architecture
+
+You may hear words like *monolith*, *microservices*, and *serverless*. For a first product, one app with one database is often a good choice. Engineers may call this a **monolith**. It means the main parts are built and put online together.
+
+That does not mean one giant messy file. Your AI can still organize the project into clear areas such as `expenses`, `users`, `approvals`, and `reports`. The important distinction is this:
+
+- **Modules** keep code in clear groups, such as expenses, users, and reports.
+- **Many separate services** run as different apps. They are harder to put online, watch, and fix.
+
+Ask for clear modules from the start. Split the app only when a real problem needs it.
+
+**Ask your AI:** *"Draw the architecture of this project as a diagram. Label what runs in the browser, what runs on the server, where each kind of data is stored, and every external service. Then explain which part enforces each business rule."*
+
+---
+
+## Naive-But-Works Is a Strategy, Not a Shortcut
+
+Good engineers often **start with the simplest thing that works**. They add more parts only when a real problem asks for them.
+
+**More code means more work, and more work means more chances for problems.** Every new part must be read, tested, fixed, updated, and kept safe.
+
+My system design posts use this path: start small, find a real limit, then add the next part. This is also a useful way to build.
+
+This is good news. Your first simple version can be the right version. An AI may say, *"This will not scale."* Most of the time, you do not need to care about scale yet. AI answers often sound like public tech articles, and many of those articles describe the problems of large Silicon Valley companies. That may not be your world. AI may suggest the system they need, not the system your customers need. You know your work and what your customers value. Start with that value. Then ask what will fail, for how many users, and when.
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    V1["Version 1\nOne app, one database\nWorks for your 20 users"] -->|"Only when reality\ndemands it"| V2["Version 2\nMaybe a faster database\nMaybe a background job"] -->|"Only when reality\ndemands it again"| V3["Version 3\nThe fancy architecture\nfrom the conference talks"]
+`}
+  size="medium"
+/>
+
+- **"Will this scale?" is a question about a future that may never arrive.** Most internal tools serve fewer than a hundred people forever. Most products die before scale is their problem. Building for a million users you do not have costs real time today for a benefit that is imaginary today.
+- **Growth problems often start small.** A page gets slow. A report takes longer. If you watch the app, you can fix the problem before it becomes large.
+- **The one exception: your data.** Code is easy to change later — you can ask the AI to rewrite it. Data is hard to change later — if six months of records were stored in a messy shape, no rewrite fixes the past. This is why the database section below is the longest one, and why "where does my data live" deserves more of your attention than "which framework is coolest."
+
+**Scalable** means the app can grow without a full rebuild. Many things can grow:
+
+| What grows | The first symptom | A sensible next move |
+|---|---|---|
+| Users | Pages slow down at busy hours | Measure the slow request; improve the database query or add capacity |
+| Records | Lists and reports take too long | Add pagination and database indexes; stop loading every row |
+| Work in one step | Imports or AI calls take too long | Put long work in a waiting line and show progress |
+| Features | Each change breaks another part | Put code in clear groups and add tests |
+| Team | Two people overwrite each other's changes | Use Git branches, review changes, and define ownership |
+| Business need | Downtime stops the team | Add alerts, recovery steps, and a clear owner |
+| Customer needs | Each client asks for a special rule | Put rules in settings; do not copy the whole app for each client |
+
+### Pagination — the page buttons you have seen before
+
+You have probably seen buttons like `1`, `2`, `3`, `...`, and **Next** under an order list, a shopping page, or search results. This component is called **pagination**.
+
+{/* IMAGE PROMPT (pagination-orders.png): Flat vector product UI illustration, light warm background, soft shadows, purple and teal accents, no photorealism. Show a clean desktop order list with exactly six simple rows. At the bottom, show pagination controls in this exact order: "1", "2", "3", "...", "12", "NEXT". Highlight "2" with a filled purple button. Render "ORDERS" once. Render each listed text item exactly once and spell exactly. Do not render any other words, letters, or numbers. Do not print style instructions as text. No fake text, logos, watermarks, duplicate controls, or typos. */}
+
+![A familiar order list with pagination buttons at the bottom](/assets/images/blogs/non-tech-vibe-coding-handbook/pagination-orders.png)
+
+Suppose you have 10,000 orders. The first page may load only 20. When the user opens page 2, the app asks for the next 20. It does not load all 10,000 rows at once. Less data moves, the page opens faster, and the database does less work.
+
+You do not need a large cloud setup on day one. You need a clear next step when one part grows.
+
+### Easy-to-change and hard-to-change choices
+
+Some choices are easy to change. Some are not.
+
+- **Easy to change:** button color, page layout, and report words. Pick a good-enough choice and move on.
+- **Hard to change:** what your data means, how users log in, who owns each service account, where private data goes, and what you promise customers. Check these choices with care.
+
+AI makes rewriting code cheap enough that people sometimes assume every decision is cheap. It is not. If customers have six months of invoice records, changing the database is a migration. If one hundred employees use Google login, changing identity affects one hundred people. If a client contract promises 99.9% availability, removing that promise requires a conversation, not a code edit.
+
+### Add a new part only for a clear reason
+
+Before you accept a complex plan, ask:
+
+1. **Which problem does this solve now?** A slow page, a failed job, or only a future guess?
+2. **What is the simplest smaller fix?** An index may solve what a new database was proposed to solve.
+3. **What new work does this add?** A queue helps with long work, but now you must handle failed jobs and the same job twice.
+
+So when the AI proposes something that sounds impressively complicated, here is a prompt pattern that works: **"Give me the simplest version that works for [my real situation: 20 internal users]. Tell me what I would need to change later if it grows, but do not build that now."** You get the naive version *plus* a map of the future — which is exactly what a good senior engineer would give you.
+
+---
+
+## How to Brief an AI — Prompting Is Specification
+
+For software, one idea matters more than prompt tricks: **do not make a wish; give a clear work brief.**
+
+Think about a new kitchen. You would not tell the worker, *"Make it good."* You would say who cooks, how often, the budget, and what must stay. Software is the same.
+
+{/* IMAGE PROMPT (brief-the-contractor.png): Flat vector illustration, light background, soft shadows, 2-3 accent colors (purple, teal), no photorealism. Two panels side by side. Left panel: a person hands a tiny sticky note to a friendly robot, and above the robot a thought bubble contains a confused tangle of shapes. Right panel: the same person hands the same robot a clipboard with a structured document showing several abstract text lines and checkboxes, and above the robot a thought bubble contains a clean, orderly house blueprint. No text labels anywhere in the image. Do not render any words, letters, or numbers. Do not print style instructions as text in the image. No duplicate figures, no typos. */}
+
+![A vague wish versus a proper brief](/assets/images/blogs/non-tech-vibe-coding-handbook/brief-the-contractor.png)
+
+A good software brief has four parts:
+
+**1. Context.** Who uses it? How many people? Phone or computer? Is it internal, B2C, or B2B? For example: *"This is an internal tool for my 8-person accounting team. They use office computers at month end."*
+
+**2. Rules that must stay true.** Data must not get lost. The app must work in Thai. Staff must not see another person's salary. Users must sign in with the company Google account. You know these work rules better than the AI. Write them down.
+
+**3. Ask it to explain the result.** Ask: *"What did you build? What are the main parts? Where is the data? Use simple words."* If you do not understand one part, ask again. You will own this tool, so you need to understand its map.
+
+**4. Ask what is missing.** Ask: *"What did you not build?"* and *"What may go wrong?"* The answers may be more useful than the code.
+
+For a larger task, tell the AI: *"Before you build, ask me what you need to know."* Its questions can show which work rules are still missing.
+
+### A prompt template for real software work
+
+You do not need one magic prompt. Use a clear brief. You can copy this example:
+
+```text
+Goal
+Build an internal expense approval tool for an 8-person company.
+
+Users and permissions
+- Employee: create a request and view only their own requests.
+- Manager: view and decide requests from their team.
+- Finance: view all approved requests and mark them paid.
+
+Workflow
+1. Employee submits amount, date, category, note, and receipt.
+2. A manager approves, rejects, or returns it for changes.
+3. Approved requests appear in a finance queue.
+4. Every decision records who did it and when.
+
+Rules and edge cases
+- Amount must be positive and use THB.
+- A user cannot approve their own request.
+- Submitting twice must not create two expenses.
+- A rejected or paid request cannot be edited.
+- Receipt files may be PDF, JPG, or PNG, maximum 10 MB.
+
+Must-have rules
+- Use company Google accounts for login.
+- Desktop-first, but the submission form must work on mobile.
+- Start for fewer than 20 users.
+- Use ready-made services and one simple app.
+- Never put secrets in frontend code.
+
+How I will check it
+- An employee cannot open another employee's request, even by changing the URL.
+- A manager can filter pending requests.
+- Finance can export approved requests as CSV.
+- Refreshing the page does not lose saved work.
+- Tests cover access rules and status changes.
+
+Process
+Before editing code, ask questions about unclear business rules.
+Then show the data tables, app map, and work plan.
+Build one small working slice at a time. After each slice, run tests and
+explain what changed, what remains, and what I should verify manually.
+```
+
+Most of this brief is about work, not code. You know who can do what, how the work moves, and what *done* means.
+
+### Give examples, especially the awkward ones
+
+Words like *simple*, *good*, *safe*, and *easy to use* are not clear enough. Give examples.
+
+Instead of *"validate the amount,"* say:
+
+- `500` is valid;
+- `0`, `-10`, and blank are invalid;
+- `1,250.50` should be understood as THB 1,250.50;
+- a pasted value containing `THB` should show a helpful correction instead of crashing.
+
+Examples explain the rule and can become tests. A tech team may call them **acceptance criteria**. This means the list you use to check if the work is done.
+
+### Separate plan, build, and review
+
+If you ask for the whole app at once, it is hard to find mistakes. Use small steps:
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    P["Plan\nworkflow, data, risks"] --> S["Small slice\none end-to-end path"] --> T["Test\nautomated + your review"] --> C["Checkpoint\nsave a working version"] --> N["Next slice"]
+    N --> S
+`}
+  size="medium"
+/>
+
+A **small end-to-end part** is one short path that works from start to end. For the expense tool, first let an employee send one request and see it after a page refresh. Do not build all screens first and hope they connect later.
+
+At each checkpoint, ask the AI to show:
+
+- which files or components changed;
+- which assumptions it made;
+- which tests it ran and their results;
+- which manual steps you should try;
+- any new service, account, secret, or recurring cost it introduced.
+
+### Ask for proof, not confidence
+
+AI can write the code and help with tests, but *"This should work"* is only a starting point. Proof can be a passed test, the saved row in the database, a screenshot, or a full check that you do yourself.
+
+Try these prompts:
+
+- *"Run the test suite and show me any failures. Do not claim success if you could not run it."*
+- *"Test this as an employee, a manager, and a user who should have no access."*
+- *"Try invalid, empty, duplicate, and very large inputs."*
+- *"Review only the changes made in this step. Look for data loss, permission gaps, exposed secrets, and missing error handling."*
+- *"Explain the most dangerous assumption still present."*
+
+Work with the AI, but check the result.
+
+A good prompt helps, but it cannot make every choice for you. The next section gives you the basic ideas you still need.
+
+---
+
+## The Computer Science Fundamentals You Actually Touch
+
+You do not need a full Data Structures & Algorithms course before you build an expense tool. You need to know which basic idea fits each kind of problem.
+
+Computer Science gives names to problems that happen many times. Learn the meaning, not the textbook answer.
+
+### Data has a type, a meaning, and a lifetime
+
+To a computer, `100`, `"100"`, and `"THB 100"` are different. The first is a number. The other two are text. For your business, `100` is also not clear. Is it baht, dollars, items, or a code?
+
+For each important field, define:
+
+- **Type:** text, number, date and time, yes/no, or one choice from a known list.
+- **Meaning:** `approved_at` is when approval happened, not when the request was created.
+- **Unit:** THB, kilograms, minutes, or percentage.
+- **Must have or can be empty:** if it is empty, what does that mean?
+- **Valid range:** may an amount be zero? May a delivery date be in the past?
+- **How long to keep it:** forever, seven years, or 30 days?
+
+These small rules stop many errors:
+
+- **Money:** save the currency. Use exact decimal numbers, or save the smallest unit such as satang. Normal computer numbers can have small rounding errors. Those errors can break totals.
+- **Dates and time:** save the time and its timezone. Show it in the user's timezone. *July 17* is not enough for work between Bangkok and London.
+- **ID:** give each row its own fixed ID. Do not use a name or row number. Names can change. Rows can move.
+- **Empty values:** missing, zero, false, and an empty piece of text are different meanings. Decide which one the business intends.
+
+**Ask your AI:** *"Make a simple list of every field. Show its type, meaning, unit, if it can be empty, rules, examples, and how long we keep it. Ask me about any field that is not clear."*
+
+### Data modeling — turn nouns and relationships into records
+
+**Data modeling** means choosing the things you need to save and how they link. Start with things: Employee, Expense, Receipt, Approval, Payment. These may become tables. Then write simple rules:
+
+- one employee can submit many expenses;
+- one expense belongs to one employee;
+- one expense can have many approval events;
+- one receipt file belongs to one expense;
+- one payment batch contains many approved expenses.
+
+<MermaidDiagram
+  chart={`
+erDiagram
+    EMPLOYEE ||--o{ EXPENSE : submits
+    EXPENSE ||--o{ APPROVAL_EVENT : records
+    EXPENSE ||--o| RECEIPT : has
+    PAYMENT_BATCH ||--o{ EXPENSE : contains
+`}
+  size="medium"
+/>
+
+Why not use one very large sheet? Some data repeats. Some data has a history. If you copy one employee's team into 500 rows, you must fix 500 rows when they move to a new team. If you keep only one `approver` cell, you lose the old answer when the request comes back for another review.
+
+A database **constraint** is a rule in the database. For example, an email cannot appear twice, an expense must have an employee, and an amount cannot be empty. The form gives a kind error. The database rule is the last safety check.
+
+Do not make a table for every small detail. That is also hard to use. Ask the AI why it chose each table and link.
+
+### Data structures — containers chosen for a job
+
+A **data structure** is a way to keep data so one kind of work is easy. You already know these ideas from daily life:
+
+{/* IMAGE PROMPT (data-structures-list-set-map.png): Flat vector educational illustration, light warm background, soft shadows, purple and teal accents, no photorealism. Show three equal cards. LIST uses an ordered checklist with five rows. SET uses unique person cards with one repeated card stopped outside. MAP uses one key card pointing to one matching profile card. Render the exact labels "WAYS TO KEEP DATA", "LIST", "IN ORDER", "SET", "NO REPEATS", "MAP", and "KEY TO VALUE" once each, spell exactly. Do not render any other words, letters, or numbers. Do not print style instructions as text. No fake text, logos, watermarks, duplicate cards, or typos. */}
+
+![A list keeps order, a set blocks repeats, and a map joins a key to a value](/assets/images/blogs/non-tech-vibe-coding-handbook/data-structures-list-set-map.png)
+
+{/* IMAGE PROMPT (data-structures-queue-stack-tree-graph.png): Flat vector educational illustration, light warm background, soft shadows, purple and teal accents, no photorealism. Show four equal cards. QUEUE uses people waiting at a service counter. STACK uses a pile of trays with the top tray being taken. TREE uses folders branching into levels. GRAPH uses cities joined by many roads. Render the exact labels "WAYS DATA MOVES AND CONNECTS", "QUEUE", "FIRST IN", "STACK", "LAST IN", "TREE", "LEVELS", "GRAPH", and "MANY LINKS" once each, spell exactly. Do not render any other words, letters, or numbers. Do not print style instructions as text. No fake text, logos, watermarks, duplicate cards, or typos. */}
+
+![A queue, stack, tree, and graph shown with familiar everyday objects](/assets/images/blogs/non-tech-vibe-coding-handbook/data-structures-queue-stack-tree-graph.png)
+
+| Data structure | Everyday picture | Good at | Example in your app |
+|---|---|---|---|
+| List / array | A shopping list | Keep items in order | Expenses shown by date |
+| Map / dictionary | A phone book | Find a value from one known key | User ID → user profile |
+| Set | A guest list with no repeated name | Check if an item is already there | Emails already invited |
+| Queue | People waiting at a counter | Do the first waiting job first | Receipts waiting for text reading |
+| Stack | A pile of trays | Take the last item first | Undo recent changes |
+| Tree | Folders inside folders | Show levels | Teams or product groups |
+| Graph | Cities and roads | Show many links | Delivery routes or people links |
+
+You may not choose these by hand. But the idea helps. If the app reads 50,000 rows to ask *"Do we have this email?"*, it needs a faster lookup like a map or set. If ten long jobs start together and make the app stop, put them in a queue.
+
+These words help you explain the shape of your data and work.
+
+### Algorithms — a recipe, plus the cost of repeating it
+
+An **algorithm** is a list of steps that turns input into an answer. Your approval rule is already an algorithm:
+
+```text
+If amount is below THB 5,000:
+  send to the employee's manager
+Otherwise:
+  send to the manager, then finance
+If the submitter would approve their own request:
+  send to the next eligible approver
+```
+
+Now think about what happens when the data grows. You need to find one customer:
+
+- reading every row from the top may be fine for 100 rows;
+- doing the same for 10 million rows on every page load is expensive;
+- a database **index** works like the index at the back of a book. It helps the database jump to the right rows.
+
+Tech teams may use **Big O** words such as `O(n)`. You do not need the formula here. Ask three simple questions:
+
+- Does the work stay almost the same when the data doubles?
+- Does it double because every record must be visited?
+- Does it grow much faster because every record is compared with every other record?
+
+You do not need to make every step fast. A slow report used once a month may be fine. A slow search used by every person is a bigger problem.
+
+Three common tools solve common growth problems:
+
+- **Indexing:** find records by fields you search often, such as email, status, or created date.
+- **Pagination:** load 50 rows now instead of all 50,000 rows. The user moves page by page or scrolls for more.
+- **Save a ready result:** make the daily total once and reuse it. Do not read all old data each time someone opens the dashboard.
+
+**Ask your AI:** *"For each list, search, report, and repeated job, tell me what happens when the data grows from 100 rows to 10,000 rows. Find places that read every row or have no limit. Fix only what matters for our expected size."*
+
+### State — what is true now, and which changes are legal
+
+**State** means what is true now. An expense can be `draft`, `submitted`, `approved`, `rejected`, or `paid`. Do not let people type any word into the status field. Give it clear allowed changes.
+
+A **state machine** is a map of allowed status changes:
+
+<MermaidDiagram
+  chart={`
+stateDiagram-v2
+    [*] --> Draft
+    Draft --> Submitted: employee submits
+    Submitted --> Draft: returned for changes
+    Submitted --> Approved: approver accepts
+    Submitted --> Rejected: approver rejects
+    Approved --> Paid: finance pays
+    Rejected --> [*]
+    Paid --> [*]
+`}
+  size="medium"
+/>
+
+Now the rules are easy to see. A paid expense cannot go back to draft. A rejected expense cannot jump to paid. The screen can hide the wrong buttons. The backend must also block the wrong change.
+
+If a record has a `status`, ask for this kind of map. It helps with orders, tickets, job forms, plans, deliveries, and invoices.
+
+### Concurrency — two valid actions can collide
+
+**Concurrency** means two actions happen at almost the same time. Two people see the last event ticket. Both click buy. The app may sell one ticket twice if it checks and saves in two open steps.
+
+A **transaction** puts linked database changes in one safe group. All changes pass, or all fail. For a bank transfer, money cannot leave one account without reaching the other. For the last ticket, check and save must be one safe step.
+
+Another case is a double-click. The first request works, but the screen is slow. The user clicks again. The app gets the same request twice.
+
+**Idempotency** is a hard word for a simple goal: the same request can come twice, but the app does the work once. Give each request its own ID. If that ID is already done, do not make another payment, booking, or form row.
+
+**Ask your AI:** *"Which actions can happen twice or at the same time? Stop harmful copies with one safe database step, a no-copy rule, or a request ID. Test by sending the same request twice."*
+
+### Synchronous, asynchronous, and events
+
+A **synchronous** action makes the user wait. Save a small form, wait a short time, and show success.
+
+An **asynchronous** action means *accept now, finish later*. A 20,000-row file or long video may take minutes. Put the job in a queue. Another worker does it. The screen shows `waiting`, `working`, `done`, or `failed`.
+
+You may have seen this after uploading a large file or asking a website to make a report. The screen first says **Waiting**, then **Working**, then **Done**. That status screen is the part you see. The queue and worker do the hidden work behind it.
+
+{/* IMAGE PROMPT (background-job-status.png): Flat vector product UI illustration, light warm background, soft shadows, purple and teal accents, no photorealism. Show one clean import-status window with three large cards connected from left to right. The first card has files and a clock. The second has a file, gear, and progress bar. The third has a file and green check. Render the exact labels "IMPORT STATUS", "WAITING", "WORKING", and "DONE" once each, spell exactly. Do not render any other words, letters, or numbers. Do not print style instructions as text. No fake text, logos, watermarks, duplicate labels, or typos. */}
+
+![A familiar import screen moving from waiting to working to done](/assets/images/blogs/non-tech-vibe-coding-handbook/background-job-status.png)
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    U["Upload file"] --> Q["Waiting"]
+    Q --> W["Working"]
+    W --> D["Done"]
+`}
+  size="medium"
+/>
+
+An **event** is a saved message that something happened: `ExpenseSubmitted`, `PaymentReceived`, or `CustomerCreated`. Other work can start from that message. After an expense is sent, one step can tell the manager and another can save a history row.
+
+Work in the background can fail, come late, come twice, or finish in the wrong order. Show its status. Set retry rules. Block copies. Give the owner a page to see failed jobs. If the work can finish while the user waits, keep the first version simple and let them wait.
+
+### Input, output, and errors are part of the design
+
+Your app gets data from forms, files, sheets, APIs, webhooks, and AI. Check all of it before use.
+
+**Validation** checks if the data has the right form and meaning. Error handling decides what to do when it is wrong. Give useful information to three groups:
+
+- **The user:** what happened, what was saved, and what they can do next.
+- **The app owner:** which request failed and where to look.
+- **The system:** whether to retry, reject, or move the work aside for review.
+
+*Something went wrong* gives no next step. A raw database error may show private details. Give the user a safe, useful message. Keep the tech details in a private log.
+
+---
+
+## The Invisible Parts of a Real Solution
+
+When you look at an app, you see the screens. That may be only 20% of the full system. The other parts keep data, login, files, backups, and errors. Tools like Lovable set up many of these parts for you. With an open coding tool, you need to know that each part exists.
+
+{/* IMAGE PROMPT (hidden-system.png): Flat vector editorial illustration, light warm sky and pale teal water cutaway, soft shadows, purple and teal accents, no photorealism. A wide scene with one small app window above the water. Under the water, show a larger friendly support system with exactly six simple symbols: database, file box, login shield, backup copy, alert bell, and code history, all connected. Do not render any words, letters, numbers, code, logos, or watermarks. Do not print style instructions as text. No duplicate symbols or fake text. */}
+
+![The visible app and the larger support system under it](/assets/images/blogs/non-tech-vibe-coding-handbook/hidden-system.png)
+
+You do not need to build these parts from zero. You need to know **what each part does, why you need it, and what to ask for.**
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    U["A person using your app\n(browser or phone)"] --> APP["Your application\nthe screens and the logic"]
+    APP --> DB["Database\nthe structured records"]
+    APP --> OS["Object storage\nthe files: photos, PDFs"]
+    APP --> AUTH["Login service\nwho is this person?"]
+    GH["GitHub\nwhere the code lives"] -->|"deploy"| APP
+    APP --> LOG["Logs and alerts\nhow you know it's broken"]
+    DB --> BK["Backups\nthe copy that saves you"]
+`}
+  size="medium"
+/>
+
+### Where your code lives — Git and GitHub
+
+**GitHub is an online home for your code and its change history.** Keep two ideas:
+
+- **Version history.** Every meaningful change to your project is saved as a snapshot (a *commit*). If today's change breaks everything, you can go back to yesterday's snapshot. If you have ever made copies of a file called `report_final_v2_REAL.xlsx`, version control is that instinct, done properly by a system instead of by filenames.
+- **One main copy.** Do not keep the only copy on your laptop. A laptop can break or get lost. GitHub keeps the main copy that your team and online app can use.
+
+Your AI can set this up. **Ask your AI:** *"Connect this project to a private GitHub project. After each working change, save a snapshot and write a short note about the change."*
+
+### Deployment — putting it online
+
+Your tool may work only while it runs on your laptop. **Deployment** means putting the app on an online computer that keeps running. People can then open it from one link.
+
+You rent this online computer from a **hosting service** or a **cloud provider**. The normal flow looks like this:
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    L["Your laptop"] --> G["GitHub"]
+    G --> H["Online host"]
+    H --> U["Live link"]
+`}
+  size="medium"
+/>
+
+There is no one best place to deploy. Choose how much help and control you need.
+
+#### Path 1: a simple hosting service
+
+[Vercel](https://vercel.com/), [Netlify](https://www.netlify.com/), [Railway](https://railway.com/), and [Render](https://render.com/) can hide much of the cloud setup. You connect GitHub, choose a few settings, and get a link. This is often enough for a small website, a first product, or an internal tool.
+
+This easy start still has limits. Check where the database and files live. Check the monthly price, login rules, backups, and what happens when more people use the app.
+
+#### Path 2: a large cloud provider
+
+[Amazon Web Services](https://aws.amazon.com/), [Microsoft Azure](https://azure.microsoft.com/), and [Google Cloud](https://cloud.google.com/) give you many building parts. They can run the app, database, files, private network, login, logs, and backups.
+
+A company may choose one of them because it already has an account and a tech team there. It may also need company login, private systems, a chosen data region, or detailed access records.
+
+You get more control, but you also get more choices. Each provider has many services with similar names. A working app can still have a bad setup or a surprise bill. Ask a software or cloud team to review the plan before important business data goes live.
+
+#### Path 3: let an AI tool handle part of the cloud work
+
+Some AI tools can build and deploy at the same time.
+
+[Google AI Studio](https://aistudio.google.com/) can build a full-stack AI app and publish it to [Cloud Run](https://cloud.google.com/run). Cloud Run is part of Google Cloud. This means AI Studio gives you the easier screen, while Google Cloud runs the app behind it. This can be a fast path from an idea to a live AI tool.
+
+[Microsoft Foundry](https://ai.azure.com/) is a better fit when the main part is an AI model or agent. A simple **prompt agent** can run with little code. A **hosted agent** can run your own agent code. Foundry can handle the agent endpoint, identity, scale, and logs. However, it may not be your whole app. Your web screen, business database, and normal login may still use other Azure services.
+
+Think of it this way:
+
+- **Google AI Studio can help build the room and put the AI worker inside it.**
+- **Microsoft Foundry can run the AI worker, while you build the room around it.**
+
+These tools remove setup work. They do not remove your duty to check the result. Before you publish, review who can open it, what data goes to the AI model, where the data stays, how much it may cost, and how you can stop or move the service later.
+
+Keep two rules:
+
+- **Keep the live app away from your test work.** The live app is called *production*. Test on your computer or a preview link. Put a change on production only after it works.
+- **"Online" does not mean "public."** A deployed internal tool can and should be protected by login, so a link that leaks does not become a data leak. That is the login section, coming up.
+
+**Ask your AI:** *"Compare a simple host, AWS, Azure, and Google Cloud for this app. Also check if Google AI Studio or Microsoft Foundry fits the AI part. Explain what each choice will run, what I still need to set up, the likely cost areas, and who should review it before it goes live. Do not deploy anything yet."*
+
+### The database — where your records live
+
+If you remember one tech idea from this post, remember the database. Data mistakes are hard to fix later.
+
+**A database keeps your app records**: bookings, requests, customers, and other rows. It has tables, columns, and rows like a sheet. But it is made for apps:
+
+- **It keeps data after a restart.** If data exists only in the app's short-term memory, a restart can remove it.
+- **It supports many people at once.** Two people can send forms at the same time without breaking one shared file.
+- **It can block bad rows.** It can stop a booking with no date or two accounts with the same email.
+
+Names you may see: [**PostgreSQL**](https://www.postgresql.org/) or Postgres is a common database. [**SQLite**](https://sqlite.org/) keeps a small database in one file. [**Supabase**](https://supabase.com/), [**Neon**](https://neon.com/), and [**Firebase**](https://firebase.google.com/) run data services for you. The AI knows these tools. It does not know your work rule: *"One customer can have many bookings."* You must explain that part.
+
+A **query** is a question or order for the database: find open expenses, count bookings, or mark an invoice as paid. SQL is a common language for these orders. The code can be valid and still answer the wrong business question. Ask the AI to explain key queries in work terms.
+
+Know who owns the database account and how to export all rows. If you leave the app builder, you still need your business data.
+
+**Ask your AI:** *"This app needs to store [your records] permanently, in a real database, not in files or memory. Set up a hosted database. Then explain to me in plain language: what tables exist, and what does each one store?"*
+
+### Object storage — where files live
+
+For photos, PDFs, and uploads, you will hear **object storage**. It is an online file cabinet. The database keeps the row. Object storage keeps the file.
+
+The file store gives your app a link. The database saves that link on the right row. The receipt stays in the file cabinet. The expense row says where to find it.
+
+If you have attached a receipt to an expense form, you have already used this idea. The form fields become a database row. The PDF or photo goes into object storage. A saved link joins them.
+
+{/* IMAGE PROMPT (database-object-storage.png): Flat vector product illustration, light warm background, soft shadows, purple and teal accents, no photorealism. Show two large cards joined by one link with a paperclip. Left: a database grid holding one expense row. Right: an online file cabinet holding one PDF receipt. Render the exact labels "DATABASE", "EXPENSE ROW", "OBJECT STORAGE", and "RECEIPT.PDF" once each, spell exactly. Do not render any other words, letters, or numbers. Do not print style instructions as text. No fake text, logos, watermarks, duplicate labels, or typos. */}
+
+![An expense row in a database linked to a receipt in object storage](/assets/images/blogs/non-tech-vibe-coding-handbook/database-object-storage.png)
+
+Do not save uploads on the app's own short-term disk. The hosting service may replace that computer, and the files can go away. [**Amazon S3**](https://aws.amazon.com/s3/), [**Cloudflare R2**](https://www.cloudflare.com/products/r2/), and **Supabase Storage** are file store examples.
+
+Private files need private access. A **signed URL** is a link that works for a short time for one allowed user. Also set file type and size limits.
+
+**Ask your AI:** *"Users will upload [photos / PDFs]. Store the files in object storage, not in the database and not on the app's own disk, and keep a link to each file on the matching record."*
+
+### Login — who is this, and what may they do?
+
+Every tool that is not fully public needs an answer to two questions, and engineers use two easily-confused words for them:
+
+- **Authentication** — *who are you?* The login screen. Proving this person is the person.
+- **Authorization** — *what are you allowed to do?* The rules after login. The accountant sees payroll; the intern does not.
+
+You have seen both parts before. The sign-in form checks who you are. After sign-in, an open menu, a hidden button, or a **Blocked** message shows what you may do.
+
+{/* IMAGE PROMPT (authentication-authorization.png): Flat vector product UI illustration, light warm background, soft shadows, purple and teal accents, no photorealism. Show two panels joined by one arrow. Left: a login card. Right: an app with an allowed expenses folder and a blocked payroll folder. Render the exact labels "AUTHENTICATION", "SIGN IN", "AUTHORIZATION", "EXPENSES", "ALLOWED", "PAYROLL", and "BLOCKED" once each, spell exactly. Do not render any other words, letters, or numbers. Do not print style instructions as text. No fake text, logos, watermarks, duplicate labels, or typos. */}
+
+![Authentication checks the person while authorization controls what they may open](/assets/images/blogs/non-tech-vibe-coding-handbook/authentication-authorization.png)
+
+If authentication fails, a stranger gets in. If authorization fails, the right user sees the wrong data. For example, every worker can see every salary. Write down who can see and change each kind of data. AI can build these access rules after you explain them, but it cannot guess your team rules.
+
+**Do not build your own password system.** Use a login service that already exists. For an internal tool, *Sign in with Google* or Microsoft can be a good fit. Staff use the work account they already have.
+
+In B2B, you may hear **SSO (single sign-on)**. It lets staff use the same company login in many tools. [Clerk](https://clerk.com/), [Auth0](https://auth0.com/), and Supabase Auth are services that can help with login.
+
+**Ask your AI:** *"Add login with Google, using an existing auth service — do not build a custom password system. Only people from my company's domain can log in. After login: [your authorization rules — who sees what]."*
+
+### Secrets — the keys that must never leak
+
+An **API key** is like a key to a building. It is a long secret text. A person with your database key may read or remove data. A person with your paid AI key may spend your money.
+
+A common leak happens when someone puts the key in code and sends the code to GitHub. Never do this.
+
+Keep secrets outside the code. On your computer, they may live in a private `.env` file. On the live app, they live in the host settings. Do not paste secret keys into a public chat or screenshot.
+
+**Ask your AI:** *"Check this project for any secret keys written in the code. Move them all to environment variables, make sure they can never be uploaded to GitHub, and tell me where I need to set them on the hosting service."*
+
+### A name and a padlock — domains and HTTPS
+
+Two small things that make the difference between "my weird link" and "a real tool."
+
+- **A domain** is a name you rent, such as `tools.yourcompany.com`. An internal tool can use the host's normal link. A customer app should have a clear name.
+- **HTTPS** gives the padlock in the browser. It hides the data while it moves between the user and the app. Modern hosts often set this up for you. Stop if a login page has no padlock.
+
+### Backups — the part you only regret skipping
+
+A wrong click can remove rows. A table change can fail. Someone may take over an account. Ask one question: **Do we have another copy?**
+
+A **backup** is a copy of the database kept away from the main one. Check two things:
+
+- Does your service make the copy on the plan you pay for?
+- Can you **restore** it? Restore means to use the copy to get the data back. Test this on a safe copy before you need it.
+
+**Ask your AI:** *"Set up automatic daily backups for the database. Then walk me through restoring one into a test copy, so I know the backups actually work."*
+
+### Knowing when it's broken — logs and alerts
+
+If your tool breaks at 9 AM, how will you know? Do not wait for an angry user to tell you.
+
+Two ideas close that gap:
+
+- **Logs** are the app's work notes. They show what it did and where it failed. You can give a safe part of a log to AI and ask for help. Remove private data and keys first.
+- **Alerts** tell you when the app has errors or stops. [Sentry](https://sentry.io/welcome/) and [UptimeRobot](https://uptimerobot.com/) are common examples.
+
+You have seen an alert as an email, chat message, or phone notice. It says something short, such as **App down**. The log is the longer private record that helps the owner find out what happened.
+
+{/* IMAGE PROMPT (logs-alerts.png): Flat vector product illustration, light warm background, soft shadows, purple and teal accents, no photorealism. Show a left-to-right flow with three parts: a web app with a red error symbol, a private log notebook with clean timeline rows made from shapes, and a phone receiving an app-down alert. Render the exact labels "ERROR", "LOGS", "ALERT", and "APP DOWN" once each, spell exactly. Do not render any other words, letters, or numbers. Do not print style instructions as text. No fake text, logos, watermarks, duplicate labels, or typos. */}
+
+![An app error creates detailed logs and sends a short alert to the owner](/assets/images/blogs/non-tech-vibe-coding-handbook/logs-alerts.png)
+
+**Ask your AI:** *"Add error tracking and an uptime alert to this app, so I get an email when something breaks. Use free-tier services."*
+
+---
+
+## Testing — Define What Must Stay True
+
+**Testing means checking that important rules still work after every change.**
+
+Using the app yourself is one test. It helps you check the words and work flow. But a large app has too many paths to check by hand each week. Automated tests repeat the key checks for you.
+
+### Start with risk, not test quantity
+
+For the expense tool, these are not equal:
+
+- the header icon is slightly misaligned;
+- an employee can read another employee's receipt;
+- a double-click creates two payment records;
+- a dashboard count is one hour out of date.
+
+Test the biggest risk first:
+
+1. permissions and sensitive data;
+2. money, actions you cannot undo, and copies;
+3. core business rules and status transitions;
+4. saving, exporting, and recovering data;
+5. the main user journey;
+6. presentation details.
+
+### Four useful kinds of test
+
+Tech teams use more exact names for these tests. The names can change a little between teams, but you will often hear these:
+
+| Tech term | Simple meaning | Expense-tool example |
+|---|---|---|
+| **Unit test** | Check one small rule or function by itself | THB 4,999 needs one approval; THB 5,000 also needs finance |
+| **Integration test** | Check that two or more parts work together | The backend saves an expense in the database and sends the right email order |
+| **End-to-end test (E2E)** | Use the whole app like a user, from the first screen to the final result | Sign in, send an expense, approve it, and see the new status |
+| **User acceptance testing (UAT)** | A business user checks that the tool fits the real work | Finance tries a month-end task and agrees that it is ready to use |
+
+A unit test is usually small and fast. An integration test uses more real parts. An E2E test is slower, but it can find broken links between screens and services. UAT needs people who know the business. A software team can prove that the code follows the written rule. Only your team can confirm that the written rule matches the work.
+
+You may also hear names that describe **when or why** a set of tests runs:
+
+- **Smoke test:** a short check that the main parts still open and work after a new version goes online. Can users sign in? Can they open the main page? Can they save one safe test record?
+- **Regression test:** rerun old tests after a change. The goal is to find something that worked before but is now broken.
+
+A smoke test or regression test may contain unit, integration, and E2E tests. The first group tells you the size of the test. The second group tells you its purpose.
+
+You do not need to test every line. Test more when a mistake can cause more harm.
+
+### Test when things go wrong
+
+A demo uses good data, good internet, and one click. Work is not always that clean. Try:
+
+- empty, wrong, very long, and odd input;
+- a user with the wrong role;
+- a record that was changed in another browser tab;
+- a double-click or repeated delivery;
+- an external service timing out;
+- a file that is too large or the wrong type;
+- a process that fails halfway;
+- refreshing, going back, and resuming later.
+
+One test is very useful for AI-made apps. Change the ID in the URL. If `/expenses/123` belongs to another worker, can you see it by typing that URL? The screen may hide the link while the backend still lets you open it.
+
+### Keep development, preview, and production separate
+
+**Development** is where you make changes. **Preview** is a safe online copy for tests. **Production** is the live app people use.
+
+Use different test data and live data. Test delete with copy data, not with payroll.
+
+A **migration** is a saved step that changes the database, such as adding a column. Make a backup. Test the change on a copy. Then change the live database.
+
+**Ask your AI:** *"Create a risk-based test plan for the core workflows. Label each check as unit, integration, E2E, UAT, smoke, or regression. Add automated tests for permissions, duplicate submissions, state transitions, and data validation. Write the UAT steps for my business team. Use separate test data, run the tests, and report what was not tested."*
+
+---
+
+## Security and Privacy — Control Consequence, Not Fear
+
+Security is not one *make it safe* prompt. You must decide who can act, what they can see, which data to trust, and how to lower harm from one mistake.
+
+You do not need to become a security expert. Use a few strong habits.
+
+### Minimize what you collect
+
+The safest private data is data you never save. Before you ask for an ID card, home address, birth date, or file, ask:
+
+- Which workflow requires this exact field?
+- Can less private data do the same job?
+- Who needs access?
+- How long must we keep it?
+- How will a person request export, correction, or deletion?
+
+Privacy starts when you choose what to save. PDPA, GDPR, and work rules can change by place and type of data. AI can help make the first checklist. Ask a legal and security expert to review high-risk data, because your business still owns the legal duty.
+
+### Least privilege
+
+**Least privilege** means each person and service gets only the access needed for its job. A worker sees their own expenses. A manager sees their team's requests. A report can read data but cannot change it.
+
+Do not share one owner login. Turn on two-step login. For a key business service, have two trusted owners who can recover the account. Remove access when a person leaves.
+
+### Validate on the trusted side
+
+Check data from a browser, file, webhook, sheet, or AI before you use it. This helps stop mistakes and attacks:
+
+- **Injection:** user text runs as a database or system order.
+- **XSS:** saved text runs as code in another user's browser.
+- **Bad file:** an upload has a risky name, type, or size.
+- **Prompt injection:** text in a file tells the AI to break your rules or show private data.
+
+Use known tools and their safe settings. A database order must not join raw user text into SQL. Give an AI agent only the tools it needs. Ask a person before a delete, payment, send, or public post.
+
+### Authorization must be server-side and deny by default
+
+For each private backend action, ask: Who is this? Which row do they want? Which rule lets them act? If no rule says yes, block it. A hidden button or hard-to-guess URL is not enough.
+
+In Supabase, **Row Level Security (RLS)** adds access rules to database rows. A user may read only rows with their `employee_id`. Test with two users. Try to open each other's data.
+
+### Rate limits and abuse controls
+
+A bot can send a public form thousands of times. A public AI feature can spend your budget. **Rate limiting** sets how many times one user or address can act in a set time.
+
+Pair limits with sensible cost controls:
+
+- monthly budget alerts from vendors;
+- per-user limits for expensive operations;
+- maximum upload size and accepted file types;
+- confirmation for bulk sends, deletes, and purchases;
+- one switch to turn off a costly feature fast.
+
+### Dependencies and updates
+
+Generated apps use code libraries from other people. These are **dependencies**. Old versions may have known safety problems. Keep the version list fixed. Turn on safety alerts. Update in small groups and test each group.
+
+AI can help update these libraries. Let it update a small group at a time. Save a checkpoint, run the tests, read the change, and only then put it online.
+
+### Audit trail
+
+For key actions, save who did what, when, and on which row. This is an **audit log**. It answers: Who approved this expense? Who changed the bank account? Who exported user data?
+
+Do not let normal users edit this log. Do not put secret keys in it. For a key change, save the old and new value.
+
+### A focused security review prompt
+
+*"Review this app for login, access rules, input, secret keys, private data, files, API calls, and actions we cannot undo. Check that one user cannot see another user's data. Check bad input, rate limits, old libraries, audit logs, backups, and recovery. List the risks from high to low. Show me the plan before you change code."*
+
+This is a first check, not a full security test. Pay an expert to review public, money, private-data, or key business systems.
+
+---
+
+## Tools You Can Use — Start with the Smallest Fit
+
+Tools change fast. The types of work change more slowly. First, name the work. Then choose a tool.
+
+### 1. You need to connect existing tools, not build a new app
+
+If the job is *when a form arrives, add a CRM row, tell [Slack](https://slack.com/), and send an email*, use a work-flow tool. [**Zapier**](https://zapier.com/), [**Make**](https://www.make.com/en), and [**n8n**](https://docs.n8n.io/) start with one trigger, then run a list of actions. They can also use *if* rules and repeat a step. n8n can run in its cloud or on your own server.
+
+This works well when users already use [Google Forms](https://workspace.google.com/products/forms/), [Typeform](https://www.typeform.com/), Slack, email, or a business tool. It gets hard when you need many custom screens or hundreds of *if* paths.
+
+**Good first project:** get a monthly CSV file, check each row, save the good rows, send the bad rows to an owner, and make a short report.
+
+### 2. Your data already looks like a spreadsheet and people need a better interface
+
+[**Glide**](https://www.glideapps.com/docs) can connect to sheets and databases. You can add forms, access rules, and work flows. Then you can share the app. Its guide starts with data, screen parts, actions, users, and publish.
+
+This can fit stock lists, field work, checks, simple CRM, and approval tools. Check row limits, access rules, data sync, export, and cost.
+
+### 3. Your team needs screens for company data
+
+[**Retool**](https://retool.com/), [**Microsoft Power Apps**](https://www.microsoft.com/en-us/power-platform/products/power-apps), and Glide can make tables, forms, charts, and access rules over company data. They fit internal work when you do not need a special public design.
+
+These tools can go live fast because many screen parts are ready. But you may depend on the tool, and the price may grow per user. Ask where the data stays, if you can save old app versions, and if staff can use company login.
+
+### 4. You want to describe and publish a custom web application
+
+You can describe a web app to **Lovable**, [**Replit Agent**](https://replit.com/ai), or [**v0**](https://v0.app/). Each tool covers different parts:
+
+- **Lovable** can cover screens, backend, database, login, other services, online hosting, and code sync with GitHub ([Lovable documentation](https://docs.lovable.dev/introduction/welcome)). With Supabase, it can also help with tables, table changes, login, files, and safety checks ([Lovable–Supabase documentation](https://docs.lovable.dev/integrations/supabase)).
+- **Replit Agent** joins the AI builder with online code, database, login, secrets, and publish. It also has private online apps for internal work and tests ([Replit private deployments](https://docs.replit.com/references/publishing/private-deployments)).
+- **v0** can make screens and full web apps from normal language. It uses Vercel to put the app online and keep settings and links to other services ([v0 documentation](https://vercel.com/docs/v0)).
+
+These tools guide you through many parts. Still ask: Where are the code and data? Can I export both? Who owns the live app account? Which safety work does the tool do? What do I need to run if I leave?
+
+### 5. You want to own the code and choose every part
+
+**Claude Code** and [**Cursor**](https://cursor.com/) work with the code files. They can read and edit files, run tests, and work with Git. Claude Code covers reading, editing, testing, fixing errors, and Git work ([Claude Code documentation](https://docs.anthropic.com/en/docs/claude-code/overview)). Cursor Agent can search code, edit it, run commands, and show each change for review ([Cursor Agent documentation](https://docs.cursor.com/chat/overview)).
+
+You get more choice and can move the code more easily. You also must choose the host, database, login, files, online setup, and alerts. A tech friend can help with these choices.
+
+### 6. You need ready backend parts
+
+**Supabase** and **Firebase** give you common backend parts: database, login, files, and server work. **Neon** focuses on Postgres. **Clerk** and **Auth0** focus on login. **Vercel**, **Netlify**, **Render**, and **Railway** focus on running the app online.
+
+These are app parts, not full app builders. An AI tool can connect them. Write down the owner account, how to recover it, cost alerts, where the data is, backup rules, and how to export.
+
+### 7. Use a known service for high-risk work
+
+Use a known service for:
+
+- payments and subscriptions: Stripe, [Paddle](https://www.paddle.com/), or a provider appropriate to your country and business;
+- app email: Postmark, Resend, [SendGrid](https://www.twilio.com/en-us/sendgrid), or a similar tool;
+- identity: Google or Microsoft sign-in through a managed auth service;
+- file storage: S3 or another managed file store;
+- error tracking: Sentry or a similar service;
+- online checks: UptimeRobot, [Better Stack](https://betterstack.com/), or a similar tool.
+
+The service does not make every choice for you. You still set the amount, receiver, access, how long to keep data, and what to do after an error. The service handles the hard base work.
+
+### Questions to ask before you choose a tool
+
+Do not start with *Which AI builder is best?* Ask what this project needs:
+
+| Question | Why it matters |
+|---|---|
+| Can it build my work flow and access rules? | A nice screen is useless if the work rules do not fit |
+| Where do code, data, files, and user accounts live? | They may live in different places |
+| Can I export each one? | Code without business data is not enough |
+| Who owns the vendor, GitHub, domain, and cloud accounts? | The business should not depend on one person's private login |
+| Does it have private access, user roles, and backend checks? | Internal and B2B apps need more than a secret link |
+| How are preview and production kept apart? | You need a safe place to test |
+| Does it have backups, logs, alerts, and action history? | You need to run the app after it goes live |
+| Does cost grow by users, runs, rows, files, or AI use? | A cheap test can cost more after growth |
+| Can an engineer take over later? | Clear code, data tables, notes, and common tools make this easier |
+| What if the company closes my account? | You need export and recovery before a bad day |
+
+Prices and limits change often. Read the current official pages before you choose. Then build one small test: one login, one private row, one file, one later job, one export, and one backup restore. This test is more useful than a long list of features.
+
+### Three simple ways to start
+
+These are examples, not fixed answers:
+
+**A five-person internal approval tool:**
+
+```text
+Glide or an internal-tool builder
+→ company Google/Microsoft login
+→ built-in table or an existing data source
+→ built-in workflow automation
+```
+
+**A public prototype with custom screens:**
+
+```text
+Lovable, Replit Agent, or v0
+→ managed Postgres/backend platform
+→ managed authentication
+→ GitHub export/sync
+→ managed deployment + error tracking
+```
+
+**A product that an engineer may help with later:**
+
+```text
+Coding agent working with normal code files
+→ GitHub as source of truth
+→ managed Postgres + object storage + auth
+→ preview and production deployments
+→ automated tests, backups, logs, and alerts
+```
+
+The right answer may be *do not build*. If a ready SaaS tool covers 90% of the work, setting it up may cost less than owning custom software for years. Build when your special rule or tool link gives enough value.
+
+---
+
+## When to Bring In a Professional
+
+You can build a lot. You should still ask for help at some points.
+
+Ask an engineer, tech friend, security expert, or adviser when:
+
+- **Real money moves through it.** Stripe can take a payment. But if your own code counts balances, holds money, or moves money between people, get a review first.
+- **Private data enters the system.** This includes health data, ID numbers, and money records. PDPA can apply even to a small team.
+- **It moves from internal to public.** The internet has more users, mistakes, and attacks. Get a safety review before this move.
+- **The team cannot work without it.** Ask a professional to check backups, access, alerts, and recovery.
+
+You may reach these points because the tool worked and grew. That is a good time to add a budget for help.
+
+You can now tell the engineer: *"The app runs on Railway. The Postgres database is on Supabase. Users log in with Google through Clerk. Daily backups are on, and I tested one restore."* This gives them a useful map at the start.
+
+---
+
+## If You Want to Go Deeper
+
+Maybe you only want to build a useful tool for your team. That is already a good goal. You do not need to become a software engineer to get value from this handbook.
+
+### Learn one missing part at a time
+
+Two short lessons can make it easier to work with an AI tool and a software team:
+
+- **Git and GitHub:** [Introduction to GitHub](https://github.com/skills/introduction-to-github) is a hands-on GitHub Skills course. It covers a repository, branch, commit, pull request, and merge in less than one hour.
+- **APIs:** the [Postman quick start](https://learning.postman.com/docs/getting-started/quick-start) lets you send one API request and see the answer. This makes request, response, endpoint, and status code easier to understand.
+
+You do not need to learn everything at once. Build one small thing. Learn the next missing part. Ask for help. Then repeat.
+
+Maybe that small tool makes you want to understand the code, work more closely with a software team, or even move into a tech role. If so, welcome. Your business knowledge and care for users are useful here.
+
+Please prepare for bugs, unclear errors, broken builds, and one missing comma that takes an hour to find. Welcome to the world of frustration. Just kidding — well, only a little. 😅
+
+When you want a wider learning path, read [Fundamentals? How Much Do You Actually Need for Early Career in 2026](/blog/fundamentals-how-much-you-need-early-career-2026). It separates what you need to start from what you can learn later. 🙇‍♂️
