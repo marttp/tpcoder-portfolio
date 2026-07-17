@@ -580,12 +580,12 @@ erDiagram
 **Algorithm** คือลำดับขั้นตอนที่เปลี่ยน input ให้เป็น output กฎอนุมัติของคุณก็คือ algorithm 1 แบบครับ:
 
 ```text
-ถ้าจำนวนเงินต่ำกว่า 5,000 บาท:
-  ส่งให้ผู้จัดการของพนักงาน
-มิฉะนั้น:
-  ส่งให้ผู้จัดการ จากนั้นส่งให้ฝ่ายการเงิน
-ถ้าผู้ส่งเป็นคนอนุมัติคำขอของตัวเอง:
-  ส่งให้ผู้อนุมัติคนถัดไปที่มีสิทธิ์
+If amount is below THB 5,000:
+  send to the employee's manager
+Otherwise:
+  send to the manager, then finance
+If the submitter would approve their own request:
+  send to the next eligible approver
 ```
 
 คราวนี้ลองคิดถึงสิ่งที่เกิดขึ้นเมื่อข้อมูลมีจำนวนมากขึ้น เช่น คุณต้องการค้นหาลูกค้า 1 ราย:
