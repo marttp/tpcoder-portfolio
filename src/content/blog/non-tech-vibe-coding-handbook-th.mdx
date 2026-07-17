@@ -1,0 +1,1176 @@
+---
+title: "คู่มือ Vibe Coding และพื้นฐานสำหรับคนสาย Non-Tech"
+description: "คู่มือสำหรับคนที่รู้จักหน้างานของตัวเองดีและอยากสร้าง software ด้วย AI ตั้งแต่โลกธุรกิจ architecture, data, API, security, testing, prompting, scale ไปจนถึงเครื่องมือที่ช่วยดูแลแต่ละส่วน"
+pubDate: "2026-07-17"
+tags:
+  ["Vibe Coding", "Software Engineering"]
+heroImage: "/assets/images/blogs/non-tech-vibe-coding-handbook/hero-banner.png"
+language: "th"
+translationSlug: "non-tech-vibe-coding-handbook"
+servicesNote: true
+---
+
+import MermaidDiagram from "../../components/blog/MermaidDiagram.astro";
+
+{/* IMAGE PROMPT (hero-banner.png): Flat vector illustration, light background, soft shadows, 2-3 accent colors (purple, teal), no photorealism. A wide hero banner. On the left, a person in casual clothes (not an engineer stereotype) stands at a workbench assembling a small glowing app window out of building blocks. On the right, faint outlines of larger structures behind the app window: a cylinder shape, a cloud shape, a shield shape, suggesting hidden infrastructure. Render the text "VIBE-CODING HANDBOOK" exactly once, in the upper left area, spell exactly. Do not render any other words. Do not print style instructions as text in the image. No duplicate labels, no typos. */}
+
+![คู่มือ vibe coding สำหรับคนสาย Non-Tech](/assets/images/blogs/non-tech-vibe-coding-handbook/hero-banner.png)
+
+ในโพสต์เรื่อง [Mid-Level](/blog/mid-level-2026-what-it-looks-like-and-what-it-costs-th) ผมเคยพูดถึงคนอีกกลุ่มที่ยังไม่ได้คุยกันครับ คือคนที่ไม่ได้ทำงานสาย Software Engineering แต่รู้จักหน้างานของตัวเองดีมาก แล้วตอนนี้ก็ใช้ AI สร้าง software ที่มีประโยชน์ได้ ผมทิ้งไว้ตอนนั้นว่ากลุ่มนี้ควรมีอีกโพสต์นึงแยกออกมา และนี่ก็คือโพสต์นั้นครับ
+
+คุณอาจทำงานอยู่ใน Finance, Operations, HR, Design, Sales, การศึกษา หรือเปิดธุรกิจของตัวเอง ช่วงนี้ AI coding tool เก่งพอให้คุณอธิบายปัญหาด้วยภาษาปกติ แล้วได้ software ที่ทำงานได้กลับมา บางคนอาจสร้าง tool เล็ก ๆ, automation หรือ dashboard ไปแล้วด้วยซ้ำ เมื่อ 10 ปีก่อน ถ้าอยากได้ software ที่ทำมาเพื่องานของเรา ทางเลือกมักมีอยู่ 2 ทาง คือจ้างคนทำ หรือใช้เวลาหลายเดือนเรียนเขียนโปรแกรมก่อน
+
+AI builder อย่าง [Lovable](https://lovable.dev/) ช่วยตั้ง [Google login](https://developers.google.com/identity) หรือรับ payment ผ่าน [Stripe](https://stripe.com/) ให้ได้หลายส่วนครับ ส่วน AI coding tool อย่าง [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) ให้คุณควบคุม code ได้มากกว่า แต่คุณต้องขอให้มันสร้างแต่ละส่วนเอง ปัญหาคือ **ถ้าคุณไม่รู้ว่าส่วนนั้นมีอยู่ คุณก็ไม่รู้ว่าจะต้องขออะไร** ผมเห็นคำถามแบบนี้ในกลุ่มคนไทยที่สร้าง app ด้วย AI บ่อยครับ เอา app ขึ้น online ยังไง [GitHub](https://github.com/) คืออะไร แล้ว data ควรเก็บไว้ที่ไหน โพสต์นี้จะค่อย ๆ แกะทีละเรื่องครับ
+
+ผมจะใช้คำสาย Tech อยู่บ้าง เพราะคุณจะเจอคำเหล่านี้ใน AI tool อยู่ดี แต่ทุกคำจะมีขั้นตอนง่าย ๆ และตัวอย่างจากงานมาช่วยอธิบาย เราจะคุยกันตั้งแต่ data structure, algorithm, API, architecture ไปจนถึง concurrency คุณไม่ต้องเรียนแบบนักศึกษา Computer Science ครับ แค่รู้ว่าแต่ละแนวคิดเกิดมาเพื่อแก้ปัญหาอะไร ก็ช่วยให้คุณคุยกับ AI และทีม Software ได้ดีขึ้นมากแล้ว
+
+ถ้าหัวข้อไหนคุณรู้อยู่แล้ว ข้ามไปได้เลยนะครับ นี่คือ handbook อ่านส่วน business กับ architecture สักรอบ แล้วค่อยกลับมาหา database, security, testing, prompting หรือเครื่องมือในตลาดตอนที่ project เดินมาถึงจุดนั้นก็ได้
+
+ขอแนะนำตัวสั้น ๆ ก่อนครับ ผมทำงานเป็น backend engineer มาประมาณ 7 ปี งานส่วนใหญ่อยู่กับ payment และ wallet เลยได้ดูแลส่วนหลังบ้านที่ user ไม่ค่อยเห็น โพสต์นี้เป็นมุมจากฝั่ง engineer เพื่อช่วยให้คนสาย business เห็นภาพเดียวกับ tech team ครับ แต่ละทีมอาจเลือก technology ต่างกันได้ ขอให้เข้าใจเหตุผลกับ risk ของตัวเลือกนั้นก็พอ
+
+---
+
+## The World Your Software Lives In — B2C, B2B, and Internal Tools
+
+ก่อนเข้าเรื่อง Tech ผมอยากให้เริ่มจากคำถามนี้ก่อนครับ: **software ของคุณต้องการอะไรบ้าง ใครใช้บ้าง และถ้าพังแล้วเกิดอะไรขึ้น**
+
+software ในโพสต์นี้แบ่งตามกลุ่ม user ได้คร่าว ๆ 3 แบบครับ:
+
+- **Internal tools** — software ที่คุณกับเพื่อนร่วมงานใช้ เช่น form ลางาน, tool สร้าง report หรือ dashboard ของทีม Sales
+- **B2C (business to consumer)** — software ที่เปิดให้คนทั่วไปใช้ เช่น หน้าจองโต๊ะร้านอาหาร หรือ app ที่ใครก็สมัครได้
+- **B2B (business to business)** — software ที่อีกบริษัทนึงใช้และมักจ่ายเงินให้คุณ เช่น tool ที่ขายให้หลายบริษัทเอาไปใช้ทำงาน
+
+{/* IMAGE PROMPT (three-worlds.png): Flat vector illustration, light background, soft shadows, 2-3 accent colors (purple, teal), no photorealism. Three simple buildings side by side, small to large from left to right. Above the first building, a few small person icons. Above the second building, a large crowd of tiny person icons. Above the third building, two briefcase icons and a document with a signature line. Label each building exactly once below it, spell exactly, left to right: "Internal", "B2C", "B2B". Render each label exactly once. Do not render any other words. Do not print style instructions as text in the image. No duplicate labels, no typos. */}
+
+![Internal tools, B2C และ B2B อยู่กันคนละโลก](/assets/images/blogs/non-tech-vibe-coding-handbook/three-worlds.png)
+
+แล้วเรื่องนี้เกี่ยวอะไรกับคุณ? Feature เดียวกันมีมาตรฐานคำว่า **ดีพอ** ไม่เท่ากันในแต่ละโลกครับ
+
+| | Internal tool | B2C | B2B |
+|---|---|---|---|
+| ใครใช้ | เพื่อนร่วมงานของคุณ | คนที่เราไม่รู้จักบน Internet | พนักงานของอีกบริษัท |
+| ถ้าพัง 1 ชั่วโมง | งานสะดุด และเพื่อนร่วมงานมาถามคุณได้ทันที | ลูกค้าออกจาก app และอาจไม่กลับมา | คุณอาจผิดเงื่อนไขใน contract |
+| ถ้า data รั่ว | แย่ แต่ยังอยู่ในขอบเขตบริษัท | ข้อมูลส่วนตัวของคนหลุดออกไป และอาจมีปัญหาด้านกฎหมาย | ข้อมูลธุรกิจของอีกบริษัทหลุด และ deal อาจจบได้ |
+| Login ต้องมีอะไร | บัญชี Google ของบริษัทอาจพอแล้ว | สมัครสมาชิก, reset password และส่วนอื่น ๆ สำหรับคนทั่วไป | ระบบ login ของบริษัทลูกค้า ซึ่งมักเจอคำว่า SSO |
+| หน้าตาต้องดีแค่ไหน | ไม่ต้องเนี๊ยบมากก็ทำงานได้ | ต้องดูน่าเชื่อถือ เพราะลูกค้าตัดสินจากสิ่งที่เห็น | ดูเป็นงาน professional แต่การใช้งานต้องมาก่อนความสวย |
+
+ของพวกนี้เปลี่ยนได้ครับ Tool ทำ report อาจเริ่มจากคนใช้คนเดียว ต่อมามีคนในบริษัทใช้อีก 20 คน แล้ววันนึงคุณอาจเอาไปขายบริษัทอื่น ทุกครั้งที่ขยับโลก คุณต้องเพิ่มกฎเรื่อง data, login, support และ downtime ตามไปด้วย
+
+ก่อนเขียน feature list ลองตอบคำถาม business 4 ข้อนี้ก่อนครับ:
+
+1. **ใครใช้?** คนที่กด button คือ user
+2. **ใครจ่าย?** ใน B2C คนใช้กับคนจ่ายอาจเป็นคนเดียวกัน ส่วน B2B อาจเป็น manager และ internal tool ก็ใช้ budget ของแผนก
+3. **ใครเป็นเจ้าของ data?** ลูกค้าอาจเป็นคนกรอก แต่บริษัทของเขาเป็นเจ้าของตามกฎหมาย เรื่องนี้สำคัญตอนมีคนขอ export หรือลบข้อมูล
+4. **งานส่วนไหนต้องพึ่ง tool นี้?** เช่นใช้ภายใน ใช้อีกทีพรุ่งนี้ก็ไม่เป็นไร แต่ tool ของ payroll หรือ delivery อาจทำให้ทั้งทีมหยุดงานได้
+
+ข้อสุดท้ายสำคัญมากครับ พอทุกคนเลิกใช้ spreadsheet เก่า tool ของคุณก็ไม่ใช่ demo แล้ว ทีมเริ่มต้องพึ่งมันเพื่อทำงาน
+
+สิ่งที่ต้องคำนึงถึงอยู่ 2 ด้านที่ผมเห็นในคนสาย Non-Tech บ่อย ๆ:
+
+- **สร้างมากเกินไป:** ใช้เวลาหลายสัปดาห์รองรับ user 1,000,000+ ทั้งที่ตอนนี้มีคนใช้ 5 คน
+- **สร้างน้อยเกินไป:** เอา internal tool ที่ทำเร็ว ๆ ไปเปิด public คนนอกทีมมีโอกาสกรอกผิด, double-click, ลืม password และบางคนก็อาจลองโจมตีระบบ
+
+ก่อนเริ่มสร้าง บอก AI ไปเลยว่า software อยู่ในโลกไหน เช่น **นี่คือ internal tool สำหรับทีมของผม** ประโยคเดียวช่วยให้ AI เลือกของได้เหมาะขึ้นเยอะครับ
+
+สำหรับคนสาย Non-Tech หลายคน internal tool เป็น project แรกที่ดีมาก เพราะ user อยู่ใกล้คุณ มีอะไรพังก็ถามได้เลย แถม tool เล็ก ๆ ที่ช่วยลดงาน 3 ชั่วโมงทุกสัปดาห์ก็มี value วัดได้ไม่ยาก
+
+### Start from the workflow, not the app idea
+
+หลายคนเริ่มจากหน้าจอครับ อยากได้ dashboard, form แล้วก็ admin page ส่วน tech team มักเริ่มอีกทาง คือถามว่างานไหลจากต้นจนจบยังไง:
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    T["Trigger\nอะไรเริ่มงาน?"] --> I["Input\nมีข้อมูลอะไรเข้ามา?"] --> D["Decision\nใช้กฎ business ข้อไหน?"] --> A["Action\nเปลี่ยนหรือส่งอะไร?"] --> O["Outcome\nรู้ได้ยังไงว่างานจบ?"]
+`}
+  size="medium"
+/>
+
+สมมุติว่าเราจะทำ **app อนุมัติค่าใช้จ่าย** คำว่า workflow จะช่วยได้มากกว่าชื่อ app ครับ:
+
+- **Trigger:** พนักงานส่งรายการค่าใช้จ่าย
+- **Input:** จำนวนเงิน, วันที่, หมวดหมู่, ใบเสร็จ และคำอธิบาย
+- **Decision:** ต่ำกว่า 5,000 บาทส่งให้ manager ถ้าสูงกว่านั้นต้องผ่าน Finance เพิ่ม
+- **Action:** อนุมัติ, ปฏิเสธ หรือส่งกลับไปขอข้อมูลเพิ่ม
+- **Outcome:** พนักงานได้รับแจ้งเตือน, decision ถูกบันทึก และรายการที่ผ่านแล้วเข้า payment queue
+
+Flow นี้ทำให้เราเห็นคำถามที่หน้าจอสวย ๆ ซ่อนไว้ครับ ถ้าพนักงานไม่มี manager ล่ะ? คนส่งอนุมัติรายการตัวเองได้ไหม? ถ้าส่งใบเสร็จเดิม 2 รอบจะเกิดอะไรขึ้น? ตอนคุณตอบคำถามพวกนี้ คุณกำลังทำ software design อยู่แล้ว
+
+---
+
+## What You Think You Can't Do — But Can, Now
+
+AI ช่วยทำอะไรได้มากกว่าที่หลายคนคิดครับ
+
+{/* IMAGE PROMPT (what-you-can-build.png): Flat vector editorial illustration, light warm background, soft shadows, purple and teal accents, no photorealism. A wide two-panel before-and-after scene. Left: one tired office worker copies rows between a spreadsheet, email, and paper form. Right: the same calm worker uses one simple web tool that sends work into a clear report and team message. Do not render any words, letters, numbers, code, logos, or watermarks. Do not print style instructions as text. No duplicate person or fake text. */}
+
+![งาน manual จาก spreadsheet กลายเป็น web tool ขนาดเล็ก](/assets/images/blogs/non-tech-vibe-coding-handbook/what-you-can-build.png)
+
+ด้วย AI tool วันนี้คุณทำเรื่องพวกนี้ได้แล้ว:
+
+- **เปลี่ยนงาน spreadsheet ที่ชวนเหนื่อยให้เป็น web tool เล็ก ๆ** เช่น report ประจำสัปดาห์ที่ต้อง copy-paste 3 ชั่วโมง หรือ form ที่ทุกเดือนต้องไล่เก็บข้อมูลผ่าน email ทั้งหมดนี้คือ software project และตอนนี้คุณเริ่มทำเองได้
+- **สร้าง dashboard จาก data ที่มีอยู่** ต่อ spreadsheet หรือ file export แล้วแสดงเฉพาะตัวเลขที่สำคัญ พร้อม update ให้อัตโนมัติ
+- **เชื่อม tool เข้าด้วยกัน** พอมี form ใหม่ก็ส่งข้อความเข้า team chat แล้วเพิ่ม row ลง sheet
+- **สร้าง prototype ที่เปิดให้ดูได้** ถ้าคุณเคยอธิบาย product idea ด้วย slide จะรู้เลยว่าการบอกให้คนจินตนาการหน้าจอ ต่างจากยื่น link ที่กดเล่นได้แค่ไหน Investor, หัวหน้า และลูกค้าเข้าใจของที่ลองใช้ได้ง่ายกว่าครับ
+- **ถามเรื่องระบบเก่า** เอา error, formula หรือ macro ใส่ให้ AI แล้วขอให้อธิบายด้วยคำง่าย ๆ
+
+แต่มีบางเรื่องที่ต้องระวังมากขึ้น:
+
+- **จัดการเงินของคนอื่นใน scale ใหญ่** การรับ payment ผ่าน service อย่าง Stripe ทำได้แล้วครับ ส่วนการเขียน logic ของ payment หรือ wallet เอง เช่น คำนวณ balance และย้ายเงินระหว่าง account เป็นจุดที่ความพลาดเล็ก ๆ กลายเป็นเงินหายได้ นี่คืองานประจำของผม และผมก็ใช้ AI ช่วยเขียน code เหมือนกัน แต่ผมไม่ให้ AI ตัดสินกฎเรื่องเงิน หรือเติม code ที่ผมอธิบายไม่ได้ ผมเลือกเชื่อ logic ที่อธิบายและ test ได้มากกว่า ก่อนขึ้น live ควรมีคนจาก software team review การเปลี่ยนแปลงผ่าน pull request (PR) ด้วย คุณยังไม่รู้ทุกส่วนก็ไม่เป็นไรครับ ขอแค่รู้ว่าช่วงไหนต้องขอความช่วยเหลือ ให้คนที่เหมาะ review และระวังสิ่งที่กำลังส่งให้ user
+- **เก็บข้อมูลส่วนตัว หรือ sensitive data** เช่น ข้อมูลสุขภาพ, เลขบัตรประชาชน หรือข้อมูลการเงิน กฎหมายอย่าง PDPA มีผลกับคุณแม้คุณจะยังไม่เคยรู้จักกฎหมายนี้ ไม่ได้หมายความว่าห้ามสร้างครับ แปลว่าเดินมาถึง checkpoint ที่ควรดึงคนมีประสบการณ์มาช่วย
+- **ระบบ public ที่มี user จำนวนมาก** ถ้ามีคน 1,000+ คนใช้พร้อมกัน ผลกระทบตอนระบบพังก็เพิ่มตามไปด้วย
+
+ขีดจำกัดตอนนี้ไม่ได้อยู่ที่ code เขียนยากอย่างเดียวแล้ว แต่อยู่ที่ **ถ้า code ผิดแล้วเกิดอะไรขึ้น** AI ทำให้เขียน code ง่ายขึ้น ส่วนคนหรือทีมที่เอาระบบขึ้น online ยังเป็นคนรับผิดชอบผลลัพธ์อยู่ดี หัวข้อถัด ๆ ไปจะช่วยคุณลด risk เหล่านี้ครับ
+
+### AI gives a likely answer, not a fixed answer
+
+คุณอาจเคยเจอคำว่า **probabilistic** คำนี้หมายถึง AI ทำงานโดยมีโอกาสเข้ามาเกี่ยวข้อง คำตอบจาก input แบบเดียวกันจึงไม่จำเป็นต้องเหมือนเดิมทุกครั้ง
+
+ลองใช้ตัวอย่างจาก Marketing ครับ คุณส่ง lead ให้ AI 10 คน แล้วขอให้เลือกคนที่พร้อมคุยตอนนี้ รอบนี้ AI ส่ง 2 คนไปให้ทีม Sales ส่วนอีก 8 คนรอรอบหน้า ถ้า run ใหม่ AI อาจเลือกคนละ 2 คน เพราะคำตอบมาจากสิ่งที่มีแนวโน้ม ไม่ใช่กฎตายตัวแบบ `amount > 5,000`
+
+{/* IMAGE PROMPT (probabilistic-ten-leads.png): Flat vector infographic, light warm background, soft shadows, purple and teal accents, no photorealism. Show exactly ten lead cards as the input. Exactly two cards move to one tray for this round. Exactly eight cards stay in a second tray for the next round. Render the exact labels "10 LEADS", "2 GO NOW", and "8 WAIT" once each, spell exactly. Do not render other words, letters, or numbers. Do not print style instructions as text. No wrong counts, duplicate labels, typos, logos, or watermarks. */}
+
+![Lead 10 คน โดย 2 คนไปต่อรอบนี้และ 8 คนรอรอบหน้า](/assets/images/blogs/non-tech-vibe-coding-handbook/probabilistic-ten-leads.png)
+
+วิธีนี้เหมาะกับ draft, score, การจัดกลุ่ม หรือ suggestion แต่เสี่ยงเกินไปถ้าจะให้ AI เป็นคนตัดสินขั้นสุดท้ายเรื่อง payment, การรับคน, สุขภาพ, กฎหมาย หรือสิทธิ์เข้า account
+
+ใช้ pattern ง่าย ๆ แบบนี้ได้ครับ:
+
+1. ให้ AI เสนอคำตอบหรือให้ score
+2. มีกฎที่บอกชัดว่าขั้นต่อไปทำอะไร
+3. ให้คนตรวจ case ที่มี risk สูง
+4. เก็บ input กับ result ไว้ จะได้ย้อนดูตอนเจอ decision ที่มีปัญหา
+
+Pattern นี้เรียกว่า **human-in-the-loop** คือ AI ช่วยทำงาน ส่วนคนเป็นผู้ตรวจผลก่อน action ที่มี risk สูงจะเดินต่อ
+
+**ถาม AI แบบนี้:** ส่วนไหนของระบบใช้กฎตายตัว และส่วนไหนใช้คำตอบจาก AI ที่อาจเปลี่ยนได้ อธิบายด้วยคำง่าย ๆ และเพิ่ม human review ก่อน action ที่มี risk สูงทุกจุด
+
+---
+
+## Pure Vibe Coding Can Hide the Choices
+
+**Pure vibe coding** คือการบอกสิ่งที่คุณต้องการ รับ code ที่ AI สร้างให้ แล้วขอแก้ต่อไปเรื่อย ๆ โดยไม่รู้ว่าเครื่องมือเลือกอะไรไว้เบื้องหลัง วิธีนี้ใช้ทำ demo เร็ว ๆ ได้ครับ ปัญหาจะเริ่มเมื่อ demo กลายเป็นเครื่องมือที่คนต้องพึ่งพา
+
+เมื่อขอให้ AI builder สร้าง web app คุณมักจะได้ [JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript), [TypeScript](https://www.typescriptlang.org/) หรือ [Python](https://www.python.org/about/) ภาษาเหล่านี้เป็นตัวเลือกที่ดีได้ทั้งหมด ปัญหาไม่ได้อยู่ที่ภาษา แต่อยู่ที่คำตอบแรกอาจกลายเป็นตัวเลือกสุดท้าย ก่อนคุณจะรู้ด้วยซ้ำว่ามีทางเลือกอื่น
+
+คุณไม่ต้องเขียน code ทุกบรรทัดเอง แต่ควรรู้ว่ามีเครื่องมืออื่นอยู่ และถามว่าทำไมตัวเลือกนี้จึงเหมาะกับงานของคุณ
+
+### What is a programming language?
+
+**Programming language** คือชุดคำและกฎที่ใช้บอก computer ว่าต้องทำอะไร ภาษาไม่ได้เปลี่ยนแค่หน้าตาของ code แต่ยังเปลี่ยนเรื่องเหล่านี้ด้วย:
+
+- app run ได้ที่ไหน
+- error แบบใดจะถูกพบก่อน app เริ่มทำงาน
+- app ใช้ memory อย่างไร
+- มี library สำเร็จรูปอะไรให้ใช้บ้าง
+- จะนำ app ขึ้น online อย่างไร
+- และใครจะดูแลระบบต่อในอนาคต
+
+**Type** บอกว่าค่าหนึ่งเป็นข้อมูลแบบใด เช่น text, number หรือ date การตรวจ type ช่วยหยุดข้อมูลผิดบางแบบได้ก่อน app ขึ้น online
+
+**Memory** คือพื้นที่ทำงานระยะสั้นของ computer ถ้าใช้ memory ผิด โปรแกรมอาจล่มหรือเกิดช่องโหว่ด้าน security ได้ **Memory safety** หมายถึงภาษาช่วยป้องกันการใช้พื้นที่นี้แบบไม่ปลอดภัย ตัวอย่างเช่น [Rust](https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html) จะตรวจว่าส่วนใดของโปรแกรมเป็นเจ้าของ memory แต่ละชิ้น จึงช่วยดูแล memory safety โดยไม่ต้องมี garbage collector ส่วน garbage collector คือระบบที่หาและคืน memory ซึ่งโปรแกรมเลิกใช้แล้ว
+
+**Enterprise** ไม่ได้หมายถึงระบบใหญ่เพียงอย่างเดียวครับ ส่วนมากยังหมายถึงระบบที่ต้องอยู่หลายปี เชื่อมกับระบบบริษัทหลายตัว ทำตามกฎเข้ม และมีหลายทีมช่วยกันดูแล [Java](https://www.oracle.com/java/technologies/) และ [C# with .NET](https://dotnet.microsoft.com/en-us/learn/dotnet/what-is-dotnet) จึงพบได้บ่อยในโลกนี้ เพราะมีเครื่องมือ, library, การตรวจข้อมูล และการ support ที่ใช้กันมานาน ภาษาอื่นก็ดูแลระบบบริษัทขนาดใหญ่ได้เช่นกัน
+
+{/* IMAGE PROMPT (programming-language-paths.png): Flat vector educational illustration, light warm background, soft shadows, purple and teal accents, no photorealism. Put one simple app window in the center. Around it, show five equal alternative tool cards: a browser window for JS / TS, an automation gear and data chart for PYTHON, a safety shield for RUST, a stable office server building for JAVA / C#, and a small cloud service for GO. Connect every card to the same app. No card is larger or shown as the winner. Render the exact labels "ONE APP, MANY PATHS", "JS / TS", "PYTHON", "RUST", "JAVA / C#", and "GO" once each, spell exactly. Do not render any other words, letters, or numbers. Do not print style instructions as text. No official logos, mascots, fake text, watermarks, duplicate cards, or typos. */}
+
+![1 app เลือกใช้ programming language ได้หลายทาง](/assets/images/blogs/non-tech-vibe-coding-handbook/programming-language-paths.png)
+
+table นี้ไม่ใช่การจัดอันดับนะครับ แค่จะยกตัวอย่างมาให้ดูคร่าว ๆ จาก market ปัจจุบัน:
+
+| Language | งานที่พบบ่อย | สิ่งที่ช่วยคุณได้ | สิ่งที่ต้องระวัง |
+|---|---|---|---|
+| JavaScript / TypeScript | หน้าจอบน browser และ web app แบบเต็มระบบ | Browser run JavaScript ได้ ส่วน TypeScript เพิ่มการตรวจที่ช่วยหา error ของรูปแบบข้อมูลระหว่างทำงาน | โลก web เปลี่ยนเร็ว package สำเร็จรูป, test และ update ยังต้องมีคนดูแล |
+| Python | Automation, งาน data, งาน AI, script และ web backend | อ่านง่ายและมี library สำเร็จรูปจำนวนมาก | Error บางอย่างจะโผล่เมื่อเส้นทางนั้นถูก run ถ้าทีมไม่ได้เพิ่ม type check และ test |
+| Rust | System tool และส่วนที่ต้องการ memory safety, ความเร็ว และการควบคุม resource | มี memory safety ที่แข็งแรงโดยไม่ต้องใช้ garbage collector และควบคุม resource ของ computer ได้ละเอียด | ใช้เวลาเรียนมากกว่า เครื่องมือธุรกิจขนาดเล็กอาจไม่ต้องจ่ายต้นทุนนี้ |
+| Java | Backend ที่ใช้ยาวนาน, payment system และระบบบริษัทขนาดใหญ่ | ตรวจข้อมูลได้แข็งแรง มีเครื่องมือกับ library ที่หลายทีมใช้ และมีรุ่น support ระยะยาว | อาจมีโครงสร้างและการตั้งค่ามากเกินกว่าที่ internal tool ขนาดเล็กต้องการ |
+| C# / .NET | Business system, API, Microsoft environment, desktop app และเกม | ตรวจข้อมูลได้แข็งแรง มีเครื่องมือที่หลายทีมใช้ ดูแล memory อัตโนมัติ และรองรับ operating system ที่ใช้กันทั่วไป | เหมาะเมื่อทีมดูแลชุดเครื่องมือ .NET ได้ |
+| [Go](https://go.dev/solutions/use-cases) | Internal backend, API, cloud service, command-line tool และ operations tool | ภาษาเล็ก build เร็ว และรองรับงานที่เกิดพร้อมกันได้ดี service ภายในขนาดเล็กเติบโตต่อได้โดยไม่ต้องเปลี่ยนภาษา | ปกติไม่ได้ใช้ทำหน้าจอบน browser และ code ที่เรียบง่ายยังต้องมีกฎ data กับ access ที่ดี |
+
+ไม่มีภาษาใดดีที่สุดสำหรับทุก app ครับ Rust ไม่ได้เป็นคำตอบเพราะ memory safety สำคัญเสมอไป Java หรือ C# ก็ไม่ได้เหมาะเพียงเพราะลูกค้าเป็นบริษัทใหญ่ Python ทำได้มากกว่า script เล็ก ๆ และ Go ก็มีประโยชน์ได้ตั้งแต่ก่อน app เติบโต
+
+เริ่มจากสถานการณ์ของคุณ:
+
+1. **ระบบต้อง run ที่ไหน?** Browser, phone, server ในบริษัท, cloud service หรืออุปกรณ์ขนาดเล็ก
+2. **ถ้าพลาดแล้วเกิดอะไรขึ้น?** Report ช้า, เงินหาย, data รั่ว หรือ delay ชั่วคราว
+3. **ทีมรู้อะไรอยู่แล้ว?** ภาษาที่ทีมคุ้นเคยมักปลอดภัยกว่าตัวเลือกใหม่ที่ดูฉลาด แต่ไม่มีใคร review ได้
+4. **ต้องเชื่อมกับระบบใดบ้าง?** ตรวจว่าภาษานั้นมี library ที่ดูแลต่อเนื่องสำหรับระบบเหล่านั้น
+5. **ปีหน้าใครจะดูแลต่อ?** Code ยังไม่จบเพียงเพราะ version แรกใช้งานได้
+
+สมมติว่าบริษัทมี Java service อยู่ 10 ตัว และมี engineer ที่ review Java ทุกวัน ภาษาใหม่อาจเพิ่มงานมากกว่าคุณค่า แต่ถ้าคุณกำลังทำ internal tool เล็ก ๆ เพื่อทำความสะอาด data ใช้ Python ก็อาจพอ หรือ Go service ขนาดเล็กที่เริ่มจากทีมเดียวอาจโตไปใช้ทั้งบริษัทได้ การเติบโตเพียงอย่างเดียวไม่ได้แปลว่าต้องเขียนใหม่ครับ
+
+Programming language เป็นเพียงหนึ่งในตัวเลือกที่ถูกซ่อนไว้ Pure vibe coding ยังซ่อนเรื่องเหล่านี้ได้:
+
+- **Framework** กำหนดว่า code ถูกสร้างและ update อย่างไร
+- **Database** กำหนดว่า record ทางธุรกิจเชื่อมและเคลื่อนที่อย่างไร
+- **Vendor** มีผลต่อราคา ข้อจำกัด และความยากตอนย้ายออก
+- **Login system** กำหนดว่าใครเข้าได้และมองเห็นอะไร
+- **Library** ต้อง update ด้าน security และวันหนึ่งอาจหยุด support
+- **Test, backup และ alert plan** ซึ่งจะสำคัญหลัง demo แรกใช้งานได้
+
+หน้าจอที่ใช้งานได้ไม่ได้แสดง decision เหล่านี้ คุณไม่ต้องเลือกทุกอย่างคนเดียวครับ ขอให้ AI บอกชื่อแต่ละตัวเลือก อธิบายเหตุผล และแสดงทางเลือกอื่นที่เหมาะด้วย จากนั้นให้ reviewer ที่เหมาะสมเข้ามาช่วยเมื่อระบบแตะเรื่องเงิน, private data, public user หรืองานสำคัญของบริษัท
+
+**ถาม AI แบบนี้:** ก่อนเขียน code ช่วยบอก technical choice สำคัญที่กำลังจะเลือก สำหรับ programming language ให้เทียบอย่างน้อย 3 ตัวเลือกจาก user, team, risk, current system และ future support ของผม อธิบายด้วยคำง่าย ๆ ว่าแต่ละตัวเลือกเหมาะหรือไม่เหมาะเพราะอะไร แนะนำ 1 ตัวเลือก และบอกด้วยว่าข้อมูลใดอาจทำให้คำแนะนำเปลี่ยน
+
+
+
+## Architecture — A Map of Responsibilities
+
+**Architecture** คือภาพรวมของ app ครับ ว่าส่วนไหนรับผิดชอบงานอะไร และส่งข้อมูลหากันอย่างไร
+
+ลองนึกถึงร้านอาหารครับ พนักงานหน้าร้านรับ order ห้องครัวทำอาหาร ห้องเก็บของดูแลวัตถุดิบ ส่วน supplier ส่งของที่ร้านไม่ได้ทำเอง app ก็แบ่งหน้าที่คล้ายกันครับ
+
+{/* IMAGE PROMPT (architecture-restaurant.png): Flat vector editorial illustration, light warm background, soft shadows, purple and teal accents, no photorealism. A wide restaurant cutaway with four clear connected jobs: a front counter takes the order, a kitchen cooks, a store room keeps supplies, and an outside delivery service brings a package. Beside the restaurant, show matching simple app symbols for a screen, server, database, and outside cloud service, joined by dotted lines. Do not render any words, letters, numbers, code, logos, or watermarks. Do not print style instructions as text. No duplicate areas or fake text. */}
+
+![ภาพร้านอาหารที่ใช้เปรียบเทียบกับโครงสร้างของ app](/assets/images/blogs/non-tech-vibe-coding-handbook/architecture-restaurant.png)
+
+web app ขนาดเล็กอาจแบ่งออกมาได้แบบนี้ครับ:
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    U["User"] --> F["Frontend\nหน้าจอใน browser"]
+    F -->|"request"| B["Backend\nกฎเกณฑ์และการทำงานที่เชื่อถือได้"]
+    B -->|"read / write"| DB[("Database\nบันทึกข้อมูลทางธุรกิจ")]
+    B -->|"API call"| X["External services\nemail, การชำระเงิน, AI, แผนที่"]
+    X -->|"result / event"| B
+    B -->|"response"| F
+`}
+  size="medium"
+/>
+
+### Frontend — what runs in the user's hands
+
+**Frontend** คือส่วนที่ user เห็นและกดใช้งานครับ เช่น page, button, form และ table ส่วนนี้ run อยู่ใน browser จึงใช้รับ input และแสดงผลได้ แต่อย่าเก็บ secret หรือใช้ Frontend ตัดสินกฎสำคัญ เพราะ user แก้ request ที่ browser ส่งออกไปได้ครับ
+
+สมมติว่า form เบิกค่าใช้จ่ายซ่อน button **Approve** จากพนักงานทั่วไป หน้าจอจะใช้ง่ายขึ้นครับ แต่การซ่อน button ไม่ได้ช่วยเรื่อง security เพราะคนที่รู้วิธีเรียก API ยังส่ง request เองได้ Backend จึงต้องเช็ก permission อีกรอบก่อนเปลี่ยน record
+
+**กฎที่ควรจำ:** Frontend แสดงว่า user น่าจะทำอะไรได้ ส่วน Backend เป็นคนตัดสินว่า user มีสิทธิ์ทำหรือไม่ครับ
+
+### Backend — the part you trust with the rules
+
+**Backend** run อยู่บน server ที่คุณควบคุมหรือเช่าไว้ครับ หน้าที่คือรับ request, เช็กตัวตนกับ permission, บังคับใช้ business rule, บันทึกข้อมูล แล้วส่ง response กลับไป สำหรับ app เบิกค่าใช้จ่าย Backend ต้องเช็กว่าผู้จัดการมีสิทธิ์อนุมัติรายการนี้ และรายการยังอยู่ในสถานะรออนุมัติ
+
+งานที่ใช้ secret ต้องอยู่ใน Backend เช่น เรียก AI model แบบเสียเงิน, ตัดเงินผ่าน Stripe, ส่ง email หรือใช้ private database key ถ้าใส่ key ไว้ใน Frontend ทุก browser จะ download code ชุดนั้นไป แล้ว key ก็หลุดได้ครับ
+
+### Database — memory that outlives one request
+
+**Database** เก็บ record ทางธุรกิจไว้ระยะยาวครับ เช่น ใครส่งรายการเบิก สถานะตอนนี้คืออะไร ใครอนุมัติ และอนุมัติเมื่อไหร่ Backend เป็นส่วนที่ทำงานตามกฎ ส่วน Database เป็นที่อ่านและเขียน record เหล่านี้
+
+### External services — rent the solved problems
+
+app ส่วนใหญ่ใช้ service จากบริษัทอื่นครับ เช่น Stripe รับ payment, Google หรือ [Microsoft](https://learn.microsoft.com/en-us/entra/identity-platform/) ดูแล login, [Resend](https://resend.com/) หรือ [Postmark](https://postmarkapp.com/) ส่ง email ส่วน AI provider run AI model และ map service ช่วยค้นหาสถานที่กับเส้นทาง
+
+วิธีนี้พบได้ทั่วไปครับ คุณสร้างส่วนที่ทำให้ product มีคุณค่า แล้วใช้ service สำเร็จรูปกับงานที่มีคนทำไว้ดีอยู่แล้ว แต่ละ service ที่เพิ่มเข้ามาก็เพิ่มทั้งค่าใช้จ่ายและจุดที่อาจพังได้ ดังนั้นจดข้อมูลเหล่านี้ไว้ด้วยครับ:
+
+- คุณส่งข้อมูลอะไรให้เขาบ้าง;
+- จะเกิดอะไรขึ้นถ้าบริการนั้นใช้งานไม่ได้;
+- คุณจะส่งออกหรือเปลี่ยนย้ายข้อมูลของคุณอย่างไร;
+- ใครเป็นเจ้าของบัญชีและเป็นคนจ่ายบิล
+
+### API — the agreed doorway between parts
+
+**API (application programming interface)** คือข้อตกลงที่ให้ระบบหนึ่งเรียกใช้งานอีกระบบครับ เช่น app จองที่พักส่งที่อยู่ไปหา map API แล้วรับพิกัดกลับมาแสดงบนแผนที่
+
+คำขอ (Request) มักจะประกอบด้วย:
+
+- **ไปที่ไหน** — ที่อยู่ที่เรียกว่า endpoint เช่น `/expenses/123`;
+- **ต้องการทำอะไร** — อ่าน, สร้าง, update หรือลบ;
+- **ใครเป็นคนขอ** — ข้อมูลยืนยันตัวตน (authentication);
+- **input** — เช่น ผลการอนุมัติและ comment
+
+Response มักมีผลลัพธ์และ **status code** ครับ คุณไม่ต้องจำทุก code แค่รู้กลุ่มหลักก็พอ: `2xx` คือ request สำเร็จ, `4xx` คือข้อมูลจากฝั่งเรียกผิดหรือไม่มีสิทธิ์ และ `5xx` คือระบบฝั่งรับ request มีปัญหา
+
+API คล้าย form ที่ทั้ง 2 ระบบตกลงใช้ร่วมกันครับ ชื่อ field, type และความหมายต้องใช้แบบเดียวกัน หาก `amount` เคยเป็น number แล้วเปลี่ยนเป็น text อีกระบบอาจอ่านไม่ได้ ควรเก็บตัวอย่าง request, response และรายการ field ที่จำเป็นไว้ให้ครบ
+
+### One application is often the best architecture
+
+คุณอาจได้ยินคำว่า monolith, microservices และ serverless สำหรับ product ตัวแรก การมี app เดียวกับ database เดียวมักพอแล้วครับ วิศวกรเรียกโครงแบบนี้ว่า **monolith** คือส่วนหลักถูก build และ deploy ไปด้วยกัน
+
+Monolith ไม่ได้แปลว่าต้องเอา code ทุกอย่างกองไว้ใน file เดียวครับ คุณยังแบ่ง project เป็น module ชัด ๆ ได้ เช่น `expenses`, `users`, `approvals` และ `reports` จุดต่างอยู่ที่:
+
+- **Modules** ช่วยเก็บ code ไว้เป็นกลุ่มที่ชัดเจน เช่น ค่าใช้จ่าย, user และ report
+- **Many separate services** คือหลาย app ที่ต้อง deploy, monitor และแก้ปัญหาแยกกัน งานดูแลจึงเพิ่มตามจำนวน service ครับ
+
+ขอให้ AI แบ่งเป็น module ที่ชัดเจนตั้งแต่เริ่มครับ และจะแยก app ก็ต่อเมื่อเจอปัญหาที่ทำให้ต้องแยก
+
+**ลองถาม AI ของคุณว่า:** ช่วยวาด architecture ของ project นี้เป็น diagram โดยระบุว่าส่วนไหนทำงานใน browser ส่วนไหนทำงานบน server ข้อมูลแต่ละชนิดเก็บไว้ที่ไหน และมี external service อะไรบ้าง จากนั้นช่วยอธิบายว่าส่วนไหนเป็นคนคุมกฎทางธุรกิจแต่ละข้อ
+
+---
+
+## Naive-But-Works Is a Strategy, Not a Shortcut
+
+วิศวกรที่เก่งๆ มักจะ **เริ่มจากสิ่งที่เรียบง่ายที่สุดที่ทำงานได้** ครับ และจะเพิ่มส่วนประกอบเมื่อเจอปัญหาที่ทำให้ต้องเพิ่ม
+
+**code ที่มากขึ้นหมายถึงงานที่มากขึ้น และงานที่มากขึ้นก็หมายถึงโอกาสเกิดปัญหาที่มากขึ้นครับ** ทุกส่วนที่เพิ่มเข้ามาต้องถูกอ่าน, ทดสอบ, แก้ไข, update และดูแลความปลอดภัย
+
+โพสต์ด้านการออกแบบระบบของผมใช้แนวทางนี้ครับ: เริ่มจากจุดเล็กๆ หาข้อจำกัดที่พบในงาน แล้วจึงเพิ่มส่วนถัดไป ซึ่งเป็นวิธีสร้างที่ได้ผลดีครับ
+
+นี่คือข่าวดีครับ version แรกที่เรียบง่ายอาจเป็น version ที่ถูกต้องแล้ว AI อาจจะบอกว่า แบบนี้จะ scale ไม่ได้ ซึ่งส่วนใหญ่แล้วคุณยังไม่ต้องกังวลเรื่อง scale ในตอนนี้ครับ คำตอบของ AI มักจะเหมือนบทความเทคนิคทั่วไป ซึ่งหลายบทความเขียนถึงปัญหาของบริษัทใหญ่ใน Silicon Valley ซึ่งอาจไม่ใช่โลกของคุณ AI อาจแนะนำระบบที่บริษัทเหล่านั้นต้องการ แต่ไม่ใช่ระบบที่ลูกค้าของคุณต้องการ คุณรู้เนื้องานและรู้ว่าลูกค้าให้คุณค่ากับอะไร ให้เริ่มจากจุดนั้นครับ แล้วค่อยถามว่าอะไรจะพัง สำหรับ user จำนวนเท่าไหร่ และเมื่อไหร่
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    V1["version 1\napp เดียว, database เดียว\nใช้งานได้สำหรับ user 20 คน"] -->|"เฉพาะเมื่อสถานการณ์\nบังคับให้ทำ"| V2["version 2\nอาจเปลี่ยนเป็น database ที่เร็วขึ้น\nหรือมีงานเบื้องหลัง (background job)"] -->|"เฉพาะเมื่อสถานการณ์\nบังคับให้ทำอีกครั้ง"| V3["version 3\narchitecture สุดล้ำ\nจากงานสัมมนา"]
+`}
+  size="medium"
+/>
+
+- **จะ scale ได้ไหม? คือคำถามเกี่ยวกับอนาคตที่อาจไม่เกิดขึ้น** เครื่องมือใช้ภายในส่วนใหญ่รองรับคนไม่ถึง 100 คนไปตลอด หรือสินค้าส่วนใหญ่เลิกใช้ก่อนเรื่อง scale จะเป็นปัญหา การสร้างระบบเพื่อรองรับ user 1,000,000 คนที่คุณยังไม่มี ทำให้คุณเสียเวลาในวันนี้เพื่อประโยชน์ที่อาจไม่เกิดขึ้นครับ
+- **ปัญหาการเติบโตมักเริ่มจากจุดเล็กๆ** เช่น page เริ่มช้า report ใช้เวลานานขึ้น ถ้าคุณเฝ้าดู app คุณสามารถแก้ปัญหาได้ก่อนที่มันจะกลายเป็นเรื่องใหญ่ครับ
+- **ข้อยกเว้นเดียวคือ data ครับ** code เขียนใหม่ทีหลังได้ แต่ data ย้อนกลับไปแก้ไม่ได้ ถ้า record ของ 6 เดือนถูกเก็บมาผิด การเขียน code ใหม่ก็ช่วยเอาข้อมูลที่หายไปกลับมาไม่ได้ ดังนั้นคำถามว่า **data ของผมอยู่ที่ไหน** จึงสำคัญกว่า **framework ไหนดูดีที่สุด** ครับ
+
+**Scalable** หมายถึง app สามารถเติบโตได้โดยไม่ต้องรื้อสร้างใหม่ทั้งหมด สิ่งที่เติบโตได้มีหลายอย่างครับ:
+
+| สิ่งที่เติบโต | อาการแรกที่เห็น | ขั้นตอนถัดไปที่เหมาะสม |
+|---|---|---|
+| user | page ช้าลงในช่วงเวลาที่มีคนใช้เยอะ | วัดผล request ที่ช้า; ปรับปรุง database query หรือเพิ่ม capacity |
+| จำนวนบันทึก | รายการและ report ใช้เวลานานเกินไป | เพิ่ม pagination และ database indexes; เลิกโหลดข้อมูลทุกแถว |
+| งานที่ทำในขั้นตอนเดียว | การนำเข้าข้อมูลหรือการเรียก AI ใช้เวลานานเกินไป | ย้ายงานที่รอนานไปไว้ใน waiting line และแสดงความคืบหน้า |
+| ฟีเจอร์ | การแก้ไขจุดหนึ่งทำให้จุดอื่นพัง | จัดกลุ่ม code ให้ชัดเจนและเพิ่มการทดสอบ (tests) |
+| ทีมงาน | 2 คนเขียนทับงานของกันและกัน | ใช้ Git branches, ตรวจสอบการเปลี่ยนแปลง และกำหนดเจ้าของงาน |
+| ความต้องการทางธุรกิจ | ระบบล่มทำให้ทีมทำงานไม่ได้ | เพิ่มระบบแจ้งเตือน, ขั้นตอนการกู้คืน และระบุผู้รับผิดชอบที่ชัดเจน |
+| ความต้องการของลูกค้า | ลูกค้าแต่ละรายขอเงื่อนไขพิเศษ | ย้ายกฎไปไว้ใน settings; อย่า copy app ทั้งชุดเพื่อลูกค้าแต่ละราย |
+
+### Pagination — the page buttons you have seen before
+
+คุณน่าจะเคยเห็น button อย่าง `1`, `2`, `3`, `...` และ **Next** ใต้รายการสั่งซื้อ หน้าช้อปปิ้ง หรือผลการค้นหา ส่วนประกอบนี้เรียกว่า **pagination** ครับ
+
+{/* IMAGE PROMPT (pagination-orders.png): Flat vector product UI illustration, light warm background, soft shadows, purple and teal accents, no photorealism. Show a clean desktop order list with exactly six simple rows. At the bottom, show pagination controls in this exact order: "1", "2", "3", "...", "12", "NEXT". Highlight "2" with a filled purple button. Render "ORDERS" once. Render each listed text item exactly once and spell exactly. Do not render any other words, letters, or numbers. Do not print style instructions as text. No fake text, logos, watermarks, duplicate controls, or typos. */}
+
+![รายการสั่งซื้อที่คุ้นเคยพร้อม button pagination ด้านล่าง](/assets/images/blogs/non-tech-vibe-coding-handbook/pagination-orders.png)
+
+สมมติว่าคุณมี order 10,000 รายการ หน้าแรกโหลดมาแค่ 20 รายการ พอ user เปิดหน้า 2 app จึงขอ 20 รายการถัดไป แทนที่จะดึงครบ 10,000 rows ทุกครั้ง ปริมาณ data ที่ส่งผ่าน network จะลดลง หน้าเปิดไวขึ้น และ database ก็ทำงานน้อยลงครับ
+
+คุณไม่จำเป็นต้องมีระบบ cloud ขนาดใหญ่ตั้งแต่วันแรก แต่คุณต้องการขั้นตอนถัดไปที่ชัดเจนเมื่อส่วนใดส่วนหนึ่งเติบโตขึ้นครับ
+
+### Easy-to-change and hard-to-change choices
+
+บางทางเลือกเปลี่ยนง่าย บางทางเลือกเปลี่ยนยากครับ
+
+- **เปลี่ยนง่าย:** สี button, layout ของ page และคำใน report เลือกแบบที่พอใช้ได้แล้วไปต่อได้เลยครับ
+- **เปลี่ยนยาก:** ความหมายของข้อมูล, วิธีที่ userlogin, ใครเป็นเจ้าของบัญชีบริการ, ข้อมูลส่วนตัวถูกเก็บที่ไหน และสิ่งที่คุณสัญญาไว้กับลูกค้า ตรวจสอบทางเลือกเหล่านี้อย่างระมัดระวังครับ
+
+AI ทำให้การเขียน code ใหม่มีราคาถูก จนบางครั้งคนเข้าใจผิดว่าทุกการตัดสินใจนั้นราคาถูกด้วย ซึ่งไม่ใช่ครับ หากลูกค้ามีบันทึกใบแจ้งหนี้ย้อนหลัง 6 เดือน การเปลี่ยน database คือการย้ายข้อมูลครั้งใหญ่ (migration) หากพนักงาน 100 คนใช้ Google login การเปลี่ยนระบบยืนยันตัวตนจะกระทบคน 100 คน หากสัญญาที่ทำกับลูกค้าระบุว่าระบบต้องพร้อมใช้งาน 99.9% การยกเลิกคำสัญญานั้นต้องใช้การเจรจา ไม่ใช่การแก้ code ครับ
+
+### Add a new part only for a clear reason
+
+ก่อนจะยอมรับแผนงานที่ซับซ้อน ให้ถามว่า:
+
+1. **สิ่งนี้แก้ปัญหาอะไรในตอนนี้?** page ช้า, งานพัง หรือเป็นแค่การคาดเดาถึงอนาคต?
+2. **วิธีแก้ที่เรียบง่ายกว่านี้คืออะไร?** การทำ index อาจแก้ปัญหาที่เคยเสนอให้เปลี่ยน database ใหม่ได้ครับ
+3. **สิ่งนี้เพิ่มงานอะไรเข้ามาบ้าง?** ระบบ queue ช่วยเรื่องงานที่รอนาน แต่ตอนนี้คุณต้องจัดการกับงานที่พัง และงานที่อาจถูก run ซ้ำ 2 ครั้งครับ
+
+ดังนั้นเมื่อ AI เสนอสิ่งที่ฟังดูซับซ้อนจนน่าทึ่ง ลองใช้รูปแบบนี้ครับ
+
+**ถาม AI แบบนี้:** ขอ version ที่เรียบง่ายที่สุดซึ่งใช้ได้กับ user ภายใน 20 คน บอกผมด้วยว่าต้องเปลี่ยนอะไรหากระบบโตขึ้น แต่ตอนนี้ยังไม่ต้องสร้างส่วนนั้น
+
+คุณจะได้ version ที่เรียบง่ายพร้อมแผนสำหรับอนาคต ซึ่งเป็นสิ่งที่วิศวกรระดับ senior ที่ดีจะเตรียมให้คุณครับ
+
+---
+
+## How to Brief an AI — Prompting Is Specification
+
+สำหรับซอฟต์แวร์ มีแนวคิดหนึ่งที่สำคัญกว่าเทคนิคการเขียน prompt คือ **อย่าขอพร แต่จงส่งบรีฟงานที่ชัดเจน**
+
+ลองนึกถึงตอนทำห้องครัวใหม่ครับ คุณคงไม่บอกช่างแค่ว่า **ทำให้ดีนะ** แต่จะบอกว่าใครทำอาหาร ใช้บ่อยแค่ไหน มี budget เท่าไหร่ และของอะไรต้องเก็บบ้าง การ brief งาน software ก็คล้ายกันครับ
+
+{/* IMAGE PROMPT (brief-the-contractor.png): Flat vector illustration, light background, soft shadows, 2-3 accent colors (purple, teal), no photorealism. Two panels side by side. Left panel: a person hands a tiny sticky note to a friendly robot, and above the robot a thought bubble contains a confused tangle of shapes. Right panel: the same person hands the same robot a clipboard with a structured document showing several abstract text lines and checkboxes, and above the robot a thought bubble contains a clean, orderly house blueprint. No text labels anywhere in the image. Do not render any words, letters, or numbers. Do not print style instructions as text in the image. No duplicate figures, no typos. */}
+
+![ความต้องการที่คลุมเครือเทียบกับบรีฟงานที่ถูกต้อง](/assets/images/blogs/non-tech-vibe-coding-handbook/brief-the-contractor.png)
+
+บรีฟซอฟต์แวร์ที่ดีมี 4 ส่วนครับ:
+
+**1. Context.** ใครใช้? มีกี่คน? ใช้ผ่าน phone หรือ computer? เป็น internal tool, B2C หรือ B2B? เช่น **นี่คือ internal tool สำหรับทีมบัญชี 8 คน ใช้บน computer ช่วงสิ้นเดือน**
+
+**2. Rules that must stay true.** ข้อมูลต้องห้ามหาย app ต้องรองรับภาษาไทย พนักงานต้องไม่เห็นเงินเดือนของคนอื่น user ต้องลงชื่อเข้าใช้ด้วย Google account ของบริษัท คุณรู้กฎการทำงานเหล่านี้ดีกว่า AI ดังนั้นเขียนระบุลงไปครับ
+
+**3. Ask it to explain the result.** ถามว่า **สร้างอะไรไปแล้ว มีส่วนหลักอะไรบ้าง และ data อยู่ที่ไหน ช่วยอธิบายด้วยคำง่าย ๆ** ถ้ายังไม่เข้าใจส่วนไหน ให้ถามซ้ำครับ เพราะคุณเป็นเจ้าของ tool นี้และต้องอ่านภาพรวมของระบบออก
+
+**4. Ask what is missing.** ถามว่า **ส่วนไหนยังไม่ได้สร้าง และมีอะไรพังได้บ้าง** คำตอบอาจมีประโยชน์กว่า code ที่เพิ่ง generate ออกมาครับ
+
+สำหรับงานขนาดใหญ่ ให้บอก AI ว่า **ก่อนเริ่มสร้าง ให้ถามข้อมูลที่ต้องรู้จากผมก่อน** คำถามเหล่านั้นจะช่วยให้คุณเห็นว่า business rule ส่วนไหนยังขาดครับ
+
+### A prompt template for real software work
+
+คุณไม่จำเป็นต้องมี prompt วิเศษเพียงอันเดียว แต่ให้ใช้บรีฟที่ชัดเจนแทน คุณสามารถคัดลอกตัวอย่างนี้ไปใช้ได้ครับ:
+
+```text
+Goal
+Build an internal expense approval tool for an 8-person company.
+
+Users and permissions
+- Employee: create a request and view only their own requests.
+- Manager: view and decide requests from their team.
+- Finance: view all approved requests and mark them paid.
+
+Workflow
+1. Employee submits amount, date, category, note, and receipt.
+2. A manager approves, rejects, or returns it for changes.
+3. Approved requests appear in a finance queue.
+4. Every decision records who did it and when.
+
+Rules and edge cases
+- Amount must be positive and use THB.
+- A user cannot approve their own request.
+- Submitting twice must not create two expenses.
+- A rejected or paid request cannot be edited.
+- Receipt files may be PDF, JPG, or PNG, maximum 10 MB.
+
+Must-have rules
+- Use company Google accounts for login.
+- Desktop-first, but the submission form must work on mobile.
+- Start for fewer than 20 users.
+- Use ready-made services and one simple app.
+- Never put secrets in frontend code.
+
+How I will check it
+- An employee cannot open another employee's request, even by changing the URL.
+- A manager can filter pending requests.
+- Finance can export approved requests as CSV.
+- Refreshing the page does not lose saved work.
+- Tests cover access rules and status changes.
+
+Process
+Before editing code, ask questions about unclear business rules.
+Then show the data tables, app map, and work plan.
+Build one small working slice at a time. After each slice, run tests and
+explain what changed, what remains, and what I should verify manually.
+```
+
+เนื้อหาส่วนใหญ่ใน brief เป็นเรื่องของงานครับ คุณคือคนที่รู้ว่าใครทำอะไรได้ workflow เดินอย่างไร และเงื่อนไขแบบไหนถึงเรียกว่า **เสร็จ**
+
+### Give examples, especially the awkward ones
+
+คำว่า เรียบง่าย, ดี, ปลอดภัย และ ใช้ง่าย นั้นชัดเจนไม่พอครับ ให้ยกตัวอย่างประกอบ
+
+แทนที่จะบอกสั้น ๆ ว่า **ตรวจสอบยอดเงิน** ให้ใส่ตัวอย่างแบบนี้ครับ:
+
+- `500` คือค่าที่ถูกต้อง;
+- `0`, `-10` และค่าว่าง คือค่าที่ผิด;
+- `1,250.50` ควรถูกเข้าใจว่าเป็น 1,250.50 บาท;
+- หากมีการวางค่าที่มีคำว่า `THB` ติดมาด้วย ควรแสดงข้อความแนะนำการแก้ไขแทนที่จะทำให้โปรแกรมค้าง
+
+ตัวอย่างจะช่วยอธิบายกฎและสามารถนำไปสร้างเป็นบททดสอบได้ ทีมเทคนิคอาจเรียกสิ่งนี้ว่า **acceptance criteria** ซึ่งก็คือรายการที่คุณใช้ตรวจสอบว่างานเสร็จสมบูรณ์หรือไม่ครับ
+
+### Separate plan, build, and review
+
+หากคุณขอให้สร้าง app ทั้งหมดในครั้งเดียว จะหาจุดผิดพลาดได้ยาก ให้ใช้ขั้นตอนเล็กๆ แทนครับ:
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    P["วางแผน\nworkflow, ข้อมูล, ความเสี่ยง"] --> S["ชิ้นงานขนาดเล็ก\n1 เส้นทางที่ทำงานได้"] --> T["ทดสอบ\nautomated + คุณตรวจ"] --> C["checkpoint\nเก็บ version ที่ใช้งานได้"] --> N["ชิ้นงานถัดไป"]
+    N --> S
+`}
+  size="medium"
+/>
+
+**ชิ้นงานขนาดเล็ก (small end-to-end part)** คือ 1 เส้นทางสั้น ๆ ที่ทำงานได้ตั้งแต่ต้นจนจบ สำหรับเครื่องมือเบิกจ่าย ให้เริ่มจากให้พนักงานส่งคำขอ 1 รายการและเห็นข้อมูลนั้นหลังจากรีเฟรชหน้าจอ อย่าเพิ่งสร้างทุกหน้าจอแล้วหวังว่ามันจะเชื่อมต่อกันได้ในภายหลังครับ
+
+ทุก checkpoint ให้ AI แสดงข้อมูลเหล่านี้ครับ:
+
+- เปลี่ยน file หรือ component ไหนบ้าง;
+- ข้อสมมติฐานที่ AI ใช้มีอะไรบ้าง;
+- run การทดสอบอะไรไปบ้างและผลลัพธ์เป็นอย่างไร;
+- ขั้นตอนที่คุณควรลองทดสอบด้วยตัวเองมีอะไรบ้าง;
+- มี service, บัญชี, secret หรือค่าใช้จ่ายรายเดือนอะไรที่ถูกเพิ่มเข้ามาหรือไม่
+
+### Ask for proof, not confidence
+
+AI เขียน code และช่วย test ได้ครับ แต่คำตอบว่า **น่าจะใช้ได้** ยังไม่พอ หลักฐานที่ตรวจได้คือ test result, record ใน database, screenshot หรือขั้นตอนที่คุณลองด้วยตัวเอง
+
+ลองใช้ prompt เหล่านี้ครับ:
+
+- run test แล้วแสดง failed case ให้ผมดู อย่าบอกว่าสำเร็จถ้ายังไม่ได้ run
+- ทดสอบใน role พนักงาน, manager และ user ที่ไม่มี permission
+- ลองใส่ค่าผิด, ค่าว่าง, ค่าซ้ำ และค่าที่ใหญ่มาก
+- Review เฉพาะส่วนที่เปลี่ยน มองหา data loss, permission gap, secret ที่หลุด และ error handling ที่ตกหล่น
+- บอก assumption ที่เสี่ยงที่สุดซึ่งยังเหลืออยู่
+
+ทำงานร่วมกับ AI แต่ตรวจสอบผลลัพธ์เสมอครับ
+
+prompt ที่ดีช่วยได้มาก แต่ไม่สามารถตัดสินใจแทนคุณได้ทุกเรื่อง ส่วนถัดไปจะนำเสนอแนวคิดพื้นฐานที่คุณยังจำเป็นต้องรู้ครับ
+
+---
+
+## The Computer Science Fundamentals You Actually Touch
+
+คุณไม่จำเป็นต้องลงเรียนคอร์ส Data Structures & Algorithms แบบเต็มรูปแบบก่อนจะสร้างเครื่องมือจัดการค่าใช้จ่ายครับ สิ่งที่คุณต้องรู้คือแนวคิดพื้นฐานแบบไหนที่เหมาะกับปัญหาแต่ละประเภท
+
+Computer Science คือการตั้งชื่อให้กับปัญหาที่เกิดขึ้นซ้ำๆ ให้คุณเรียนรู้ความหมายของมัน แทนที่จะท่องจำคำตอบในตำราครับ
+
+### Data has a type, a meaning, and a lifetime
+
+สำหรับ computer `100`, `"100"`, และ `"THB 100"` มีค่าต่างกันครับ ตัวแรกคือตัวเลข ส่วนอีก 2 ตัวคือข้อความ แต่สำหรับธุรกิจของคุณ `100` ก็ยังไม่ชัดเจนอยู่ดีว่าเป็น บาท, ดอลลาร์, จำนวนชิ้น หรือรหัสอะไรบางอย่าง
+
+สำหรับทุก field ที่สำคัญ ให้กำหนดสิ่งเหล่านี้ครับ:
+
+- **Type:** ข้อความ, ตัวเลข, วันที่และเวลา, ใช่/ไม่ใช่ หรือเลือก 1 ตัวเลือกจากรายการที่กำหนดไว้
+- **Meaning:** `approved_at` คือเวลาที่มีการอนุมัติ เกิดขึ้นตอนไหน ไม่ใช่ตอนที่สร้างคำขอ
+- **Unit:** THB, กิโลกรัม, นาที หรือเปอร์เซ็นต์
+- **Must have or can be empty:** ถ้าค่าว่าง หมายความว่าอย่างไร
+- **Valid range:** จำนวนเงินเป็น 0ได้ไหม วันที่ส่งของเป็นวันที่ในอดีตได้หรือเปล่า
+- **How long to keep it:** เก็บไว้ตลอดกาล, 7 ปี หรือ 30 วัน
+
+กฎเล็กๆ น้อยๆ เหล่านี้ช่วยลดข้อผิดพลาดได้มากครับ:
+
+- **Money:** ให้บันทึกสกุลเงินด้วย ใช้ตัวเลขทศนิยมที่แม่นยำ หรือบันทึกเป็นหน่วยที่เล็กที่สุด เช่น สตางค์ เพราะตัวเลข computer ปกติอาจมีข้อผิดพลาดจากการปัดเศษ ซึ่งอาจทำให้ยอดรวมผิดเพี้ยนได้
+- **Dates and time:** บันทึกเวลาพร้อมกับ timezone และแสดงผลตาม timezone ของ user การระบุแค่ July 17 ไม่เพียงพอสำหรับการทำงานระหว่างกรุงเทพฯ และลอนดอนครับ
+- **ID:** ให้ ID ที่ตายตัวกับทุกแถว อย่าใช้ชื่อหรือเลขลำดับแถว เพราะชื่อเปลี่ยนได้ และแถวสามารถเลื่อนตำแหน่งได้
+- **Empty values:** ค่าที่หายไป, 0, false และข้อความว่าง มีความหมายต่างกัน ให้ตัดสินใจว่าในทางธุรกิจตั้งใจให้เป็นแบบไหน
+
+**ถาม AI แบบนี้:** ทำรายการ field ทั้งหมดแบบง่าย ๆ บอก type, ความหมาย, หน่วย, ปล่อยว่างได้หรือไม่, กฎ, ตัวอย่าง และระยะเวลาที่ต้องเก็บ ถ้า field ใดยังไม่ชัด ให้ถามผมก่อน
+
+### Data modeling — turn nouns and relationships into records
+
+**Data modeling** คือการเลือกว่าจะเก็บ record อะไร และ record เหล่านั้นเชื่อมกันแบบไหน เริ่มจากคำนามในงานของคุณ เช่น Employee, Expense, Receipt, Approval และ Payment คำนามเหล่านี้อาจกลายเป็น table จากนั้นเขียน relationship กับ business rule ออกมาครับ:
+
+- พนักงาน 1 คนสามารถส่งเบิกค่าใช้จ่ายได้หลายรายการ
+- ค่าใช้จ่าย 1 รายการต้องเป็นของพนักงาน 1 คน
+- Expense 1 รายการมีประวัติการอนุมัติได้หลายครั้ง
+- receipt file 1 file ผูกกับ Expense 1 รายการ
+- ชุดการจ่ายเงิน 1 ชุดประกอบด้วยค่าใช้จ่ายที่อนุมัติแล้วหลายรายการ
+
+<MermaidDiagram
+  chart={`
+erDiagram
+    EMPLOYEE ||--o{ EXPENSE : submits
+    EXPENSE ||--o{ APPROVAL_EVENT : records
+    EXPENSE ||--o| RECEIPT : has
+    PAYMENT_BATCH ||--o{ EXPENSE : contains
+`}
+  size="medium"
+/>
+
+ทำไมไม่ใช้ sheet ใหญ่แผ่นเดียวครับ? เพราะข้อมูลบางอย่างซ้ำกัน และบางอย่างต้องเก็บ history ถ้าคุณ copy ชื่อทีมของพนักงานคนหนึ่งลง 500 rows คุณต้องตามแก้ครบ 500 จุดเมื่อเขาย้ายทีม หรือถ้าเก็บ `approver` ไว้ช่องเดียว คุณจะเสียคำตอบเก่าเมื่อรายการถูกส่งกลับมาให้อนุมัติใหม่
+
+**Constraint** คือกฎที่ database ช่วยบังคับใช้ครับ เช่น email ห้ามซ้ำ, Expense ต้องมี employee และ amount ห้ามว่าง หน้า form ควรแจ้ง error ให้ user เข้าใจ ส่วน database constraint เป็นด่านสุดท้ายที่กันข้อมูลผิดไม่ให้ถูกบันทึก
+
+อย่าสร้าง table สำหรับทุกรายละเอียดเล็กน้อย เพราะจะทำให้ใช้งานยาก ให้ลองถาม AI ว่าทำไมถึงเลือกสร้าง table และการเชื่อมต่อแบบนี้ครับ
+
+### Data structures — containers chosen for a job
+
+**Data structure** คือวิธีเก็บข้อมูลเพื่อให้งานบางประเภททำได้ง่ายขึ้น คุณน่าจะคุ้นเคยกับแนวคิดเหล่านี้ในชีวิตประจำวันครับ:
+
+{/* IMAGE PROMPT (data-structures-list-set-map.png): Flat vector educational illustration, light warm background, soft shadows, purple and teal accents, no photorealism. Show three equal cards. LIST uses an ordered checklist with five rows. SET uses unique person cards with one repeated card stopped outside. MAP uses one key card pointing to one matching profile card. Render the exact labels "WAYS TO KEEP DATA", "LIST", "IN ORDER", "SET", "NO REPEATS", "MAP", and "KEY TO VALUE" once each, spell exactly. Do not render any other words, letters, or numbers. Do not print style instructions as text. No fake text, logos, watermarks, duplicate cards, or typos. */}
+
+![List รักษาลำดับ Set กันข้อมูลซ้ำ และ Map เชื่อม key กับ value](/assets/images/blogs/non-tech-vibe-coding-handbook/data-structures-list-set-map.png)
+
+{/* IMAGE PROMPT (data-structures-queue-stack-tree-graph.png): Flat vector educational illustration, light warm background, soft shadows, purple and teal accents, no photorealism. Show four equal cards. QUEUE uses people waiting at a service counter. STACK uses a pile of trays with the top tray being taken. TREE uses folders branching into levels. GRAPH uses cities joined by many roads. Render the exact labels "WAYS DATA MOVES AND CONNECTS", "QUEUE", "FIRST IN", "STACK", "LAST IN", "TREE", "LEVELS", "GRAPH", and "MANY LINKS" once each, spell exactly. Do not render any other words, letters, or numbers. Do not print style instructions as text. No fake text, logos, watermarks, duplicate cards, or typos. */}
+
+![Queue, Stack, Tree และ Graph ผ่านตัวอย่างที่พบได้ในชีวิตประจำวัน](/assets/images/blogs/non-tech-vibe-coding-handbook/data-structures-queue-stack-tree-graph.png)
+
+| Data structure | ภาพจำในชีวิตประจำวัน | เก่งเรื่อง | ตัวอย่างใน app ของคุณ |
+|---|---|---|---|
+| List / array | รายการซื้อของ | รักษาลำดับของข้อมูล | รายการค่าใช้จ่ายเรียงตามวันที่ |
+| Map / dictionary | สมุดโทรศัพท์ | หาค่าจาก key ที่รู้ | User ID $\rightarrow$ ข้อมูล user |
+| Set | รายชื่อแขกที่ห้ามชื่อซ้ำ | ตรวจสอบว่ามีข้อมูลนี้อยู่หรือยัง | email ที่ถูกเชิญแล้ว |
+| Queue | คนรอ Queue หน้า counter | ทำงานที่มาถึงก่อนเป็นอันดับแรก | ใบเสร็จที่รอการอ่านข้อความ |
+| Stack | กองถาดอาหาร | เอาชิ้นสุดท้ายออกก่อน | การย้อนกลับการแก้ไขล่าสุด (Undo) |
+| Tree | โฟลเดอร์ย่อยในโฟลเดอร์ | แสดงลำดับขั้น | ทีม หรือกลุ่มผลิตภัณฑ์ |
+| Graph | เมืองและถนน | แสดงการเชื่อมโยงที่หลากหลาย | เส้นทางการส่งของ หรือเครือข่ายบุคคล |
+
+คุณอาจไม่ได้เลือก Data structure เอง แต่รู้แนวคิดไว้ก็ช่วยคุยกับ AI ได้ครับ สมมติว่า app ต้องอ่าน 50,000 rows ทุกครั้งเพื่อเช็กว่า email นี้มีหรือยัง แบบนี้ควรใช้ Map, Set หรือ database index ช่วยค้นหา ส่วนงานหนักที่ run พร้อมกันจน app ค้างก็ควรย้ายไป Queue
+
+คำศัพท์เหล่านี้จะช่วยให้คุณอธิบายลักษณะของข้อมูลและการทำงานได้ชัดเจนขึ้นครับ
+
+### Algorithms — a recipe, plus the cost of repeating it
+
+**Algorithm** คือลำดับขั้นตอนที่เปลี่ยนข้อมูลนำเข้าให้เป็นคำตอบ กฎการอนุมัติของคุณก็คือ algorithm อย่างหนึ่งครับ:
+
+```text
+ถ้าจำนวนเงินต่ำกว่า 5,000 บาท:
+  ส่งให้ผู้จัดการของพนักงาน
+มิฉะนั้น:
+  ส่งให้ผู้จัดการ จากนั้นส่งให้ฝ่ายการเงิน
+ถ้าผู้ส่งเป็นคนอนุมัติคำขอของตัวเอง:
+  ส่งให้ผู้อนุมัติคนถัดไปที่มีสิทธิ์
+```
+
+คราวนี้ลองคิดถึงสิ่งที่เกิดขึ้นเมื่อข้อมูลมีจำนวนมากขึ้น เช่น คุณต้องการค้นหาลูกค้า 1 ราย:
+
+- การอ่านทุกแถวตั้งแต่บนลงล่างอาจจะโอเคสำหรับ 100 แถวครับ
+- แต่ถ้าทำแบบเดียวกันกับ 10,000,000 rows ทุกครั้งที่เปิด page ระบบจะใช้ resource มากเกินไป
+- **Index** ของ database ทำงานเหมือนดัชนีท้ายเล่มหนังสือ ช่วยให้ database กระโดดไปยังแถวที่ถูกต้องได้ทันที
+
+ทีมเทคนิคอาจใช้คำว่า **Big O** เช่น `O(n)` คุณไม่จำเป็นต้องจำสูตรครับ ให้ถามคำถามง่าย ๆ 3 ข้อนี้:
+
+- เมื่องานเพิ่มขึ้นเป็น 2 เท่า ปริมาณงานที่ต้องทำยังคงใกล้เคียงเดิมไหม
+- งานเพิ่มขึ้นเป็น 2 เท่าเพราะต้องไล่ดูทุก record ข้อมูลใช่หรือไม่
+- งานเพิ่มขึ้นเร็วมากเพราะต้องนำทุก record มาเปรียบเทียบกับ record อื่นๆ ทั้งหมดใช่ไหม
+
+คุณไม่จำเป็นต้องทำให้ทุกขั้นตอนเร็วที่สุด report ที่ช้าแต่ใช้วันละครั้งอาจจะไม่มีปัญหา แต่การค้นหาที่ช้าซึ่งทุกคนต้องใช้บ่อยๆ คือปัญหาใหญ่ครับ
+
+เครื่องมือ 3 อย่างที่ช่วยแก้ปัญหาการเติบโตของข้อมูล:
+
+- **Indexing:** ค้นหา record ด้วย field ที่ค้นหาบ่อย เช่น email, สถานะ หรือวันที่สร้าง
+- **Pagination:** โหลดทีละ 50 แถว แทนที่จะโหลดทั้งหมด 50,000 แถว โดยให้ user เปลี่ยนหน้าหรือเลื่อนลงเพื่อดูเพิ่ม
+- **Save a ready result:** คำนวณยอดรวมรายวันไว้ครั้งเดียวแล้วนำมาใช้ซ้ำ ไม่ต้องอ่านข้อมูลเก่าทั้งหมดทุกครั้งที่มีคนเปิดหน้า Dashboard
+
+**ถาม AI แบบนี้:** สำหรับ list, search, report และงานที่ทำซ้ำแต่ละจุด บอกผมว่าจะเกิดอะไรเมื่อ data โตจาก 100 เป็น 10,000 rows หาจุดที่อ่านทุก row หรือไม่มี limit แล้วแก้เฉพาะส่วนที่สำคัญกับขนาดที่เราคาดไว้
+
+### State — what is true now, and which changes are legal
+
+**State** คือสิ่งที่ถูกต้องในขณะนี้ เช่น ค่าใช้จ่ายอาจอยู่ในสถานะ `draft`, `submitted`, `approved`, `rejected` หรือ `paid` อย่าปล่อยให้คนพิมพ์คำอะไรก็ได้ลงในช่องสถานะครับ แต่ควรระบุการเปลี่ยนแปลงที่อนุญาตให้ชัดเจน
+
+**State machine** คือแผนผังการเปลี่ยนสถานะที่อนุญาต:
+
+<MermaidDiagram
+  chart={`
+stateDiagram-v2
+    [*] --> Draft
+    Draft --> Submitted: employee submits
+    Submitted --> Draft: returned for changes
+    Submitted --> Approved: approver accepts
+    Submitted --> Rejected: approver rejects
+    Approved --> Paid: finance pays
+    Rejected --> [*]
+    Paid --> [*]
+`}
+  size="medium"
+/>
+
+คราวนี้กฎจะดูง่ายขึ้นครับ ค่าใช้จ่ายที่จ่ายเงินแล้วไม่สามารถกลับไปเป็นฉบับร่างได้ หรือค่าใช้จ่ายที่ถูกปฏิเสธไม่สามารถกระโดดไปเป็นจ่ายเงินได้ หน้าจอสามารถซ่อน button ที่ไม่ถูกต้อง และระบบหลังบ้านต้อง block การเปลี่ยนสถานะที่ผิดกฎด้วยครับ
+
+หาก record ข้อมูลมี `status` ให้ขอแผนผังแบบนี้ครับ มันช่วยได้มากกับเรื่องใบสั่งซื้อ, ตั๋ว, แบบ form งาน, แผนงาน, การส่งของ และใบแจ้งหนี้
+
+### Concurrency — two valid actions can collide
+
+**Concurrency** คือการที่เหตุการณ์ 2 อย่างเกิดขึ้นในเวลาเกือบจะพร้อมกัน เช่น คน 2 คนเห็นตั๋วใบสุดท้ายใบเดียวกัน และคลิกซื้อพร้อมกัน app อาจจะขายตั๋วใบเดียวให้คน 2 คนถ้าขั้นตอนการตรวจสอบและบันทึกแยกจากกัน
+
+**Transaction** คือการนำการเปลี่ยนแปลงใน database ที่เกี่ยวข้องกันมาไว้ในกลุ่มเดียวกันที่ปลอดภัย การเปลี่ยนแปลงทั้งหมดต้องผ่าน หรือไม่ก็ต้องล้มเหลวทั้งหมด สำหรับการโอนเงิน เงินไม่สามารถออกจากบัญชีหนึ่งได้โดยไม่เข้าถึงอีกบัญชีหนึ่ง สำหรับตั๋วใบสุดท้าย ขั้นตอนการตรวจสอบและบันทึกต้องเป็นขั้นตอนที่ปลอดภัยขั้นตอนเดียวครับ
+
+อีกกรณีหนึ่งคือการดับเบิลคลิก คำขอแรกทำงานได้แต่หน้าจอยังโหลดช้า user จึงคลิกอีกครั้ง app จึงได้รับคำขอเดิมซ้ำ 2 ครั้ง
+
+**Idempotency** เป็นคำยากสำหรับเป้าหมายง่ายๆ คือ คำขอเดิมจะส่งมา 2 ครั้งก็ได้ แต่ app จะทำงานเพียงครั้งเดียว ให้กำหนด ID ให้กับทุกคำขอ ถ้า ID นั้นถูกจัดการไปแล้ว ก็ไม่ต้องทำการจ่ายเงิน, จอง หรือเพิ่มแถวใน form อีกครับ
+
+**ถาม AI แบบนี้:** Action ใดเกิดซ้ำหรือเกิดพร้อมกันได้บ้าง ป้องกันรายการซ้ำที่สร้างปัญหาด้วย database transaction, unique rule หรือ request ID แล้วทดสอบด้วยการส่ง request เดิม 2 ครั้ง
+
+### Synchronous, asynchronous, and events
+
+การทำงานแบบ **Synchronous** คือการทำให้ user รอ เช่น บันทึก form ขนาดเล็ก รอสักครู่ แล้วแสดงผลสำเร็จ
+
+การทำงานแบบ **Asynchronous** หมายถึงรับเรื่องตอนนี้ แล้วทำให้เสร็จทีหลัง เช่น file ที่มี 20,000 rows หรือ video ยาว ๆ อาจใช้เวลาหลายนาที ให้ส่งงานเข้า Queue แล้วให้ Worker อีกตัวจัดการ โดยหน้าจอจะแสดง status เป็น `waiting`, `working`, `done` หรือ `failed` ครับ
+
+คุณอาจเคยเห็นสิ่งนี้หลังจากอัปโหลด file ขนาดใหญ่หรือขอให้เว็บไซต์สร้าง report หน้าจอจะบอกว่า **Waiting** จากนั้นเป็น **Working** และจบที่ **Done** หน้าจอนี้คือส่วนที่คุณเห็น ส่วน Queue และ Worker คือส่วนที่ทำงานอยู่เบื้องหลังครับ
+
+{/* IMAGE PROMPT (background-job-status.png): Flat vector product UI illustration, light warm background, soft shadows, purple and teal accents, no photorealism. Show one clean import-status window with three large cards connected from left to right. The first card has files and a clock. The second has a file, gear, and progress bar. The third has a file and green check. Render the exact labels "IMPORT STATUS", "WAITING", "WORKING", and "DONE" once each, spell exactly. Do not render any other words, letters, or numbers. Do not print style instructions as text. No fake text, logos, watermarks, duplicate labels, or typos. */}
+
+![หน้าจอการนำเข้าข้อมูลที่คุ้นเคยซึ่งเปลี่ยนจากสถานะรอเป็นกำลังทำงานและเสร็จสิ้น](/assets/images/blogs/non-tech-vibe-coding-handbook/background-job-status.png)
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    U["Upload file"] --> Q["Waiting"]
+    Q --> W["Working"]
+    W --> D["Done"]
+`}
+  size="medium"
+/>
+
+**Event** คือข้อความที่บันทึกไว้ว่ามีบางอย่างเกิดขึ้น เช่น `ExpenseSubmitted`, `PaymentReceived` หรือ `CustomerCreated` งานอื่นๆ สามารถเริ่มต้นได้จากข้อความนั้น หลังจากส่งรายการเบิกค่าใช้จ่าย ขั้นตอน 1 อาจเป็นการแจ้งเตือนผู้จัดการ และอีก 1 ขั้นตอนเป็นการบันทึกประวัติครับ
+
+งานเบื้องหลังอาจล้มเหลว, มาช้า, มาซ้ำ หรือเสร็จไม่ตามลำดับ ให้แสดงสถานะของงาน กำหนดกฎการลองใหม่ (retry) และ block ข้อมูลซ้ำ รวมถึงสร้างหน้าที่เจ้าของสามารถดูงานที่ล้มเหลวได้ แต่ถ้างานนั้นสามารถทำให้เสร็จได้ในขณะที่ user รอ ให้ใช้ version แรกแบบง่ายๆ และปล่อยให้เขารอไปก่อนครับ
+
+### Input, output, and errors are part of the design
+
+app ของคุณรับข้อมูลจาก form, file, sheet, API, webhook และ AI ครับ คุณควรตรวจสอบข้อมูลทั้งหมดก่อนนำไปใช้งาน
+
+**Validation** คือการเช็คว่าข้อมูลอยู่ในรูปแบบและความหมายที่ถูกต้องส่วน Error handling คือการตัดสินใจว่าจะทำอย่างไรเมื่อข้อมูลผิดพลาด โดยคุณควรให้ข้อมูลที่มีประโยชน์แก่คน 3 กลุ่มครับ:
+
+- **user:** เกิดอะไรขึ้น, ข้อมูลอะไรที่ถูกบันทึกไว้ และพวกเขาต้องทำอย่างไรต่อ
+- **เจ้าของ app:** คำขอไหนที่ล้มเหลว และต้องไปตรวจสอบที่จุดใด
+- **ระบบ:** ควรลองใหม่อีกครั้ง, ปฏิเสธคำขอ หรือแยกงานนี้ออกไปเพื่อรอการตรวจสอบ
+
+ข้อความแบบ Something went wrong ไม่ได้บอกขั้นตอนถัดไป ส่วน error จาก database แบบดิบๆ อาจแสดงข้อมูลส่วนตัวออกมาครับ คุณควรให้ข้อความที่ปลอดภัยและมีประโยชน์แก่ user แล้วเก็บรายละเอียดทางเทคนิคไว้ใน log ส่วนตัวครับ
+
+---
+
+## The Invisible Parts of a Real Solution
+
+เวลาคุณมอง app คุณจะเห็นเพียงหน้าจอ ซึ่งนั่นอาจเป็นแค่ 20% ของระบบทั้งหมดครับ ส่วนที่เหลือคือส่วนที่เก็บข้อมูล, การ login, file, การสำรองข้อมูล และ error เครื่องมืออย่าง Lovable จะตั้งค่าส่วนเหล่านี้ให้คุณมากมาย แต่ถ้าคุณใช้เครื่องมือเขียน code แบบเปิด คุณต้องรู้ว่ามีส่วนประกอบเหล่านี้อยู่ครับ
+
+{/* IMAGE PROMPT (hidden-system.png): Flat vector editorial illustration, light warm sky and pale teal water cutaway, soft shadows, purple and teal accents, no photorealism. A wide scene with one small app window above the water. Under the water, show a larger friendly support system with exactly six simple symbols: database, file box, login shield, backup copy, alert bell, and code history, all connected. Do not render any words, letters, numbers, code, logos, or watermarks. Do not print style instructions as text. No duplicate symbols or fake text. */}
+
+![app ที่มองเห็นได้และระบบสนับสนุนขนาดใหญ่ที่อยู่ด้านใต้](/assets/images/blogs/non-tech-vibe-coding-handbook/hidden-system.png)
+
+คุณไม่จำเป็นต้องสร้างส่วนเหล่านี้จากศูนย์ครับ แต่คุณต้องรู้ว่า **แต่ละส่วนทำหน้าที่อะไร, ทำไมคุณถึงต้องการมัน และต้องสั่งการอย่างไร**
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    U["คนที่ใช้งาน app ของคุณ\n(browser หรือโทรศัพท์)"] --> APP["app ของคุณ\nหน้าจอและลอจิกต่างๆ"]
+    APP --> DB["Database\nบันทึกข้อมูลที่มีโครงสร้าง"]
+    APP --> OS["Object storage\nfile ต่างๆ: รูปภาพ, PDF"]
+    APP --> AUTH["Login service\nคนนี้คือใคร?"]
+    GH["GitHub\nที่เก็บ code"] -->|"deploy"| APP
+    APP --> LOG["Logs and alerts\nวิธีที่คุณรู้ว่าระบบพัง"]
+    DB --> BK["Backups\nสำเนาที่ช่วยชีวิตคุณไว้"]
+`}
+  size="medium"
+/>
+
+### Where your code lives — Git and GitHub
+
+**GitHub คือบ้านออนไลน์สำหรับ code ของคุณและประวัติการเปลี่ยนแปลงครับ** ให้จำ 2 แนวคิดนี้ไว้ครับ:
+
+- **Version history.** ทุกการเปลี่ยนแปลงที่มีความหมายใน project จะถูกบันทึกเป็น snapshot ที่เรียกว่า commit ถ้าการเปลี่ยนแปลงของวันนี้ทำให้ทุกอย่างพัง คุณสามารถย้อนกลับไปใช้ snapshot ของเมื่อวานได้ครับ ถ้าคุณเคยสร้าง file ชื่อ `report_final_v2_REAL.xlsx` version control คือแนวคิดเดียวกัน แต่ให้ระบบจัดการแทนการตั้งชื่อ file ครับ
+- **One main copy.** อย่าเก็บสำเนาเดียวไว้ในแล็ปท็อปของคุณครับ เพราะแล็ปท็อปอาจพังหรือหายได้ GitHub จะเก็บสำเนาหลักที่ทีมของคุณและ app ออนไลน์สามารถใช้งานได้ครับ
+
+AI ของคุณตั้งค่าเรื่องนี้ได้ครับ **ถาม AI แบบนี้:** เชื่อม project นี้กับ private GitHub project หลังการแก้ไขแต่ละรอบที่ใช้งานได้ ให้บันทึก snapshot และเขียน note สั้น ๆ ว่าเปลี่ยนอะไรไปบ้าง
+
+### Deployment — putting it online
+
+เครื่องมือของคุณอาจทำงานได้เฉพาะตอนที่ run บนแล็ปท็อป **Deployment** หมายถึงการนำ app ไปวางไว้บน computer ออนไลน์ที่ทำงานตลอดเวลา เพื่อให้ผู้คนสามารถเปิดใช้งานผ่านลิงก์เดียวได้ครับ
+
+คุณเช่า computer ออนไลน์นี้จาก **hosting service** หรือ **cloud provider** โดยขั้นตอนปกติจะเป็นแบบนี้ครับ:
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    L["แล็ปท็อปของคุณ"] --> G["GitHub"]
+    G --> H["Online host"]
+    H --> U["ลิงก์ใช้งานใน production"]
+`}
+  size="medium"
+/>
+
+ไม่มีที่ที่ดีที่สุดในการ deploy ครับ ให้เลือกตามระดับความช่วยเหลือและการควบคุมที่คุณต้องการ
+
+#### Path 1: a simple hosting service
+
+[Vercel](https://vercel.com/), [Netlify](https://www.netlify.com/), [Railway](https://railway.com/), และ [Render](https://render.com/) สามารถซ่อนการตั้งค่า cloud ที่ซับซ้อนได้ครับ คุณแค่เชื่อมต่อ GitHub, เลือกการตั้งค่าเล็กน้อย และรับลิงก์ไปใช้งาน ซึ่งมักจะเพียงพอสำหรับเว็บไซต์ขนาดเล็ก, สินค้าตัวแรก หรือเครื่องมือใช้ภายในครับ
+
+การเริ่มต้นที่ง่ายนี้ยังมีข้อจำกัดครับ ให้เช็คว่า database และ file ถูกเก็บไว้ที่ไหน เช็คราคาต่อเดือน, กฎการ login, การสำรองข้อมูล และสิ่งที่จะเกิดขึ้นเมื่อมีคนใช้งาน app มากขึ้นครับ
+
+#### Path 2: a large cloud provider
+
+[Amazon Web Services](https://aws.amazon.com/), [Microsoft Azure](https://azure.microsoft.com/), และ [Google Cloud](https://cloud.google.com/) มีชิ้นส่วนสำหรับการสร้างมากมายครับ สามารถ run app, database, file, เครือข่ายส่วนตัว, การ login, logs และการสำรองข้อมูลได้ครบวงจร
+
+บริษัทต่างๆ อาจเลือกใช้บริการเหล่านี้เพราะมีบัญชีและทีมเทคนิคอยู่แล้ว หรืออาจต้องการระบบ login ของบริษัท, ระบบส่วนตัว, การเลือกภูมิภาคที่เก็บข้อมูล หรือบันทึกการเข้าถึงที่ละเอียดครับ
+
+คุณจะควบคุมได้มากขึ้น แต่ก็มีตัวเลือกมากขึ้นด้วย ผู้ให้บริการแต่ละรายมีบริการมากมายที่มีชื่อคล้ายกัน App ที่เปิดได้อาจตั้งค่าไว้ไม่ดีหรือมี bill ที่น่าตกใจครับ ควรให้ software team หรือ cloud team review plan ก่อนนำข้อมูลธุรกิจที่สำคัญขึ้น production
+
+#### Path 3: let an AI tool handle part of the cloud work
+
+AI tools บางตัวสามารถสร้างและ deploy ได้ในเวลาเดียวกันครับ
+
+[Google AI Studio](https://aistudio.google.com/) สามารถสร้าง AI app แบบ full-stack และเผยแพร่ไปยัง [Cloud Run](https://cloud.google.com/run) ซึ่งเป็นส่วนหนึ่งของ Google Cloud หมายความว่า AI Studio ให้หน้าจอที่ใช้งานง่ายแก่คุณ ส่วน Google Cloud run app อยู่เบื้องหลังครับ นี่เป็นทางลัดจาก idea ไปสู่ AI tool ที่เปิดใช้ได้
+
+[Microsoft Foundry](https://ai.azure.com/) จะเหมาะสมกว่าเมื่อส่วนหลักคือ AI model หรือ agent โดย **prompt agent** แบบง่ายๆ สามารถ run ได้โดยใช้ code เพียงเล็กน้อย ส่วน **hosted agent** สามารถ run code agent ของคุณเองได้ Foundry สามารถจัดการเรื่อง agent endpoint, ตัวตน, การขยายระบบ และ logs ครับ อย่างไรก็ตาม มันอาจจะเป็นแค่ส่วนหนึ่งของ app โดยที่หน้าเว็บ, database ธุรกิจ และการ login ปกติอาจยังต้องใช้บริการอื่นๆ ของ Azure ครับ
+
+ให้คิดแบบนี้ครับ:
+
+- **Google AI Studio ช่วยสร้างห้องและนำพนักงาน AI เข้าไปไว้ข้างใน**
+- **Microsoft Foundry run พนักงาน AI ในขณะที่คุณสร้างห้องล้อมรอบตัวเขา**
+
+เครื่องมือเหล่านี้ช่วยลดงานตั้งค่า แต่ไม่ได้ลดหน้าที่ของคุณในการตรวจสอบผลลัพธ์ครับ ก่อนเผยแพร่ ให้ review ว่าใครสามารถเปิดได้, ข้อมูลอะไรที่ส่งไปยัง AI model, ข้อมูลอยู่ที่ไหน, ค่าใช้จ่ายเท่าไหร่ และคุณจะหยุดหรือย้ายบริการนี้ได้อย่างไรในอนาคตครับ
+
+จำกฎ 2 ข้อนี้ไว้ครับ:
+
+- **แยก production ออกจากงานทดสอบ** ให้ทดสอบบน computer ของคุณหรือ preview link แล้วนำการเปลี่ยนแปลงขึ้น production เมื่อตรวจแล้วว่าใช้งานได้ครับ
+- **Online ไม่ได้แปลว่า public** เครื่องมือภายในที่ deploy แล้วควรถูกป้องกันด้วยการ login เพื่อที่ว่าหากลิงก์หลุดออกไป จะไม่กลายเป็นการรั่วไหลของข้อมูลครับ ซึ่งจะเป็นเรื่องของการ login ในหัวข้อถัดไปครับ
+
+**ถาม AI แบบนี้:** เทียบ simple host, AWS, Azure และ Google Cloud สำหรับ app นี้ ตรวจด้วยว่า Google AI Studio หรือ Microsoft Foundry เหมาะกับส่วน AI หรือไม่ อธิบายว่าแต่ละทาง run อะไร ผมยังต้องตั้งค่าอะไร ค่าใช้จ่ายน่าจะมาจากจุดใด และใครควร review ก่อนเปิดใช้ ยังไม่ต้อง deploy
+
+### The database — where your records live
+
+หากคุณจะจำแนวคิดทางเทคนิคหนึ่งอย่างจากโพสต์นี้ ขอให้จำเรื่อง database ครับ เพราะข้อผิดพลาดของข้อมูลแก้ไขได้ยากในภายหลัง
+
+**Database ใช้เก็บ record ของ app** เช่น การจอง, คำขอ และข้อมูลลูกค้าครับ หน้าตาคล้าย sheet เพราะมี table, column กับ row แต่ Database ถูกออกแบบมาให้ app ใช้งานหลายแบบพร้อมกัน:
+
+- **ข้อมูลยังอยู่หลัง restart** ถ้าเก็บข้อมูลไว้แค่ใน memory ของ app พอ restart แล้วข้อมูลจะหายครับ
+- **รองรับ user หลายคนพร้อมกัน** 2 คนสามารถส่ง form ได้ในเวลาเดียวกันโดยไม่ทำให้ file ที่ใช้ร่วมกันพังครับ
+- **กันข้อมูลผิดก่อนถูกบันทึก** เช่น ไม่รับการจองที่ไม่มีวันที่ หรือไม่ยอมให้ 2 account ใช้ email เดียวกันครับ
+
+ชื่อที่คุณอาจเห็น: [**PostgreSQL**](https://www.postgresql.org/) หรือ Postgres เป็น database ที่นิยมมาก [**SQLite**](https://sqlite.org/) เก็บ database ขนาดเล็กไว้ใน file เดียว [**Supabase**](https://supabase.com/), [**Neon**](https://neon.com/), และ [**Firebase**](https://firebase.google.com/) ให้บริการจัดการข้อมูลให้คุณครับ AI รู้จักเครื่องมือเหล่านี้ แต่ AI ไม่รู้กฎธุรกิจของคุณ เช่น ลูกค้า 1 คนสามารถมีการจองได้หลายครั้ง คุณต้องเป็นคนอธิบายส่วนนี้ครับ
+
+**Query** คือคำถามหรือคำสั่งสำหรับ database: เช่น ค้นหาค่าใช้จ่ายที่ยังไม่ปิด, นับจำนวนการจอง หรือทำเครื่องหมายว่าใบแจ้งหนี้ชำระเงินแล้ว SQL เป็นภาษาทั่วไปสำหรับคำสั่งเหล่านี้ครับ code อาจจะถูกต้องตามไวยากรณ์แต่ยังตอบคำถามธุรกิจผิดได้ ให้ขอให้ AI อธิบาย query สำคัญๆ ในรูปแบบของภาษาทำงานครับ
+
+ให้รู้ว่าใครเป็นเจ้าของบัญชี database และวิธีส่งออกแถวข้อมูลทั้งหมดครับ หากคุณเลิกใช้คนสร้าง app คุณยังต้องมีข้อมูลธุรกิจของคุณอยู่ครับ
+
+**ถาม AI แบบนี้:** App นี้ต้องเก็บ [record ของคุณ] ระยะยาวใน database ไม่ใช่ใน file หรือ memory ช่วยตั้ง hosted database แล้วอธิบายด้วยคำง่าย ๆ ว่ามี table อะไร และแต่ละ table เก็บอะไร
+
+### Object storage — where files live
+
+สำหรับรูปภาพ, PDF และสิ่งที่อัปโหลด คุณจะได้ยินคำว่า **object storage** ครับ มันคือตู้เก็บเอกสารออนไลน์ โดย database จะเก็บแถวข้อมูล ส่วน object storage จะเก็บตัว file ครับ
+
+ที่เก็บ file จะให้ลิงก์แก่ app ของคุณ และ database จะบันทึกลิงก์นั้นไว้ในแถวที่ถูกต้องครับ ใบเสร็จจะอยู่ในตู้เก็บ file ส่วนแถวค่าใช้จ่ายจะบอกว่าสามารถหาใบเสร็จนั้นได้ที่ไหน
+
+ถ้าคุณเคยแนบใบเสร็จใน form ค่าใช้จ่าย คุณได้ใช้แนวคิดนี้แล้วครับ ช่องใน form จะกลายเป็นแถวใน database ส่วน PDF หรือรูปภาพจะไปอยู่ใน object storage แล้วใช้ลิงก์ที่บันทึกไว้เชื่อมทั้ง 2 อย่างเข้าด้วยกันครับ
+
+{/* IMAGE PROMPT (database-object-storage.png): Flat vector product illustration, light warm background, soft shadows, purple and teal accents, no photorealism. Show two large cards joined by one link with a paperclip. Left: a database grid holding one expense row. Right: an online file cabinet holding one PDF receipt. Render the exact labels "DATABASE", "EXPENSE ROW", "OBJECT STORAGE", and "RECEIPT.PDF" once each, spell exactly. Do not render any other words, letters, or numbers. Do not print style instructions as text. No fake text, logos, watermarks, duplicate labels, or typos. */}
+
+![แถวค่าใช้จ่ายใน database ที่เชื่อมโยงกับใบเสร็จใน object storage](/assets/images/blogs/non-tech-vibe-coding-handbook/database-object-storage.png)
+
+อย่าเก็บ upload ไว้ใน disk ของ app ครับ เพราะ hosting service อาจย้าย app ไปอีกเครื่อง แล้ว file จะหายไป [**Amazon S3**](https://aws.amazon.com/s3/), [**Cloudflare R2**](https://www.cloudflare.com/products/r2/) และ **Supabase Storage** เป็นตัวอย่างของ object storage
+
+file ส่วนตัวต้องการการเข้าถึงแบบส่วนตัว **signed URL** คือลิงก์ที่ใช้งานได้ในช่วงเวลาสั้นๆ สำหรับ user ที่ได้รับอนุญาตเท่านั้น และควรตั้งค่าประเภท file รวมถึงจำกัดขนาด file ด้วยครับ
+
+**ถาม AI แบบนี้:** User จะ upload [photo / PDF] ให้เก็บ file ใน object storage ไม่เก็บใน database หรือ disk ของ app และบันทึก link ของแต่ละ file ไว้กับ record ที่เกี่ยวข้อง
+
+### Login — who is this, and what may they do?
+
+tool ที่ไม่ได้เปิด public ต้องตอบ 2 คำถามนี้ให้ได้ครับ และ 2 คำนี้มักถูกสลับกัน:
+
+- **Authentication — คุณคือใคร?** คือขั้นตอน login และพิสูจน์ว่าคนนี้เป็นเจ้าของ account
+- **Authorization — คุณได้รับอนุญาตให้ทำอะไรได้บ้าง?** คือกฎหลัง login เช่น พนักงานบัญชีเห็นข้อมูลเงินเดือน แต่เด็กฝึกงานไม่เห็นครับ
+
+คุณเคยใช้ทั้ง 2 ส่วนนี้อยู่แล้วครับ หน้า login เช็กว่าคุณคือใคร ส่วน menu, button และ data ที่เปิดได้หลัง login มาจากกฎ Authorization
+
+{/* IMAGE PROMPT (authentication-authorization.png): Flat vector product UI illustration, light warm background, soft shadows, purple and teal accents, no photorealism. Show two panels joined by one arrow. Left: a login card. Right: an app with an allowed expenses folder and a blocked payroll folder. Render the exact labels "AUTHENTICATION", "SIGN IN", "AUTHORIZATION", "EXPENSES", "ALLOWED", "PAYROLL", and "BLOCKED" once each, spell exactly. Do not render any other words, letters, or numbers. Do not print style instructions as text. No fake text, logos, watermarks, duplicate labels, or typos. */}
+
+![Authentication ตรวจสอบตัวบุคคล ในขณะที่ authorization ควบคุมสิ่งที่พวกเขาสามารถเปิดได้](/assets/images/blogs/non-tech-vibe-coding-handbook/authentication-authorization.png)
+
+หาก authentication ล้มเหลว คนแปลกหน้าจะเข้าสู่ระบบได้ หาก authorization ล้มเหลว user ที่ถูกต้องจะเห็นข้อมูลที่ผิดครับ เช่น พนักงานทุกคนสามารถเห็นเงินเดือนของทุกคนได้ ให้เขียนระบุไว้ว่าใครสามารถเห็นและเปลี่ยนแปลงข้อมูลแต่ละประเภทได้บ้าง AI สามารถสร้างกฎการเข้าถึงเหล่านี้ได้หลังจากที่คุณอธิบาย แต่ AI ไม่สามารถเดากฎของทีมคุณได้ครับ
+
+**อย่าสร้างระบบรหัสผ่านของคุณเองครับ** ให้ใช้บริการ login ที่มีอยู่แล้ว สำหรับ internal tool ใช้ Sign in with Google หรือ Microsoft อาจเหมาะที่สุด เพราะพนักงานใช้ account ของบริษัทที่มีอยู่แล้วได้ครับ
+
+ในรูปแบบ B2B คุณอาจจะได้ยินคำว่า **SSO (single sign-on)** ซึ่งช่วยให้พนักงานใช้การ login ของบริษัทเพียงครั้งเดียวกับหลายเครื่องมือได้ [Clerk](https://clerk.com/), [Auth0](https://auth0.com/), และ Supabase Auth เป็นบริการที่ช่วยเรื่องการ login ครับ
+
+**ถาม AI แบบนี้:** เพิ่ม login with Google โดยใช้ auth service ที่มีอยู่ ไม่ต้องสร้าง password system เอง อนุญาตให้เฉพาะคนจาก domain ของบริษัท login ได้ หลัง login ให้ใช้กฎนี้: [authorization rule ของคุณ — ใครเห็นอะไรได้บ้าง]
+
+### Secrets — the keys that must never leak
+
+**API key** คล้ายกุญแจเข้าระบบครับ เป็น text ลับที่ service ใช้ยืนยันว่าใครมีสิทธิ์เรียกงาน คนที่ได้ database key อาจอ่านหรือลบ data ได้ ส่วน AI key ที่หลุดอาจถูกนำไปใช้จนเกิดค่าใช้จ่ายครับ
+
+การรั่วไหลที่พบบ่อยคือการที่บางคนใส่กุญแจไว้ใน code แล้วส่ง code นั้นไปยัง GitHub อย่าทำแบบนี้เด็ดขาดครับ
+
+เก็บ secret ไว้นอก code ครับ ตอนพัฒนาบน computer อาจใช้ file `.env` ที่ไม่ถูก commit ส่วน production ให้ตั้งค่าใน settings ของ host อย่าวาง key ลงใน public chat หรือ screenshot
+
+**ถาม AI แบบนี้:** ตรวจ project นี้ว่ามี secret key เขียนอยู่ใน code หรือไม่ ย้ายทั้งหมดไป environment variable ป้องกันไม่ให้ upload ขึ้น GitHub และบอกผมว่าต้องตั้งค่าไว้จุดใดใน hosting service
+
+### A name and a padlock — domains and HTTPS
+
+2 เรื่องเล็ก ๆ นี้ช่วยให้ link ดูน่าเชื่อถือและปลอดภัยขึ้นครับ
+
+- **A domain** คือชื่อที่คุณเช่ามา เช่น `tools.yourcompany.com` หากเป็นเครื่องมือใช้ภายในบริษัทสามารถใช้ลิงก์ปกติของ host ได้ แต่ถ้าเป็น app สำหรับลูกค้าควรมีชื่อที่ชัดเจนครับ
+- **HTTPS** คือสิ่งที่ทำให้เกิดรูปกุญแจบน browser ซึ่งจะช่วยซ่อนข้อมูลขณะที่เคลื่อนย้ายระหว่าง user กับ app host สมัยใหม่มักจะตั้งค่านี้ให้คุณอยู่แล้ว ถ้าหน้า login ไม่มีรูปกุญแจ ให้หยุดใช้งานทันทีครับ
+
+### Backups — the part you only regret skipping
+
+การคลิกผิดเพียงครั้งเดียวอาจทำให้ข้อมูลหายไปหลายแถว การเปลี่ยน table ข้อมูลอาจล้มเหลว หรือมีคนแฮ็กบัญชีได้ ให้ถามคำถามเดียวเลยครับว่า **เรามีสำเนาสำรองไว้ไหม?**
+
+**backup** คือการคัดลอก database แยกเก็บไว้ต่างหากจากตัวหลัก ให้ตรวจสอบ 2 เรื่องนี้ครับ:
+
+- บริการที่คุณใช้มีการสำรองข้อมูลให้ในแพ็กเกจที่จ่ายเงินอยู่หรือไม่?
+- คุณสามารถ **restore** ได้หรือไม่? การ restore คือการนำสำเนาข้อมูลกลับมาใช้ ให้ทดสอบเรื่องนี้กับข้อมูลชุดทดลองก่อนที่จะจำเป็นต้องใช้ครับ
+
+**ถาม AI แบบนี้:** ตั้ง automatic daily backup ให้ database แล้วพาผมลอง restore 1 ชุดลงใน test copy เพื่อยืนยันว่า backup ใช้งานได้
+
+### Knowing when it's broken — logs and alerts
+
+ถ้าเครื่องมือของคุณเสียตอน 9 โมงเช้า คุณจะรู้ได้อย่างไร? อย่ารอให้ user ที่กำลังโกรธมาบอกคุณครับ
+
+2 แนวคิดนี้จะช่วยปิดช่องว่างนั้น:
+
+- **Logs** คือบันทึกการทำงานของ app ซึ่งจะแสดงว่า app ทำอะไรไปบ้างและล้มเหลวจุดใด คุณสามารถนำส่วนที่ปลอดภัยของ log ให้ AI ช่วยวิเคราะห์ได้ แต่ต้องลบข้อมูลส่วนตัวและ key ต่างๆ ออกก่อนครับ
+- **Alerts** จะแจ้งเตือนเมื่อ app มีข้อผิดพลาดหรือหยุดทำงาน ตัวอย่างที่พบบ่อยคือ [Sentry](https://sentry.io/welcome/) และ [UptimeRobot](https://uptimerobot.com/)
+
+คุณอาจเคยเห็น alert ในรูปแบบ email ข้อความแชท หรือการแจ้งเตือนในมือถือ ซึ่งจะบอกสั้นๆ เช่น **App down** ส่วน log จะเป็นบันทึกรายละเอียดภายในที่ช่วยให้เจ้าของระบบหาคำตอบได้ว่าเกิดอะไรขึ้นครับ
+
+{/* IMAGE PROMPT (logs-alerts.png): Flat vector product illustration, light warm background, soft shadows, purple and teal accents, no photorealism. Show a left-to-right flow with three parts: a web app with a red error symbol, a private log notebook with clean timeline rows made from shapes, and a phone receiving an app-down alert. Render the exact labels "ERROR", "LOGS", "ALERT", and "APP DOWN" once each, spell exactly. Do not render any other words, letters, or numbers. Do not print style instructions as text. No fake text, logos, watermarks, duplicate labels, or typos. */}
+
+![เมื่อ app เกิดข้อผิดพลาด จะมีการสร้าง logs ที่ละเอียดและส่ง alert สั้นๆ ไปยังเจ้าของ](/assets/images/blogs/non-tech-vibe-coding-handbook/logs-alerts.png)
+
+**ถาม AI แบบนี้:** เพิ่ม error tracking และ uptime alert ให้ app นี้ เพื่อส่ง email หาผมเมื่อระบบพัง โดยเลือก service ที่มี free tier
+
+---
+
+## Testing — Define What Must Stay True
+
+**Testing คือการตรวจสอบว่ากฎสำคัญๆ ยังคงทำงานได้ถูกต้องหลังจากมีการเปลี่ยนแปลงทุกครั้งครับ**
+
+การลองใช้ app ด้วยตัวเองก็เป็นวิธีทดสอบอย่างหนึ่ง ซึ่งช่วยเช็กคำพูดและลำดับการทำงานได้ แต่สำหรับ app ขนาดใหญ่ จะมีเส้นทางการใช้งานมากเกินกว่าจะเช็กด้วยมือได้ทุกสัปดาห์ การใช้ automated tests จะช่วย run การตรวจสอบสำคัญๆ แทนคุณครับ
+
+### Start with risk, not test quantity
+
+สำหรับเครื่องมือเบิกจ่าย สิ่งเหล่านี้มีความสำคัญไม่เท่ากันครับ:
+
+- ไอคอนบริเวณส่วนหัวเคลื่อนไปเล็กน้อย
+- พนักงานสามารถแอบดูใบเสร็จของพนักงานคนอื่นได้
+- การดับเบิลคลิกทำให้เกิดรายการจ่ายเงินซ้ำ 2 ครั้ง
+- ตัวเลขบน dashboard ไม่ update มา 1 ชั่วโมงแล้ว
+
+ให้ทดสอบจุดที่มีความเสี่ยงสูงสุดก่อนครับ:
+
+1. การกำหนดสิทธิ์และข้อมูลที่ละเอียดอ่อน
+2. เรื่องเงิน, การกระทำที่ย้อนกลับไม่ได้ และการคัดลอกข้อมูล
+3. กฎทางธุรกิจหลักและการเปลี่ยนสถานะต่างๆ
+4. การบันทึก, การส่งออก และการกู้คืนข้อมูล
+5. เส้นทางการใช้งานหลักของ user
+6. รายละเอียดการแสดงผล
+
+### Four useful kinds of test
+
+ทีมเทคนิคจะมีชื่อเรียกการทดสอบเหล่านี้ที่เฉพาะเจาะจงกว่า ชื่ออาจเปลี่ยนไปบ้างตามแต่ละทีม แต่คุณจะได้ยินคำเหล่านี้บ่อยครับ:
+
+| Tech term | ความหมายแบบง่าย | ตัวอย่างเครื่องมือเบิกจ่าย |
+|---|---|---|
+| **Unit test** | ตรวจ function หรือ business rule เล็ก ๆ แยกจากส่วนอื่น | ยอด 4,999 บาท ต้องมีผู้อนุมัติ 1 คน, ส่วน 5,000 บาท ต้องผ่านฝ่ายการเงินด้วย |
+| **Integration test** | ตรวจสอบว่า 2 ส่วนหรือมากกว่านั้นทำงานร่วมกันได้ | ระบบหลังบ้านบันทึกค่าใช้จ่ายลง database และส่ง email แจ้งเตือนได้ถูกต้อง |
+| **End-to-end test (E2E)** | ใช้งาน app ทั้งหมดเหมือนเป็น user ตั้งแต่หน้าแรกจนถึงผลลัพธ์สุดท้าย | ลงชื่อเข้าใช้, ส่งรายการเบิก, อนุมัติ และดูสถานะใหม่ |
+| **User acceptance testing (UAT)** | user ทางธุรกิจตรวจสอบว่าเครื่องมือตอบโจทย์การทำงานของทีม | ฝ่ายการเงินลองทำรายการปิดงบเดือนและยืนยันว่าพร้อมใช้งาน |
+
+Unit test มักจะเล็กและเร็ว Integration test จะใช้ส่วนประกอบที่ใกล้กับระบบ production มากขึ้น E2E test จะช้ากว่าแต่ช่วยหา link ที่ขาดระหว่างหน้าจอกับ service ได้ ส่วน UAT ต้องใช้คนที่เข้าใจธุรกิจ Software team พิสูจน์ได้ว่า code ทำตามกฎที่เขียนไว้ แต่ทีมของคุณต้องยืนยันว่ากฎนั้นสอดคล้องกับวิธีทำงานครับ
+
+คุณอาจได้ยินชื่อที่อธิบายว่าทดสอบ **เมื่อไหร่หรือทำไม** ถึงต้องทดสอบ:
+
+- **Smoke test:** การตรวจสอบสั้นๆ ว่าส่วนหลักๆ ยังเปิดได้และทำงานได้หลังจากปล่อย version ใหม่ออกไป userlogin ได้ไหม? เปิดหน้าหลักได้ไหม? บันทึก test data 1 รายการได้ไหม?
+- **Regression test:** การ run การทดสอบเก่าๆ ซ้ำหลังจากมีการเปลี่ยนแปลง เป้าหมายคือเพื่อหาว่ามีสิ่งที่เคยทำงานได้แต่ตอนนี้กลับเสียหรือไม่
+
+Smoke test หรือ Regression test อาจประกอบไปด้วย unit, integration และ E2E tests ครับ โดยกลุ่มแรกบอกขนาดของการทดสอบ ส่วนกลุ่มที่ 2บอกวัตถุประสงค์ครับ
+
+คุณไม่จำเป็นต้องทดสอบทุกบรรทัด แต่ให้ทดสอบมากขึ้นในจุดที่หากเกิดข้อผิดพลาดแล้วจะสร้างความเสียหายรุนแรงครับ
+
+### Test when things go wrong
+
+ตอน demo เรามักใช้ข้อมูลที่เตรียมไว้ Internet ก็ไม่หลุด และทุกคนกดตามขั้นตอนครับ แต่ตอนเปิดใช้จะมี case หลุดจากทางสวย ๆ เสมอ ลองทดสอบเรื่องเหล่านี้ด้วยครับ:
+
+- ใส่ข้อมูลที่ว่างเปล่า, ผิดพลาด, ยาวเกินไป หรือข้อมูลแปลกๆ
+- ใช้ user ที่มีสิทธิ์การเข้าถึงผิดประเภท
+- ข้อมูลที่ถูกแก้ไขในแท็บ browser อื่น
+- การดับเบิลคลิกหรือการส่งข้อมูลซ้ำ
+- บริการภายนอกที่ตอบสนองช้าจนหมดเวลา
+- file ที่ใหญ่เกินไปหรือผิดประเภท
+- กระบวนการที่ล้มเหลวกลางคัน
+- การรีเฟรชหน้าจอ, การกดย้อนกลับ และการกลับมาทำต่อในภายหลัง
+
+มีการทดสอบ 1 แบบที่มีประโยชน์มากสำหรับ app ที่สร้างโดย AI คือลองเปลี่ยน ID ใน URL ครับ หาก `/expenses/123` เป็นของพนักงานคนอื่น คุณสามารถพิมพ์ URL นั้นเพื่อแอบดูได้หรือไม่? บางครั้งหน้าจออาจซ่อนลิงก์ไว้ แต่ระบบหลังบ้านยังอนุญาตให้เปิดข้อมูลได้ครับ
+
+### Keep development, preview, and production separate
+
+**Development** คือที่สำหรับแก้ไขงาน **Preview** คือสำเนา online ที่ปลอดภัยสำหรับการทดสอบ และ **Production** คือ app ที่ user กำลังใช้งานครับ
+
+ควรใช้ test data แยกจาก production data ให้ทดสอบการลบด้วยข้อมูลสำเนา อย่าทดสอบกับข้อมูลเงินเดือนของพนักงานครับ
+
+**Migration** คือขั้นตอนที่บันทึกไว้เพื่อเปลี่ยน database เช่น เพิ่ม column ใหม่ ให้ backup ก่อน ทดสอบกับข้อมูลสำเนา แล้วจึงเปลี่ยน production database ครับ
+
+**ถาม AI แบบนี้:** สร้าง risk-based test plan ให้ core workflow ระบุแต่ละ check เป็น unit, integration, E2E, UAT, smoke หรือ regression เพิ่ม automated test สำหรับ permission, การส่งซ้ำ, state transition และ data validation เขียนขั้นตอน UAT ให้ทีมธุรกิจ ใช้ test data แยก run test แล้ว report ว่าส่วนใดยังไม่ได้ทดสอบ
+
+---
+
+## Security and Privacy — Control Consequence, Not Fear
+
+ความปลอดภัยไม่ได้มีเพียงการใช้ prompt บอกว่า ให้ทำให้ปลอดภัย ครับ คุณต้องตัดสินใจว่าใครสามารถทำอะไรได้บ้าง เห็นอะไรได้บ้าง ข้อมูลไหนที่เชื่อถือได้ และจะลดความเสียหายจากความผิดพลาดเพียงครั้งเดียวได้อย่างไร
+
+คุณไม่จำเป็นต้องเป็นผู้เชี่ยวชาญด้านความปลอดภัย แค่สร้างนิสัยที่ดีไม่กี่อย่างก็พอครับ
+
+### Minimize what you collect
+
+ข้อมูลส่วนตัวที่ปลอดภัยที่สุดคือข้อมูลที่คุณไม่เคยบันทึกไว้เลย ก่อนจะขอเลขบัตรประชาชน ที่อยู่บ้าน วันเกิด หรือ file ต่างๆ ให้ถามว่า:
+
+- ขั้นตอนการทำงานไหนที่จำเป็นต้องใช้ข้อมูลช่องนี้?
+- ใช้ข้อมูลที่เปิดเผยได้มากกว่านี้แทนได้ไหม?
+- ใครบ้างที่ต้องเข้าถึงข้อมูลนี้?
+- ต้องเก็บไว้นานแค่ไหน?
+- user จะขอส่งออก แก้ไข หรือลบข้อมูลได้อย่างไร?
+
+ความเป็นส่วนตัวเริ่มต้นจากการเลือกสิ่งที่จะบันทึกครับ กฎหมายอย่าง PDPA, GDPR และระเบียบการทำงานอาจแตกต่างกันตามสถานที่และประเภทข้อมูล AI สามารถช่วยทำ checklist เบื้องต้นได้ แต่ควรให้ผู้เชี่ยวชาญด้านกฎหมายและความปลอดภัยตรวจสอบข้อมูลที่มีความเสี่ยงสูง เพราะธุรกิจของคุณยังคงต้องรับผิดชอบทางกฎหมายครับ
+
+### Least privilege
+
+**Least privilege** หมายถึงการให้สิทธิ์การเข้าถึงแก่ user และบริการเท่าที่จำเป็นต่อการทำงานเท่านั้น เช่น พนักงานเห็นเฉพาะค่าใช้จ่ายของตนเอง ผู้จัดการเห็นคำขอของทีมตนเอง report สามารถอ่านข้อมูลได้แต่แก้ไขไม่ได้ครับ
+
+อย่าใช้บัญชีเจ้าของร่วมกัน ให้เปิด login แบบ 2 ขั้นตอน (two-step login) สำหรับบริการทางธุรกิจที่สำคัญ ควรมีเจ้าของที่ไว้วางใจได้ 2 คนที่จะสามารถกู้คืนบัญชีได้ และให้ลบสิทธิ์การเข้าถึงทันทีเมื่อพนักงานลาออกครับ
+
+### Validate on the trusted side
+
+ตรวจสอบข้อมูลจาก browser, file, webhook, sheet หรือ AI ก่อนนำไปใช้งาน เพื่อป้องกันข้อผิดพลาดและการโจมตี ดังนี้ครับ:
+
+- **Injection:** ข้อความจาก user ถูก run เป็นคำสั่ง database หรือคำสั่งระบบ
+- **XSS:** ข้อความที่ถูกบันทึกไว้ถูก run เป็น code ใน browser ของ user อีกคน
+- **Bad file:** file ที่อัปโหลดมีชื่อ ประเภท หรือขนาดที่เสี่ยงอันตราย
+- **Prompt injection:** ข้อความใน file สั่งให้ AI ละเมิดกฎของคุณหรือแสดงข้อมูลส่วนตัว
+
+ใช้เครื่องมือมาตรฐานและการตั้งค่าที่ปลอดภัย คำสั่ง database ต้องไม่นำข้อความดิบจาก user มาใส่ใน SQL ทันที ให้ AI agent เฉพาะเครื่องมือที่จำเป็น และให้ยืนยันกับมนุษย์ก่อนทำการลบ, ชำระเงิน, ส่งข้อมูล หรือโพสต์สาธารณะครับ
+
+### Authorization must be server-side and deny by default
+
+สำหรับการกระทำที่สำคัญในระบบหลังบ้าน ให้ถามว่า: คนนี้คือใคร? ต้องการข้อมูลแถวไหน? กฎข้อไหนอนุญาตให้เขาทำได้? ถ้าไม่มีกฎข้อไหนบอกว่าได้ ให้ block การเข้าถึงทันที การซ่อน button หรือใช้ URL ที่เดายากนั้นไม่เพียงพอครับ
+
+ใน Supabase, **Row Level Security (RLS)** จะช่วยเพิ่มกฎการเข้าถึงในระดับแถวของ database เช่น user อาจอ่านได้เฉพาะแถวที่มี `employee_id` ของตนเอง ให้ทดสอบด้วย user 2 คนและลองเปิดข้อมูลของกันและกันดูครับ
+
+### Rate limits and abuse controls
+
+บอทสามารถส่ง form สาธารณะได้มากกว่า 1,000 ครั้ง หรือฟีเจอร์ AI สาธารณะอาจทำให้งบประมาณคุณหมดลง **Rate limiting** คือการกำหนดว่า user หรือ IP แต่ละราย สามารถทำรายการได้กี่ครั้งในระยะเวลาที่กำหนดครับ
+
+ใช้การจำกัดจำนวนร่วมกับการควบคุมค่าใช้จ่ายที่เหมาะสม:
+
+- ตั้งการแจ้งเตือนงบประมาณรายเดือนจากผู้ให้บริการ
+- จำกัดจำนวนครั้งต่อ user สำหรับการทำงานที่สิ้นเปลืองทรัพยากร
+- กำหนดขนาด file สูงสุดและประเภท file ที่ยอมรับ
+- ให้ยืนยันก่อนส่งข้อมูลจำนวนมาก, ลบข้อมูล หรือซื้อของ
+- มีสวิตช์ตัวเดียวที่สามารถปิดฟีเจอร์ที่ราคาแพงได้อย่างรวดเร็ว
+
+### Dependencies and updates
+
+app ที่สร้างโดย AI มักใช้ librarycode จากผู้อื่น ซึ่งเรียกว่า **dependencies** version เก่าอาจมีปัญหาด้านความปลอดภัยที่ทราบกันอยู่แล้ว ให้ล็อก version ไว้และเปิดการแจ้งเตือนความปลอดภัย update เป็นกลุ่มเล็กๆ และทดสอบแต่ละกลุ่มครับ
+
+AI ช่วย update library เหล่านี้ได้ครับ ให้ update ทีละกลุ่มเล็ก ๆ บันทึก checkpoint, run test, อ่านการเปลี่ยนแปลง แล้วค่อยนำขึ้น production
+
+### Audit trail
+
+สำหรับการกระทำที่สำคัญ ให้บันทึกว่าใคร ทำอะไร เมื่อไหร่ และที่ข้อมูลแถวไหน สิ่งนี้เรียกว่า **audit log** ซึ่งจะตอบคำถามได้ว่า: ใครเป็นผู้อนุมัติค่าใช้จ่ายนี้? ใครเปลี่ยนบัญชีธนาคาร? ใครส่งออกข้อมูล user?
+
+อย่าอนุญาตให้ user ทั่วไปแก้ไข log นี้ และอย่าใส่ secret keys ลงไป สำหรับการเปลี่ยนแปลงที่สำคัญ ให้บันทึกทั้งค่าเก่าและค่าใหม่ครับ
+
+### A focused security review prompt
+
+**ถาม AI แบบนี้:** Review app นี้เรื่อง login, access rule, input, secret key, private data, file, API call และ action ที่ย้อนกลับไม่ได้ ตรวจว่า user A เปิด data ของ user B ไม่ได้ ตรวจ bad input, rate limit, library เก่า, audit log, backup และ recovery เรียง risk จากสูงไปต่ำ และแสดง plan ก่อนแก้ code
+
+นี่คือการตรวจสอบเบื้องต้น ไม่ใช่การทดสอบความปลอดภัยเต็มรูปแบบ ควรจ้างผู้เชี่ยวชาญตรวจสอบหากเป็นระบบสาธารณะ, ระบบเงิน, ข้อมูลส่วนตัว หรือระบบธุรกิจที่สำคัญครับ
+
+---
+
+## Tools You Can Use — Start with the Smallest Fit
+
+เครื่องมือเปลี่ยนไปเร็วครับ แต่ประเภทของงานเปลี่ยนช้ากว่า ให้คุณระบุตัวงานก่อน แล้วค่อยเลือกเครื่องมือครับ
+
+### 1. You need to connect existing tools, not build a new app
+
+หากงานคือ เมื่อมี form ส่งมา ให้เพิ่มแถวใน CRM, แจ้งเตือนทาง [Slack](https://slack.com/) และส่ง email ให้ใช้เครื่องมือแนว work-flow ครับ [**Zapier**](https://zapier.com/), [**Make**](https://www.make.com/en), และ [**n8n**](https://docs.n8n.io/) จะเริ่มด้วย trigger 1 ตัว แล้วทำงานตามรายการ action ต่อไป เครื่องมือเหล่านี้สามารถใช้กฎ if และทำขั้นตอนซ้ำได้ด้วย ส่วน n8n สามารถ run บน cloud หรือบน server ของคุณเองได้ครับ
+
+วิธีนี้ได้ผลดีเมื่อ user ใช้งาน [Google Forms](https://workspace.google.com/products/forms/), [Typeform](https://www.typeform.com/), Slack, email หรือเครื่องมือธุรกิจอยู่แล้ว แต่จะเริ่มยากเมื่อคุณต้องการหน้าจอที่ปรับแต่งเองจำนวนมาก หรือมีเส้นทาง if 100+ครับ
+
+**Good first project:** รับ file CSV รายเดือน, ตรวจสอบแต่ละแถว, บันทึกแถวที่ถูกต้อง, ส่งแถวที่มีปัญหาให้เจ้าของงาน และทำ report สรุปสั้นๆ ครับ
+
+### 2. Your data already looks like a spreadsheet and people need a better interface
+
+[**Glide**](https://www.glideapps.com/docs) เชื่อมกับ sheets และ databases ได้ คุณเพิ่ม form, access rule และ workflow แล้วแชร์ app ได้เลย คู่มือเริ่มจาก data, UI component, action, user และการ publish ครับ
+
+เครื่องมือนี้เหมาะสำหรับ รายการสต็อกสินค้า, งานภาคสนาม, การตรวจเช็ค, CRM แบบง่าย และเครื่องมืออนุมัติงาน อย่าลืมตรวจสอบเรื่องขีดจำกัดของแถว, กฎการเข้าถึง, การ sync ข้อมูล, การ export และค่าใช้จ่ายด้วยครับ
+
+### 3. Your team needs screens for company data
+
+[**Retool**](https://retool.com/), [**Microsoft Power Apps**](https://www.microsoft.com/en-us/power-platform/products/power-apps), และ Glide สามารถสร้าง table, form, แผนภูมิ และกฎการเข้าถึงข้อมูลของบริษัทได้ เหมาะกับงานภายในเมื่อคุณไม่ต้องการ design พิเศษสำหรับบุคคลทั่วไปครับ
+
+เครื่องมือกลุ่มนี้เริ่มได้เร็วเพราะมี UI component เตรียมไว้แล้ว แต่คุณจะผูกกับ platform มากขึ้น และราคาอาจเพิ่มตามจำนวน user ก่อนเลือกให้ถามว่า data อยู่ที่ไหน, ย้อน app ไป version เก่าได้ไหม และรองรับ company login หรือเปล่าครับ
+
+### 4. You want to describe and publish a custom web application
+
+คุณสามารถอธิบายเว็บ app ให้ **Lovable**, [**Replit Agent**](https://replit.com/ai), หรือ [**v0**](https://v0.app/) สร้างให้ได้ ซึ่งแต่ละเครื่องมือจะดูแลส่วนที่ต่างกันครับ:
+
+- **Lovable** ดูแลเรื่องหน้าจอ, backend, database, login, บริการอื่นๆ, online hosting และการ sync code กับ GitHub ([Lovable documentation](https://docs.lovable.dev/introduction/welcome)) หากใช้ร่วมกับ Supabase จะช่วยเรื่อง table, การเปลี่ยนโครงสร้าง table, login, file และการเช็คความปลอดภัยด้วยครับ ([Lovable–Supabase documentation](https://docs.lovable.dev/integrations/supabase))
+- **Replit Agent** รวม AI builder, online code editor, database, login, secrets และการ publish ไว้ด้วยกัน นอกจากนี้ยังมี private deployment สำหรับ internal tool และงานทดสอบครับ ([Replit private deployments](https://docs.replit.com/references/publishing/private-deployments))
+- **v0** สามารถสร้างหน้าจอและเว็บ app เต็มรูปแบบจากภาษาพูดปกติ โดยใช้ Vercel ในการนำ app ขึ้นออนไลน์และเก็บการตั้งค่ารวมถึงลิงก์ไปยังบริการอื่นๆ ครับ ([v0 documentation](https://vercel.com/docs/v0))
+
+เครื่องมือเหล่านี้จะนำทางคุณผ่านหลายขั้นตอน แต่ยังควรคำนึงว่า: code และข้อมูลอยู่ที่ไหน? สามารถ export ทั้ง 2 อย่างได้ไหม? ใครเป็นเจ้าของบัญชี app ที่ใช้งานใน production? เครื่องมือดูแลเรื่องความปลอดภัยส่วนไหนบ้าง? และคุณต้อง run อะไรต่อหากเลิกใช้เครื่องมือนี้ครับ
+
+### 5. You want to own the code and choose every part
+
+**Claude Code** และ [**Cursor**](https://cursor.com/) ทำงานกับ file code ทันที สามารถอ่านและแก้ไข file, run tests และทำงานกับ Git ได้ Claude Code ครอบคลุมการอ่าน, แก้ไข, ทดสอบ, แก้ error และงาน Git ([Claude Code documentation](https://docs.anthropic.com/en/docs/claude-code/overview)) ส่วน Cursor Agent สามารถค้นหา code, แก้ไข, run คำสั่ง และแสดงการเปลี่ยนแปลงแต่ละจุดให้คุณ review ได้ครับ ([Cursor Agent documentation](https://docs.cursor.com/chat/overview))
+
+คุณจะควบคุมและย้าย code ได้ง่ายขึ้น แต่ต้องเลือก host, database, login, file storage, deployment และ alert เอง หากยังไม่คุ้นกับส่วนเหล่านี้ ลองให้เพื่อนสาย tech ช่วย review ตัวเลือกครับ
+
+### 6. You need ready backend parts
+
+**Supabase** และ **Firebase** มี backend component พื้นฐาน เช่น database, login, file storage และ server function ส่วน **Neon** เน้น Postgres, **Clerk** กับ **Auth0** เน้น login ขณะที่ **Vercel**, **Netlify**, **Render** และ **Railway** ช่วย deploy กับ run app ครับ
+
+สิ่งเหล่านี้คือชิ้นส่วนของ app ไม่ใช่ตัวสร้าง app แบบครบวงจร ซึ่งคุณสามารถใช้ AI tool เชื่อมต่อพวกมันเข้าด้วยกันได้ ให้จดบันทึกชื่อบัญชีเจ้าของ, วิธีการกู้คืน, การแจ้งเตือนค่าใช้จ่าย, ตำแหน่งที่เก็บข้อมูล, กฎการ backup และวิธี export ไว้ด้วยครับ
+
+### 7. Use a known service for high-risk work
+
+ใช้บริการที่น่าเชื่อถือสำหรับงานที่มีความเสี่ยงสูงครับ:
+
+- การชำระเงินและระบบสมาชิก: Stripe, [Paddle](https://www.paddle.com/) หรือผู้ให้บริการที่เหมาะสมกับประเทศและธุรกิจของคุณครับ
+- email ของ app: Postmark, Resend, [SendGrid](https://www.twilio.com/en-us/sendgrid) หรือเครื่องมือที่คล้ายกันครับ
+- อัตลักษณ์ user: การ sign-in ของ Google หรือ Microsoft ผ่าน managed auth service ครับ
+- การเก็บ file: S3 หรือ managed file store อื่นๆ ครับ
+- การติดตาม error: Sentry หรือบริการที่คล้ายกันครับ
+- การเช็คสถานะออนไลน์: UptimeRobot, [Better Stack](https://betterstack.com/) หรือเครื่องมือที่คล้ายกันครับ
+
+บริการเหล่านี้ไม่ได้เลือกทุกอย่างแทนคุณ คุณยังต้องตั้งค่าจำนวนเงิน, ผู้รับ, การเข้าถึง, ระยะเวลาเก็บข้อมูล และสิ่งที่ต้องทำหลังจากเกิด error แต่บริการเหล่านี้จะช่วยจัดการงานฐานรากที่ยุ่งยากให้ครับ
+
+### Questions to ask before you choose a tool
+
+อย่าเริ่มด้วยคำถามว่า AI builder ตัวไหนดีที่สุดครับ แต่ให้ถามว่า project นี้ต้องการอะไร:
+
+| Question | Why it matters |
+|---|---|
+| สามารถสร้าง work flow และกฎการเข้าถึงของผมได้ไหม? | หน้าจอที่สวยงามจะไร้ประโยชน์หากกฎการทำงานไม่สอดคล้องกับงานครับ |
+| code, ข้อมูล, file และบัญชี user ถูกเก็บไว้ที่ไหน? | สิ่งเหล่านี้อาจถูกเก็บไว้คนละที่กันครับ |
+| ผมสามารถ export แต่ละอย่างได้ไหม? | มีแค่ code โดยไม่มีข้อมูลธุรกิจนั้นไม่เพียงพอครับ |
+| ใครเป็นเจ้าของบัญชี vendor, GitHub, domain และ cloud? | ธุรกิจไม่ควรขึ้นอยู่กับ login ส่วนตัวของคนเพียงคนเดียวครับ |
+| มีการเข้าถึงแบบส่วนตัว, บทบาท user และการเช็คที่ backend ไหม? | app ภายในและ B2B ต้องการมากกว่าแค่ลิงก์ลับครับ |
+| การแยกสภาพแวดล้อม preview และ production ทำอย่างไร? | คุณต้องการที่ปลอดภัยสำหรับทดสอบครับ |
+| มีระบบ backup, logs, การแจ้งเตือน และประวัติการทำงานไหม? | คุณต้องดูแล app หลังเปิดใช้ใน production ครับ |
+| ค่าใช้จ่ายเพิ่มขึ้นตามจำนวน user, จำนวนครั้งที่ run, จำนวนแถว, file หรือการใช้ AI? | ช่วงทดสอบที่ราคาถูกอาจมีค่าใช้จ่ายสูงขึ้นหลังจากเติบโตครับ |
+| วิศวกรสามารถมารับช่วงต่อได้ในภายหลังไหม? | code ที่ชัดเจน, table ข้อมูล, โน้ต และเครื่องมือมาตรฐานจะช่วยให้เรื่องนี้ง่ายขึ้นครับ |
+| จะเกิดอะไรขึ้นถ้าบริษัทปิดบัญชีของผม? | คุณต้องมีวิธี export และ recovery ก่อนจะเกิดเหตุการณ์ไม่คาดฝันครับ |
+
+ราคาและขีดจำกัดเปลี่ยนบ่อยครับ โปรดอ่านหน้าทางการปัจจุบันก่อนตัดสินใจ จากนั้นลองสร้างแบบทดสอบเล็กๆ: ลอง login 1 ครั้ง, สร้างแถวส่วนตัว 1 แถว, upload file 1 file, ตั้งงานที่ต้องทำภายหลัง 1 อย่าง, ลอง export และลองกู้คืน backup การทดสอบนี้มีประโยชน์กว่าการอ่านรายการ feature ยาวๆ ครับ
+
+### Three simple ways to start
+
+นี่คือตัวอย่าง ไม่ใช่คำตอบตายตัวครับ:
+
+**A five-person internal approval tool:**
+
+```text
+Glide or an internal-tool builder
+→ company Google/Microsoft login
+→ built-in table or an existing data source
+→ built-in workflow automation
+```
+
+**A public prototype with custom screens:**
+
+```text
+Lovable, Replit Agent, or v0
+→ managed Postgres/backend platform
+→ managed authentication
+→ GitHub export/sync
+→ managed deployment + error tracking
+```
+
+**A product that an engineer may help with later:**
+
+```text
+Coding agent working with normal code files
+→ GitHub as source of truth
+→ managed Postgres + object storage + auth
+→ preview and production deployments
+→ automated tests, backups, logs, and alerts
+```
+
+คำตอบที่เหมาะอาจเป็นการไม่สร้างเลยก็ได้ครับ หากมี SaaS สำเร็จรูปที่ตอบโจทย์ได้ 90% การตั้งค่าระบบนั้นอาจมีต้นทุนน้อยกว่าการดูแล software ที่เขียนเองหลายปี ให้สร้างเมื่อกฎพิเศษหรือการเชื่อมต่อของคุณสร้างคุณค่าได้มากพอครับ
+
+---
+
+## When to Bring In a Professional
+
+คุณสามารถสร้างสิ่งต่างๆ ได้มากมาย แต่ก็ยังมีบางจุดที่คุณควรขอความช่วยเหลือครับ
+
+ปรึกษาวิศวกร, เพื่อนสายเทคนิค, ผู้เชี่ยวชาญด้านความปลอดภัย หรือที่ปรึกษา เมื่อ:
+
+- **มีการเคลื่อนย้ายเงิน** Stripe รับ payment ได้ แต่ถ้า code ต้องคำนวณ balance, ถือเงิน หรือโอนเงินระหว่างคน ให้ขอ system review ก่อนครับ
+- **มีข้อมูลส่วนตัวเข้าสู่ระบบ** รวมถึงข้อมูลสุขภาพ, เลขบัตรประชาชน และบันทึกทางการเงิน PDPA อาจมีผลบังคับใช้แม้จะเป็นทีมขนาดเล็กครับ
+- **เปลี่ยนจาก internal เป็น public** บน Internet มีทั้ง user, input แปลก ๆ และการโจมตีมากกว่าเดิม ให้ review security ก่อนเปลี่ยนครับ
+- **ทีมไม่สามารถทำงานได้หากไม่มีระบบนี้** ให้มืออาชีพตรวจสอบเรื่อง backup, การเข้าถึง, การแจ้งเตือน และการกู้คืนระบบครับ
+
+คุณอาจถึงจุดเหล่านี้เพราะเครื่องมือทำงานได้ดีและเติบโตขึ้น ซึ่งเป็นจังหวะที่ดีในการจัดงบประมาณเพื่อจ้างผู้ช่วยครับ
+
+ตอนนี้คุณสามารถบอกวิศวกรได้ว่า: app นี้ run บน Railway ครับ ใช้ Postgres database บน Supabase user login ด้วย Google ผ่าน Clerk มีการ backup รายวัน และผมทดลองกู้คืนข้อมูลแล้ว 1 ครั้งครับ สิ่งนี้จะช่วยให้พวกเขามีแผนที่ที่มีประโยชน์ในการเริ่มต้นงานครับ
+
+---
+
+## If You Want to Go Deeper
+
+บางทีคุณอาจแค่อยากสร้างเครื่องมือที่มีประโยชน์สำหรับทีม ซึ่งนั่นเป็นเป้าหมายที่ดีมากแล้วครับ คุณไม่จำเป็นต้องเป็น software engineer เพื่อที่จะได้รับประโยชน์จากคู่มือฉบับนี้
+
+### Learn one missing part at a time
+
+บทเรียนสั้นๆ 2 บทนี้จะช่วยให้คุณทำงานกับ AI tool และทีมซอฟต์แวร์ได้ง่ายขึ้นครับ:
+
+- **Git and GitHub:** [Introduction to GitHub](https://github.com/skills/introduction-to-github) เป็นคอร์สปฏิบัติจาก GitHub Skills ซึ่งจะสอนเรื่อง repository, branch, commit, pull request และ merge ในเวลาไม่ถึง 1 ชั่วโมงครับ
+- **APIs:** [Postman quick start](https://learning.postman.com/docs/getting-started/quick-start) ช่วยให้คุณลองส่ง API request 1 ครั้งและดูคำตอบ สิ่งนี้จะทำให้เข้าใจเรื่อง request, response, endpoint และ status code ได้ง่ายขึ้นครับ
+
+คุณไม่จำเป็นต้องเรียนทุกอย่างพร้อมกันครับ ลองสร้างสิ่งเล็ก ๆ 1 อย่าง เรียนรู้ส่วนที่ขาดในขั้นตอนถัดไป ขอความช่วยเหลือ แล้วทำซ้ำครับ
+
+บางทีเครื่องมือเล็กๆ นั้นอาจทำให้คุณอยากเข้าใจ code, ทำงานใกล้ชิดกับทีมซอฟต์แวร์มากขึ้น หรือแม้แต่เปลี่ยนสายงานมาทางเทคนิค หากเป็นเช่นนั้น ยินดีต้อนรับครับ ความรู้ทางธุรกิจและความใส่ใจในตัว user ของคุณมีประโยชน์มากที่นี่
+
+โปรดเตรียมใจสำหรับ bug, error ที่ไม่ชัดเจน, build พัง และการหา comma ที่หายไปเพียงตัวเดียวซึ่งอาจใช้เวลาเป็นชั่วโมง ยินดีต้อนรับสู่โลกแห่งความหงุดหงิดครับ ล้อเล่นนะครับ แต่อาจจะมีนิดหน่อย 😅
+
+หากคุณต้องการเส้นทางการเรียนรู้ที่กว้างขึ้น ลองอ่าน [Fundamentals? How Much Do You Actually Need for Early Career in 2026](/blog/fundamentals-how-much-you-need-early-career-2026) ซึ่งจะแยกสิ่งที่ต้องใช้ในการเริ่มต้น ออกจากสิ่งที่สามารถเรียนรู้ได้ภายหลังครับ 🙇‍♂️
