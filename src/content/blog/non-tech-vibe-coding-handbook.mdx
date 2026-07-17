@@ -714,11 +714,28 @@ flowchart TD
 - **Version history.** Every meaningful change to your project is saved as a snapshot (a *commit*). If today's change breaks everything, you can go back to yesterday's snapshot. If you have ever made copies of a file called `report_final_v2_REAL.xlsx`, version control is that instinct, done properly by a system instead of by filenames.
 - **One main copy.** Do not keep the only copy on your laptop. A laptop can break or get lost. GitHub keeps the main copy that your team and online app can use.
 
-Your AI can set this up. **Ask your AI:** *"Connect this project to a private GitHub project. After each working change, save a snapshot and write a short note about the change."*
+You do not need to memorize Git commands yet. Know these words so you can follow what an AI tool or software team is doing:
+
+- **Repository (repo):** the project folder and its change history.
+- **Commit:** save a named checkpoint of your changes.
+- **Push:** send your local commits from your computer to GitHub.
+- **Pull:** bring the newest changes from GitHub to your computer before you continue working.
+- **Branch:** a separate work path that keeps unfinished changes away from the main version.
+- **Pull request (PR):** ask someone to review a branch before it joins the main version.
+- **Merge:** accept the reviewed changes into the main version.
+
+Your AI can set this up. **Ask your AI:** *"Connect this project to a private GitHub repository. After each working change, create a commit with a short note, then push it to GitHub. Pull the newest version before starting another change."*
 
 ### Deployment — putting it online
 
 Your tool may work only while it runs on your laptop. **Deployment** means putting the app on an online computer that keeps running. People can then open it from one link.
+
+These release words often appear together:
+
+- **Build:** turn the code and packages into a version that can run.
+- **Preview or staging:** a safe online version used for checks before customers or coworkers see it.
+- **Production:** the live version people use for work.
+- **Rollback:** return production to an older working version when a new release breaks something.
 
 You rent this online computer from a **hosting service** or a **cloud provider**. The normal flow looks like this:
 
@@ -743,6 +760,13 @@ This easy start still has limits. Check where the database and files live. Check
 #### Path 2: a large cloud provider
 
 [Amazon Web Services](https://aws.amazon.com/), [Microsoft Azure](https://azure.microsoft.com/), and [Google Cloud](https://cloud.google.com/) give you many building parts. They can run the app, database, files, private network, login, logs, and backups.
+
+You may hear these cloud words during planning:
+
+- **Compute:** the computer power used to run the app.
+- **Region:** the part of the world where the provider runs and stores your system.
+- **Managed service:** a database, file store, or other part that the provider updates and operates for you.
+- **Scaling:** adding or removing capacity as usage changes.
 
 A company may choose one of them because it already has an account and a tech team there. It may also need company login, private systems, a chosen data region, or detailed access records.
 
@@ -779,6 +803,14 @@ If you remember one tech idea from this post, remember the database. Data mistak
 - **It keeps data after a restart.** If data exists only in the app's short-term memory, a restart can remove it.
 - **It supports many people at once.** Two people can send forms at the same time without breaking one shared file.
 - **It can block bad rows.** It can stop a booking with no date or two accounts with the same email.
+
+The basic database words map closely to a spreadsheet:
+
+- **Table:** one group of related records, similar to one sheet.
+- **Row or record:** one saved item, such as one customer or one request.
+- **Column or field:** one kind of information, such as name, date, or status.
+- **Schema:** the agreed structure of the database—its tables, fields, types, and links.
+- **Migration:** a saved change to that structure, such as adding a new field.
 
 Names you may see: [**PostgreSQL**](https://www.postgresql.org/) or Postgres is a common database. [**SQLite**](https://sqlite.org/) keeps a small database in one file. [**Supabase**](https://supabase.com/), [**Neon**](https://neon.com/), and [**Firebase**](https://firebase.google.com/) run data services for you. The AI knows these tools. It does not know your work rule: *"One customer can have many bookings."* You must explain that part.
 
@@ -863,6 +895,12 @@ Two ideas close that gap:
 
 - **Logs** are the app's work notes. They show what it did and where it failed. You can give a safe part of a log to AI and ask for help. Remove private data and keys first.
 - **Alerts** tell you when the app has errors or stops. [Sentry](https://sentry.io/welcome/) and [UptimeRobot](https://uptimerobot.com/) are common examples.
+
+Three related words describe the wider job:
+
+- **Monitoring:** watching the app's health, speed, errors, and usage over time.
+- **Incident:** a problem that affects users and needs someone to respond.
+- **Downtime:** the time when the app cannot be used.
 
 You have seen an alert as an email, chat message, or phone notice. It says something short, such as **App down**. The log is the longer private record that helps the owner find out what happened.
 
