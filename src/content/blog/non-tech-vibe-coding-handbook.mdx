@@ -61,7 +61,7 @@ There are four business questions worth answering before the feature list:
 1. **Who uses it?** The person clicking the buttons is the user.
 2. **Who pays for it?** The buyer may be the same person in B2C, a manager in B2B, or simply your department's budget for an internal tool.
 3. **Who owns the data?** A customer may enter the data while their employer legally controls it. This matters when someone asks for an export or deletion.
-4. **Which work needs it?** A fun calculator can stop tomorrow. A tool for payroll or delivery can stop the whole team.
+4. **Which work needs it?** A personal tool can stop tomorrow. A tool used in daily company work may stop the whole team.
 
 The last question matters a lot. When people stop using the old spreadsheet, your tool is no longer a demo. The team now needs it for work.
 
@@ -492,7 +492,7 @@ A good prompt helps, but it cannot make every choice for you. The next section g
 
 ## The Computer Science Fundamentals You Actually Touch
 
-You do not need a full Data Structures & Algorithms course before you build an expense tool. You need to know which basic idea fits each kind of problem.
+You do not need a full Data Structures & Algorithms course before you build your first small tool. You need to know which basic idea fits each kind of problem.
 
 Computer Science gives names to problems that happen many times. Learn the meaning, not the textbook answer.
 
@@ -520,7 +520,7 @@ These small rules stop many errors:
 
 ### Data modeling — turn nouns and relationships into records
 
-**Data modeling** means choosing the things you need to save and how they link. Start with things: Employee, Expense, Receipt, Approval, Payment. These may become tables. Then write simple rules:
+**Data modeling** means choosing the things you need to save and how they link. Let us return to the expense-approval example from the start of this post. Its main things are Employee, Expense, Receipt, Approval, and Payment. These may become tables. Then write simple rules:
 
 - one employee can submit many expenses;
 - one expense belongs to one employee;
@@ -608,7 +608,7 @@ Three common tools solve common growth problems:
 
 ### State — what is true now, and which changes are legal
 
-**State** means what is true now. An expense can be `draft`, `submitted`, `approved`, `rejected`, or `paid`. Do not let people type any word into the status field. Give it clear allowed changes.
+**State** means what is true now. In the same approval example, an expense can be `draft`, `submitted`, `approved`, `rejected`, or `paid`. Do not let people type any word into the status field. Give it clear allowed changes.
 
 A **state machine** is a map of allowed status changes:
 
@@ -882,7 +882,7 @@ Using the app yourself is one test. It helps you check the words and work flow. 
 
 ### Start with risk, not test quantity
 
-For the expense tool, these are not equal:
+Return to the expense-approval example from the start of the post. These problems are not equal:
 
 - the header icon is slightly misaligned;
 - an employee can read another employee's receipt;
@@ -902,7 +902,7 @@ Test the biggest risk first:
 
 Tech teams use more exact names for these tests. The names can change a little between teams, but you will often hear these:
 
-| Tech term | Simple meaning | Expense-tool example |
+| Tech term | Simple meaning | Example from the approval tool |
 |---|---|---|
 | **Unit test** | Check one small rule or function by itself | THB 4,999 needs one approval; THB 5,000 also needs finance |
 | **Integration test** | Check that two or more parts work together | The backend saves an expense in the database and sends the right email order |
@@ -933,7 +933,7 @@ A demo uses good data, good internet, and one click. Work is not always that cle
 - a process that fails halfway;
 - refreshing, going back, and resuming later.
 
-One test is very useful for AI-made apps. Change the ID in the URL. If `/expenses/123` belongs to another worker, can you see it by typing that URL? The screen may hide the link while the backend still lets you open it.
+One test is very useful for AI-made apps. Change the ID in the URL. If `/records/123` belongs to another worker, can you see it by typing that URL? The screen may hide the link while the backend still lets you open it.
 
 ### Keep development, preview, and production separate
 
@@ -967,7 +967,7 @@ Privacy starts when you choose what to save. PDPA, GDPR, and work rules can chan
 
 ### Least privilege
 
-**Least privilege** means each person and service gets only the access needed for its job. A worker sees their own expenses. A manager sees their team's requests. A report can read data but cannot change it.
+**Least privilege** means each person and service gets only the access needed for its job. A worker sees their own requests. A manager sees their team's requests. A report can read data but cannot change it.
 
 Do not share one owner login. Turn on two-step login. For a key business service, have two trusted owners who can recover the account. Remove access when a person leaves.
 
@@ -1008,7 +1008,7 @@ AI can help update these libraries. Let it update a small group at a time. Save 
 
 ### Audit trail
 
-For key actions, save who did what, when, and on which row. This is an **audit log**. It answers: Who approved this expense? Who changed the bank account? Who exported user data?
+For key actions, save who did what, when, and on which row. This is an **audit log**. It answers: Who approved this request? Who changed the bank account? Who exported user data?
 
 Do not let normal users edit this log. Do not put secret keys in it. For a key change, save the old and new value.
 
