@@ -76,10 +76,11 @@ servicesNote: true
 
 ![Career growth as expanding decision responsibility](/assets/images/blogs/engineering-judgment/decision-scope.png)
 
-## A Decision Record You Can Revisit
+## A Lightweight ADR You Can Revisit
 
-- ปิดด้วย decision record แบบกระชับที่นำกลับมาใช้ได้: problem, business goal, constraint, เจตนาของเครื่องมือ, option, decision, trade-off, ownership, reversal cost และ revisit trigger
-- อธิบายวิธีปรับขนาดของ record ให้เหมาะกับขนาดการตัดสินใจ เพื่อช่วยการคิดโดยไม่กลายเป็นพิธีด้านเอกสาร
+- เรียก artifact นี้ว่า Architecture Decision Record (ADR) แบบ lightweight โดยปรับขนาดตามผลกระทบของการตัดสินใจ ไม่ทำให้กลายเป็นพิธีด้านเอกสาร
+- ใส่เฉพาะ field ที่นำกลับมาใช้ได้: problem, business goal, constraint, เจตนาของเครื่องมือ, option, decision, trade-off, ownership, reversal cost และ revisit trigger
+- ทำ section นี้ให้สั้นและนำไปใช้ได้ทันที โดยไม่ย้อนกลับไปอธิบายเรื่อง ownership และ reversibility ที่วางไว้ใน Section 3
 - เก็บตัวเลือกที่ไม่ได้เลือกและหลักฐานที่มี ณ เวลานั้น แทนการบันทึกเฉพาะคำตอบสุดท้าย
 - ระบุวันที่และสมมติฐาน เพราะตัวเลือกที่เหมาะในวันหนึ่งอาจหมดอายุเมื่อบริบทเปลี่ยน
 - ปิดด้วยข้อจำกัดของกรอบคิดส่วนตัวนี้ และชวนผู้อ่านนำการตัดสินใจจาก environment อื่นมาท้าทาย
