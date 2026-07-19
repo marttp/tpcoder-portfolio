@@ -52,14 +52,17 @@ This is where cargo-cult decisions become expensive. “We used it at my previou
 
 ## From Technical Choice to Business Consequence
 
-- Translate a technical choice into delivery time, operating cost, failure impact, compliance, vendor dependence, hiring, onboarding, and reversibility.
-- Separate a technical metric from the customer or business outcome it is expected to improve.
-- Include the long-term ownership work: upgrades, observability, security, on-call support, and knowledge concentration.
-- Ask who will own the system in two years and what happens if the person who understands it leaves.
-- Frame technology selection as a co-decision between engineering and business around shared constraints—not as the business choosing a stack.
-- Acknowledge that the simplest or most familiar option can be the stronger business decision when its limits are acceptable.
-- **Evidence slot — verified personal decision #2:** take one choice from the author's work and trace a technical metric through to delivery, customer or business impact, and the maintenance work the team inherited.
-- Keep this section analytical: establish why those consequences matter, then defer the reusable checklist and recording format to the final section.
+A technical property is not yet a business outcome. Reducing an operation from 50 milliseconds to 10 milliseconds is measurable, but what does it change? Does the customer complete a payment faster? Does it increase the number of orders the system can accept? Does it reduce infrastructure cost? Or is the operation outside the critical path, making the improvement almost invisible beyond the benchmark report?
+
+That translation matters because every improvement has a price somewhere else. A team may choose a specialized data store to reduce latency, then inherit a new backup process, another failure mode, more complex local development, and a smaller hiring pool. None of those consequences automatically make the choice wrong. They simply belong in the same decision as the latency number.
+
+The ownership tail is usually longer than the implementation. After the first release come upgrades, observability, security patches, on-call support, capacity planning, and incident recovery. Knowledge can also concentrate around the two people who introduced the technology. A useful design review should therefore ask a slightly uncomfortable question: **who will own this system in two years, and what happens if the person who understands it leaves?**
+
+This is what I mean by a Technology–Business co-decision. I do not mean asking a business stakeholder to select a database or approve a framework. Engineering should explain how the options change delivery time, operating cost, failure impact, compliance, vendor dependence, hiring, and reversibility. The business side should make its constraints visible in return. Together, both sides decide which trade-offs the organization can afford.
+
+Sometimes this process leads to the sophisticated option. Sometimes it leads back to the boring technology the team already knows. Familiarity is not always resistance to progress; it can be operational leverage. If the simpler choice meets the expected scale and preserves room to change later, spending less engineering attention on infrastructure may be the stronger business decision.
+
+{/* PERSONAL EVIDENCE NEEDED (#2): Add one choice from the author's work. Trace one technical metric or property through to delivery, customer or business impact, and the maintenance work the team inherited. Keep this section analytical; the reusable recording format belongs in the final section. */}
 
 {/* IMAGE PROMPT (ownership-iceberg.png): Flat vector conceptual iceberg diagram on a light background with soft shadows and 2-3 accent colors (purple, teal, muted navy), no photorealism. Above the waterline, show a small visible tip labeled "Technology choice". Below the waterline, show the much larger ownership surface divided into five clear areas labeled "Delivery", "Operations", "Hiring", "Security", and "Risk". Render these six labels exactly once each, spelled exactly. Render only these labels; no other words, letters, numbers, code, logos, watermarks, meta text, or printed style instructions. No duplicate labels, duplicate icebergs, boxes, or typos. */}
 
