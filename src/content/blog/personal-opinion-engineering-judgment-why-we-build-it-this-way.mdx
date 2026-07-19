@@ -28,15 +28,19 @@ This is neither a technology ranking nor another system-design walkthrough. It i
 
 ## Technology Has an Intention
 
-Most technologies begin with a specific problem, under a specific set of constraints. They are not created to be the best answer to every system. Yet by the time a tool reaches us, that original context is often compressed into one attractive property: it is fast, scalable, modern, type-safe, cloud-native, or widely used by a company we admire.
+Most technologies begin with a specific problem and constraints. By the time a tool reaches us, that context is often compressed into one attractive property: fast, scalable, type-safe, cloud-native, or used by a company we admire.
 
-Consider Protobuf. A discussion can quickly turn into “we should use it because binary serialization is faster and smaller than JSON.” That benefit can matter, but it is only part of the decision. Protobuf also gives teams an interface definition, generated code across languages, and rules for evolving a schema. If the problem is maintaining a contract between services written by different teams or in different languages, those properties may matter more than winning a serialization benchmark.
+Consider Protobuf. “It is faster and smaller than JSON” can be relevant, but Protobuf also provides an interface definition, generated code across languages, and schema-evolution rules. For teams maintaining contracts across services and languages, those properties may matter more than the serialization benchmark.
 
-This does not mean the original intention must dictate how a technology is used forever. Tools evolve, and people discover valuable uses their creators did not anticipate. The point is to separate three things that are easy to mix together: what the tool was designed to solve, what benefits it happens to provide, and what problem our team has today. A benchmark can prove that one operation is faster. It cannot prove that the surrounding operating model fits the organization.
+Before choosing a technology, separate three things:
 
-Every technology therefore arrives as a bundle of assumptions. It may assume that the team can operate a cluster, enforce schema discipline, debug generated code, coordinate upgrades, or accept a certain form of coupling. The useful question is not only **“Can this technology solve the problem?”** It is also **“Do its assumptions resemble our environment, and which trade-offs are we agreeing to carry?”**
+- **Original problem:** what was the tool designed to solve?
+- **Incidental benefits:** what else does it do well?
+- **Our context:** which problem and constraints do we have today?
 
-This is where cargo-cult decisions become expensive. “We used it at my previous company” is useful evidence, but it is not a complete reason. The previous company may have had a platform team, different compliance requirements, ten times the traffic, or a very different tolerance for operational work. The technology can be excellent in both places and still be appropriate in only one of them.
+Then examine its assumptions. Can the team operate it, enforce its discipline, debug it, coordinate upgrades, and accept its coupling? A benchmark can prove that one operation is faster; it cannot prove the operating model fits the organization.
+
+“We used it at my previous company” is useful evidence, not a complete reason. That company may have had a platform team, different compliance requirements, or far more traffic. The same technology can be excellent in both places and appropriate in only one.
 
 {/* PERSONAL EVIDENCE NEEDED (#1): Add one decision the author participated in and can disclose. Reconstruct the original problem, the selected technology's intention, the assumptions that matched, and one assumption that later failed or required adjustment. Use the case to test the framework, not to declare a winning technology. */}
 
