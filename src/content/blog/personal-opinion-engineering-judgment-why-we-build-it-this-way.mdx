@@ -71,19 +71,27 @@ This is the Technology–Business co-decision. Business stakeholders do not sele
 
 ## AI Changes the Cost Equation
 
-AI changes this discussion because it changes the cost of producing software. Investigation can begin faster. Scaffolding, repetitive implementation, documentation, and a first pass of tests can take less effort. An engineer can explore several approaches before committing to one. That affects which ideas are economical enough to try.
+AI changes which ideas are economical enough to try. It can reduce effort around:
 
-But the cost of generating code and the cost of owning software are different numbers. Generated code still has to be verified against the domain, secured, observed, deployed, supported, and eventually changed. In a payment system, a plausible implementation is not enough; retry behavior, idempotency, reconciliation, authorization boundaries, and failure recovery still need deliberate reasoning. AI can assist with each of those tasks, but the production responsibility does not transfer to the tool.
+- investigation and comparing approaches;
+- scaffolding and repetitive implementation;
+- documentation and a first pass of tests.
 
-This can move the boundary between buying software, building it, and continuing with a manual process. Suppose an operations team repeats a narrow reconciliation task every week. In the past, building an internal tool may have cost more engineering time than the task could repay. If AI lowers the cost of exploring and implementing that tool, automation may become reasonable earlier. The decision still has to include access control, incorrect matches, monitoring, and who maintains the tool after the first author moves on.
+Owning software is a different cost. The team still carries:
 
-The same applies to system design. A design that was previously rejected because it required too much implementation effort may deserve another look when AI absorbs some repetitive work. However, lower construction cost does not automatically lower coordination or operating cost. Three services generated quickly are still three services to deploy, observe, secure, and debug. Cheap code can produce cheap complexity surprisingly fast.
+- domain verification and security;
+- deployment, observability, and incident recovery;
+- maintenance and production responsibility.
 
-So I would not start with a universal claim that AI makes software development some fixed percentage more productive. I would compare the before-and-after cost of a specific decision: what became cheaper, what stayed expensive, and whether the ownership model changed. If there is no verified measurement, the example should remain clearly hypothetical rather than turning an impression into data.
+In a payment system, plausible code is insufficient. Retry behavior, idempotency, reconciliation, authorization boundaries, and failure recovery still need deliberate reasoning. AI can assist, but responsibility does not transfer to the tool.
+
+This can move the boundary between buying, building, and keeping a manual process. Suppose an operations team repeats a narrow reconciliation task. Cheaper exploration and implementation may make an internal tool worthwhile earlier, but access control, incorrect matches, monitoring, and maintenance remain part of the decision.
+
+The same warning applies to system design: three services generated quickly are still three services to deploy, secure, and debug. I would compare what became cheaper, what stayed expensive, and whether the ownership model changed—not claim a universal productivity percentage. Without verified measurement, the example should remain explicitly hypothetical.
 
 {/* PERSONAL EVIDENCE NEEDED (#3): Compare one internal tool, automation, or process the author personally evaluated in the AI era. Use only measurements that can be verified; otherwise label the scenario as hypothetical. */}
 
-This leads into the career question. If AI makes creation cheaper while verification, context, judgment, and long-term ownership remain expensive, those expensive parts are where an engineer's responsibility—and value—starts to concentrate.
+If creation becomes cheaper while verification, context, judgment, and ownership remain expensive, those expensive parts are where an engineer's responsibility—and value—starts to concentrate.
 
 {/* IMAGE PROMPT (ai-cost-equation.png): Flat vector conceptual balance diagram on a light background with soft shadows and 2-3 accent colors (purple, teal, muted navy), no photorealism. Show a two-sided balance scale. The left pan contains a code-generation icon and is labeled "Cheaper to create". The right pan contains review, shield, monitoring, and maintenance icons and is labeled "Still costs to own". Keep the right side visually substantial, showing that ownership cost remains after creation becomes cheaper. Render these two labels exactly once each, spelled exactly. Render only these labels; no other words, letters, numbers, code, logos, watermarks, meta text, or printed style instructions. No duplicate labels, scales, pans, icons, or typos. */}
 
