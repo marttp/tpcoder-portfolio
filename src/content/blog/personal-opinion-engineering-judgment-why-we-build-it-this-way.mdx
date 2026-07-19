@@ -50,15 +50,18 @@ Then examine its assumptions. Can the team operate it, enforce its discipline, d
 
 ## From Technical Choice to Business Consequence
 
-A technical property is not yet a business outcome. Reducing an operation from 50 milliseconds to 10 milliseconds is measurable, but what does it change? Does the customer complete a payment faster? Does it increase the number of orders the system can accept? Does it reduce infrastructure cost? Or is the operation outside the critical path, making the improvement almost invisible beyond the benchmark report?
+A technical property is not yet a business outcome. Reducing an operation from 50 milliseconds to 10 milliseconds is measurable, but does it help a customer complete a payment, increase capacity, or reduce cost? If the operation is outside the critical path, the improvement may end at the benchmark.
 
-That translation matters because every improvement has a price somewhere else. A team may choose a specialized data store to reduce latency, then inherit a new backup process, another failure mode, more complex local development, and a smaller hiring pool. None of those consequences automatically make the choice wrong. They simply belong in the same decision as the latency number.
+A specialized data store might reduce latency while adding a backup process, another failure mode, harder local development, and a smaller hiring pool. That does not make the choice wrong. It means the latency number and its consequences belong in the same decision.
 
-The ownership tail is usually longer than the implementation. After the first release come upgrades, observability, security patches, on-call support, capacity planning, and incident recovery. Knowledge can also concentrate around the two people who introduced the technology. A useful design review should therefore ask a slightly uncomfortable question: **who will own this system in two years, and what happens if the person who understands it leaves?**
+Translate each option across four areas:
 
-This is what I mean by a Technology–Business co-decision. I do not mean asking a business stakeholder to select a database or approve a framework. Engineering should explain how the options change delivery time, operating cost, failure impact, compliance, vendor dependence, hiring, and reversibility. The business side should make its constraints visible in return. Together, both sides decide which trade-offs the organization can afford.
+- **Delivery and outcome:** What ships sooner, and what changes for the customer or business?
+- **Operations and risk:** Who handles upgrades, observability, security, incidents, and compliance?
+- **Organization:** Can the team hire, onboard, and share knowledge around it?
+- **Reversibility:** What will it cost to leave the technology or vendor later?
 
-Sometimes this process leads to the sophisticated option. Sometimes it leads back to the boring technology the team already knows. Familiarity is not always resistance to progress; it can be operational leverage. If the simpler choice meets the expected scale and preserves room to change later, spending less engineering attention on infrastructure may be the stronger business decision.
+This is the Technology–Business co-decision. Business stakeholders do not select the database; engineering explains the consequences, the business exposes its constraints, and both sides choose trade-offs the organization can afford. Sometimes that leads to the sophisticated option. Sometimes the familiar technology is operational leverage—especially when it meets the expected scale and remains easy to replace.
 
 {/* PERSONAL EVIDENCE NEEDED (#2): Add one choice from the author's work. Trace one technical metric or property through to delivery, customer or business impact, and the maintenance work the team inherited. Keep this section analytical; the reusable recording format belongs in the final section. */}
 
