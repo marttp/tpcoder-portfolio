@@ -14,8 +14,6 @@ servicesNote: true
 
 ![Engineering judgment connects technology and business](/assets/images/blogs/engineering-judgment/hero-banner.png)
 
-{/* DRAFTING NOTE: Keep each remaining section to roughly 3-5 paragraphs. Reuse 2-3 verified personal decisions across the post instead of forcing a new example into every point. */}
-
 ## Why This Post Exists
 
 This post started from a comment I received during a discussion about the software engineering job market. The suggestion was to write about **Technology–Business co-decisions**: why a team chooses one technology, what problem that choice is meant to solve, and what the business inherits afterward. It sounded like a technology-selection topic at first, but the more I thought about it, the less it looked like a post about tools.
@@ -112,10 +110,32 @@ A practical way to train this is to choose one decision already inside your syst
 
 ## A Lightweight ADR You Can Revisit
 
-- Name the artifact: a lightweight Architecture Decision Record (ADR), sized to the consequence of the decision rather than treated as formal ceremony.
-- Present only the compact, reusable fields: problem, business goal, constraints, tool intention, options, decision, trade-offs, ownership, reversal cost, and revisit trigger.
-- Keep this section short and operational; do not re-argue the ownership and reversibility points already established in Section 3.
-- Include rejected alternatives and the evidence available at the time, rather than preserving only the winning answer.
-- Record the date and assumptions because a sound choice can expire when its context changes.
-- Close with the limits of this personal framework and invite readers to challenge it with decisions from different environments.
-- Restate the thesis: engineering judgment makes reasoning, consequences, and ownership visible enough to revisit.
+There is already a name for the artifact that captures this reasoning: an **Architecture Decision Record (ADR)**. The name can sound heavier than the document needs to be. I am not suggesting a formal approval process for every library or a repository full of essays nobody reads. The size of the record should follow the consequence of the decision.
+
+For many decisions, I would start with something this small:
+
+```text
+# Decision: [Short name]
+
+Date: [When we made it]
+Status: [Proposed / Accepted / Replaced]
+
+Problem:
+Business goal:
+Constraints:
+Technology intention:
+
+Options considered:
+Decision:
+Trade-offs accepted:
+
+Owner:
+Reversal cost:
+Revisit when:
+```
+
+The rejected options matter. If the record preserves only the final answer, the next engineer may repeat the same investigation without knowing what evidence was available. The date matters for the same reason. A decision can be sound when it is made and become unsuitable later because traffic, regulation, team size, vendor pricing, or the product itself has changed.
+
+The **Revisit when** field may be the most valuable part. “When traffic reaches this range,” “when a second team needs this contract,” or “when the vendor cost exceeds this threshold” gives the team a reason to reopen the decision based on evidence. Without a trigger, architecture debates tend to return either too early, because somebody prefers another tool, or too late, after the old assumptions have already failed.
+
+This framework is still limited by the kinds of systems and organizations I have experienced. A decision record will not turn uncertainty into certainty, and it will not remove organizational politics or incomplete information. What it can do is make the reasoning, consequences, and ownership visible enough to challenge—and eventually revise. To me, that is the practical purpose of engineering judgment: not always choosing correctly on the first attempt, but making a decision the organization can understand and continue to own.
