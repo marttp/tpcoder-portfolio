@@ -127,7 +127,7 @@ If nobody can answer, that missing context is already useful—and a reason to r
 
 ## A Lightweight ADR You Can Revisit
 
-There is already a name for the artifact that captures this reasoning: an **Architecture Decision Record (ADR)**. The name can sound heavier than the document needs to be. I am not suggesting a formal approval process for every library or a repository full of essays nobody reads. The size of the record should follow the consequence of the decision.
+The artifact for this reasoning already has a name: an **Architecture Decision Record (ADR)**. It does not need a formal approval process or a long essay. Its size should follow the consequence of the decision.
 
 For many decisions, I would start with something this small:
 
@@ -151,8 +151,10 @@ Reversal cost:
 Revisit when:
 ```
 
-The rejected options matter. If the record preserves only the final answer, the next engineer may repeat the same investigation without knowing what evidence was available. The date matters for the same reason. A decision can be sound when it is made and become unsuitable later because traffic, regulation, team size, vendor pricing, or the product itself has changed.
+Three fields deserve special attention:
 
-The **Revisit when** field may be the most valuable part. “When traffic reaches this range,” “when a second team needs this contract,” or “when the vendor cost exceeds this threshold” gives the team a reason to reopen the decision based on evidence. Without a trigger, architecture debates tend to return either too early, because somebody prefers another tool, or too late, after the old assumptions have already failed.
+- **Options considered:** preserve rejected choices and the evidence available, so the next engineer does not repeat the same investigation.
+- **Date and constraints:** a sound choice can expire when traffic, regulation, team size, vendor pricing, or the product changes.
+- **Revisit when:** define an evidence-based trigger, such as a traffic range, a second team needing the contract, or a vendor-cost threshold.
 
-This framework is still limited by the kinds of systems and organizations I have experienced. A decision record will not turn uncertainty into certainty, and it will not remove organizational politics or incomplete information. What it can do is make the reasoning, consequences, and ownership visible enough to challenge—and eventually revise. To me, that is the practical purpose of engineering judgment: not always choosing correctly on the first attempt, but making a decision the organization can understand and continue to own.
+This framework reflects only the systems and organizations I have experienced. An ADR cannot remove uncertainty, politics, or incomplete information. It can make the reasoning, consequences, and ownership visible enough to challenge and revise. Engineering judgment is not always choosing correctly on the first attempt; it is making a decision the organization can understand and continue to own.
