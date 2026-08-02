@@ -4,6 +4,21 @@
 
 ---
 
+## Contents
+
+- [Voice & Tone](#voice--tone)
+- [Content Structure Patterns](#content-structure-patterns)
+- [Bilingual Publishing Strategy](#bilingual-publishing-strategy)
+- [Writing Mechanics](#writing-mechanics)
+- [English Writing Level](#english-writing-level)
+- [Building a Technical Argument](#building-a-technical-argument)
+- [Recurring Themes in Writing](#recurring-themes-in-writing)
+- [Style Summary for Content Replication](#style-summary-for-content-replication)
+- [Custom Style by Human](#custom-style-by-human)
+- [Social Media Posts](#social-media-posts-facebook)
+
+---
+
 ## Voice & Tone
 
 ### First-Person Experiential Learner
@@ -25,6 +40,8 @@ The writing does not hide struggle. The Advent of Code piece openly admits that 
 There's a pattern of hedging titles with qualifiers - "[2025] My two cents on the future of backend development (Maybe?)" uses both "my two cents" and "(Maybe?)" - while the actual article content is well-researched and substantive. The modesty is in the framing, not the depth.
 
 **Why this is effective**: The soft framing invites readers who might skip a more assertive title. Once inside, the content delivers real value, creating a positive surprise effect.
+
+Use this device with care. A qualifier should show meaningful uncertainty, not become a required part of every title. When an article has a clear result, use a clear title. The voice can stay humble through honest limits and evidence.
 
 ---
 
@@ -88,6 +105,17 @@ Many articles are published in **both English and Thai** versions:
 
 **Why this is effective**: Bilingual publishing serves two audiences with one research effort - the global dev community (English) and the Thai developer community (Thai). This supports the TP Coder mission of empowering Thai developers while maintaining international visibility.
 
+Translation is **meaning-first**, not sentence-by-sentence. Rephrase and rearrange sentences, paragraphs, or sections when the target language needs a different flow. Split or merge ideas when useful. EN and TH do not need to match paragraph by paragraph.
+
+Both versions must still preserve:
+
+- the central claim and lesson
+- facts, evidence, and examples
+- limits and uncertainty
+- the author's intent
+
+Do not add a new claim or remove important meaning only to make a translation smoother. Each version should feel written for its own readers while teaching the same lesson.
+
 ---
 
 ## Writing Mechanics
@@ -101,7 +129,9 @@ Many articles are published in **both English and Thai** versions:
 
 ### Article Length & Depth
 
-Articles lean toward **thorough rather than brief**. Technical tutorials include code context and results. Book reviews cover multiple dimensions (who it's for, strengths, weaknesses, favorite parts). Career reflections cover emotional arc, not just facts.
+Articles lean toward **focused depth rather than raw length**. Technical tutorials include the code context and results needed to answer the central question. Book reviews cover useful dimensions such as audience, strengths, weaknesses, and favorite parts. Career reflections keep the details that support the emotional arc.
+
+Remove a section when it does not support the article's central question or claim. Thorough writing is useful only when each part moves the reader forward.
 
 ### Practical Over Theoretical
 
@@ -110,6 +140,61 @@ Every concept ties to a concrete implementation or real-world application. Even 
 ### Consistent Cadence
 
 Regular publishing across multiple content types (reviews, tutorials, reflections, event coverage) keeps the profile active without being locked into a single format.
+
+### Paragraphs and Lists
+
+Prefer short paragraphs that explain one connected idea. Do not make the reader unpack a long paragraph with many branches.
+
+Use a short setup sentence followed by bullets when explaining:
+
+- `if` conditions or different situations
+- steps in a process
+- choices and alternatives
+- trade-offs
+- failure cases
+
+Keep each bullet focused on one case. Use prose when the ideas form one continuous story and a list would make it harder to follow.
+
+---
+
+## English Writing Level
+
+Write English at **CEFR A2–B1** level. The main goal is to help the reader understand the idea quickly.
+
+- Use common words and short sentences.
+- Prefer direct subject–verb structure.
+- Explain one main idea per paragraph.
+- Split long sentences instead of joining many clauses.
+- Keep correct technical terms, then explain them in plain English.
+- Prefer `use` over `utilize`, `help` over `facilitate`, and `before` over `prior to`.
+- Avoid academic, corporate, or decorative wording when a simple word carries the same meaning.
+- Do not make the English more complex only to make it sound polished.
+
+The English should sound like an engineer helping another engineer, including readers who use English as a second language.
+
+---
+
+## Building a Technical Argument
+
+Each post should have **one central claim or question**. A reader should be able to remember it after closing the page. State it early, then use it to decide which details belong.
+
+Separate these types of statements:
+
+- **Experience:** what the author personally did, saw, or measured
+- **Evidence:** what code, benchmarks, documentation, or sources show
+- **Inference:** what the author concludes from the evidence
+
+Do not present an inference as proof. Use clear opinion wording when the evidence supports a view but does not prove it.
+
+Use this narrative shape when it fits the topic:
+
+1. What question or problem led me here?
+2. What is the simplest version that works?
+3. Where does it fail under practical constraints?
+4. What did I change, measure, or learn?
+5. What would I choose, and under which conditions?
+
+This structure also works for tutorials. The implementation explains the mechanics; the central claim explains why the lesson matters.
 
 ---
 
@@ -133,27 +218,33 @@ To write in the TP Coder style:
 2. **Be honest about what didn't work** - include failures, limitations, and mixed results
 3. **Start from genuine curiosity** - every article should answer a real question the author had
 4. **Show data, not just opinions** - when comparing technologies, run actual tests and share numbers
-5. **Add hedging qualifiers to titles** - softeners like "(Maybe?)" invite broader readership
+5. **Use title qualifiers only when they add meaning** - softeners like "(Maybe?)" should show real uncertainty, not weaken every title
 6. **Use consistent format tags** - `[Book Reviews]`, year tags like `[2025]` for categorization
 7. **Tie everything back to backend engineering** - even AI/ML topics get framed through the backend lens
 8. **Publish in both EN and TH** when the topic serves both audiences
-9. **Go thorough over brief** - depth is the differentiator, not brevity
+   - Translate by meaning; rephrase and rearrange for natural flow while preserving claims and evidence
+9. **Prefer focused depth** - keep the details that support the central question or claim
 10. **Ground speculation in specifics** - name the technologies, protocols, and tools rather than speaking abstractly
+11. **Make one memorable technical claim** - tutorials should explain what the implementation teaches, not only how it works
+12. **Separate experience, evidence, and inference** - make it clear what was observed and what was concluded
+13. **Use A2–B1 English** - short, common, direct wording helps readers understand faster
+14. **Use bullets for branches** - split conditions, situations, steps, and trade-offs instead of building a wall of text
 
 ## Custom style by human
 
-11. No "Give more, learn more. Be better each day." in the article
-12. No "Be kind and be inspired." in the article
-13. ในภาษาไทย ห้ามใช้คำว่า "นี่เป็นสัญญาณชัดเจนครับ" หรือ pattern ใด ๆ ที่อ่านก็รู้ว่าเป็น AI เขียนขึ้นมา
-14. Banner keywords: Game changer, เปลี่ยนเกม, นี่เป็นสัญญาณชัดเจนครับ, มันชัดเจน, เอาแบบตรง ๆ ไม่อ้อมค้อม, เล่าให้ฟัง, ไม่ใช่แค่... แต่
-15. ห้ามใช้ "จริง" ไม่ว่ากรณีไหน ๆ
-16. Reduce or not use "\_\_\_" in the post, though keyword looks interest, but not my writing style
+1. Do not use `Give more, learn more. Be better each day.` in an article.
+2. Do not use `Be kind and be inspired.` in an article.
+3. In Thai prose, do not use AI-tell phrases such as `นี่เป็นสัญญาณชัดเจนครับ`.
+4. Banned words and patterns include `Game changer`, `เปลี่ยนเกม`, `นี่เป็นสัญญาณชัดเจนครับ`, `มันชัดเจน`, `เอาแบบตรง ๆ ไม่อ้อมค้อม`, `เล่าให้ฟัง`, and the `ไม่ใช่แค่ … แต่ …` pattern.
+5. Do not use `จริง` in Thai prose in any form.
+6. Do not use double quotes or italics in Thai prose. The author rarely uses double quotes, and agents tend to overuse them; use **bold** only when emphasis is needed.
+7. Reduce or avoid the literal `___` device because it is not part of the author's style.
 
 ---
 
 ## Social Media Posts (Facebook)
 
-Before writing a FB post for a blog article, **always ask the user**:
+Before writing a FB post for a blog article, ask the following only when the expected length and detail are not already clear from the established series format or the user's request:
 
 - ต้องการกี่คำ? (e.g., 50, 100, 150)
 - ต้องการรายละเอียดแค่ไหน? (e.g., แค่ headline สั้นๆ / สรุป key points / เกือบครบทุกประเด็น)
