@@ -13,11 +13,150 @@ const sizeClasses = {
 };
 ---
 
-<div class={`mermaid-container ${sizeClasses[size]}`}>
+<div class={`mermaid-container ${sizeClasses[size]}`} data-mermaid-zoom>
+  <div class="mermaid-toolbar">
+    <button type="button" class="mermaid-open" aria-label="Open diagram zoom view" disabled>
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <path d="m15 15 5 5m-3-9a6 6 0 1 1-12 0 6 6 0 0 1 12 0Zm-6-3v6m-3-3h6" />
+      </svg>
+      <span>Zoom</span>
+    </button>
+  </div>
   <div class="mermaid-wrapper">
     <pre class="mermaid">{chart}</pre>
   </div>
+
+  <dialog class="mermaid-dialog" aria-label="Diagram zoom view">
+    <div class="mermaid-dialog-shell">
+      <div class="mermaid-dialog-toolbar">
+        <div class="mermaid-zoom-controls" aria-label="Diagram zoom controls">
+          <button type="button" data-zoom-out aria-label="Zoom out">−</button>
+          <button type="button" data-zoom-reset aria-label="Reset diagram zoom">100%</button>
+          <button type="button" data-zoom-in aria-label="Zoom in">+</button>
+        </div>
+        <button type="button" class="mermaid-close" aria-label="Close diagram zoom view">Close</button>
+      </div>
+      <div class="mermaid-viewport" tabindex="0" aria-label="Zoomed diagram. Scroll to view more.">
+        <div class="mermaid-canvas"></div>
+      </div>
+    </div>
+  </dialog>
 </div>
+
+<script>
+  const initializeMermaidZoom = () => {
+    document.querySelectorAll<HTMLElement>('[data-mermaid-zoom]').forEach((container) => {
+      if (container.dataset.zoomReady === 'true') return;
+
+      const openButton = container.querySelector<HTMLButtonElement>('.mermaid-open');
+      const wrapper = container.querySelector<HTMLElement>('.mermaid-wrapper');
+      const dialog = container.querySelector<HTMLDialogElement>('.mermaid-dialog');
+      const viewport = container.querySelector<HTMLElement>('.mermaid-viewport');
+      const canvas = container.querySelector<HTMLElement>('.mermaid-canvas');
+      const closeButton = container.querySelector<HTMLButtonElement>('.mermaid-close');
+      const zoomInButton = container.querySelector<HTMLButtonElement>('[data-zoom-in]');
+      const zoomOutButton = container.querySelector<HTMLButtonElement>('[data-zoom-out]');
+      const resetButton = container.querySelector<HTMLButtonElement>('[data-zoom-reset]');
+
+      if (!openButton || !wrapper || !dialog || !viewport || !canvas || !closeButton || !zoomInButton || !zoomOutButton || !resetButton) return;
+
+      container.dataset.zoomReady = 'true';
+
+      let diagram: SVGSVGElement | null = null;
+      let originalParent: ParentNode | null = null;
+      let originalNextSibling: ChildNode | null = null;
+      let originalStyle: string | null = null;
+      let baseWidth = 0;
+      let baseHeight = 0;
+      let fitZoom = 1;
+      let zoom = 1;
+
+      const findDiagram = () => {
+        diagram = wrapper.querySelector<SVGSVGElement>('svg');
+        openButton.disabled = !diagram;
+        return Boolean(diagram);
+      };
+
+      if (!findDiagram()) {
+        const observer = new MutationObserver(() => {
+          if (findDiagram()) observer.disconnect();
+        });
+        observer.observe(wrapper, { childList: true, subtree: true });
+      }
+
+      const updateZoom = (nextZoom: number) => {
+        if (!diagram) return;
+
+        zoom = Math.min(4, Math.max(Math.max(fitZoom * 0.5, 0.1), nextZoom));
+        diagram.style.width = `${baseWidth * zoom}px`;
+        diagram.style.height = `${baseHeight * zoom}px`;
+        diagram.style.maxWidth = 'none';
+        diagram.style.minHeight = '0';
+        resetButton.textContent = `${Math.round(zoom * 100)}%`;
+        zoomOutButton.disabled = zoom <= Math.max(fitZoom * 0.5, 0.1) + 0.001;
+        zoomInButton.disabled = zoom >= 3.999;
+      };
+
+      const restoreDiagram = () => {
+        if (!diagram || !originalParent) return;
+
+        if (originalNextSibling && originalNextSibling.parentNode === originalParent) {
+          originalParent.insertBefore(diagram, originalNextSibling);
+        } else {
+          originalParent.appendChild(diagram);
+        }
+
+        if (originalStyle === null) diagram.removeAttribute('style');
+        else diagram.setAttribute('style', originalStyle);
+
+        canvas.replaceChildren();
+        diagram = null;
+        originalParent = null;
+        originalNextSibling = null;
+        originalStyle = null;
+        findDiagram();
+      };
+
+      openButton.addEventListener('click', () => {
+        if (!findDiagram() || !diagram) return;
+
+        const viewBox = diagram.viewBox?.baseVal;
+        const diagramRect = diagram.getBoundingClientRect();
+        baseWidth = viewBox?.width || diagramRect.width;
+        baseHeight = viewBox?.height || diagramRect.height;
+        originalParent = diagram.parentNode;
+        originalNextSibling = diagram.nextSibling;
+        originalStyle = diagram.getAttribute('style');
+        canvas.appendChild(diagram);
+        dialog.showModal();
+
+        requestAnimationFrame(() => {
+          const availableWidth = Math.max(viewport.clientWidth - 48, 1);
+          const availableHeight = Math.max(viewport.clientHeight - 48, 1);
+          fitZoom = Math.min(availableWidth / baseWidth, availableHeight / baseHeight, 1);
+          updateZoom(fitZoom);
+          viewport.scrollTo({ left: 0, top: 0 });
+          viewport.focus();
+        });
+      });
+
+      closeButton.addEventListener('click', () => dialog.close());
+      zoomInButton.addEventListener('click', () => updateZoom(zoom * 1.25));
+      zoomOutButton.addEventListener('click', () => updateZoom(zoom / 1.25));
+      resetButton.addEventListener('click', () => updateZoom(fitZoom));
+      dialog.addEventListener('close', restoreDiagram);
+      dialog.addEventListener('click', (event) => {
+        if (event.target === dialog) dialog.close();
+      });
+    });
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeMermaidZoom, { once: true });
+  } else {
+    initializeMermaidZoom();
+  }
+</script>
 
 <style>
   .mermaid-container {
@@ -28,6 +167,134 @@ const sizeClasses = {
     border-radius: 12px;
     border: 1px solid #e2e8f0;
     overflow-x: auto;
+  }
+
+  .mermaid-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin: -0.5rem -0.5rem 0.25rem 0;
+  }
+
+  .mermaid-open,
+  .mermaid-dialog button {
+    border: 1px solid #cbd5e1;
+    border-radius: 0.5rem;
+    background: #ffffff;
+    color: #0f172a;
+    font: inherit;
+    cursor: pointer;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+  }
+
+  .mermaid-open {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .mermaid-open svg {
+    width: 1rem;
+    height: 1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+  }
+
+  .mermaid-open:hover,
+  .mermaid-dialog button:hover {
+    border-color: #0a453e;
+    color: #0a453e;
+  }
+
+  .mermaid-open:focus-visible,
+  .mermaid-dialog button:focus-visible,
+  .mermaid-viewport:focus-visible {
+    outline: 2px solid #0edcaa;
+    outline-offset: 2px;
+  }
+
+  .mermaid-open:disabled,
+  .mermaid-dialog button:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  .mermaid-dialog {
+    width: min(96vw, 1400px);
+    height: min(92vh, 1000px);
+    max-width: none;
+    max-height: none;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid #cbd5e1;
+    border-radius: 1rem;
+    background: #f8fafc;
+    color: #0f172a;
+    box-shadow: 0 24px 80px rgb(15 23 42 / 0.35);
+  }
+
+  .mermaid-dialog::backdrop {
+    background: rgb(15 23 42 / 0.72);
+    backdrop-filter: blur(3px);
+  }
+
+  .mermaid-dialog-shell {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    width: 100%;
+    height: 100%;
+  }
+
+  .mermaid-dialog-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e2e8f0;
+    background: #ffffff;
+  }
+
+  .mermaid-zoom-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  .mermaid-dialog button {
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .mermaid-dialog [data-zoom-reset] {
+    min-width: 4.25rem;
+  }
+
+  .mermaid-viewport {
+    overflow: auto;
+    overscroll-behavior: contain;
+    background-color: #f8fafc;
+    background-image:
+      linear-gradient(#e2e8f0 1px, transparent 1px),
+      linear-gradient(90deg, #e2e8f0 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .mermaid-canvas {
+    display: grid;
+    place-items: center;
+    min-width: 100%;
+    min-height: 100%;
+    padding: 1.5rem;
+    box-sizing: border-box;
   }
 
   .mermaid-wrapper {
@@ -82,6 +349,25 @@ const sizeClasses = {
       border-right: none;
     }
 
+    .mermaid-toolbar {
+      margin-right: 0;
+    }
+
+    .mermaid-dialog {
+      width: 100vw;
+      height: 100dvh;
+      border: 0;
+      border-radius: 0;
+    }
+
+    .mermaid-dialog-toolbar {
+      padding: 0.625rem 0.75rem;
+    }
+
+    .mermaid-canvas {
+      padding: 1rem;
+    }
+
     .mermaid-small :global(svg),
     .mermaid-medium :global(svg),
     .mermaid-large :global(svg) {
@@ -106,6 +392,37 @@ const sizeClasses = {
 
   .mermaid-container :global(.edgeLabel) {
     font-size: 12px;
+  }
+
+  :global(.dark) .mermaid-open,
+  :global(.dark) .mermaid-dialog button {
+    border-color: #475569;
+    background: #1e293b;
+    color: #e2e8f0;
+  }
+
+  :global(.dark) .mermaid-open:hover,
+  :global(.dark) .mermaid-dialog button:hover {
+    border-color: #0edcaa;
+    color: #0edcaa;
+  }
+
+  :global(.dark) .mermaid-dialog {
+    border-color: #475569;
+    background: #111827;
+    color: #f8fafc;
+  }
+
+  :global(.dark) .mermaid-dialog-toolbar {
+    border-color: #334155;
+    background: #1e293b;
+  }
+
+  :global(.dark) .mermaid-viewport {
+    background-color: #111827;
+    background-image:
+      linear-gradient(#1f2937 1px, transparent 1px),
+      linear-gradient(90deg, #1f2937 1px, transparent 1px);
   }
 
   </style>

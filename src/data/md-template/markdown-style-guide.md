@@ -33,6 +33,8 @@ Itatur? Quiatae cullecum rem ent aut odis in re eossequodi nonsequ idebis ne sap
 
 ## Images
 
+`BlogLayout` automatically renders the `heroImage` from frontmatter above the article title. Do not add that same image to the article body. Body images should add new information.
+
 ![This is a placeholder image description](/placeholder-social.jpg)
 
 ## Blockquotes

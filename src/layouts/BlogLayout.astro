@@ -10,14 +10,16 @@ type Props = CollectionEntry<'blog'>['data'] & {
 };
 
 const { title, description, pubDate, updatedDate, heroImage, language, translationSlug, servicesNote, headings } = Astro.props;
+const tocHeadings = headings?.filter(heading => heading.depth <= 3) ?? [];
 
 const translationLabel = language === 'en' ? 'อ่านเป็นภาษาไทย' : 'Read in English';
 const translationFlag = language === 'en' ? '🇹🇭' : '🇺🇸';
 
 const servicesUrl = 'https://business.tpcoder.dev/';
+const servicesTitle = language === 'th' ? 'Work with me' : 'Work together';
 const servicesText = language === 'th'
-  ? 'ปล. — ผมเองก็เปิดรับงาน consult / advisory ด้าน backend system แนว ๆ นี้อยู่บ้างนะ ถ้าคิดว่าพอจะช่วยทีมได้ '
-  : 'P.S. — I also take on a bit of advisory & consulting work on backend systems like this one. If that could help your team, ';
+  ? 'ถ้าทีมของคุณกำลังออกแบบ backend architecture หรือ system design ผมรับงาน advisory และ consulting เป็นบางช่วงครับ'
+  : 'Need help with backend architecture or system design? I take on selected advisory and consulting work.';
 const servicesLinkLabel = language === 'th' ? 'แวะมาดูบริการกันได้ที่นี่ครับ' : "here's what I do";
 ---
 
@@ -61,8 +63,32 @@ const servicesLinkLabel = language === 'th' ? 'แวะมาดูบริก
       window.mermaid = mermaid;
     </script>
     <Header />
-    <main class="max-w-4xl mx-auto px-4 md:px-8 py-8">
-      <article>
+    <main class="mx-auto w-full max-w-[92rem] px-4 py-8 md:px-8">
+      <div class="xl:grid xl:grid-cols-[14rem_minmax(0,52rem)_15rem] xl:items-start xl:justify-center xl:gap-8">
+        <!-- Desktop Table of Contents -->
+        {tocHeadings.length > 0 && (
+          <aside class="hidden xl:block xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto xl:overscroll-contain xl:pr-2">
+            <nav aria-label="Table of contents" class="border-l-2 border-primary/40 pl-4">
+              <h2 class="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-primary-dark dark:text-primary-light">
+                Table of Contents
+              </h2>
+              <ul class="space-y-2">
+                {tocHeadings.map((heading) => (
+                  <li class={heading.depth === 3 ? 'pl-3' : ''}>
+                    <a
+                      href={`#${heading.slug}`}
+                      class={`block text-sm leading-snug transition-colors hover:text-primary-dark focus-visible:rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-light dark:hover:text-primary-light ${heading.depth === 2 ? 'font-medium text-gray-700 dark:text-gray-300' : 'text-gray-600 dark:text-gray-400'}`}
+                    >
+                      {heading.text}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </aside>
+        )}
+
+        <article class="mx-auto min-w-0 max-w-4xl xl:col-start-2 xl:mx-0">
         <!-- Hero Image -->
         {heroImage && (
           <div class="mb-8">
@@ -97,45 +123,70 @@ const servicesLinkLabel = language === 'th' ? 'แวะมาดูบริก
               </div>
             )}
           </div>
-          <div class="mt-4 flex flex-wrap gap-3">
-            {translationSlug && (
-              <a
-                href={`/blog/${translationSlug}/`}
-                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              >
-                <span>{translationFlag}</span>
-                <span>{translationLabel}</span>
-              </a>
-            )}
-            <a
-              href="/support-me"
-              class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            >
-              <span>🙇‍♂️</span>
-              <span>Support Me</span>
-            </a>
-          </div>
         </header>
+
+        <!-- Article actions collapse into the reading flow below desktop width. -->
+        <div class="mb-8 grid gap-3 sm:grid-cols-2 xl:hidden">
+          <nav aria-label="Article links" class="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
+            <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-primary-dark dark:text-primary-light">Article</h2>
+            <div class="flex flex-col gap-2">
+              {translationSlug && (
+                <a
+                  href={`/blog/${translationSlug}/`}
+                  class="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-white hover:text-primary-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-light dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-primary-light"
+                >
+                  <span>{translationFlag}</span>
+                  <span>{translationLabel}</span>
+                </a>
+              )}
+              <a
+                href="/support-me"
+                class="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-white hover:text-primary-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-light dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-primary-light"
+              >
+                <span>🙇‍♂️</span>
+                <span>Support Me</span>
+              </a>
+            </div>
+          </nav>
+
+          {servicesNote && (
+            <aside class="rounded-lg border border-primary/30 bg-white/60 p-4 dark:border-primary/40 dark:bg-gray-800/50">
+              <h2 class="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary-dark dark:text-primary-light">{servicesTitle}</h2>
+              <p class="text-sm leading-relaxed text-gray-700 dark:text-gray-300">{servicesText}</p>
+              <a
+                href={servicesUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="mt-3 inline-flex text-sm font-semibold text-primary-dark hover:underline focus-visible:rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-light dark:text-primary-light"
+              >{servicesLinkLabel} <span aria-hidden="true">↗</span></a>
+            </aside>
+          )}
+        </div>
 
         <hr class="border-gray-200 dark:border-gray-700 mb-8" />
 
-        <!-- Table of Contents -->
-        {headings && headings.filter(h => h.depth <= 3).length > 0 && (
-          <nav class="mb-8 p-5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-            <h2 class="text-lg font-semibold text-black dark:text-white mb-3">Table of Contents</h2>
-            <ul class="space-y-1.5">
-              {headings.filter(h => h.depth <= 3).map((heading) => (
-                <li class={heading.depth === 3 ? 'pl-4' : ''}>
-                  <a
-                    href={`#${heading.slug}`}
-                    class={`text-sm transition-colors hover:text-primary-dark dark:hover:text-primary-light ${heading.depth === 2 ? 'text-gray-700 dark:text-gray-300 font-medium' : 'text-gray-500 dark:text-gray-400'}`}
-                  >
-                    {heading.text}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
+        <!-- Compact Table of Contents for tablet and mobile -->
+        {tocHeadings.length > 0 && (
+          <details class="group mb-8 rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50 xl:hidden">
+            <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-base font-semibold text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-light dark:text-white">
+              <span>Table of Contents</span>
+              <span aria-hidden="true" class="text-primary-dark transition-transform group-open:rotate-180 dark:text-primary-light">⌄</span>
+            </summary>
+            <nav aria-label="Table of contents" class="border-t border-gray-200 px-5 py-4 dark:border-gray-700">
+              <ul class="space-y-2">
+                {tocHeadings.map((heading) => (
+                  <li class={heading.depth === 3 ? 'pl-4' : ''}>
+                    <a
+                      href={`#${heading.slug}`}
+                      class={`block text-sm transition-colors hover:text-primary-dark dark:hover:text-primary-light ${heading.depth === 2 ? 'font-medium text-gray-700 dark:text-gray-300' : 'text-gray-600 dark:text-gray-400'}`}
+                    >
+                      {heading.text}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </details>
         )}
 
         <!-- Article Content with Prose Styling -->
@@ -171,21 +222,6 @@ const servicesLinkLabel = language === 'th' ? 'แวะมาดูบริก
           <slot />
         </div>
 
-        <!-- Optional Services P.S. (per-post: set servicesNote: true) -->
-        {servicesNote && (
-          <div class="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
-            <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-              {servicesText}
-              <a
-                href={servicesUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="font-medium text-primary-dark dark:text-primary-light hover:underline"
-              >{servicesLinkLabel}</a>.
-            </p>
-          </div>
-        )}
-
         <!-- Back to Blog Link -->
         <div class="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
           <a
@@ -198,7 +234,46 @@ const servicesLinkLabel = language === 'th' ? 'แวะมาดูบริก
             Back to all posts
           </a>
         </div>
-      </article>
+        </article>
+
+        <!-- Desktop article actions and consulting rail -->
+        <aside class="hidden space-y-4 xl:sticky xl:top-6 xl:col-start-3 xl:block">
+          <nav aria-label="Article links" class="rounded-lg border border-gray-200 bg-gray-50 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800/50">
+            <h2 class="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-primary-dark dark:text-primary-light">Article</h2>
+            <div class="flex flex-col gap-2">
+              {translationSlug && (
+                <a
+                  href={`/blog/${translationSlug}/`}
+                  class="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-white hover:text-primary-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-light dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-primary-light"
+                >
+                  <span>{translationFlag}</span>
+                  <span>{translationLabel}</span>
+                </a>
+              )}
+              <a
+                href="/support-me"
+                class="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-white hover:text-primary-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-light dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-primary-light"
+              >
+                <span>🙇‍♂️</span>
+                <span>Support Me</span>
+              </a>
+            </div>
+          </nav>
+
+          {servicesNote && (
+            <section class="rounded-lg border border-primary/30 bg-white/60 p-4 shadow-sm dark:border-primary/40 dark:bg-gray-800/50">
+              <h2 class="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary-dark dark:text-primary-light">{servicesTitle}</h2>
+              <p class="text-sm leading-relaxed text-gray-700 dark:text-gray-300">{servicesText}</p>
+              <a
+                href={servicesUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="mt-3 inline-flex text-sm font-semibold text-primary-dark hover:underline focus-visible:rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-light dark:text-primary-light"
+              >{servicesLinkLabel} <span aria-hidden="true">↗</span></a>
+            </section>
+          )}
+        </aside>
+      </div>
     </main>
     <Footer />
   </body>

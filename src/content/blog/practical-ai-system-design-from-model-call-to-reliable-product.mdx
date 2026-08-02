@@ -1,0 +1,1022 @@
+---
+title: "Practical AI System Design: From Model Call to Reliable Product"
+description: "A practical guide to designing predictive ML, recommendation, RAG, LLM, and agent systems with evaluation, safety, reliability, cost control, and clear ownership."
+pubDate: "2026-08-02"
+tags:
+  ["AI", "Software Architecture", "Software Engineering", "System Design"]
+heroImage: "/assets/images/blogs/practical-ai-system-design/hero-banner.png"
+language: "en"
+servicesNote: true
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+{/* IMAGE PROMPT (hero-banner.png): Wide editorial hero banner for a technical AI System Design blog. Flat vector illustration on a warm ivory background with soft shadows. Use a warm portfolio palette: burnt orange, mustard gold, forest green, charcoal, and soft sand, with a small coral accent. Do not use purple, teal, navy, neon cyberpunk colors, or photorealism. Create a circular working system, not a humanoid robot: data cards flow into a compact model core, then into a useful product interface, then through an evaluation checkpoint held by one human engineer, and feedback returns to the data side. Add small symbols for retrieval, tool use, monitoring, and a safety shield around the loop. Keep the composition clearly different from a bridge, compass, staircase, iceberg, or row of generic architecture boxes. Render these labels exactly once, spelled exactly: "DATA", "MODEL", "PRODUCT", "EVALUATE". Render only these labels. No other text, letters, numbers, code, logos, watermarks, meta text, or printed style instructions. No duplicate labels, duplicate people, humanoid robots, or typos. Leave generous breathing room and keep the loop readable as a wide blog thumbnail. */}
+
+
+## Why AI System Design Needs a Different Guide
+
+Calling a model API is easy. Building a product around that call is the larger job.
+
+The product needs data, APIs, storage, security, monitoring, cost controls, evaluation, and a way to recover when the model gives a poor answer. If the system can use tools, it also needs limits on what the model may do.
+
+The [AI System Design guide from System Design Handbook](https://www.systemdesignhandbook.com/guides/ai-system-design/) gives a wide map. It covers data, training, inference, caching, retrieval, deployment, monitoring, privacy, and agents.
+
+This guide rebuilds that map in a practical order.
+
+The central idea is:
+
+**An AI model is one uncertain component inside a normal production system. The product becomes reliable through the system around it.**
+
+This guide covers several types of AI systems. It does not assume that every product needs an agent, a vector database, or its own trained model.
+
+The running example is a hypothetical customer support assistant. It answers product questions from approved documents. Later, it may look up an order or create a support ticket. The example is fictional and exists only to explain the design.
+
+## First, Name the Type of AI System
+
+The words AI system cover different architectures. Before drawing anything, decide which problem you have.
+
+| System type | Example | Main design pressure |
+|---|---|---|
+| Predictive ML | fraud score | feature freshness, accuracy, latency |
+| Recommendation | product ranking | candidate retrieval, ranking, feedback |
+| RAG | answer from company documents | retrieval quality, grounding, access control |
+| LLM workflow | classify and summarize a case | prompt versions, evaluation, cost |
+| Agent | investigate and take actions | tools, state, permissions, recovery |
+
+Some products use more than one type. A recommendation system may use predictive ranking and an LLM explanation. A support assistant may use RAG for answers and an agent for ticket creation.
+
+Do not combine them too early. Each part has a different success metric and failure mode.
+
+Ask these questions first:
+
+- Is the output a score, ranking, text, image, plan, or action?
+- Does the system need fresh private data?
+- Can a human review the output?
+- What is the cost of a wrong answer?
+- Must the result arrive in 100 milliseconds or can it take 30 seconds?
+- Does the model only answer, or can it change another system?
+- Can a rule or normal search solve the problem more safely?
+
+That last question matters. AI adds uncertainty. Use it where that uncertainty is worth the value.
+
+{/* IMAGE PROMPT (ai-system-types.png): Blue modern cartoon infographic on a warm-white and pale-blue background, comparing four AI system types with the exact labels PREDICT, RECOMMEND, RETRIEVE, and ACT. Each label once; no other text, logos, or watermark. */}
+
+![Four AI system types: predict, recommend, retrieve, and act](/assets/images/blogs/practical-ai-system-design/ai-system-types.png)
+
+## An AI Product Has More Than a Model
+
+Google's MLOps guide makes a useful point: [ML code is only a small part of a production ML system](https://cloud.google.com/architecture/mlops-continuous-delivery-and-automation-pipelines-in-machine-learning). The surrounding system handles data collection, validation, serving, monitoring, and automation.
+
+The same idea applies to LLM products.
+
+{/* IMAGE PROMPT (model-is-one-part.png): Blue modern infographic on a warm-white and pale-blue background, with MODEL at the center and exact surrounding labels DATA, RETRIEVAL, APP, TOOLS, EVALS, and MONITOR. Each label once; no other text. */}
+
+![The model is one component inside a complete AI product](/assets/images/blogs/practical-ai-system-design/model-is-one-part.png)
+
+<MermaidDiagram chart={`
+flowchart LR
+    U["User or event"] --> A["Product API"]
+    A --> C["Context and policy"]
+    C --> M["Model"]
+    M --> V["Validation"]
+    V --> R["Product result"]
+    R --> O["Logs and evaluation"]
+    O --> I["Improve data, prompt,\nmodel, or policy"]
+    I --> C
+`} />
+
+The system around the model answers important questions:
+
+- Which input is allowed?
+- Which context can this user access?
+- Which model and prompt version should run?
+- What happens on timeout?
+- How do we check the output?
+- How do we measure quality?
+- How do we roll back a bad change?
+- Who reviews high-risk actions?
+
+A model can be powerful and the product can still be unreliable.
+
+## Define Success Before Choosing a Model
+
+AI quality is not one number.
+
+Choose metrics that match the product.
+
+### Predictive ML metrics
+
+Depending on the problem, useful metrics include:
+
+- precision;
+- recall;
+- false positive rate;
+- false negative rate;
+- ranking quality;
+- calibration;
+- model drift.
+
+A fraud system may prefer to catch more bad transactions, but too many false positives block good customers. The right balance is a business decision, not only a model decision.
+
+### Generative AI metrics
+
+Useful areas include:
+
+- task completion;
+- factual grounding;
+- correct citations;
+- policy compliance;
+- helpfulness;
+- tool-call accuracy;
+- human acceptance;
+- cost per completed task;
+- end-to-end latency.
+
+Do not measure only whether the output sounds good. A confident answer can still be wrong.
+
+For the support assistant, we may set these goals:
+
+- answer only from approved support documents;
+- show the source used for the answer;
+- refuse when the source is missing;
+- keep customer data inside the correct access boundary;
+- hand off to a person for account-specific risk cases;
+- return the first useful response within a few seconds.
+
+Now the architecture has a target.
+
+{/* IMAGE PROMPT (balance-success-metrics.png): Blue cartoon infographic on a warm-white background, balancing the exact metrics QUALITY, LATENCY, COST, and SAFETY around one useful product result. Each label once; no other text. */}
+
+![AI product success balances quality, latency, cost, and safety](/assets/images/blogs/practical-ai-system-design/balance-success-metrics.png)
+
+## Start with the Smallest Useful AI Version
+
+The first version may be one model call.
+
+<MermaidDiagram chart={`
+flowchart LR
+    U["User question"] --> A["Application"]
+    A --> M["Model API"]
+    M --> A
+    A --> U
+`} />
+
+This can be enough for:
+
+- a writing helper;
+- a low-risk internal summary;
+- a prototype that tests whether users want the feature;
+- a classification task with a clear output schema.
+
+Make even this version observable:
+
+- record model name and version;
+- record prompt version;
+- measure input and output tokens;
+- measure latency and errors;
+- store user feedback when allowed;
+- remove or mask sensitive data from logs.
+
+Do not add RAG or agents before you know what the simple version cannot do.
+
+For the support assistant, the simple version fails quickly. A general model does not know the latest product policy. It may also invent an answer. The next constraint is private and changing knowledge.
+
+## Predictive ML: Two Connected Pipelines
+
+A predictive ML system normally has an offline path and an online path.
+
+<MermaidDiagram chart={`
+flowchart TB
+    subgraph Offline["Offline learning path"]
+        D["Historical data"] --> V["Data validation"]
+        V --> F["Feature engineering"]
+        F --> T["Training"]
+        T --> E["Evaluation"]
+        E --> R["Model registry"]
+    end
+
+    subgraph Online["Online serving path"]
+        Q["Live request"] --> OF["Online features"]
+        OF --> S["Model server"]
+        S --> P["Prediction"]
+    end
+
+    R --> S
+    P --> L["Outcome and feedback"]
+    L --> D
+`} />
+
+### Offline learning path
+
+This path handles heavy work:
+
+- collect historical data;
+- validate data quality;
+- build features;
+- train candidate models;
+- compare candidates;
+- approve a model version;
+- publish it to a registry.
+
+### Online serving path
+
+This path handles live traffic:
+
+- receive a request;
+- fetch fresh features;
+- run inference;
+- apply business rules;
+- return or store the prediction;
+- record the later outcome.
+
+The two paths must agree on feature meaning. If training calculates a feature one way and serving calculates it another way, the model sees different data in production. This is called training-serving skew.
+
+A feature store can reduce this risk by sharing feature definitions and serving paths. It does not remove every skew problem. Data versions, transformation code, missing values, and time boundaries can still differ.
+
+## Batch, Streaming, and Feature Pipelines
+
+AI data can arrive in two main ways.
+
+- **Batch ingestion** reads a bounded set of data on a schedule. It fits historical training, daily reports, and large backfills.
+- **Streaming ingestion** handles events as they arrive. It fits fraud signals, live recommendations, monitoring, and fresh online features.
+
+Many systems use both. A daily batch may build the main training dataset while a stream updates recent user activity.
+
+The ingestion path needs more than transport:
+
+- schema validation;
+- event time and processing time;
+- duplicate handling;
+- late and out-of-order events;
+- replay and backfill;
+- retention;
+- lineage;
+- access control.
+
+A feature pipeline turns raw data into model inputs. Keep the feature definition, owner, freshness target, and data source clear.
+
+A feature store often has two views:
+
+- an offline store for large training reads;
+- an online store for low-latency inference.
+
+The stores must return the same feature meaning for the same point in time. Point-in-time joins matter. Training must not use data that arrived after the prediction event.
+
+## Training at Scale and Model Lifecycle
+
+Training can range from one process on one machine to a distributed job across many accelerators.
+
+Scale the training path only when the data or model needs it:
+
+- split data across workers;
+- split a model when it does not fit one device;
+- checkpoint long jobs;
+- retry failed workers safely;
+- control random seeds and environment versions;
+- track compute and storage cost;
+- separate experimental jobs from production pipelines.
+
+The output is not only a model file. A reproducible training run should record:
+
+- source code version;
+- dataset and feature versions;
+- parameters;
+- training environment;
+- evaluation results;
+- safety checks;
+- model artifact and checksum.
+
+A model registry stores approved versions and their status. Common states include candidate, approved, production, rejected, and retired.
+
+Promotion should be a controlled decision. A model can have a better offline score and still create worse latency, cost, fairness, or business results.
+
+Retraining can start from a schedule, new data volume, drift, or lower quality. Automatic retraining does not require automatic release. Keep evaluation and approval gates between them.
+
+## Data Quality Is a Production Dependency
+
+An AI system can fail while every server remains healthy.
+
+{/* IMAGE PROMPT (data-quality-pipeline.png): Blue infographic pipeline on a warm-white and pale-blue background, with exact labels RAW DATA, CHECK, VERSION, TRAIN, and SERVE, plus a stopped bad-data path. Each label once; no other text. */}
+
+![Raw data is checked and versioned before training and serving](/assets/images/blogs/practical-ai-system-design/data-quality-pipeline.png)
+
+Examples:
+
+- one source stops sending events;
+- a field changes from kilograms to pounds;
+- a timestamp moves to another time zone;
+- labels arrive late;
+- a new app version changes user behavior;
+- a data join duplicates records;
+- training includes information that was not available at prediction time.
+
+Validate data before training and before serving.
+
+Useful checks include:
+
+- schema;
+- range;
+- missing values;
+- distribution;
+- volume;
+- freshness;
+- uniqueness;
+- label delay;
+- access policy.
+
+Version the dataset or keep a reproducible snapshot. If a model behaves badly, the team should be able to answer which code, data, features, and parameters created it.
+
+The paper [Hidden Technical Debt in Machine Learning Systems](https://research.google/pubs/hidden-technical-debt-in-machine-learning-systems/) describes how ML systems create debt through data dependencies, feedback loops, configuration, and changes in the outside world. The model is often not the hardest part to maintain.
+
+## RAG: Retrieve Before You Generate
+
+Retrieval-Augmented Generation, or RAG, gives a model relevant external knowledge at request time.
+
+{/* IMAGE PROMPT (rag-retrieval-flow.png): Bright blue cartoon library infographic on a warm-white background, with exact stages QUESTION, SEARCH, CONTEXT, and ANSWER. Show three selected sources and visible citations. Each label once; no other text. */}
+
+![RAG searches for relevant context before generating an answer](/assets/images/blogs/practical-ai-system-design/rag-retrieval-flow.png)
+
+The original [RAG paper](https://arxiv.org/abs/2005.11401) combined a model's internal knowledge with retrieved documents. In a product, RAG is useful when knowledge changes, belongs to a private domain, or needs a visible source.
+
+For the support assistant:
+
+<MermaidDiagram chart={`
+flowchart LR
+    subgraph Indexing["Indexing path"]
+        D["Approved documents"] --> C["Clean and chunk"]
+        C --> E["Create embeddings"]
+        E --> V["Vector and text indexes"]
+    end
+
+    subgraph Answering["Answer path"]
+        U["User question"] --> Q["Query and access check"]
+        Q --> V
+        V --> K["Relevant passages"]
+        K --> M["Model with context"]
+        M --> A["Answer with sources"]
+    end
+`} />
+
+### The indexing path
+
+The system:
+
+1. reads approved documents;
+2. removes unsupported or duplicate content;
+3. splits documents into chunks;
+4. adds metadata and access rules;
+5. creates embeddings;
+6. writes vector and keyword indexes;
+7. records the source version.
+
+### The answer path
+
+The system:
+
+1. accepts the question;
+2. checks the user and tenant;
+3. rewrites or expands the query when useful;
+4. retrieves candidate passages;
+5. reranks them;
+6. sends the best context to the model;
+7. validates the answer and citations;
+8. returns the result or refuses.
+
+RAG can still fail:
+
+- the right document was never indexed;
+- chunks lost important context;
+- retrieval found similar but wrong content;
+- access filters were applied after retrieval;
+- the model ignored the source;
+- old and new policy versions were mixed.
+
+Measure retrieval separately from generation. If the correct passage is absent, changing the prompt may not help.
+
+Useful retrieval metrics include:
+
+- recall at K;
+- precision at K;
+- ranking quality;
+- source freshness;
+- access-filter correctness;
+- percentage of answers with valid support.
+
+## Vector Search Is One Retrieval Tool
+
+Vector search finds content with similar meaning. It is useful for natural-language questions and semantic matches.
+
+It is not always enough.
+
+Keyword search can be better for:
+
+- exact product codes;
+- error messages;
+- names;
+- dates;
+- legal phrases;
+- short identifiers.
+
+Many RAG systems use hybrid search:
+
+- vector search for meaning;
+- inverted index for exact terms;
+- metadata filters for tenant, language, date, and policy;
+- reranking for final quality.
+
+Choose the index from the query. Do not add a vector database only because the product uses an LLM.
+
+## LLM Workflows Before Autonomous Agents
+
+Some tasks need several model steps but do not need an autonomous agent.
+
+{/* IMAGE PROMPT (workflow-vs-agent.png): Blue split infographic on warm-white and pale-blue surfaces, comparing WORKFLOW and FIXED PATH with AGENT and CHOOSES. Show a fixed railway and a bounded explorer. Each label once; no other text. */}
+
+![A workflow follows a fixed path while an agent chooses within limits](/assets/images/blogs/practical-ai-system-design/workflow-vs-agent.png)
+
+Useful workflow patterns include:
+
+- **Prompt chaining:** one step prepares input for the next.
+- **Routing:** a classifier selects a known path.
+- **Parallel work:** independent steps run together.
+- **Evaluator-optimizer:** one model creates and another checks.
+- **Orchestrator-worker:** one model splits work across specialized workers.
+
+Anthropic's guide to [building effective agents](https://www.anthropic.com/engineering/building-effective-agents) recommends starting with simple, composable patterns and adding complexity only when it improves the result. It also notes that agentic systems often trade more latency and cost for better task performance.
+
+That is a useful System Design rule. A fixed workflow is easier to test, debug, and predict than an open-ended agent.
+
+For the support assistant, routing may be enough:
+
+- product question → RAG answer;
+- order-status question → deterministic order lookup;
+- suspicious activity → human handoff;
+- unsupported topic → refusal.
+
+The model can choose a route without owning the whole workflow.
+
+## Agents: Give the Model Tools and Limits
+
+An agent uses a model to decide which steps and tools to use. It may continue until it reaches a goal, hits a limit, or hands control to a person.
+
+OpenAI's [practical guide to building agents](https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/) describes agents as systems that manage workflow execution, use tools, and operate inside guardrails.
+
+The basic loop looks like this:
+
+<MermaidDiagram chart={`
+flowchart TD
+    G["User goal"] --> P["Plan next step"]
+    P --> T{"Need a tool?"}
+    T -->|"No"| O["Return result"]
+    T -->|"Yes"| A["Authorize tool and arguments"]
+    A --> X["Execute tool"]
+    X --> R["Record result"]
+    R --> P
+    A -->|"High risk"| H["Human approval"]
+    H --> X
+`} />
+
+The [ReAct paper](https://arxiv.org/abs/2210.03629) showed a pattern that combines reasoning and action. Modern agent systems use related loops to select tools and react to their results.
+
+Every tool needs a narrow contract:
+
+- clear name and purpose;
+- typed input schema;
+- typed output schema;
+- authentication context;
+- authorization rules;
+- timeout;
+- idempotency behavior;
+- rate limit;
+- audit event;
+- safe error message.
+
+Do not give the model a general database connection or a powerful shell when a small business API can do the job.
+
+The [Model Context Protocol](https://modelcontextprotocol.io/docs/2026-07-28/getting-started/intro) provides a standard way for AI applications to connect to tools and data sources. A standard protocol helps integration, but it does not decide who may use a tool. Authorization and policy still belong to the product.
+
+### State and memory
+
+Agent memory can mean different things:
+
+- **Conversation state:** messages in the current session.
+- **Workflow state:** completed steps, pending steps, and tool results.
+- **User memory:** approved preferences saved across sessions.
+- **Knowledge:** documents retrieved from an external store.
+
+Do not put every old conversation into a vector database and call it memory. Decide what must be stored, why it is useful, how long it stays, and how the user can remove it.
+
+Workflow state should be durable when the task can run for a long time. The agent may need to resume after a process crash or wait for human approval.
+
+### Single agent and multi-agent patterns
+
+One agent is easier to trace, test, and stop. Start there unless separate roles solve a measured problem.
+
+Multi-agent systems can use several patterns:
+
+- **Orchestrator-worker:** one controller assigns bounded tasks to workers.
+- **Router-specialist:** a router sends the request to one specialist.
+- **Parallel workers:** independent workers run at the same time and their results are combined.
+- **Review loop:** one agent produces a result and another checks it.
+- **Handoff:** one agent transfers state and ownership to another.
+
+More agents do not automatically create a better answer. They add model calls, latency, cost, state, permissions, and more failure paths.
+
+For every agent, define:
+
+- its goal;
+- the context it can read;
+- the tools it can call;
+- the budget and stop condition;
+- the state it owns;
+- how another agent or person can inspect its work.
+
+## Model Serving: Latency, Throughput, and Cost
+
+A hosted model API hides GPU operations, but the product still owns latency, concurrency, rate limits, and cost.
+
+{/* IMAGE PROMPT (model-serving-batching.png): Blue serving infographic with exact labels REQUESTS, BATCH, MODEL, RESULTS, WAIT, and COST. Show requests grouped for efficient inference. Each label once; no other text. */}
+
+![Model serving batches requests while balancing wait time and cost](/assets/images/blogs/practical-ai-system-design/model-serving-batching.png)
+
+For self-hosted models, the serving layer may include:
+
+- model replicas;
+- GPU scheduling;
+- request queues;
+- dynamic batching;
+- model loading and warm-up;
+- autoscaling;
+- token streaming;
+- memory limits.
+
+NVIDIA Triton's [dynamic batching guide](https://docs.nvidia.com/deeplearning/triton-inference-server/user-guide/docs/user_guide/batcher.html) explains how the server can combine requests into a batch to improve throughput. Waiting for a larger batch can also add latency. The right batch size depends on the latency budget and model performance.
+
+### Control the latency budget
+
+Break the request into parts:
+
+```text
+authentication
++ retrieval
++ reranking
++ model queue
++ model generation
++ tool calls
++ validation
+= end-to-end latency
+```
+
+Optimizing only model speed may not fix a slow product.
+
+### Control cost per useful result
+
+Track:
+
+- input tokens;
+- output tokens;
+- retrieval and reranking cost;
+- tool calls;
+- retry count;
+- model route;
+- cache savings;
+- cost per completed task.
+
+Cost per request can hide poor quality. A cheap answer that causes the user to repeat the task is not always cheaper.
+
+## Caching in AI Systems
+
+Different caches solve different problems.
+
+- **Document cache:** avoids reading the same source repeatedly.
+- **Embedding cache:** avoids rebuilding an unchanged embedding.
+- **Retrieval cache:** reuses results for a stable query and index version.
+- **Prompt prefix cache:** reuses repeated prompt input when the provider supports it.
+- **Response cache:** returns a previous answer for safe repeated requests.
+- **Model cache:** keeps model weights ready in memory.
+
+Semantic caching matches similar requests, not only equal strings. It can reduce repeated model work, but it can also return an answer from the wrong context.
+
+Include important dimensions in the cache key:
+
+- tenant;
+- user role;
+- language;
+- model version;
+- prompt version;
+- knowledge-base version;
+- policy version.
+
+Never let one tenant receive another tenant's cached private answer.
+
+## Evaluation Is Part of the Architecture
+
+Normal tests check deterministic behavior. AI evaluation checks behavior that may vary.
+
+{/* IMAGE PROMPT (evaluation-release-loop.png): Blue release infographic with exact gates TEST, EVALUATE, CANARY, MONITOR, and feedback stage IMPROVE. Each label once; no other text. */}
+
+![An AI release moves through tests, evaluation, canary rollout, monitoring, and improvement](/assets/images/blogs/practical-ai-system-design/evaluation-release-loop.png)
+
+OpenAI's [evaluation guide](https://developers.openai.com/api/docs/guides/evals) describes evals as tests that compare model outputs with style and content criteria. The key idea is wider than one tool: define expected behavior, build a representative dataset, run the system, and grade the result.
+
+Use several layers.
+
+### Unit and contract tests
+
+Test normal code:
+
+- tool schema;
+- access filters;
+- output parser;
+- retry policy;
+- state transition;
+- redaction;
+- deterministic business rules.
+
+### Offline evaluation
+
+Keep a versioned set of cases:
+
+- common cases;
+- edge cases;
+- past failures;
+- adversarial inputs;
+- different languages;
+- different customer groups;
+- cases that should refuse;
+- cases that need human handoff.
+
+Grade the whole system, not only the final model text. For RAG, check retrieval and answer grounding. For tools, check tool selection and arguments. For agents, check the full path and final state.
+
+### Online evaluation
+
+Measure production signals:
+
+- user correction;
+- task completion;
+- escalation rate;
+- tool failure;
+- refusal rate;
+- latency;
+- cost;
+- safety event;
+- human review result.
+
+Do not treat a thumbs-up button as a complete quality metric. Many users never click it.
+
+### Human evaluation
+
+People are still needed when quality depends on context, policy, or harm.
+
+Give reviewers a clear rubric. Without one, two reviewers may grade the same answer in different ways.
+
+## Deploy Prompts and Models Like Code
+
+An AI release can change through:
+
+- model version;
+- prompt version;
+- tool description;
+- retrieval logic;
+- chunking;
+- embedding model;
+- safety policy;
+- system code;
+- source data.
+
+Record these versions together.
+
+A safe release may use:
+
+1. offline evaluation;
+2. shadow traffic;
+3. internal users;
+4. a small production group;
+5. an A/B or canary test;
+6. wider rollout;
+7. rollback if quality or safety drops.
+
+For predictive ML, Google describes several automation levels in its [MLOps architecture guide](https://cloud.google.com/architecture/mlops-continuous-delivery-and-automation-pipelines-in-machine-learning), from manual training to automated pipelines and CI/CD.
+
+Automation should include gates. A newly trained model should not enter production only because training completed.
+
+## Reliability: Plan for Poor Answers and Failed Dependencies
+
+AI systems fail in two broad ways:
+
+- **System failure:** timeout, provider outage, rate limit, broken tool, missing index.
+- **Quality failure:** wrong answer, weak retrieval, unsafe output, bad action.
+
+Design for both.
+
+<MermaidDiagram chart={`
+flowchart TD
+    R["AI request"] --> P["Primary path"]
+    P -->|"Good result"| O["Return result"]
+    P -->|"Timeout or overload"| F["Smaller model or fixed workflow"]
+    P -->|"Low confidence or missing source"| H["Human handoff"]
+    P -->|"Unsafe or forbidden"| X["Block and audit"]
+    F --> O
+    H --> O
+`} />
+
+Possible fallbacks include:
+
+- return search results instead of a generated answer;
+- use a smaller model;
+- use a fixed rule or workflow;
+- return a cached approved answer;
+- ask the user for more information;
+- hand off to a person;
+- stop without taking an action.
+
+Set limits on:
+
+- total model calls;
+- total tool calls;
+- workflow duration;
+- token use;
+- money spent;
+- repeated failed steps;
+- concurrent workflows.
+
+An agent that cannot decide when to stop is an operational incident waiting to happen.
+
+## Security: Treat Model Input and Output as Untrusted
+
+An LLM reads natural language, and natural language can contain instructions from users, documents, websites, and tool results.
+
+The [OWASP Top 10 for LLM applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/) includes prompt injection, insecure output handling, sensitive information disclosure, excessive agency, and overreliance.
+
+Input validation alone cannot stop prompt injection. Use layers:
+
+- separate system policy from untrusted content;
+- authorize every tool call outside the model;
+- use allowlists for tools and arguments;
+- limit data retrieval by user and tenant;
+- treat model output as untrusted input to the next component;
+- require approval for high-impact actions;
+- redact secrets and sensitive data;
+- isolate code execution;
+- log actions without leaking private content;
+- test adversarial cases.
+
+For a support agent, reading an order and refunding an order are different permissions. The model should not gain write access only because it can explain the refund policy.
+
+NIST's [AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework) organizes AI risk work around governing, mapping, measuring, and managing risk. A useful lesson for architecture is that safety is an ongoing process, not one model filter at the end.
+
+## Privacy, Compliance, and Data Governance
+
+AI systems may copy sensitive data into more places than a normal request path: training datasets, feature stores, vector indexes, prompts, traces, evaluation sets, and model artifacts.
+
+Map the full data lifecycle:
+
+1. collection;
+2. consent and allowed purpose;
+3. storage and access;
+4. training or retrieval use;
+5. logging and evaluation;
+6. retention and deletion.
+
+Useful controls include:
+
+- collect only needed data;
+- separate tenants and access roles;
+- encrypt data in transit and at rest;
+- mask or tokenize identifiers;
+- remove secrets before prompts and logs;
+- record dataset lineage;
+- test whether private data can appear in output;
+- support retention and deletion requests;
+- review where providers process and store data.
+
+Some predictive systems also use privacy-preserving methods such as differential privacy or federated learning. These methods solve specific risks and can reduce model utility or add system cost. They are design choices, not automatic compliance.
+
+Governance also needs ownership. Name who can approve a dataset, model, prompt, tool, and policy change. Keep an audit trail that connects a production result to the versions that created it.
+
+## Human Approval Is a System State
+
+Do not implement human review as an informal message to someone.
+
+The workflow needs durable states:
+
+```text
+RUNNING
+WAITING_FOR_APPROVAL
+APPROVED
+REJECTED
+EXPIRED
+COMPLETED
+FAILED
+```
+
+Store:
+
+- proposed action;
+- input and supporting evidence;
+- model, prompt, and policy versions;
+- approver;
+- approval time;
+- final tool result;
+- audit event.
+
+The action may expire while waiting. Before execution, check permissions and current business state again.
+
+Human approval is useful for high-impact actions. It should not become a hidden queue where every low-risk request waits for a person.
+
+## Observability for AI Products
+
+Traditional system metrics still matter:
+
+{/* IMAGE PROMPT (ai-observability.png): Bright blue observability infographic on a warm-white background, tracing one AI request across retrieval, model, tools, and answer. Exact labels TRACE, QUALITY, LATENCY, COST, FAILURES, and FEEDBACK; each once and no other text. */}
+
+![AI observability traces the whole request and its quality, latency, cost, failures, and feedback](/assets/images/blogs/practical-ai-system-design/ai-observability.png)
+
+- request rate;
+- error rate;
+- latency;
+- saturation;
+- queue depth;
+- dependency health.
+
+AI adds more questions:
+
+- Which model and prompt version ran?
+- Which documents were retrieved?
+- Which tool did the agent choose?
+- Why was a request blocked or handed off?
+- How many tokens and tool calls did it use?
+- Did quality change after a release?
+- Did one tenant create unusual cost?
+- Are inputs or outputs drifting?
+
+Trace the whole workflow with one request or task ID. Record each model call, retrieval, tool call, approval, and fallback.
+
+Be careful with logs. Prompts, retrieved documents, and tool results may contain PII, credentials, or confidential data. Store only what the team needs and apply retention rules.
+
+## A Practical Support Assistant Design
+
+Let us combine the parts.
+
+{/* IMAGE PROMPT (support-assistant-routing.png): Blue cartoon support infographic with exact labels QUESTION, ROUTE, ANSWER, HUMAN, APPROVAL, and LEARN. Show automation, human handoff, approval, and feedback. Each label once; no other text. */}
+
+![A practical support assistant routes work to an answer, a human, or an approval gate](/assets/images/blogs/practical-ai-system-design/support-assistant-routing.png)
+
+The support assistant must:
+
+- answer product questions from approved documents;
+- show sources;
+- look up an order after user authentication;
+- create a support ticket;
+- send sensitive or unclear cases to a person;
+- never change payment or account state without approval.
+
+<MermaidDiagram chart={`
+flowchart LR
+    U["Customer"] --> G["Support API"]
+    G --> A["Auth and policy"]
+    A --> R["Router"]
+
+    R -->|"Product question"| K["RAG retrieval"]
+    K --> M["Model"]
+
+    R -->|"Order question"| O["Read-only order tool"]
+    O --> M
+
+    R -->|"Create ticket"| T["Ticket tool"]
+    T --> M
+
+    R -->|"Sensitive or unclear"| H["Human support"]
+    M --> V["Grounding and safety checks"]
+    V --> U
+
+    G --> L["Trace and audit store"]
+    K --> L
+    M --> L
+    O --> L
+    T --> L
+`} />
+
+### Request flow
+
+1. Authenticate the user.
+2. Apply tenant, customer, and data policy.
+3. Route the request.
+4. Retrieve documents or call a narrow tool.
+5. Generate a response.
+6. Check grounding, policy, and tool result.
+7. Return, refuse, or hand off.
+8. Record the trace and evaluation signals.
+
+### Why the router matters
+
+The router keeps deterministic tasks deterministic.
+
+An order lookup does not need an autonomous agent. The system can call a read-only API with a typed order ID. The model can explain the result after the API returns.
+
+### Why human support remains
+
+The assistant may lack a source, face a sensitive case, or receive conflicting data. Handoff is a valid product result.
+
+### What to Test First
+
+- unsupported questions;
+- private data from another customer;
+- old policy documents;
+- prompt injection inside a document;
+- provider timeout;
+- ticket tool called twice;
+- order API returns partial data;
+- user changes permissions during a long task;
+- answer has no supporting passage;
+- expensive loop with repeated model calls.
+
+This design is larger than one model call because the requirements pushed it there.
+
+## A Coaching Method for AI System Design
+
+Start with the product, not the model.
+
+1. Define the user and useful outcome.
+2. Name the AI system type.
+3. Choose quality, latency, safety, and cost goals.
+4. Build the smallest useful version.
+5. Separate deterministic rules from model decisions.
+6. Draw the data and request paths.
+7. Add evaluation before adding more autonomy.
+8. Add tools with narrow permissions.
+9. Plan failure, fallback, and human handoff.
+10. Record versions and ownership.
+
+Useful coaching questions include:
+
+- Why does this step need AI?
+- What happens when the model is wrong?
+- How will we know quality changed?
+- Which data was available at decision time?
+- Can the user see or remove stored memory?
+- Can this tool call run twice safely?
+- Which action needs human approval?
+- What is the cost per successful task?
+- Can a fixed workflow solve this more safely?
+- How do we roll back the model, prompt, data, or index?
+
+## A Practical AI System Design Checklist
+
+```text
+User and outcome:
+AI system type:
+Why AI is needed:
+Deterministic alternative:
+
+Quality metrics:
+Latency target:
+Cost limit:
+Safety and compliance needs:
+Human review boundary:
+
+Data sources and owners:
+Data quality checks:
+Training or indexing path:
+Online request path:
+Model, prompt, and data versions:
+
+Retrieval strategy:
+Tool contracts and permissions:
+Workflow state and memory:
+Caching:
+
+Offline evaluation set:
+Online quality signals:
+Failure and fallback:
+Security controls:
+Observability and audit:
+
+Deployment and rollback:
+Owner:
+Revisit when:
+```
+
+Use only the fields that fit the system. A small classifier does not need an agent memory design. A tool-using support agent does.
+
+## Final Thoughts
+
+AI System Design is still System Design.
+
+The system needs clear requirements, APIs, data ownership, failure handling, security, monitoring, cost control, and a team that can operate it.
+
+AI adds another layer of uncertainty:
+
+- data can change;
+- model behavior can change;
+- retrieval can miss;
+- output can be wrong while looking confident;
+- agents can choose an unsafe action;
+- quality can fall without a normal server error.
+
+The answer is not to add every AI component. Start with the smallest useful product. Add retrieval when knowledge is missing. Add workflows when one call is not enough. Add agents when flexible decisions are worth the extra cost and risk.
+
+Then make evaluation, safety, fallback, and ownership part of the architecture from the beginning.
+
+That is the path from a model call to a reliable product.

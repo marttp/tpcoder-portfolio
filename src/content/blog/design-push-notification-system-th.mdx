@@ -34,7 +34,6 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 
 แล้วก็ปิดท้ายด้วย product layer ที่เป็นตัวตัดสินว่าที่อุตส่าห์ส่งไปเนี่ย มันคุ้มจะส่งมั้ย: **templating, personalization แล้วก็การแยกประเภท notification ตาม type**
 
-![ภาพรวม architecture ของ push notification pipeline ตัวเต็ม](/assets/images/blogs/design-push-notification-system/hero-pipeline.png)
 
 ---
 
@@ -558,4 +557,3 @@ flowchart LR
 ขอเล่าเรื่อง love–hate ของการทำงานกับ push หน่อย: มันเป็นหนึ่งในไม่กี่ระบบที่ให้ feedback loop กับผมแบบเกือบ ๆ **ทันที** หลัง deploy ผม deploy ของลงไป แล้วก็เดินไปเป็น user ซะเอง — สั่งของออนไลน์สักอย่าง — แล้วก็นั่งรอเสียงเด้ง notification เด้งมามั้ย? เยี่ยมเลย เงียบกริบเหรอ? จบเห่ แล้วก็รู้ทันทีเลยว่าวันที่เหลือของผมจะเป็นยังไงต่อ
 
 ตอนที่ย้าย FCM integration ไปใช้ SDK ตัวใหม่ ผมเทสต์ทุกเส้นทางเท่าที่เทสต์ได้ในโค้ดเลยนะ… แล้วสุดท้ายก็ยังเดินไป 7-11 หัวมุมถนน กดซื้อของขึ้นมาซะงั้น เพื่อจะดูว่า transactional push มันเด้งเข้ามือถือตัวเองมั้ย ก่อนจะกล้าเชื่อใจมัน automated test มันก็ดีงามแหละ — แต่ไม่มีอะไรทำให้ใจผมนิ่งลงได้เท่ากับใบเสร็จตัวเป็น ๆ ที่เด้งอยู่ในกระเป๋าหรอก 😅
-

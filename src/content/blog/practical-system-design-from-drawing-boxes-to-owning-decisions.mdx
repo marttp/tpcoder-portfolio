@@ -1,0 +1,935 @@
+---
+title: "Practical System Design: From Drawing Boxes to Owning Decisions"
+description: "A practical guide to System Design: start from the problem, build the smallest useful system, add constraints one at a time, and understand the decisions your team must own."
+pubDate: "2026-08-02"
+tags:
+  ["Software Architecture", "Software Engineering", "Backend", "System Design"]
+heroImage: "/assets/images/blogs/practical-system-design/hero-banner.png"
+language: "en"
+servicesNote: true
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+{/* IMAGE PROMPT (hero-banner.png): Wide modern 2D cartoon infographic on a warm-white and pale-mint background. Use forest green and emerald as the main colors, with mint, charcoal, and small amber or coral accents. Show an engineer starting with one small service, then growing it through a database, queue, workers, protection, monitoring, and two regions. End with clear ownership of the production result. No text, logos, watermark, dark background, glossy 3D, glass, or photorealism. */}
+
+
+## Why This Guide Exists
+
+When people learn System Design, they often see a large diagram first. It has load balancers, caches, queues, databases, workers, regions, and many arrows.
+
+The diagram may look impressive. But it does not explain the most important part: **why did the system need each box?**
+
+Adding a component is easy to explain. The harder part is explaining why the component belongs there, what can fail, and who must care for it later.
+
+This guide started from two detailed references: the [complete System Design guide](https://www.systemdesignhandbook.com/guides/system-design-interview/) and its [senior engineer questions](https://www.systemdesignhandbook.com/guides/system-design-interview-questions-for-senior-software-engineer/). They give a wide map of principles, building blocks, and large-system questions.
+
+This guide takes a different path. It does not cover the interview process or provide a list of answers to remember. It is a practical way to coach someone through System Design knowledge.
+
+The main idea is simple:
+
+**System Design is the work of turning a problem into a system that people can build, run, change, and own.**
+
+We will start with one small system. Then we will add real constraints one at a time. Along the way, we will cover the main building blocks, data decisions, failure handling, security, operations, and engineering judgment.
+
+This guide cannot cover every type of system. No guide can. Its goal is to help you ask better questions when the next system looks different.
+
+## Start with the Problem, Not the Components
+
+Let us use one running example: a multi-tenant employee onboarding platform.
+
+An HR user creates an onboarding case, selects the employee's role and location, applies an onboarding plan, and sets a start date. The system schedules work for HR, IT, payroll, and other approved services. It also tracks which steps are complete.
+
+Before drawing anything, ask what the system must do.
+
+### Functional requirements
+
+These describe user-visible behavior:
+
+- create and edit an onboarding case;
+- register an employee and apply the correct onboarding plan;
+- schedule tasks from the employee's start date;
+- pause or cancel the case before automated work starts;
+- assign tasks to people and approved integrations;
+- show the progress of each onboarding step.
+
+### Non-functional requirements
+
+These describe how well the system must work:
+
+- **Correctness:** keep each employee in the correct tenant and apply the correct plan.
+- **Availability:** scheduled work should start even if one server fails.
+- **Durability:** an accepted schedule should not disappear.
+- **Scale:** the system may handle large seasonal hiring runs across many tenants.
+- **Security:** only approved HR staff and services can access employee data or start sensitive tasks.
+- **Auditability:** the team must know who changed what and when.
+
+Do not write every possible requirement. Find the ones that change the design.
+
+For example, a one-minute delay may be fine when creating a welcome checklist. It may be unacceptable when the system must revoke access for an employee who has left. Both are HR workflows, but the system goals are different.
+
+Ask these questions before choosing technology:
+
+1. Who uses the system?
+2. What must never happen?
+3. What can happen later?
+4. What data can we lose?
+5. What happens if a dependency is unavailable?
+6. Which action has a real business or customer cost?
+
+These questions give the diagram a reason to exist.
+
+{/* IMAGE PROMPT (requirements-first.png): Wide modern green 2D cartoon infographic on a light background. Show different user and business situations becoming a problem definition, clear requirements, real constraints, and an architecture plan. Render only these labels once: PROBLEM, REQUIREMENTS, CONSTRAINTS, DESIGN. */}
+
+![Customer needs become requirements and system constraints](/assets/images/blogs/practical-system-design/requirements-first.png)
+
+## Core Quality Goals Pull the Design in Different Directions
+
+A system cannot maximize every quality at the same time. The requirements must say which goals matter most.
+
+- **Scalability** is the ability to handle more users, data, or work.
+- **Performance** describes speed and resource use. Latency and throughput are common measures.
+- **Availability** describes how often the service can accept useful work.
+- **Reliability** describes whether the service keeps producing the correct result over time.
+- **Consistency** describes when different readers see the same data state.
+- **Security** controls who can access data and actions.
+
+Availability and reliability are related, but they are not equal. A service can respond while returning stale or wrong data. That service is available, but it is not reliable.
+
+Turn broad goals into measurable targets:
+
+- p95 and p99 latency;
+- requests or jobs per second;
+- maximum queue age;
+- accepted error rate;
+- recovery time objective, or RTO;
+- recovery point objective, or RPO;
+- data freshness;
+- monthly availability target.
+
+For example, 99.9% monthly availability allows about 43 minutes of downtime. A higher target needs more redundancy, testing, automation, and cost. Choose the target from business impact, not from habit.
+
+## Estimate Only What Can Change the Design
+
+Estimation is useful when it changes a decision. It is not a contest to produce a perfect number.
+
+Suppose a large customer imports 100,000 seasonal employees. Each onboarding plan creates an average of 50 automated and human tasks, with an average task record of 2 KB.
+
+We can ask:
+
+- How many tasks will the onboarding run create?
+- How long may the full run take?
+- Can identity, payroll, and equipment integrations accept the peak request rate?
+- How much execution history must we store?
+- Is the traffic steady or does it arrive in large bursts?
+
+The import creates about 5 million tasks. If one queue message contains 500 tasks, the onboarding run creates about 10,000 queue messages.
+
+```text
+100,000 employees x 50 tasks / 500 tasks per chunk = 10,000 chunks
+```
+
+That number tells us more than the total user count. It helps us think about queue size, worker concurrency, progress tracking, retry scope, and operational tools.
+
+Not every number needs the same attention:
+
+- **Request rate matters** when it may overload a service or dependency.
+- **Record size matters** when storage or network cost is large.
+- **Read-to-write ratio matters** when caching may help.
+- **Peak traffic matters** when averages hide bursts.
+- **Recovery time matters** when a long outage has business impact.
+
+If a number does not change the design, keep moving.
+
+{/* IMAGE PROMPT (estimate-for-decisions.png): Wide modern green 2D cartoon infographic on a light background. Show request volume, data growth, a sharp traffic peak, and a capacity plan with headroom. Render only these labels once: TRAFFIC, STORAGE, PEAK, CAPACITY. */}
+
+![Estimation connects traffic, storage, peak load, and system capacity](/assets/images/blogs/practical-system-design/estimate-for-decisions.png)
+
+## Build the Smallest Useful System
+
+The first version can be very small.
+
+{/* IMAGE PROMPT (start-small.png): Wide modern green 2D cartoon infographic on a light background. Show a small working service, an engineer learning from users and operational evidence, and a larger design that adds components only when needed. Render only these labels once: START, LEARN, GROW. */}
+
+![A small useful system with room to grow](/assets/images/blogs/practical-system-design/start-small.png)
+
+<MermaidDiagram chart={`
+flowchart LR
+    U["HR user"] --> A["Application"]
+    A --> D["Database"]
+    A --> P["HR and IT integrations"]
+`} />
+
+The application stores the onboarding case and schedule in a database. A timer checks for due tasks and calls the required integration.
+
+For a small team and low volume, this may be enough. It is easy to understand, deploy, and debug.
+
+Do not call it naive as an insult. A small design is often the right design for a small problem.
+
+Before adding anything, make this version safe:
+
+- store timestamps in a clear time zone, usually UTC;
+- use a durable database, not process memory, for accepted schedules;
+- record task attempts;
+- make integration calls idempotent when possible;
+- protect onboarding case creation with authentication and authorization.
+
+Then wait for a constraint to push the design forward.
+
+## Let Constraints Add the Building Blocks
+
+A building block should answer a problem. It should not appear because every architecture diagram has one.
+
+Here is the evolution at a high level:
+
+<MermaidDiagram chart={`
+flowchart TD
+    V1["One application\nand one database"] -->|"More traffic"| V2["Load-balanced\napplication replicas"]
+    V2 -->|"Repeated reads"| V3["Add cache\nwhere it helps"]
+    V3 -->|"Slow or bursty work"| V4["Queue and workers"]
+    V4 -->|"Large data"| V5["Partition data\nand work"]
+    V5 -->|"Failure isolation"| V6["Separate boundaries\nand recovery paths"]
+`} />
+
+### Scale up or scale out
+
+There are two basic ways to add capacity:
+
+- **Vertical scaling:** give one machine more CPU, memory, disk, or network capacity.
+- **Horizontal scaling:** add more machines and spread the work between them.
+
+Vertical scaling is often simpler. It has a hardware limit and can leave one large failure point. Horizontal scaling can grow further and isolate failures, but it needs load distribution, partitioning, coordination, and operational tools.
+
+Many systems use both. A database may first move to a larger machine. Application servers may scale out because they are easier to keep stateless.
+
+### CDN and edge delivery
+
+A content delivery network, or CDN, stores cacheable content close to users. It is useful for images, video, JavaScript, downloads, and public API responses that can be cached safely.
+
+A CDN can reduce origin traffic and user latency. It also adds decisions:
+
+- cache key;
+- cache duration;
+- invalidation;
+- private versus public content;
+- regional rules;
+- behavior when the origin is unavailable.
+
+Do not cache private content with a key that ignores the user or tenant.
+
+### Load balancer: when one application is not enough
+
+A load balancer sends traffic across several application instances.
+
+It helps when:
+
+- one instance cannot handle the traffic;
+- you need to deploy without stopping all traffic;
+- one unhealthy instance must be removed;
+- requests should go to a nearby region or zone.
+
+It also creates new questions:
+
+- Is the application stateless?
+- Where does session state live?
+- How does the load balancer know an instance is healthy?
+- What happens when all instances are overloaded?
+
+A health check should test useful readiness, not only whether the process is alive. A server can answer HTTP while its database pool is exhausted.
+
+### API gateway and rate limiting
+
+An API gateway can provide one entry point for authentication, routing, request limits, protocol changes, and shared logging. It is useful when many clients call many services. It can also become a large shared failure point, so keep its work bounded and run it with redundancy.
+
+Rate limiting protects capacity and fair use. Common policies include:
+
+- a fixed or sliding time window;
+- a token bucket that allows a controlled burst;
+- a leaky bucket that smooths traffic;
+- concurrency limits for expensive work;
+- quotas per user, tenant, API key, or region.
+
+Return a clear error and retry time when possible. A limit without client guidance often creates aggressive retries.
+
+### Database: choose from the access pattern
+
+The database choice starts with how the system reads and writes data.
+
+{/* IMAGE PROMPT (choose-for-access-pattern.png): Wide modern green 2D cartoon infographic on a light background. Show query and access-pattern icons leading to tabular, document, key-value, graph, time-series, and file-shaped data, then to matching storage families. Render only these labels once: QUERY, DATA SHAPE, STORAGE. */}
+
+![Different access patterns lead to different data designs](/assets/images/blogs/practical-system-design/choose-for-access-pattern.png)
+
+For the onboarding system, the main records may include:
+
+- onboarding case;
+- employee profile reference;
+- onboarding plan;
+- scheduled task;
+- task attempt;
+- audit event.
+
+A relational database is a good first choice when the system needs transactions, clear relationships, and flexible operational queries.
+
+A key-value or wide-column store can help when access is simple and volume is very large. But the data model must match the query. A distributed database does not remove data modeling. It makes the access pattern even more important.
+
+Different storage families solve different shapes of work:
+
+- **Relational:** transactions, relationships, constraints, and flexible queries.
+- **Key-value:** fast lookup through a known key.
+- **Document:** records with flexible nested fields.
+- **Wide-column:** very large data grouped around known partition keys.
+- **Time-series:** timestamped metrics and events with retention rules.
+- **Graph:** deep relationship traversal.
+- **Object storage:** large files and immutable data at low cost.
+- **Search index:** text search, ranking, filtering, and aggregation.
+- **Vector index:** similarity search over embeddings.
+
+One product may use several stores. Keep one source of truth for each fact, and state how derived stores are updated and repaired.
+
+Discord described this lesson in its article about [storing trillions of messages](https://discord.com/blog/how-discord-stores-trillions-of-messages). The company had 177 Cassandra nodes in early 2022. Hot partitions, read cost, compaction, and operational toil became serious problems. Discord changed the database and also added a data service that reduced direct database access from product services.
+
+The lesson is not that Cassandra is bad or ScyllaDB is always better. The lesson is that data shape, access pattern, hotspots, and team operations belong in the same decision.
+
+### Cache: save work that repeats
+
+A cache keeps data in a faster place for a limited time.
+
+It can help with:
+
+- onboarding plans read many times;
+- role and location policies used by many workers;
+- integration credentials or routing rules;
+- expensive read queries with acceptable staleness.
+
+It does not help every read. Ask:
+
+- Is the data read often enough?
+- How stale may it be?
+- What happens on a cache miss?
+- How is the cache invalidated?
+- Can a popular key become a hotspot?
+- What happens when the whole cache is cold?
+
+Meta built TAO because its social graph had a large, read-heavy workload that did not fit a simple database cache well. The [TAO engineering article](https://engineering.fb.com/2013/06/25/core-infra/tao-the-power-of-the-graph/) explains how Meta created a graph-focused data abstraction over MySQL and distributed caching. The abstraction also reduced the amount of cache and database knowledge each product engineer needed.
+
+That last part matters. A platform can improve scale and make the safer path easier for other teams.
+
+### Queue and workers: move slow work off the request path
+
+Processing millions of onboarding tasks inside one HTTP request will not work well. The request will time out, and one failure may restart too much work.
+
+A queue separates accepting work from doing work.
+
+<MermaidDiagram chart={`
+flowchart LR
+    A["Onboarding API"] --> D["Onboarding DB"]
+    S["Scheduler"] --> D
+    S --> Q["Task queue"]
+    Q --> W1["Worker 1"]
+    Q --> W2["Worker 2"]
+    Q --> W3["Worker N"]
+    W1 --> P["HR and IT integrations"]
+    W2 --> P
+    W3 --> P
+    W1 --> R["Task results"]
+    W2 --> R
+    W3 --> R
+`} />
+
+This design helps with:
+
+- burst absorption;
+- worker scaling;
+- retrying a small unit of work;
+- pausing processing without losing the onboarding run;
+- tracking progress per chunk.
+
+But the queue adds ownership:
+
+- the same task may run more than once;
+- queue items may arrive out of order;
+- poison tasks may fail every time;
+- old work may sit behind new work;
+- the queue may grow faster than workers can drain it.
+
+The queue does not create reliability by itself. The producer, consumer, data model, and recovery process must agree on the processing rules.
+
+### Real-time connections and offline clients
+
+Polling is simple, but it can waste requests when updates are rare. WebSockets or server-sent events let the server push updates over a long-lived connection.
+
+Long-lived connections add different pressure:
+
+- connection count;
+- heartbeat and timeout handling;
+- connection routing;
+- reconnect storms;
+- delivery order;
+- slow clients;
+- regional failover.
+
+Typing indicators can be best-effort because a missed signal has low cost. A message or payment status needs durable storage and acknowledgment.
+
+Offline clients need a synchronization rule. A common design stores a cursor or version per client. After reconnecting, the client asks for changes after that point instead of downloading everything again.
+
+Plan for:
+
+- duplicate updates;
+- events that arrive out of order;
+- deleted records;
+- one user with several devices;
+- a cursor that is too old;
+- a full snapshot when delta sync cannot continue.
+
+### Object storage: keep large immutable data outside the database
+
+Suppose one bulk onboarding run imports 100,000 employees with documents and task inputs. Storing the full import inside one database row is not useful.
+
+An object store can hold the original import, employee documents, or pre-built task chunks. The database stores the object key, checksum, size, version, and processing status.
+
+This works well when:
+
+- the data is large;
+- workers read it in batches;
+- the object is immutable after creation;
+- a later audit may need the exact import version.
+
+### Distributed files and chunk size
+
+Very large files are often split into chunks and stored across machines or objects. Chunk size changes the system.
+
+- Larger chunks create less metadata and fewer network calls.
+- Smaller chunks allow more parallel work and reduce the retry size.
+- Very large chunks can create hotspots and slow recovery.
+- Very small chunks can overload the metadata service.
+
+A distributed file service also needs:
+
+- chunk placement;
+- replication;
+- checksums;
+- garbage collection;
+- re-replication after failure;
+- metadata backup;
+- repair and rebalancing tools.
+
+Choose chunk size from file size, read pattern, write pattern, retry cost, and metadata capacity. There is no useful default for every workload.
+
+The trade-off is that object storage is not a normal database. Updating one user in a large file is expensive. Point lookups may need a separate index or membership store.
+
+### Search index: support queries the main database cannot serve well
+
+A search engine can help when users need full-text search, filtering across many fields, relevance ranking, or fast aggregation.
+
+Keep the source of truth clear. The search index is often a derived read model. Updates flow from the main database through an outbox or change stream.
+
+If indexing is asynchronous, the UI may show stale results. That can be acceptable for onboarding case search. It may not be acceptable for access or security policy checks.
+
+## Design the Data Flow, Not Only the Boxes
+
+Two diagrams can contain the same boxes and still describe different systems. The arrows matter.
+
+{/* IMAGE PROMPT (observable-data-flow.png): Wide modern green 2D cartoon infographic on a light background. Show a complete request and data flow with durable state, asynchronous work, monitoring, and a visible outcome. Render only these labels once: ACCEPT, STORE, QUEUE, PROCESS, RESULT. */}
+
+![A complete data flow connects input, processing, delivery, and operations](/assets/images/blogs/practical-system-design/observable-data-flow.png)
+
+For every important flow, write the steps:
+
+1. What starts the flow?
+2. Which service accepts it?
+3. Where is the durable state written?
+4. Which event or message is created?
+5. Who performs the slow work?
+6. Where is the result stored?
+7. How does the caller learn the result?
+
+The onboarding flow may look like this:
+
+<MermaidDiagram chart={`
+sequenceDiagram
+    participant U as HR user
+    participant A as Onboarding API
+    participant D as Database
+    participant S as Scheduler
+    participant Q as Queue
+    participant W as Worker
+    participant P as HR and IT integrations
+
+    U->>A: Create scheduled onboarding run
+    A->>D: Save run and onboarding plan
+    A-->>U: Accepted with onboarding run ID
+    S->>D: Claim due run
+    S->>Q: Publish task chunks
+    Q->>W: Process one chunk
+    W->>P: Execute integration tasks
+    P-->>W: Result
+    W->>D: Store onboarding progress
+`} />
+
+This sequence exposes questions that a box diagram hides:
+
+- Can two scheduler instances claim the same onboarding run?
+- What if the database commit succeeds but queue publishing fails?
+- What if the integration succeeds but the worker times out?
+- Can the worker safely process the same chunk again?
+
+Those questions lead us to correctness.
+
+## Correctness: Idempotency, Ordering, and Consistency
+
+Distributed systems often repeat work. Networks time out. Workers crash after completing an external call. Clients retry because they do not know what happened.
+
+### Idempotency
+
+An idempotent operation can run more than once without creating a different final result.
+
+For onboarding run creation, the client may send an idempotency key. The server stores the key with the result of the first accepted request. A retry with the same key returns that result instead of creating another run.
+
+[Stripe uses idempotency keys](https://docs.stripe.com/api/idempotent_requests) for POST requests so clients can retry safely after a network error. A local system can use the same idea at API, queue, and integration boundaries.
+
+Useful deduplication keys include:
+
+- `onboarding_run_id + employee_id + task_type`;
+- `onboarding_run_id + chunk_id`;
+- a client-provided request key;
+- an integration request key.
+
+Idempotency needs durable state. An in-memory set disappears when the process restarts.
+
+### Ordering
+
+Not every event needs global order.
+
+Ask what must be ordered:
+
+- all onboarding runs in the whole company;
+- tasks for one employee;
+- state changes for one onboarding case;
+- events inside one task chunk.
+
+Ordering a small key, such as one onboarding case or one employee, is easier than ordering the whole system.
+
+If order matters, partition messages by that key and protect state transitions in the database. Still plan for delayed and duplicate messages.
+
+### Consistency
+
+Consistency is not one switch between strong and eventual. Different data can need different rules.
+
+- Onboarding case status may need a transaction.
+- Progress counters may be eventually consistent.
+- Search results may be a few seconds stale.
+- An employee's access state may need a fresh check before provisioning.
+- Financial settlement may need stronger guarantees than an analytics dashboard.
+
+Google built [Spanner](https://research.google/pubs/spanner-googles-globally-distributed-database-2/) to support globally distributed data with externally consistent transactions. That is a valuable capability, but it comes from a complex system and specific trade-offs. Most systems should first ask which operations need that level of consistency.
+
+### Replication, CAP, and PACELC
+
+Replication copies data so another node can serve reads or recover after failure.
+
+Common choices include:
+
+- one leader accepts writes and followers copy them;
+- several leaders accept writes in different regions;
+- leaderless replicas accept reads and writes through quorum rules.
+
+Synchronous replication can protect fresh data, but it adds write latency and may reduce availability during a network problem. Asynchronous replication is faster, but a recent write may be missing after failover.
+
+The CAP theorem matters when the network splits. A distributed system must decide whether an operation should wait to protect consistency or continue with a risk of different data states. Partition tolerance is not an optional feature when machines communicate over a network.
+
+PACELC adds the normal case: even when there is no partition, a system often trades lower latency against stronger consistency.
+
+Do not choose one rule for every record. An onboarding case edit, an access check, a progress counter, and a search result may need different guarantees.
+
+### Coordination and consensus
+
+Some work needs nodes to agree on one value or one owner. Examples include choosing a leader, assigning a partition, storing cluster membership, or changing shared configuration.
+
+Consensus systems can provide that agreement, but they add latency and operational cost. Keep the coordinated state small. Do not run every business event through a global lock when a database constraint, partition owner, or idempotency key can solve the smaller problem.
+
+### Conflict detection and resolution
+
+Multi-writer systems can accept two updates before either side sees the other.
+
+Possible policies include:
+
+- reject one update with optimistic concurrency control;
+- choose the latest value using a trusted version or timestamp;
+- merge independent fields;
+- keep both versions for a person or application to resolve;
+- use a convergent data type for counters, sets, or other supported shapes.
+
+Last-write-wins is simple, but it can silently remove a valid update. A merge policy must match the business meaning. Adding two likes is different from changing an account owner.
+
+## Failure Is a Normal Input
+
+A production system receives failures as often as it receives business requirements.
+
+{/* IMAGE PROMPT (failure-controls.png): Wide modern green 2D cartoon infographic on a light background. Show a stressed request path protected by a timeout, spaced retry, load-shedding gate, and healthy recovery path. Render only these labels once: TIMEOUT, RETRY, SHED, RECOVER. */}
+
+![Reliability comes from several controls along the request path](/assets/images/blogs/practical-system-design/failure-controls.png)
+
+Think about each dependency:
+
+- slow response;
+- timeout;
+- connection failure;
+- partial success;
+- stale response;
+- invalid response;
+- complete outage.
+
+### Timeouts
+
+Every remote call needs a time budget. Without one, requests can wait until threads, connections, and memory are exhausted.
+
+Use an end-to-end deadline when possible. If the whole request has two seconds, one dependency should not use all two seconds and leave no time for recovery.
+
+### Retries
+
+Retry only when another attempt may help.
+
+Good retry candidates:
+
+- a short network failure;
+- a temporary dependency error;
+- a rate limit with a clear retry time.
+
+Poor retry candidates:
+
+- invalid input;
+- failed authorization;
+- a permanent business rule rejection;
+- an operation that is not safe to repeat.
+
+Use exponential backoff and jitter. Backoff increases the wait after each failure. Jitter adds a small random difference so thousands of clients do not retry at the same moment.
+
+### Retry storms and cascading failure
+
+Retries can multiply load when a service is already unhealthy.
+
+<MermaidDiagram chart={`
+flowchart TD
+    C["Many clients"] --> S["Slow service"]
+    S --> E["Timeouts"]
+    E --> R["Immediate retries"]
+    R --> M["More load"]
+    M --> S
+
+    E --> B["Bounded retry\nwith backoff and jitter"]
+    B --> L["Load stays controlled"]
+`} />
+
+Google SRE describes overload as a common cause of [cascading failures](https://sre.google/sre-book/addressing-cascading-failures/). One failed replica moves load to the remaining replicas. They become slower, clients retry, and the failure grows.
+
+Protect the system with:
+
+- a retry limit;
+- one retry layer instead of retries at every layer;
+- circuit breakers;
+- queue limits;
+- load shedding;
+- per-customer quotas;
+- graceful degradation.
+
+Google's guide to [handling overload](https://sre.google/sre-book/handling-overload/) also warns that requests can have very different costs. Requests per second may hide the real pressure. CPU, memory, concurrency, or another resource can be a better capacity signal.
+
+### Backpressure
+
+Backpressure lets a consumer control how much work it can accept.
+
+{/* IMAGE PROMPT (backpressure-valve.png): Wide modern green 2D cartoon infographic on a light background. Show a burst of events entering a bounded buffer, a visible capacity limit, a controllable valve, and a stable worker pool. Render only these labels once: INCOMING, BUFFER, LIMIT, WORKERS. */}
+
+![Backpressure controls a large incoming flow before workers are overloaded](/assets/images/blogs/practical-system-design/backpressure-valve.png)
+
+In the onboarding system, workers should not pull unlimited chunks when an identity, payroll, or equipment integration is slow. The queue may buffer a burst, but it must have a limit and an operational response.
+
+Useful controls include:
+
+- worker concurrency;
+- batch size;
+- queue prefetch;
+- integration rate limit;
+- delay between batches;
+- maximum queue age.
+
+If the queue age keeps growing, adding more tasks is not recovery. The team may need to pause onboarding runs, reduce concurrency, or move blocked work to manual review.
+
+## Partitioning and Hotspots
+
+Large systems split data and work across machines. The partition key decides where each item goes.
+
+{/* IMAGE PROMPT (partition-hotspots.png): Wide modern green 2D cartoon infographic on a light background. Show records passing through a partition key and splitter into balanced shards, plus a contrasting bad key that creates one hot shard. Render only these labels once: KEY, SPLIT, BALANCE, HOTSPOT. */}
+
+![A partition rule spreads onboarding work into balanced groups](/assets/images/blogs/practical-system-design/partition-hotspots.png)
+
+Common keys include:
+
+- user ID;
+- account ID;
+- onboarding run ID;
+- tenant ID;
+- time bucket;
+- geographic region.
+
+A good key spreads load and supports the main query. A bad key creates hotspots.
+
+Suppose one tenant imports 1 million seasonal employees while most tenants process 1,000. Partitioning only by `tenant_id` sends the large import to one partition. Adding the onboarding run, chunk, or a hash suffix can spread the work.
+
+But more partitions add cost:
+
+- cross-partition queries;
+- rebalancing;
+- more complex transactions;
+- harder operational tools;
+- more difficult migrations.
+
+Partition because the current access pattern needs it, not because the system may become large one day.
+
+## Multi-Region Is a Business Decision
+
+Multi-region architecture can improve availability and latency. It also changes data, operations, and cost.
+
+{/* IMAGE PROMPT (decision-lens.png): Wide modern green 2D cartoon infographic on a light background. Show one proposed architecture reviewed through connected availability, response-speed, budget, protection, and operator lenses. Render only these labels once: AVAILABILITY, LATENCY, COST, SECURITY, OPERATIONS. */}
+
+![A system choice should be reviewed through several business and operational constraints](/assets/images/blogs/practical-system-design/decision-lens.png)
+
+<MermaidDiagram chart={`
+flowchart LR
+    U1["Users in region A"] --> G["Global routing"]
+    U2["Users in region B"] --> G
+    G --> A["Application region A"]
+    G --> B["Application region B"]
+    A <--> D["Replicated data"]
+    B <--> D
+`} />
+
+Before choosing active-active or active-passive, ask:
+
+- What outage must the system survive?
+- How much recovery time can the business accept?
+- How much data loss can it accept?
+- Can two regions update the same record?
+- What happens during a network split?
+- Can the team test regional recovery often?
+
+For a scheduled onboarding checklist, a short delay may be acceptable. For payment authorization or urgent access removal, the business may need a different answer.
+
+Running in two regions without testing failover can create the cost of multi-region without the safety.
+
+## APIs and Contracts Are Part of the Design
+
+An API makes promises to callers.
+
+Define:
+
+- resource names and identifiers;
+- request and response shape;
+- error model;
+- idempotency behavior;
+- pagination;
+- rate limits;
+- versioning;
+- authentication and authorization.
+
+For asynchronous work, return a job or onboarding run ID. Let the caller check status or receive a webhook.
+
+```http
+POST /onboarding-runs
+Idempotency-Key: 2d3817...
+
+202 Accepted
+{
+  "onboardingRunId": "onb_123",
+  "status": "scheduled"
+}
+```
+
+Avoid leaking an internal database model through the API. Internal tables will change. A stable contract gives the team room to change the implementation later.
+
+Events are contracts too. Add schema versions, clear ownership, and compatibility rules. Removing or changing a field can break consumers you do not know about.
+
+## Security Starts with Boundaries
+
+Security is not one box at the edge of the diagram.
+
+Ask:
+
+- Who can call this API?
+- Which onboarding case can this person view or change?
+- Which service can read employee data?
+- Which data must be encrypted?
+- Which action needs an audit event?
+- Which secret can each worker access?
+- How is tenant data separated?
+
+Useful controls include:
+
+- authentication;
+- role- or attribute-based authorization;
+- least-privilege service identities;
+- encryption in transit and at rest;
+- secret rotation;
+- network boundaries;
+- immutable audit logs;
+- data retention and deletion policies.
+
+Validate authorization at the resource boundary. A user who can edit one onboarding case should not gain access to every tenant's cases by changing an ID in the URL.
+
+For sensitive flows, isolation may be worth the extra cost. A separate account, cloud profile, database, or onboarding worker can reduce the failure and access surface.
+
+## Observability Must Answer Operational Questions
+
+Logs, metrics, and traces are tools. Start from the questions the team must answer.
+
+For the onboarding system:
+
+- Did the scheduled onboarding run start?
+- How many chunks are waiting?
+- How old is the oldest chunk?
+- Which integration is slow?
+- How many tasks succeeded, failed, or were skipped?
+- Is one tenant using most of the capacity?
+- Can we stop one onboarding run safely?
+- Can we replay a failed chunk?
+
+Useful metrics include:
+
+- request rate, error rate, and latency;
+- queue depth and queue age;
+- worker throughput;
+- retry count;
+- integration response codes;
+- database connection use;
+- cache hit rate;
+- onboarding progress and final result.
+
+Use correlation IDs such as onboarding run ID, employee ID, chunk ID, and integration request ID. They help the team follow one flow across services.
+
+An alert should describe an action. A high queue depth may be fine during a planned bulk import. A queue age that may delay an employee's start date is more useful.
+
+## Ownership Changes the Design
+
+Two technologies may solve the same technical problem. The team may still prefer one because it can operate it safely.
+
+{/* IMAGE PROMPT (own-the-decision.png): Wide modern green 2D cartoon coaching infographic on a light background. Show a constructive team design review where an engineer explains a choice, accepted compromise, expected failure, and responsible owner. Render only these labels once: WHY, TRADE-OFF, FAILURE, OWNER. */}
+
+![Owning a decision means explaining why, trade-offs, failure, and ownership](/assets/images/blogs/practical-system-design/own-the-decision.png)
+
+Check these areas:
+
+- **Skills:** Does the team know how to debug and upgrade it?
+- **Operations:** Who is on call for it?
+- **Cost:** What happens when traffic grows ten times?
+- **Security:** Does it add another data or access boundary?
+- **Delivery:** How long will setup and migration take?
+- **Reversal:** How hard is it to replace?
+- **Organization:** Does its boundary match team ownership?
+
+Discord's storage story is useful again. The database migration was not only about benchmark speed. It was also about unpredictable latency and high operational toil.
+
+Meta's TAO story is also about ownership. The company did not only add a cache. It created an abstraction so product teams did not need to handle every cache and database detail themselves.
+
+This is why a smaller architecture can be the mature choice. A design is useful only when the team can keep it useful.
+
+## Migration Is Part of System Design
+
+Most systems are not built on empty ground. A new design must move from an old design.
+
+A safe migration may use:
+
+1. **Shadow reads:** read from the new system without using its answer.
+2. **Dual writes:** write to old and new stores for a limited period.
+3. **Backfill:** copy old data with checksums and progress tracking.
+4. **Small rollout:** move one tenant, region, or traffic percentage.
+5. **Compare:** check data, latency, errors, and business results.
+6. **Cut over:** make the new path primary.
+7. **Keep rollback:** preserve a safe return path until confidence is high.
+
+Dual writes can fail on one side. Plan reconciliation before enabling them.
+
+A migration tool also needs idempotency, monitoring, pause, resume, and audit support. Temporary systems have a habit of staying longer than expected.
+
+## A Coaching Method for System Design
+
+Do not begin by asking for a complete architecture. Make the problem small enough to discuss.
+
+The coaching loop can look like this:
+
+1. Ask the engineer to explain the user and the goal.
+2. List the requirements that change the design.
+3. Draw the smallest version that works.
+4. Add one constraint.
+5. Ask what breaks first.
+6. Compare two or three options.
+7. Choose a decisive reason.
+8. Name the trade-off and owner.
+9. Add failure and recovery.
+10. Review what would make the team revisit the choice.
+
+Useful coaching questions include:
+
+- What is the source of truth?
+- What is on the hot path?
+- Which work can be asynchronous?
+- What can run twice?
+- Where can data be lost?
+- Which key can become hot?
+- What happens when the dependency is slow, not fully down?
+- How will the team know the system is unhealthy?
+- Which part will be hardest to change?
+- Would you still choose this with a team of three?
+
+The mentor does not need to hide the answer. The mentor should help the engineer connect each answer to a reason.
+
+## A Practical Design Checklist
+
+When you start a new design, record this information:
+
+```text
+Problem and user:
+Functional requirements:
+Critical non-functional requirements:
+Expected scale and traffic shape:
+Simplest useful design:
+
+Main data and source of truth:
+Read and write paths:
+Async work:
+Consistency and ordering needs:
+Idempotency keys:
+
+Failure paths:
+Timeout and retry policy:
+Backpressure and load shedding:
+Security boundaries:
+Observability and recovery tools:
+
+Options considered:
+Decisive reasons:
+Trade-offs accepted:
+Owner:
+Migration plan:
+Revisit when:
+```
+
+You do not need every field for a small system. Use the checklist to find missing decisions, not to create paperwork.
+
+## Final Thoughts
+
+System Design knowledge includes databases, caches, queues, load balancers, APIs, partitions, regions, and many other tools. Learning those tools matters.
+
+But knowing the name of every component is not the end goal.
+
+The stronger skill is being able to say:
+
+- this is the problem;
+- this is the smallest design that works;
+- this constraint forced the design to change;
+- this option fits our data, traffic, and team;
+- this is what can fail;
+- this is the trade-off we accept;
+- this is who will own it;
+- this is when we should review it again.
+
+That is the path from drawing boxes to owning decisions.

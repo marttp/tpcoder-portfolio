@@ -41,7 +41,6 @@ The road, each step forced by the one before it:
 
 {/* IMAGE PROMPT (hero-backbone.png): Wide banner hero, clean modern architecture illustration on a light background. A single left-to-right flow with these boxes in order, labeled EXACTLY as written: "Scheduler" → "Audience Store" → "Delivery Workers" → "Delivery Backbone" → then four channel boxes branching from the backbone: "Push (FCM / APNs)", "Email (SES / SendGrid)", "SMS (Twilio / Vonage)", and "Inbox Service" (connected by a "write item" arrow). STRICT: render ONLY the labels listed above, spelled exactly — do NOT print any descriptive, meta, or marketing words (no "informative", "self-describing", "simple"), no full sentences inside boxes, no typos, no duplicate boxes or labels. Flat vector, soft shadows, tech-blog aesthetic, 2–3 accent colors, plain labeled rectangles, no photorealism. */}
 
-![End-state omnichannel delivery backbone: scheduler, chunked audience, per-recipient workflow, dispatch across push/email/SMS plus the inbox service](/assets/images/blogs/design-omnichannel-delivery/hero-backbone.png)
 
 ---
 
@@ -298,4 +297,3 @@ We started with a file and a worker that loops a list and sends on one channel, 
 And it's worth grounding why this is worth building at all. The real version — a timeline-notification delivery system I designed and built (Kotlin / Spring Boot WebFlux + Cadence Workflow + Kafka) — was about transforming a **back-office manual upload** into a **scheduled** one. Since this delivery layer was meant to be the primary backbone for our communication channels, I designed it so the operator and marketing teams could set things up with far less effort — and spend their time on the things that actually matter to them, instead of babysitting a send. There were impact numbers too, but those came as a side effect. The value I really care about belongs to the people: their time, handed back.
 
 The meta-point holds from the last two posts: **nobody needs this on day one.** Most apps are a single `send()` on one channel, reading a list someone handed you — and that's completely fine. This backbone only earns its keep once you're running *scheduled, multi-channel sends to a large, prepared audience*. Don't build the conductor before you have an orchestra to conduct.
-
