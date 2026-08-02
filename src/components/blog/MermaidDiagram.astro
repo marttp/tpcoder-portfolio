@@ -15,11 +15,11 @@ const sizeClasses = {
 
 <div class={`mermaid-container ${sizeClasses[size]}`} data-mermaid-zoom>
   <div class="mermaid-toolbar">
-    <button type="button" class="mermaid-open" aria-label="Open diagram zoom view" disabled>
+    <button type="button" class="mermaid-open" aria-label="Open enlarged diagram" disabled>
       <svg aria-hidden="true" viewBox="0 0 24 24">
-        <path d="m15 15 5 5m-3-9a6 6 0 1 1-12 0 6 6 0 0 1 12 0Zm-6-3v6m-3-3h6" />
+        <path d="M9 4H4v5m11-5h5v5m0 6v5h-5M9 20H4v-5" />
       </svg>
-      <span>Zoom</span>
+      <span>Expand</span>
     </button>
   </div>
   <div class="mermaid-wrapper">
@@ -195,9 +195,13 @@ const sizeClasses = {
     font-weight: 600;
   }
 
-  .mermaid-open svg {
-    width: 1rem;
-    height: 1rem;
+  .mermaid-open > svg {
+    width: 0.875rem !important;
+    height: 0.875rem !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    flex: 0 0 auto;
     fill: none;
     stroke: currentColor;
     stroke-linecap: round;
@@ -300,11 +304,22 @@ const sizeClasses = {
   .mermaid-wrapper {
     display: flex;
     justify-content: center;
-    min-width: fit-content;
+    width: 100%;
+    min-width: 0;
+    overflow: auto;
   }
 
   .mermaid {
     background: transparent !important;
+  }
+
+  .mermaid-wrapper :global(svg) {
+    display: block;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin-inline: auto;
   }
 
   /* Size variants */
@@ -312,31 +327,24 @@ const sizeClasses = {
     font-size: 12px;
   }
 
-  .mermaid-small :global(svg) {
-    max-width: 100%;
-    height: auto;
-    min-height: 150px;
+  .mermaid-small .mermaid-wrapper :global(svg) {
+    max-height: 20rem;
   }
 
   .mermaid-medium .mermaid {
     font-size: 14px;
   }
 
-  .mermaid-medium :global(svg) {
-    max-width: 100%;
-    height: auto;
-    min-height: 250px;
+  .mermaid-medium .mermaid-wrapper :global(svg) {
+    max-height: 26rem;
   }
 
   .mermaid-large .mermaid {
     font-size: 16px;
   }
 
-  .mermaid-large :global(svg) {
-    max-width: 100%;
-    height: auto;
-    min-height: 300px;
-    width: 100%;
+  .mermaid-large .mermaid-wrapper :global(svg) {
+    max-height: 30rem;
   }
 
   /* Responsive adjustments */
@@ -368,18 +376,16 @@ const sizeClasses = {
       padding: 1rem;
     }
 
-    .mermaid-small :global(svg),
-    .mermaid-medium :global(svg),
-    .mermaid-large :global(svg) {
-      min-height: auto;
-      transform: scale(0.9);
-      transform-origin: center;
+    .mermaid-small .mermaid-wrapper :global(svg) {
+      max-height: min(20rem, 60vh);
     }
-  }
 
-  @media (min-width: 769px) {
-    .mermaid-large :global(svg) {
-      min-width: 600px;
+    .mermaid-medium .mermaid-wrapper :global(svg) {
+      max-height: min(26rem, 60vh);
+    }
+
+    .mermaid-large .mermaid-wrapper :global(svg) {
+      max-height: min(30rem, 60vh);
     }
   }
 
