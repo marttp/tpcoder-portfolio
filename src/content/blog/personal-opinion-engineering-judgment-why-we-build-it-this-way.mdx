@@ -1,7 +1,7 @@
 ---
-title: "[Personal Opinion] Engineering Judgment — Why We Build It This Way"
-description: "A personal framework for connecting technology choices to their original intention, business consequences, long-term ownership cost, and the changing economics of software in the AI era."
-pubDate: "2026-07-19"
+title: "[Personal Opinion] Engineering Judgment and Living with the Consequences"
+description: "You do not need to know every answer to improve your engineering judgment. Start by asking why a choice was made, what it helped, and what the team must own."
+pubDate: "2026-08-02"
 tags:
   ["Software Engineering", "Software Architecture", "Leadership", "AI"]
 heroImage: "/assets/images/blogs/engineering-judgment/hero-banner.png"
@@ -16,33 +16,46 @@ servicesNote: true
 
 ## Why This Post Exists
 
-This post started from a comment about **Technology–Business co-decisions**: why a team chooses one technology, what problem it should solve, and what the business inherits afterward. It sounded like a topic about tools. The more I thought about it, the more it became a topic about ownership.
+Have you ever joined a project and asked why the team uses a certain database, queue, or API style?
 
-In backend, payment, and financial-service work, a technology decision rarely stays inside the codebase. Somebody pays for it, operates it, hires the next engineer, and explains its failures. **A technology choice is also a business decision because somebody inherits its cost, risk, and operating model.** The technically impressive option can still be wrong for the organization that must own it; the boring option may leave more room to ship and change direction.
+Sometimes the answer is short: **We need scale.** Or perhaps: **This is our company standard.** You may understand how to use the tool, but you still do not know why it fits this system.
 
-This is neither a technology ranking nor another system-design walkthrough. It is a personal framework for asking about a tool's original intention, problem fit, business consequences, ownership cost, and changing economics in the AI era. My experience covers only certain environments, so I expect the framework to evolve. For now, its job is to expose assumptions before everybody forgets who made them.
+If you are still improving as an engineer, this can feel uncomfortable. You may think the question is too basic. You may also think that senior engineers already know all the answers.
+
+I do not see engineering judgment that way. **Engineering judgment starts with asking better questions, not knowing every answer.** You do not need to own the final decision before you can learn from it.
+
+In backend and payment work, a technology choice rarely stays inside the code. The team must pay for it, run it, fix it, and teach the next engineer. This is why a technical choice can also become a business choice.
+
+This post shares a simple way to ask why a choice was made, what it helped, what it cost, and when the team should review it again. It is not a ranking of technologies. It is a way to learn the reason behind the code you work with every day.
 
 {/* IMAGE PROMPT (decision-lens.png): Flat vector conceptual diagram on a warm ivory background with soft shadows and a warm editorial palette (terracotta, mustard gold, forest green, charcoal, soft sand), no purple, teal, navy, or photorealism. Show one engineer looking through a large decision lens. Outside the lens are two small surface signals labeled "Speed" and "Popularity". Inside the lens are three deeper factors labeled "Problem", "Cost", and "Risk", visually revealing what the surface comparison misses. Render these five labels exactly once each, spelled exactly. Render only these labels; no other words, letters, numbers, code, logos, watermarks, meta text, or printed style instructions. No duplicate labels, duplicate lenses, boxes, or typos. */}
 
 ![A wider lens for technology decisions](/assets/images/blogs/engineering-judgment/decision-lens.png)
 
-## Technology Has an Intention
+## Start with Four Questions
 
-Most technologies begin with a specific problem and constraints. By the time a tool reaches us, that context is often compressed into one attractive property: fast, scalable, type-safe, cloud-native, or used by a company we admire.
+Most technologies were created to solve a problem. But when the tool becomes popular, we often remember only one benefit: fast, scalable, type-safe, or cloud-native.
 
-Consider Protobuf. “It is faster and smaller than JSON” can be relevant, but Protobuf also provides an interface definition, generated code across languages, and schema-evolution rules. For teams maintaining contracts across services and languages, those properties may matter more than the serialization benchmark.
+You can slow the conversation down with four questions:
 
-Before choosing a technology, separate three things:
+1. **What problem did we have?**
+2. **Why did this option help?**
+3. **What did we gain, and what did it cost?**
+4. **Is the choice still worth it today?**
 
-- **Original problem:** what was the tool designed to solve?
-- **Incidental benefits:** what else does it do well?
-- **Our context:** which problem and constraints do we have today?
+You do not need to answer all four questions alone. Asking them can help a senior engineer, product manager, or teammate share the missing context.
 
-Then examine its assumptions. Can the team operate it, enforce its discipline, debug it, coordinate upgrades, and accept its coupling? A benchmark can prove that one operation is faster; it cannot prove the operating model fits the organization.
+Consider Protobuf. A team may say that it is faster and smaller than JSON. That can be useful, but it may not be the main reason for using it. Protobuf also gives the team:
 
-“We used it at my previous company” is useful evidence, not a complete reason. That company may have had a platform team, different compliance requirements, or far more traffic. The same technology can be excellent in both places and appropriate in only one.
+- a shared contract between services;
+- generated code for different languages;
+- rules for changing a schema over time.
 
-{/* PERSONAL EVIDENCE NEEDED (#1): Add one decision the author participated in and can disclose. Reconstruct the original problem, the selected technology's intention, the assumptions that matched, and one assumption that later failed or required adjustment. Use the case to test the framework, not to declare a winning technology. */}
+If several teams maintain services in different languages, those benefits may matter more than speed. If one small team owns one simple service, the extra rules may add work without enough benefit.
+
+The question is not whether Protobuf is good. The question is whether its design matches the problem and the team.
+
+Experience from another company can help, but it is not the full answer. That company may have had more traffic, a platform team, or different security rules. We still need to check our current situation.
 
 {/* IMAGE PROMPT (intention-fit.png): Flat vector conceptual diagram on a warm ivory background with soft shadows and a warm editorial palette (terracotta, mustard gold, forest green, charcoal, soft sand), no purple, teal, navy, or photorealism. Show three interlocking but independently visible puzzle pieces arranged left to right. Label the first piece "Original problem", the middle piece "Design assumptions", and the third piece "Our context". The first two fit cleanly; the third is being examined by a small engineer before it is connected, conveying that fit must be checked. Render these three labels exactly once each, spelled exactly. Render only these labels; no other words, letters, numbers, code, logos, watermarks, meta text, or printed style instructions. No duplicate labels, duplicate pieces, or typos. */}
 
@@ -50,76 +63,179 @@ Then examine its assumptions. Can the team operate it, enforce its discipline, d
 
 ## From Technical Choice to Business Consequence
 
-A technical property is not yet a business outcome. Reducing an operation from 50 milliseconds to 10 milliseconds is measurable, but does it help a customer complete a payment, increase capacity, or reduce cost? If the operation is outside the critical path, the improvement may end at the benchmark.
+A better technical number does not always create a better result for the customer.
 
-A specialized data store might reduce latency while adding a backup process, another failure mode, harder local development, and a smaller hiring pool. That does not make the choice wrong. It means the latency number and its consequences belong in the same decision.
+Suppose one data store reduces an operation from 50 milliseconds to 10 milliseconds. Before choosing it, ask where that operation happens.
 
-Translate each option across four areas:
+- **If the customer waits for it:** the change may improve the customer experience.
+- **If it limits system capacity:** the change may help the system handle more work.
+- **If it runs in the background:** the customer may not notice the difference.
+- **If it adds more work to run the system:** the team may pay more than it gains.
 
-- **Delivery and outcome:** What ships sooner, and what changes for the customer or business?
-- **Operations and risk:** Who handles upgrades, observability, security, incidents, and compliance?
-- **Organization:** Can the team hire, onboard, and share knowledge around it?
-- **Reversibility:** What will it cost to leave the technology or vendor later?
+The new data store may also need another backup process, new monitoring, and new skills in the team. This does not make the choice bad. It means the speed and the extra work belong in the same discussion.
 
-This is the Technology–Business co-decision. Business stakeholders do not select the database; engineering explains the consequences, the business exposes its constraints, and both sides choose trade-offs the organization can afford. Sometimes that leads to the sophisticated option. Sometimes the familiar technology is operational leverage—especially when it meets the expected scale and remains easy to replace.
+When you compare options, check four areas:
 
-{/* PERSONAL EVIDENCE NEEDED (#2): Add one choice from the author's work. Trace one technical metric or property through to delivery, customer or business impact, and the maintenance work the team inherited. Keep this section analytical; the reusable recording format belongs in the final section. */}
+- **Delivery:** Which option helps the team ship safely and soon?
+- **Customer or business:** What result may change?
+- **Ownership:** Who will run, secure, and fix it?
+- **Change later:** How hard will it be to replace?
+
+Engineering explains these effects. The business shares its goals and limits. Then both sides can choose a cost and risk they can accept.
+
+Sometimes the advanced option is worth it. Sometimes a tool the team already knows is the better choice. Familiar technology can leave more time for the product, especially when it can handle the expected work.
 
 {/* IMAGE PROMPT (ownership-iceberg.png): Flat vector conceptual iceberg diagram on a warm ivory background with pale sand water, soft shadows, and a warm editorial palette (terracotta, mustard gold, forest green, charcoal, soft sand), no purple, teal, navy, cool blue, or photorealism. Above the waterline, show a small visible tip labeled "Technology choice". Below the waterline, show the much larger ownership surface divided into five clear areas labeled "Delivery", "Operations", "Hiring", "Security", and "Risk". Render these six labels exactly once each, spelled exactly. Render only these labels; no other words, letters, numbers, code, logos, watermarks, meta text, or printed style instructions. No duplicate labels, duplicate icebergs, boxes, or typos. */}
 
 ![The ownership cost below a technology choice](/assets/images/blogs/engineering-judgment/ownership-iceberg.png)
 
+## One Platform, Two Independent Decisions
+
+I can explain this with two projects from my time at Japan's largest cashless payment service. I chose these examples because I led both projects and was the PIC, or person in charge. I also formed the small team that worked on each project and moved it toward delivery.
+
+Both projects were built on top of the Growth Platform. The timeline notification system came first and later made the secure-room feature possible, but each project solved a different problem.
+
+That difference matters. Two projects can share the same platform without sharing the same reason.
+
+### Decision 1: Remove the Weekend Manual Work
+
+Before the timeline notification system, the marketing team had a manual process:
+
+1. Query BigQuery for the target audience.
+2. Upload the audience and notification message to a backoffice system.
+3. Let the backoffice service put the work into the Growth Communication queue.
+4. Ask volunteers to run the operation during weekends or holidays.
+
+The team could send notifications this way. The problem was that people had to spend their holidays doing work that the platform should schedule for them.
+
+We wanted the marketing team to prepare the work on a weekday, select an audience from Growth Marketing, and schedule it for a weekday, weekend, or later week. They also needed to combine audiences with conditions. The system still had to send to the right people and remain available when a scheduled job started.
+
+There were many possible tools. We looked at Akka, normal Spring Boot, Spring Scheduler, JobRunr, RabbitMQ, and SQS. Cadence, Kafka, and Spring WebFlux were not the only tools that could work.
+
+The strongest reason for our choice was **architecture alignment**:
+
+- **Cadence** already existed in the Growth Platform. It was hard to set up, but once it was running well, we could rely on its workflow state and recovery.
+- **Kafka** matched the existing push and email architecture. RabbitMQ or SQS would add another technology for the team to learn and run.
+- **Spring WebFlux** matched the push-notification side. It also supported **Backpressure**. This means a consumer can control how much work it is ready to receive, instead of letting a producer keep sending work without a limit. We used this idea with configurable chunks, delays, and Kafka batch sizes to control throughput.
+- **Moving away from Akka** also reduced future license concerns after its commercial-license change.
+
+We still accepted a cost. The Growth Platform became a long-term owner of Cadence even though few other parts of the company used it. We also added more services. The first channel coordinator later grew into separate email, push, and timeline delivery workers, with room to split the work into smaller parts when needed.
+
+Was it worth it? For that company and architecture, I think so. The new flow reduced around 100 hours of manual work each month, removed the need for weekend volunteers, and supported work linked to around 4 million JPY in annual GMV. The main worker also had fewer incidents than I expected. The problems I remember were more often related to human mistakes or the database than the delivery worker itself.
+
+Would I build the same architecture in every company? No. I would first look at the tools and skills that already exist there. The implementation may change, but I would keep the same goals: schedule the work, send to the right audience, and stay available when the job runs.
+
+### Decision 2: Add a Secure Mode for Customer Support
+
+The second project started from another business process. Customer Support sometimes needed to handle customer data, including PII and other sensitive information. The team performed this work inside a secure room with both physical and technical access controls. They used SMS and personal calls to contact customers about suspicious activity. Some cases needed several people, which made the operation costly.
+
+The Growth Marketing platform already had most of the useful parts:
+
+- audience selection;
+- scheduled communication;
+- delivery through existing channels;
+- stored history for later checks.
+
+Instead of creating a separate product, we extended the campaign platform with two modes: normal and secure. For secure access, the infrastructure used CloudFront, the secure room's fixed IP address, and a trusted header added after the access check. We stored non-sensitive history in the database so operations, security, and audit teams could review past activity.
+
+This choice improved the operation and removed costly SMS work, saving around 3 million JPY per year. It also kept the communication process inside a platform the business already used.
+
+I still see a trade-off in that decision. One platform had to support two security modes. If I designed it again today, I would consider copying the full structure into a separate cloud profile. That option would cost more and take longer, but it would give the secure flow stronger isolation.
+
+This does not mean the earlier decision was wrong. It was worth it in its context, and I can still prefer a different trade-off today.
+
+### What These Two Decisions Taught Me
+
+A modern system can give us many reasons to choose one option over another. Those reasons do not have the same weight:
+
+- **Hard requirements** remove options that cannot meet security, audience, scheduling, or availability needs.
+- **Architecture alignment** favors tools the team already knows, runs, and can support together.
+- **Accepted trade-offs** show what extra services, dependencies, cost, or risk the team agrees to own.
+
+The winning option is rarely the tool with the longest feature list. In these two projects, the main reason was how well the choice fit the existing platform and business process. If I started from an empty system, I might choose different tools. The overall shape would probably remain similar.
+
+## A Mentor Should Make the Question Safe
+
+Learning judgment should not feel like an exam. A less-experienced engineer may ask a small question because that is the only missing part they can see.
+
+A conversation could start like this:
+
+> **Engineer:** Why do we use Protobuf here? Is it because it is faster?
+>
+> **Mentor:** Speed is one benefit. What else do you think our services need to share?
+>
+> **Engineer:** The request and response format?
+>
+> **Mentor:** Yes. Now let us look at how many services and languages use that contract.
+
+The mentor does not need to give a lecture. The mentor can:
+
+- start from what the engineer already understands;
+- add one missing part of the context;
+- connect the answer to the current system;
+- invite the next question;
+- admit when the original reason is unknown.
+
+That last point matters. A past decision is not bad just because the team cannot remember every detail. The team may have made a reasonable choice with the information it had. The goal is to recover the context before judging the people.
+
 ## AI Changes the Cost Equation
 
-AI changes which ideas are economical enough to try. It can reduce effort around:
+AI can make some parts of software work cheaper and faster:
 
-- investigation and comparing approaches;
-- scaffolding and repetitive implementation;
-- documentation and a first pass of tests.
+- comparing a few approaches;
+- writing repeated code;
+- creating a first draft of documentation and tests.
 
-Owning software is a different cost. The team still carries:
+But the team still owns the result:
 
-- domain verification and security;
-- deployment, observability, and incident recovery;
-- maintenance and production responsibility.
+- checking the domain rules and security;
+- deployment, monitoring, and incident recovery;
+- maintenance after the first version.
 
-In a payment system, plausible code is insufficient. Retry behavior, idempotency, reconciliation, authorization boundaries, and failure recovery still need deliberate reasoning. AI can assist, but responsibility does not transfer to the tool.
+In a payment system, code that looks correct is not enough. The team must still check retry behavior, idempotency, reconciliation, access control, and failure recovery. AI can help with the work. It does not take responsibility for the result.
 
-This can move the boundary between buying, building, and keeping a manual process. Suppose an operations team repeats a narrow reconciliation task. Cheaper exploration and implementation may make an internal tool worthwhile earlier, but access control, incorrect matches, monitoring, and maintenance remain part of the decision.
+This may change when a team decides to build an internal tool. A small tool may now be cheap enough to try. But the same four questions still apply:
 
-The same warning applies to system design: three services generated quickly are still three services to deploy, secure, and debug. I would compare what became cheaper, what stayed expensive, and whether the ownership model changed—not claim a universal productivity percentage. Without verified measurement, the example should remain explicitly hypothetical.
+- What problem does it solve?
+- What became cheaper?
+- What work does the team still own?
+- Is it still worth owning?
 
-{/* PERSONAL EVIDENCE NEEDED (#3): Compare one internal tool, automation, or process the author personally evaluated in the AI era. Use only measurements that can be verified; otherwise label the scenario as hypothetical. */}
-
-If creation becomes cheaper while verification, context, judgment, and ownership remain expensive, those expensive parts are where an engineer's responsibility—and value—starts to concentrate.
+Three services created quickly are still three services to deploy, secure, and debug. Creating software may become cheaper. Understanding and owning it still matter.
 
 {/* IMAGE PROMPT (ai-cost-equation.png): Flat vector conceptual balance diagram on a warm ivory background with soft shadows and a warm editorial palette (terracotta, mustard gold, forest green, charcoal, soft sand), no purple, teal, navy, or photorealism. Show a two-sided balance scale. The left pan contains a code-generation icon and is labeled "Cheaper to create". The right pan contains review, shield, monitoring, and maintenance icons and is labeled "Still costs to own". Keep the right side visually substantial, showing that ownership cost remains after creation becomes cheaper. Render these two labels exactly once each, spelled exactly. Render only these labels; no other words, letters, numbers, code, logos, watermarks, meta text, or printed style instructions. No duplicate labels, scales, pans, icons, or typos. */}
 
 ![AI lowers creation cost while ownership cost remains](/assets/images/blogs/engineering-judgment/ai-cost-equation.png)
 
-## Career Growth Means Owning Bigger Decisions
+## How Your Questions Can Grow
 
-If code creation becomes cheaper, producing more code cannot be the whole career plan. A better question is: after you can deliver software, **what kind of decision should you learn to own next?**
+You do not need a senior title to practice engineering judgment. Start with the part of the system you already touch.
 
-I see the progression less as a title ladder and more as an expanding decision scope:
+Your questions can grow step by step:
 
-1. **Implement** — execute a decision and understand how the selected approach works.
-2. **Explain** — describe why the current design exists, including its constraints and weaknesses.
-3. **Compare** — produce credible alternatives and identify what changes between them.
-4. **Decide** — connect the technical trade-offs to delivery, risk, cost, and business priorities.
-5. **Own** — stay accountable for the outcome, observe what happened, and revisit the decision when its assumptions expire.
+1. **Implement** — build it and understand how the chosen approach works.
+2. **Explain** — describe why the design exists, including its limits and weak points.
+3. **Compare** — show other options and explain what would change.
+4. **Decide** — connect the technical trade-offs to delivery, risk, cost, and business needs.
+5. **Own** — watch the result and review the choice when the situation changes.
 
-These steps do not map cleanly to job titles. As a rough direction, an entry-level engineer can ask why the current design exists, a mid-level engineer can challenge its assumptions, and a senior engineer can co-decide with other functions and remain accountable afterward.
+You do not need to jump from the first step to the last one. You also do not need to make the final decision alone.
 
-This growth does not require becoming a people manager. An individual contributor can improve decisions, explain trade-offs, reduce uncertainty, and help others execute safely. Influence grows because the reasoning becomes more useful—not because the person owns more meetings.
+- An entry-level engineer can ask why the current design exists.
+- A mid-level engineer can compare options with support from the team.
+- A senior engineer can connect the choice to other teams and business needs.
+- A mentor can help each person take the next step safely.
 
-To practice, choose one existing decision without judging it first. Reconstruct:
+This path does not require becoming a people manager. An individual contributor can improve decisions, explain trade-offs, and help others work safely.
 
-- the problem and constraints at the time;
-- the available alternatives and decisive assumption;
-- what the team inherited afterward.
+To practice, choose one existing decision without judging it first. Find out:
 
-If nobody can answer, that missing context is already useful—and a reason to record the next decision.
+- what problem and limits the team had at the time;
+- which other options the team considered;
+- why the team chose this option;
+- what extra work the team had afterward.
+
+If nobody can answer, you found a useful gap. Record the next decision so the next engineer has a better starting point.
 
 {/* IMAGE PROMPT (decision-scope.png): Flat vector staircase illustration on a warm ivory background with soft shadows and a warm editorial palette (terracotta, mustard gold, forest green, charcoal, soft sand), no purple, teal, navy, or photorealism. Show five ascending steps from left to right with one engineer progressing upward. Label the steps, in order, "IMPLEMENT", "EXPLAIN", "COMPARE", "DECIDE", and "OWN". Make each step wider in responsibility as it rises, ending with the engineer standing beside the final step rather than a management symbol. Render these five labels exactly once each, spelled exactly. Render only these labels; no other words, letters, numbers, code, logos, watermarks, meta text, or printed style instructions. No duplicate labels, steps, figures, or typos. */}
 
@@ -127,7 +243,7 @@ If nobody can answer, that missing context is already useful—and a reason to r
 
 ## A Lightweight ADR You Can Revisit
 
-The artifact for this reasoning already has a name: an **Architecture Decision Record (ADR)**. It does not need a formal approval process or a long essay. Its size should follow the consequence of the decision.
+You can write this context in an **Architecture Decision Record (ADR)**. An ADR does not need to be a long or formal document. A small decision can have a small record.
 
 For many decisions, I would start with something this small:
 
@@ -143,6 +259,7 @@ Constraints:
 Technology intention:
 
 Options considered:
+Decisive reasons:
 Decision:
 Trade-offs accepted:
 
@@ -153,8 +270,12 @@ Revisit when:
 
 Three fields deserve special attention:
 
-- **Options considered:** preserve rejected choices and the evidence available, so the next engineer does not repeat the same investigation.
-- **Date and constraints:** a sound choice can expire when traffic, regulation, team size, vendor pricing, or the product changes.
-- **Revisit when:** define an evidence-based trigger, such as a traffic range, a second team needing the contract, or a vendor-cost threshold.
+- **Options considered:** Keep the options the team rejected and why. The next engineer will not need to repeat all the work.
+- **Date and constraints:** A good choice can become a poor fit when traffic, rules, team size, cost, or the product changes.
+- **Revisit when:** Add a clear signal for reviewing the choice, such as more traffic, another team using the contract, or a higher vendor cost.
 
-This framework reflects only the systems and organizations I have experienced. An ADR cannot remove uncertainty, politics, or incomplete information. It can make the reasoning, consequences, and ownership visible enough to challenge and revise. Engineering judgment is not always choosing correctly on the first attempt; it is making a decision the organization can understand and continue to own.
+An ADR cannot remove uncertainty or missing information. It can help the team see the reason, cost, and owner of a decision. It also gives a less-experienced engineer a safe place to learn why the system looks this way.
+
+Engineering judgment does not mean choosing the best answer on the first attempt. It means asking useful questions, making the current reason visible, and checking the choice again when the situation changes.
+
+If you are still improving, you do not need to wait for a new title. Pick one decision in your current project and ask why. That is already practice.
