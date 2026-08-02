@@ -10,13 +10,13 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/mdx": "7.0.3",
+    "@astrojs/mdx": "7.0.5",
     "@astrojs/rss": "4.0.19",
     "@astrojs/sitemap": "3.7.3",
     "@astrojs/solid-js": "7.0.1",
     "@tailwindcss/vite": "4.3.1",
     "animate.css": "4.1.1",
-    "astro": "7.0.9",
+    "astro": "7.1.6",
     "astro-compress": "2.4.1",
     "dayjs": "1.11.7",
     "sitemap": "7.1.2",
