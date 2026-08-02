@@ -310,13 +310,17 @@ const sizeClasses = {
   }
 
   .mermaid {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
     background: transparent !important;
   }
 
   .mermaid-wrapper :global(svg) {
     display: block;
     width: 100% !important;
-    max-width: 100% !important;
+    max-width: 100%;
     height: auto !important;
     min-height: 0 !important;
     margin-inline: auto;
