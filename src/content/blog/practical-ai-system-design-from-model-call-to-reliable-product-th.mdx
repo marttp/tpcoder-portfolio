@@ -1,0 +1,784 @@
+---
+title: "Practical AI System Design by TP Coder"
+description: "คู่มือออกแบบ predictive ML, recommendation, RAG, LLM และ agent system แบบ practical พร้อม evaluation, safety, reliability, cost control และ ownership"
+pubDate: "2026-08-08"
+tags:
+  ["AI", "Software Architecture", "Software Engineering", "System Design"]
+heroImage: "/assets/images/blogs/practical-ai-system-design/hero-banner.png"
+language: "th"
+translationSlug: "practical-ai-system-design-from-model-call-to-reliable-product"
+servicesNote: true
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+## Why AI System Design Needs a Different Guide
+
+การเรียก model API นั้นง่ายครับ งานก้อนใหญ่กว่าคือการสร้าง product รอบ call นั้น
+
+Product ยังต้องมี data, API, storage, security, monitoring, cost control, evaluation และ recovery ตอน model ให้คำตอบไม่ดี ถ้าระบบเรียก tool ได้ เราก็ต้องจำกัดด้วยว่า model ทำอะไรได้บ้าง
+
+[AI System Design guide จาก System Design Handbook](https://www.systemdesignhandbook.com/guides/ai-system-design/) วางภาพไว้กว้างมาก ตั้งแต่ data, training, inference, caching, retrieval, deployment, monitoring, privacy ไปจนถึง agent
+
+บทความนี้ผมจะนำแผนที่นั้นมาเรียงใหม่ ให้คุณไล่จาก product problem ไปถึง production operation ได้ง่ายขึ้น
+
+แกนของบทความคือ:
+
+**AI model เป็น component ที่มีความไม่แน่นอนหนึ่งตัวใน production system ปกติ ส่วนความน่าเชื่อถือมาจากระบบที่ล้อมรอบมัน**
+
+เราจะคุยกันหลายแบบ ทั้ง predictive ML, recommendation, RAG, LLM workflow และ agent โดยไม่ตั้งสมมุติฐานว่า product ทุกตัวต้องมี agent, vector database หรือ train model เอง
+
+ตัวอย่างหลักเป็น customer support assistant สมมุติครับ ช่วงแรกมันตอบคำถามจาก approved document ต่อมาจึงค่อย lookup order หรือสร้าง support ticket ตัวอย่างนี้ใช้เพื่อสอน design เท่านั้น ไม่ใช่ประสบการณ์จาก project ใด project หนึ่ง
+
+## First, Name the Type of AI System
+
+คำว่า AI system ครอบ architecture หลายแบบ ก่อนวาดอะไรให้บอกก่อนว่าเรากำลังแก้ปัญหาชนิดไหน
+
+| System type | Example | Main design pressure |
+|---|---|---|
+| Predictive ML | fraud score | feature freshness, accuracy, latency |
+| Recommendation | product ranking | candidate retrieval, ranking, feedback |
+| RAG | ตอบจาก company document | retrieval quality, grounding, access control |
+| LLM workflow | classify และสรุป case | prompt version, evaluation, cost |
+| Agent | ตรวจข้อมูลและลงมือทำ | tool, state, permission, recovery |
+
+Product หนึ่งตัวอาจใช้หลายแบบ เช่น recommendation ใช้ predictive ranking แล้วให้ LLM ช่วยอธิบาย หรือ support assistant ใช้ RAG ตอนตอบและใช้ agent ตอนสร้าง ticket
+
+แต่อย่ารวมทุกอย่างเร็วเกินไปครับ แต่ละส่วนมี success metric และ failure mode คนละชุด
+
+เริ่มด้วยคำถามเหล่านี้:
+
+- output เป็น score, ranking, text, image, plan หรือ action?
+- ระบบต้องใช้ private data ที่สดแค่ไหน?
+- คน review output ได้ไหม?
+- คำตอบผิดมี cost เท่าไร?
+- ต้องตอบใน 100 milliseconds หรือรอ 30 seconds ได้?
+- model แค่ตอบ หรือแก้ state ของระบบอื่นได้ด้วย?
+- rule หรือ normal search แก้ได้ปลอดภัยกว่าหรือเปล่า?
+
+ข้อสุดท้ายสำคัญครับ AI เพิ่ม uncertainty ถ้าคุณใช้ rule หรือ search ปกติแล้วแก้โจทย์ได้ ก็ไม่ต้องฝืนใส่ model เราควรใช้ AI เมื่อ value ที่ได้คุ้มกับความไม่แน่นอนนั้น
+
+![Four AI system types: predict, recommend, retrieve, and act](/assets/images/blogs/practical-ai-system-design/ai-system-types.png)
+
+## An AI Product Has More Than a Model
+
+Google อธิบายใน MLOps guide ว่า [ML code เป็นเพียงส่วนเล็กของ production ML system](https://cloud.google.com/architecture/mlops-continuous-delivery-and-automation-pipelines-in-machine-learning) งานรอบ model ยังมี data collection, validation, serving, monitoring และ automation
+
+LLM product ก็ใช้หลักเดียวกันครับ
+
+![The model is one component inside a complete AI product](/assets/images/blogs/practical-ai-system-design/model-is-one-part.png)
+
+<MermaidDiagram chart={`
+flowchart LR
+    U["User or event"] --> A["Product API"]
+    A --> C["Context and policy"]
+    C --> M["Model"]
+    M --> V["Validation"]
+    V --> R["Product result"]
+    R --> O["Logs and evaluation"]
+    O --> I["Improve data, prompt,\nmodel, or policy"]
+    I --> C
+`} />
+
+ระบบรอบ model ต้องตอบได้ว่า:
+
+- input แบบไหนอนุญาต?
+- user คนนี้เข้าถึง context ใดได้?
+- model และ prompt version ไหนควรรัน?
+- timeout แล้วทำอย่างไร?
+- output ถูกตรวจอย่างไร?
+- quality วัดจากอะไร?
+- bad release rollback อย่างไร?
+- high-risk action ให้ใคร review?
+
+Model เก่งมากได้ครับ แต่ product รอบมันยังไม่น่าเชื่อถือก็ได้เหมือนกัน จุดนี้เป็นภาพที่ผมอยากให้คุณจำไว้ตลอดบทความ
+
+## Define Success Before Choosing a Model
+
+AI quality ไม่ใช่เลขตัวเดียว เลือก metric ให้เข้ากับ product ก่อน
+
+### Predictive ML metrics
+
+Metric ที่ใช้ได้ตามโจทย์มี precision, recall, false positive/negative rate, ranking quality, calibration และ model drift
+
+Fraud system อาจอยากจับ bad transaction ให้ได้มากขึ้น แต่ false positive เยอะไปก็ block ลูกค้าที่ดี สมดุลนี้เป็น business decision ด้วย ไม่ได้จบที่ model score
+
+### Generative AI metrics
+
+สิ่งที่ควรวัดมี:
+
+- task completion
+- factual grounding
+- citation ที่ถูก
+- policy compliance
+- helpfulness
+- tool-call accuracy
+- human acceptance
+- cost per completed task
+- end-to-end latency
+
+อย่าวัดแค่ว่าคำตอบอ่านดีหรือเปล่าครับ คำตอบที่มั่นใจอาจผิดได้
+
+สำหรับ support assistant เราอาจกำหนดเป้าหมายว่า:
+
+- ตอบจาก approved support document เท่านั้น
+- แสดง source ที่ใช้
+- refuse เมื่อไม่มี source รองรับ
+- customer data อยู่ใน access boundary ที่ถูก
+- ส่ง account-specific risk case ให้คน
+- ตอบสิ่งที่มีประโยชน์ครั้งแรกภายในไม่กี่วินาที
+
+พอเป้าหมายชัด architecture ก็มีทิศทาง
+
+![AI product success balances quality, latency, cost, and safety](/assets/images/blogs/practical-ai-system-design/balance-success-metrics.png)
+
+## Start with the Smallest Useful AI Version
+
+เวอร์ชันแรกอาจมี model call เดียว
+
+<MermaidDiagram chart={`
+flowchart LR
+    U["User question"] --> A["Application"]
+    A --> M["Model API"]
+    M --> A
+    A --> U
+`} />
+
+เท่านี้อาจพอสำหรับ writing helper, low-risk internal summary, prototype สำหรับเช็กว่าคนอยากใช้ feature ไหม หรือ classification ที่มี output schema ชัด
+
+แม้เป็นเวอร์ชันเล็กก็ต้อง observable:
+
+- บันทึก model name และ version
+- บันทึก prompt version
+- วัด input/output token
+- วัด latency และ error
+- เก็บ user feedback เมื่อ policy อนุญาต
+- เอา sensitive data ออกจาก log หรือ mask ไว้
+
+อย่าเพิ่ม RAG หรือ agent ก่อนรู้ว่า simple version ขาดอะไร ถ้าคุณยังตอบข้อนี้ไม่ได้ component ถัดไปก็ยังไม่มีเหตุผลพอ
+
+สำหรับ support assistant จุดอ่อนจะโผล่เร็วครับ general model ไม่รู้ product policy ล่าสุดและอาจสร้างคำตอบขึ้นมา Constraint ถัดไปจึงเป็น private knowledge ที่เปลี่ยนตลอด
+
+## Predictive ML: Two Connected Pipelines
+
+Predictive ML system มักมี offline path กับ online path ที่เชื่อมกัน
+
+<MermaidDiagram chart={`
+flowchart TB
+    subgraph Offline["Offline learning path"]
+        D["Historical data"] --> V["Data validation"]
+        V --> F["Feature engineering"]
+        F --> T["Training"]
+        T --> E["Evaluation"]
+        E --> R["Model registry"]
+    end
+
+    subgraph Online["Online serving path"]
+        Q["Live request"] --> OF["Online features"]
+        OF --> S["Model server"]
+        S --> P["Prediction"]
+    end
+
+    R --> S
+    P --> L["Outcome and feedback"]
+    L --> D
+`} />
+
+### Offline learning path
+
+Path นี้รับงานหนัก เช่น collect historical data, validate quality, build feature, train candidate model, compare, approve version และ publish เข้า registry
+
+### Online serving path
+
+Path นี้รับ live traffic ตั้งแต่รับ request, fetch fresh feature, run inference, apply business rule, คืนหรือเก็บ prediction แล้วบันทึก outcome ที่เกิดตามมา
+
+สอง path ต้องเข้าใจ feature แบบเดียวกัน หาก training คำนวณแบบหนึ่ง แต่ serving คำนวณอีกแบบ model จะเห็น data คนละชุดใน production ปัญหานี้เรียกว่า training-serving skew
+
+Feature store ช่วยแชร์ feature definition และ serving path เพื่อลด risk ได้ แต่ไม่ได้ปิดทุกช่อง Data version, transformation code, missing value และ time boundary ยังต่างกันได้
+
+## Batch, Streaming, and Feature Pipelines
+
+AI data เข้ามาได้สองทางหลัก:
+
+- **Batch ingestion** อ่าน data ก้อนที่มีขอบเขตตาม schedule เหมาะกับ historical training, daily report และ backfill ขนาดใหญ่
+- **Streaming ingestion** รับ event ตอนเข้ามา เหมาะกับ fraud signal, live recommendation, monitoring และ fresh online feature
+
+หลายระบบใช้คู่กันครับ daily batch สร้าง training dataset หลัก ส่วน stream เติม recent user activity
+
+Ingestion path ยังต้องดู schema validation, event/processing time, duplicate, late/out-of-order event, replay, backfill, retention, lineage และ access control
+
+Feature pipeline เปลี่ยน raw data เป็น model input ให้ระบุ feature definition, owner, freshness target และ data source ให้ชัด
+
+Feature store มักมีสอง view:
+
+- offline store สำหรับ training read ขนาดใหญ่
+- online store สำหรับ low-latency inference
+
+ทั้งสอง store ต้องคืนความหมายเดียวกัน ณ เวลาเดียวกัน Point-in-time join สำคัญมาก เพราะ training ห้ามใช้ data ที่เกิดหลัง prediction event
+
+## Training at Scale and Model Lifecycle
+
+Training อาจเริ่มจาก process เดียวบนเครื่องเดียว ไปจนถึง distributed job บน accelerator หลายตัว Scale เมื่อ data หรือ model ต้องใช้เท่านั้น:
+
+- แบ่ง data ไปหลาย worker
+- แบ่ง model เมื่อใส่ device เดียวไม่พอ
+- checkpoint long-running job
+- retry failed worker อย่างปลอดภัย
+- คุม random seed และ environment version
+- track compute และ storage cost
+- แยก experiment ออกจาก production pipeline
+
+Output ของ training ไม่ได้มีเพียง model file Reproducible run ควรเก็บ source code version, dataset/feature version, parameter, environment, evaluation result, safety check, artifact และ checksum
+
+Model registry เก็บ approved version และ status เช่น candidate, approved, production, rejected และ retired
+
+Promotion ต้องเป็น controlled decision model อาจได้ offline score สูงขึ้น แต่ทำ latency, cost, fairness หรือ business result แย่ลงก็ได้
+
+Retraining เริ่มจาก schedule, new data volume, drift หรือ quality ที่ตก Automatic retraining ไม่ได้แปลว่าต้อง automatic release คั่น evaluation และ approval gate ไว้เสมอครับ
+
+## Data Quality Is a Production Dependency
+
+AI system fail ได้ทั้งที่ server ทุกตัว healthy
+
+![Raw data is checked and versioned before training and serving](/assets/images/blogs/practical-ai-system-design/data-quality-pipeline.png)
+
+ตัวอย่างมี data source หยุดส่ง event, field เปลี่ยนหน่วย, timestamp เปลี่ยน time zone, label มาช้า, app version ใหม่เปลี่ยน behavior, join แล้ว record ซ้ำ หรือ training ใช้ข้อมูลที่ยังไม่มี ณ เวลา prediction
+
+Validate data ทั้งก่อน training และ serving โดยเช็ก schema, range, missing value, distribution, volume, freshness, uniqueness, label delay และ access policy
+
+Version dataset หรือเก็บ reproducible snapshot ไว้ ถ้า model ทำงานแย่ ทีมต้องตอบได้ว่า code, data, feature และ parameter ชุดไหนสร้างมันขึ้นมา
+
+Paper [Hidden Technical Debt in Machine Learning Systems](https://research.google/pubs/hidden-technical-debt-in-machine-learning-systems/) อธิบาย debt จาก data dependency, feedback loop, configuration และโลกภายนอกที่เปลี่ยนไป หลายครั้ง model ไม่ใช่ส่วนที่ดูแลยากที่สุดครับ
+
+## RAG: Retrieve Before You Generate
+
+Retrieval-Augmented Generation หรือ RAG ดึง external knowledge ที่เกี่ยวข้องมาให้ model ตอน request
+
+![RAG searches for relevant context before generating an answer](/assets/images/blogs/practical-ai-system-design/rag-retrieval-flow.png)
+
+[RAG paper](https://arxiv.org/abs/2005.11401) ผสาน internal knowledge ของ model กับ retrieved document ใน production product โดย RAG เหมาะเมื่อ knowledge เปลี่ยน อยู่ใน private domain หรือต้องแสดง source
+
+สำหรับ support assistant:
+
+<MermaidDiagram chart={`
+flowchart LR
+    subgraph Indexing["Indexing path"]
+        D["Approved documents"] --> C["Clean and chunk"]
+        C --> E["Create embeddings"]
+        E --> V["Vector and text indexes"]
+    end
+
+    subgraph Answering["Answer path"]
+        U["User question"] --> Q["Query and access check"]
+        Q --> V
+        V --> K["Relevant passages"]
+        K --> M["Model with context"]
+        M --> A["Answer with sources"]
+    end
+`} />
+
+### The indexing path
+
+1. อ่าน approved document
+2. ลบ unsupported หรือ duplicate content
+3. แบ่ง document เป็น chunk
+4. เติม metadata และ access rule
+5. สร้าง embedding
+6. เขียน vector และ keyword index
+7. บันทึก source version
+
+### The answer path
+
+1. รับคำถาม
+2. เช็ก user และ tenant
+3. rewrite หรือ expand query เมื่อมีประโยชน์
+4. retrieve candidate passage
+5. rerank
+6. ส่ง context ที่ดีที่สุดให้ model
+7. validate answer และ citation
+8. คืน result หรือ refuse
+
+RAG ยังพังได้หลายทาง เช่น document ที่ถูกไม่เคยถูก index, chunk ทำ context หาย, retrieval เจอข้อความคล้ายแต่ผิด, access filter ทำหลัง retrieval, model ไม่สน source หรือ policy version เก่ากับใหม่ถูกปนกัน
+
+วัด retrieval แยกจาก generation ครับ ถ้า passage ที่ถูกไม่เข้ามา เปลี่ยน prompt อย่างเดียวอาจไม่ช่วย
+
+Retrieval metric ที่ใช้ได้มี recall at K, precision at K, ranking quality, source freshness, access-filter correctness และสัดส่วน answer ที่มี support ถูกต้อง
+
+## Vector Search Is One Retrieval Tool
+
+Vector search หา content ที่มีความหมายคล้ายกัน เหมาะกับ natural-language question และ semantic match แต่ไม่ได้พอสำหรับทุกโจทย์
+
+Keyword search อาจดีกว่าเมื่อค้น product code, error message, name, date, legal phrase หรือ short identifier
+
+RAG system จำนวนมากจึงใช้ hybrid search:
+
+- vector search หา meaning
+- inverted index หา exact term
+- metadata filter แยก tenant, language, date และ policy
+- reranking เลือกผลชุดสุดท้าย
+
+เลือก index จาก query ครับ ถ้าคุณค้น exact identifier เป็นหลัก keyword search อาจตอบโจทย์กว่า อย่าเพิ่ม vector database เพียงเพราะ product ใช้ LLM
+
+## LLM Workflows Before Autonomous Agents
+
+งานบางแบบต้องเรียก model หลาย step แต่ยังไม่ต้องใช้ autonomous agent
+
+![A workflow follows a fixed path while an agent chooses within limits](/assets/images/blogs/practical-ai-system-design/workflow-vs-agent.png)
+
+Workflow pattern ที่มีประโยชน์ ได้แก่:
+
+- **Prompt chaining:** step หนึ่งเตรียม input ให้ step ถัดไป
+- **Routing:** classifier เลือก path ที่รู้ไว้แล้ว
+- **Parallel work:** งานอิสระรันพร้อมกัน
+- **Evaluator-optimizer:** model หนึ่งสร้าง อีก model ตรวจ
+- **Orchestrator-worker:** model หลักแบ่งงานให้ specialized worker
+
+[Building effective agents](https://www.anthropic.com/engineering/building-effective-agents) ของ Anthropic แนะนำให้เริ่มจาก simple composable pattern แล้วเพิ่ม complexity เฉพาะเมื่อผลลัพธ์ดีขึ้น Agentic system มักแลก latency และ cost เพิ่มกับ task performance ที่ดีขึ้น
+
+นี่เป็น System Design rule ที่ใช้ได้ดีครับ fixed workflow test, debug และคาดเดาง่ายกว่า open-ended agent
+
+สำหรับ support assistant แค่ routing อาจพอ:
+
+- product question → RAG answer
+- order status → deterministic order lookup
+- suspicious activity → human handoff
+- unsupported topic → refusal
+
+Model เลือก route ได้โดยไม่ต้องเป็น owner ของ workflow ทั้งก้อน
+
+## Agents: Give the Model Tools and Limits
+
+Agent ใช้ model ตัดสินว่าจะทำ step ไหนและเรียก tool อะไร มันทำต่อจนถึง goal, ชน limit หรือส่งงานให้คน
+
+[Practical guide to building agents](https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/) ของ OpenAI อธิบาย agent ว่าเป็น system ที่จัดการ workflow execution ใช้ tool และทำงานภายใน guardrail
+
+Loop พื้นฐานเป็นแบบนี้:
+
+<MermaidDiagram chart={`
+flowchart TD
+    G["User goal"] --> P["Plan next step"]
+    P --> T{"Need a tool?"}
+    T -->|"No"| O["Return result"]
+    T -->|"Yes"| A["Authorize tool and arguments"]
+    A --> X["Execute tool"]
+    X --> R["Record result"]
+    R --> P
+    A -->|"High risk"| H["Human approval"]
+    H --> X
+`} />
+
+[ReAct paper](https://arxiv.org/abs/2210.03629) เสนอ pattern ที่ผสาน reasoning กับ action ส่วน agent system ยุคนี้ใช้ loop ที่คล้ายกันเพื่อเลือก tool และตอบสนองต่อผลลัพธ์
+
+Tool ทุกตัวควรมี contract แคบ ๆ:
+
+- name และ purpose ที่ชัด
+- typed input/output schema
+- authentication context
+- authorization rule
+- timeout
+- idempotency behavior
+- rate limit
+- audit event
+- safe error message
+
+อย่าให้ general database connection หรือ powerful shell กับ model หาก business API เล็ก ๆ ทำงานนั้นได้
+
+[Model Context Protocol](https://modelcontextprotocol.io/docs/2026-07-28/getting-started/intro) เป็น standard สำหรับเชื่อม AI application กับ tool และ data source Standard protocol ช่วยเรื่อง integration แต่ไม่ได้ตัดสินว่าใครมีสิทธิ์ใช้ tool Authorization และ policy ยังเป็นหน้าที่ของ product
+
+### State and memory
+
+Agent memory หมายถึงได้หลายอย่าง:
+
+- **Conversation state:** message ใน session ปัจจุบัน
+- **Workflow state:** step ที่จบแล้ว งานที่รอ และ tool result
+- **User memory:** preference ที่ user อนุญาตให้เก็บข้าม session
+- **Knowledge:** document ที่ retrieve จาก external store
+
+อย่าโยน conversation เก่าทั้งหมดเข้า vector database แล้วเรียกมันว่า memory ให้ระบุว่าอะไรต้องเก็บ เก็บเพื่ออะไร นานแค่ไหน และ user ลบอย่างไร
+
+Workflow state ควร durable เมื่องานใช้เวลานาน เพราะ agent อาจต้อง resume หลัง process crash หรือรอ human approval
+
+### Single agent and multi-agent patterns
+
+Agent เดียว trace, test และ stop ง่ายกว่า เริ่มจากแบบนี้ก่อน เว้นแต่การแยก role จะแก้ปัญหาที่วัดได้
+
+Multi-agent system ใช้ pattern ได้หลายแบบ:
+
+- **Orchestrator-worker:** controller แบ่ง bounded task ให้ worker
+- **Router-specialist:** router ส่ง request ให้ specialist หนึ่งตัว
+- **Parallel workers:** worker อิสระรันพร้อมกันแล้วรวมผล
+- **Review loop:** agent หนึ่งสร้าง อีกตัวตรวจ
+- **Handoff:** agent ส่ง state และ ownership ให้อีก agent
+
+จำนวน agent ที่มากขึ้นไม่ได้รับประกันคำตอบที่ดีขึ้น มันเพิ่ม model call, latency, cost, state, permission และ failure path ถ้าผมยังอธิบายไม่ได้ว่า agent ตัวที่สองแก้ปัญหาอะไร ผมจะยังไม่เพิ่มมันครับ
+
+สำหรับ agent ทุกตัว ให้กำหนด goal, context ที่อ่านได้, tool ที่เรียกได้, budget และ stop condition, state ที่ถือ รวมถึงวิธีที่ agent อื่นหรือคนเข้ามาตรวจงาน
+
+## Model Serving: Latency, Throughput, and Cost
+
+Hosted model API ซ่อน GPU operation ไว้ แต่ product ยังเป็น owner ของ latency, concurrency, rate limit และ cost
+
+![Model serving batches requests while balancing wait time and cost](/assets/images/blogs/practical-ai-system-design/model-serving-batching.png)
+
+ถ้า self-host model serving layer อาจมี model replica, GPU scheduling, request queue, dynamic batching, model loading/warm-up, autoscaling, token streaming และ memory limit
+
+[Dynamic batching guide](https://docs.nvidia.com/deeplearning/triton-inference-server/user-guide/docs/user_guide/batcher.html) ของ NVIDIA Triton อธิบายการรวม request เป็น batch เพื่อเพิ่ม throughput แต่การรอ batch ใหญ่ขึ้นก็เพิ่ม latency ด้วย ขนาดที่เหมาะขึ้นกับ latency budget และ model performance
+
+### Control the latency budget
+
+แยก request ออกเป็นส่วน ๆ:
+
+```text
+authentication
++ retrieval
++ reranking
++ model queue
++ model generation
++ tool calls
++ validation
+= end-to-end latency
+```
+
+เร่งเฉพาะ model อาจไม่ทำให้ product เร็วขึ้นครับ
+
+### Control cost per useful result
+
+Track input/output token, retrieval/reranking cost, tool call, retry count, model route, cache saving และ cost per completed task
+
+Cost per request อาจซ่อน poor quality คำตอบราคาถูกที่ทำให้ user ต้องเริ่มงานซ้ำไม่ได้ถูกกว่าเสมอไป
+
+## Caching in AI Systems
+
+Cache แต่ละแบบแก้คนละปัญหา:
+
+- **Document cache:** ไม่ต้องอ่าน source เดิมซ้ำ
+- **Embedding cache:** ไม่สร้าง embedding ใหม่เมื่อ content ไม่เปลี่ยน
+- **Retrieval cache:** ใช้ result ซ้ำเมื่อ query และ index version คงที่
+- **Prompt prefix cache:** ใช้ repeated prompt input ซ้ำเมื่อ provider รองรับ
+- **Response cache:** คืน approved answer เดิมให้ safe repeated request
+- **Model cache:** เก็บ model weight ให้พร้อมใน memory
+
+Semantic caching match request ที่คล้ายกัน ไม่ได้รอ string เท่ากัน มันลด model work ได้ แต่ก็เสี่ยงคืน answer จาก context ผิด
+
+Cache key ต้องรวม dimension ที่สำคัญ เช่น tenant, user role, language, model version, prompt version, knowledge-base version และ policy version
+
+ห้ามให้ tenant หนึ่งได้รับ cached private answer ของอีก tenant ครับ
+
+## Evaluation Is Part of the Architecture
+
+Normal test เช็ก deterministic behavior ส่วน AI evaluation เช็ก behavior ที่เปลี่ยนได้
+
+![An AI release moves through tests, evaluation, canary rollout, monitoring, and improvement](/assets/images/blogs/practical-ai-system-design/evaluation-release-loop.png)
+
+[Evaluation guide](https://developers.openai.com/api/docs/guides/evals) ของ OpenAI อธิบาย eval ว่าเป็น test ที่เทียบ model output กับ style และ content criteria แนวคิดที่ควรจำคือกำหนด expected behavior, สร้าง representative dataset, รัน system แล้ว grade result
+
+ใช้หลาย layer ครับ
+
+### Unit and contract tests
+
+Test normal code เช่น tool schema, access filter, output parser, retry policy, state transition, redaction และ deterministic business rule
+
+### Offline evaluation
+
+เก็บ versioned case set ให้มี common case, edge case, past failure, adversarial input, หลายภาษา, หลาย customer group, case ที่ต้อง refuse และ case ที่ต้อง human handoff
+
+Grade ทั้ง system อย่าดู final model text อย่างเดียว สำหรับ RAG ต้องตรวจ retrieval กับ grounding สำหรับ tool ต้องตรวจ selection และ argument ส่วน agent ต้องดูทั้ง path กับ final state
+
+### Online evaluation
+
+วัด production signal เช่น user correction, task completion, escalation rate, tool failure, refusal rate, latency, cost, safety event และ human review result
+
+อย่าใช้ thumbs-up เป็น quality metric ทั้งหมด เพราะ user จำนวนมากไม่เคยกดครับ
+
+### Human evaluation
+
+คนยังจำเป็นเมื่อ quality ขึ้นกับ context, policy หรือ harm ให้ reviewer ใช้ rubric ที่ชัด ไม่งั้นคำตอบเดียวกันอาจได้ grade คนละแบบ
+
+## Deploy Prompts and Models Like Code
+
+AI release เปลี่ยนได้จาก model version, prompt version, tool description, retrieval logic, chunking, embedding model, safety policy, system code และ source data ต้องบันทึก version พวกนี้เป็นชุดเดียวกัน
+
+Safe release อาจเดินตามลำดับ:
+
+1. offline evaluation
+2. shadow traffic
+3. internal user
+4. production group เล็ก
+5. A/B หรือ canary test
+6. wider rollout
+7. rollback เมื่อ quality หรือ safety ลดลง
+
+Google อธิบาย automation หลายระดับไว้ใน [MLOps architecture guide](https://cloud.google.com/architecture/mlops-continuous-delivery-and-automation-pipelines-in-machine-learning) ตั้งแต่ manual training ไปจน automated pipeline และ CI/CD
+
+Automation ต้องมี gate ครับ model ที่ train เสร็จไม่ควรเข้า production อัตโนมัติเพียงเพราะ job จบ
+
+## Reliability: Plan for Poor Answers and Failed Dependencies
+
+AI system fail ได้สองกลุ่มใหญ่:
+
+- **System failure:** timeout, provider outage, rate limit, broken tool หรือ missing index
+- **Quality failure:** wrong answer, weak retrieval, unsafe output หรือ bad action
+
+Design ต้องรองรับทั้งคู่
+
+<MermaidDiagram chart={`
+flowchart TD
+    R["AI request"] --> P["Primary path"]
+    P -->|"Good result"| O["Return result"]
+    P -->|"Timeout or overload"| F["Smaller model or fixed workflow"]
+    P -->|"Low confidence or missing source"| H["Human handoff"]
+    P -->|"Unsafe or forbidden"| X["Block and audit"]
+    F --> O
+    H --> O
+`} />
+
+Fallback ที่ใช้ได้ เช่นคืน search result แทน generated answer, ใช้ model เล็กลง, ใช้ fixed rule/workflow, คืน cached approved answer, ขอข้อมูลเพิ่ม, handoff ให้คน หรือหยุดโดยไม่ทำ action
+
+ตั้ง limit ให้ total model call, total tool call, workflow duration, token use, money spent, repeated failed step และ concurrent workflow
+
+Agent ที่ตัดสินใจหยุดไม่ได้ คือ operational incident ที่รอวันเกิดครับ
+
+## Security: Treat Model Input and Output as Untrusted
+
+LLM อ่าน natural language ซึ่งอาจมี instruction จาก user, document, website และ tool result
+
+[OWASP Top 10 for LLM applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/) ครอบคลุม prompt injection, insecure output handling, sensitive information disclosure, excessive agency และ overreliance
+
+Input validation อย่างเดียวหยุด prompt injection ไม่ได้ ต้องป้องกันหลายชั้น:
+
+- แยก system policy ออกจาก untrusted content
+- authorize ทุก tool call นอก model
+- ใช้ allowlist กับ tool และ argument
+- จำกัด retrieval ตาม user และ tenant
+- มอง model output เป็น untrusted input ของ component ถัดไป
+- ขอ approval สำหรับ high-impact action
+- redact secret และ sensitive data
+- isolate code execution
+- log action โดยไม่ทำ private content รั่ว
+- test adversarial case
+
+สำหรับ support agent การอ่าน order กับ refund order เป็นคนละ permission Model ไม่ควรได้ write access เพียงเพราะอธิบาย refund policy ได้
+
+[NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework) จัดงานด้าน AI risk เป็น govern, map, measure และ manage บทเรียนต่อ architecture คือ safety เป็น process ต่อเนื่อง ไม่ใช่ model filter ตัวเดียวท้าย flow
+
+## Privacy, Compliance, and Data Governance
+
+AI system อาจ copy sensitive data ไปหลายจุดกว่าปกติ ทั้ง training dataset, feature store, vector index, prompt, trace, evaluation set และ model artifact
+
+Map data lifecycle ให้ครบ:
+
+1. collection
+2. consent และ allowed purpose
+3. storage และ access
+4. training หรือ retrieval use
+5. logging และ evaluation
+6. retention และ deletion
+
+Control ที่ใช้ได้มีการ collect เฉพาะ data ที่ต้องใช้, แยก tenant และ role, encrypt in transit/at rest, mask หรือ tokenize identifier, ลบ secret ก่อนส่ง prompt และ log, เก็บ dataset lineage, test private-data leakage, รองรับ retention/deletion request และ review ว่า provider process data ที่ไหน
+
+Predictive system บางแบบใช้ differential privacy หรือ federated learning เพื่อแก้ risk เฉพาะด้าน วิธีเหล่านี้อาจลด model utility หรือเพิ่ม cost จึงเป็น design choice ไม่ใช่ compliance แบบอัตโนมัติ
+
+Governance ต้องมี owner ด้วย ระบุว่าใคร approve dataset, model, prompt, tool และ policy change พร้อม audit trail ที่ตาม production result กลับไปยัง version ต้นทางได้
+
+## Human Approval Is a System State
+
+อย่าทำ human review ด้วยการส่ง message แบบไม่เป็นระบบให้ใครสักคน Workflow ต้องมี durable state:
+
+```text
+RUNNING
+WAITING_FOR_APPROVAL
+APPROVED
+REJECTED
+EXPIRED
+COMPLETED
+FAILED
+```
+
+เก็บ proposed action, input และ evidence, model/prompt/policy version, approver, approval time, final tool result และ audit event
+
+Action อาจ expire ระหว่างรอ ก่อน execute ต้องเช็ก permission และ current business state อีกรอบ
+
+Human approval เหมาะกับ high-impact action แต่ไม่ควรกลายเป็น hidden queue ที่ low-risk request ทุกตัวต้องรอคน
+
+## Observability for AI Products
+
+Traditional metric ยังสำคัญ ทั้ง request rate, error rate, latency, saturation, queue depth และ dependency health
+
+![AI observability traces the whole request and its quality, latency, cost, failures, and feedback](/assets/images/blogs/practical-ai-system-design/ai-observability.png)
+
+AI เพิ่มคำถามอีกชุด:
+
+- model และ prompt version ไหนรัน?
+- retrieve document อะไรมาบ้าง?
+- agent เลือก tool ไหน?
+- request ถูก block หรือ handoff เพราะอะไร?
+- ใช้ token และ tool call เท่าไร?
+- quality เปลี่ยนหลัง release ไหม?
+- tenant เดียวสร้าง cost ผิดปกติหรือเปล่า?
+- input หรือ output drift ไหม?
+
+Trace workflow ทั้งก้อนด้วย request หรือ task ID เดียว แล้วบันทึก model call, retrieval, tool call, approval และ fallback
+
+ระวัง log ครับ prompt, retrieved document และ tool result อาจมี PII, credential หรือ confidential data เก็บเฉพาะที่ทีมต้องใช้พร้อม retention rule
+
+## A Practical Support Assistant Design
+
+ลองรวมทุกส่วนเข้าด้วยกัน
+
+![A practical support assistant routes work to an answer, a human, or an approval gate](/assets/images/blogs/practical-ai-system-design/support-assistant-routing.png)
+
+Support assistant ต้องทำได้ดังนี้:
+
+- ตอบ product question จาก approved document
+- แสดง source
+- lookup order หลัง authenticate user
+- สร้าง support ticket
+- ส่ง sensitive หรือ unclear case ให้คน
+- ห้ามเปลี่ยน payment หรือ account state โดยไม่มี approval
+
+<MermaidDiagram chart={`
+flowchart LR
+    U["Customer"] --> G["Support API"]
+    G --> A["Auth and policy"]
+    A --> R["Router"]
+
+    R -->|"Product question"| K["RAG retrieval"]
+    K --> M["Model"]
+
+    R -->|"Order question"| O["Read-only order tool"]
+    O --> M
+
+    R -->|"Create ticket"| T["Ticket tool"]
+    T --> M
+
+    R -->|"Sensitive or unclear"| H["Human support"]
+    M --> V["Grounding and safety checks"]
+    V --> U
+
+    G --> L["Trace and audit store"]
+    K --> L
+    M --> L
+    O --> L
+    T --> L
+`} />
+
+### Request flow
+
+1. Authenticate user
+2. Apply tenant, customer และ data policy
+3. Route request
+4. Retrieve document หรือเรียก narrow tool
+5. Generate response
+6. เช็ก grounding, policy และ tool result
+7. Return, refuse หรือ handoff
+8. บันทึก trace และ evaluation signal
+
+### Why the router matters
+
+Router ทำให้ deterministic task ยัง deterministic อยู่ Order lookup ไม่ต้องใช้ autonomous agent ระบบเรียก read-only API ด้วย typed order ID ได้ แล้วค่อยให้ model อธิบาย result
+
+### Why human support remains
+
+Assistant อาจไม่มี source เจอ sensitive case หรือเจอ data ขัดกัน Handoff จึงเป็น valid product result ครับ
+
+### What to Test First
+
+- unsupported question
+- private data ของ customer อื่น
+- old policy document
+- prompt injection ใน document
+- provider timeout
+- ticket tool ถูกเรียกซ้ำ
+- order API คืน partial data
+- user permission เปลี่ยนระหว่าง long task
+- answer ไม่มี supporting passage
+- expensive loop ที่เรียก model ซ้ำ
+
+Design นี้ใหญ่กว่า model call เดียว เพราะ requirement เป็นตัวผลักให้มันโต
+
+## A Coaching Method for AI System Design
+
+เวลา coach ผมจะเริ่มจาก product ไม่ใช่ model ครับ เพราะชื่อ model ไม่ได้บอกว่า user ต้องการผลลัพธ์อะไร
+
+1. กำหนด user และ useful outcome
+2. ระบุ AI system type
+3. เลือก quality, latency, safety และ cost goal
+4. สร้าง smallest useful version
+5. แยก deterministic rule จาก model decision
+6. วาด data และ request path
+7. เพิ่ม evaluation ก่อนเพิ่ม autonomy
+8. เพิ่ม tool พร้อม narrow permission
+9. วาง failure, fallback และ human handoff
+10. บันทึก version และ ownership
+
+Coaching question ที่ใช้ได้ เช่น:
+
+- Step นี้ต้องใช้ AI เพราะอะไร?
+- Model ผิดแล้วเกิดอะไรขึ้น?
+- เรารู้ได้อย่างไรว่า quality เปลี่ยน?
+- ตอนตัดสินมี data อะไรให้ใช้บ้าง?
+- User ดูหรือลบ stored memory ได้ไหม?
+- Tool call นี้รันซ้ำอย่างปลอดภัยได้หรือเปล่า?
+- Action ไหนต้อง human approval?
+- Cost per successful task เท่าไร?
+- Fixed workflow แก้ได้ปลอดภัยกว่าไหม?
+- จะ rollback model, prompt, data หรือ index อย่างไร?
+
+## A Practical AI System Design Checklist
+
+```text
+User and outcome:
+AI system type:
+Why AI is needed:
+Deterministic alternative:
+
+Quality metrics:
+Latency target:
+Cost limit:
+Safety and compliance needs:
+Human review boundary:
+
+Data sources and owners:
+Data quality checks:
+Training or indexing path:
+Online request path:
+Model, prompt, and data versions:
+
+Retrieval strategy:
+Tool contracts and permissions:
+Workflow state and memory:
+Caching:
+
+Offline evaluation set:
+Online quality signals:
+Failure and fallback:
+Security controls:
+Observability and audit:
+
+Deployment and rollback:
+Owner:
+Revisit when:
+```
+
+เลือกใช้เฉพาะ field ที่เข้ากับระบบครับ classifier เล็ก ๆ ไม่ต้องมี agent memory design ส่วน tool-using support agent ต้องมี
+
+## Final Thoughts
+
+AI System Design ก็ยังเป็น System Design
+
+ระบบยังต้องมี requirement, API, data ownership, failure handling, security, monitoring, cost control และทีมที่ operate มันได้
+
+AI เพิ่ม uncertainty อีกชั้น:
+
+- data เปลี่ยนได้
+- model behavior เปลี่ยนได้
+- retrieval พลาดได้
+- output ผิดทั้งที่อ่านดูมั่นใจ
+- agent เลือก unsafe action ได้
+- quality ลดลงได้โดยไม่มี server error
+
+คำตอบไม่ใช่การเพิ่ม AI component ทุกตัว เริ่มจาก product เล็กที่สุดที่มีประโยชน์ เพิ่ม retrieval เมื่อ knowledge ขาด เพิ่ม workflow เมื่อ call เดียวไม่พอ และเพิ่ม agent เมื่อ flexible decision คุ้มกับ cost และ risk ที่ตามมา
+
+จากนั้นใส่ evaluation, safety, fallback และ ownership เข้า architecture ตั้งแต่วันแรก
+
+นี่คือเส้นทางจาก model call ไปสู่ product ที่เชื่อถือได้ครับ
