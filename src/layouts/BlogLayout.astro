@@ -23,7 +23,7 @@ const servicesText = language === 'th'
 const servicesLinkLabel = language === 'th' ? 'แวะมาดูบริการกันได้ที่นี่ครับ' : "here's what I do";
 ---
 
-<html lang="en">
+<html lang={language === 'th' ? 'th' : 'en'}>
   <head>
     <BaseHead title={title} description={description} image={heroImage} />
   </head>
