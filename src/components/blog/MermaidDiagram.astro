@@ -97,6 +97,13 @@ const sizeClasses = {
         zoomInButton.disabled = zoom >= 3.999;
       };
 
+      const centerViewport = () => {
+        viewport.scrollTo({
+          left: Math.max((viewport.scrollWidth - viewport.clientWidth) / 2, 0),
+          top: Math.max((viewport.scrollHeight - viewport.clientHeight) / 2, 0),
+        });
+      };
+
       const restoreDiagram = () => {
         if (!diagram || !originalParent) return;
 
@@ -135,8 +142,8 @@ const sizeClasses = {
           const availableHeight = Math.max(viewport.clientHeight - 48, 1);
           fitZoom = Math.min(availableWidth / baseWidth, availableHeight / baseHeight, 1);
           updateZoom(fitZoom);
-          viewport.scrollTo({ left: 0, top: 0 });
-          viewport.focus();
+          requestAnimationFrame(centerViewport);
+          viewport.focus({ preventScroll: true });
         });
       });
 
