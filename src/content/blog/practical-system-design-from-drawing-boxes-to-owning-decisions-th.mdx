@@ -308,6 +308,146 @@ Storage แต่ละตระกูลเหมาะกับงานคน
 - **Search index:** text search, ranking, filtering และ aggregation
 - **Vector index:** similarity search จาก embedding
 
+#### How each storage type is queried
+
+Syntax ของแต่ละแบบต่างกัน แต่หลักคิดเหมือนกันครับ เราต้องออกแบบ data ให้เข้ากับ read และ write ที่ product ต้องใช้ ตัวอย่างต่อไปนี้ยึด E-commerce ระบบเดียวและตั้งใจให้สั้น
+
+**Relational — PostgreSQL**
+
+SQL เหมาะกับงานที่ต้องใช้ condition, relationship, constraint และ transaction Query นี้ดึง active product ล่าสุดใน category เดียว
+
+```sql
+SELECT id, name, price
+FROM product
+WHERE category_id = 42
+  AND status = 'ACTIVE'
+ORDER BY created_at DESC, id DESC
+LIMIT 20;
+```
+
+Table นี้อาจต้องมี index `(category_id, status, created_at DESC, id DESC)` และถ้าใช้ `LIMIT` เพื่อแบ่งหน้า `ORDER BY` ต้องให้ลำดับที่แน่นอน อ่านต่อได้ใน [PostgreSQL LIMIT documentation](https://www.postgresql.org/docs/current/queries-limit.html)
+
+**Key-value — Redis**
+
+Key-value เริ่มจาก key ที่เรารู้อยู่แล้ว Command นี้อ่าน field ทั้งหมดของ SKU 1 ตัว
+
+```text
+HGETALL product:sku:SKU-123
+```
+
+วิธีนี้ง่ายและเร็วเมื่อรู้ key แต่ถ้าจะหา active product ทั้ง category เราต้องมี structure อีกชุดรองรับ access pattern นั้น อ่านต่อได้ใน [Redis HGETALL documentation](https://redis.io/docs/latest/commands/hgetall/)
+
+**Document — MongoDB**
+
+Document query ใช้ filter แล้วดึง nested product data กลับมาเป็นก้อนได้
+
+```javascript
+db.products.find(
+  { categoryId: 42, status: "ACTIVE" },
+  { name: 1, price: 1, attributes: 1 }
+).sort({ createdAt: -1, _id: -1 }).limit(20)
+```
+
+เราสามารถเก็บ flexible attribute ไว้ใกล้ product ได้ แต่ query ยังต้องมี index ที่รองรับทั้ง filter และ sort อ่านต่อได้ใน MongoDB documentation ของ [`find()`](https://www.mongodb.com/docs/manual/reference/method/db.collection.find/) และ [`sort()`](https://www.mongodb.com/docs/manual/reference/method/cursor.sort/)
+
+**Wide-column — Cassandra**
+
+Cassandra มักออกแบบ table ตาม query ที่รู้ล่วงหน้า สมมุติว่า `products_by_category` ใช้ `category_id` เป็น partition key และเริ่ม clustering column ด้วย `status`
+
+```sql
+SELECT product_id, name, price
+FROM products_by_category
+WHERE category_id = 42
+  AND status = 'ACTIVE'
+LIMIT 20;
+```
+
+Query นี้อ่าน partition ที่ระบุไว้ หากต้องหา product ตาม seller เรามักต้องสร้างอีก table เพราะ CQL ไม่มี join แบบ relational หรือ query ข้าม table ได้อิสระ อ่านต่อได้ใน [Cassandra CQL SELECT documentation](https://cassandra.apache.org/doc/latest/cassandra/developing/cql/dml.html)
+
+**Time-series — Prometheus**
+
+PromQL ใช้ query metric ตามช่วงเวลา ตัวอย่างนี้คำนวณ failed checkout ต่อวินาทีจากช่วง 5 นาทีล่าสุด
+
+```text
+sum(rate(checkout_requests_total{status="failed"}[5m]))
+```
+
+`rate()` ใช้กับ counter ส่วน label ต้องคุมจำนวนค่าให้ดี หากเอา `customer_id` หรือ `order_id` มาเป็น label เราอาจสร้าง time series เยอะเกินไป อ่านต่อได้ใน Prometheus documentation ของ [PromQL basics](https://prometheus.io/docs/prometheus/latest/querying/basics/) และ [`rate()`](https://prometheus.io/docs/prometheus/latest/querying/functions/#rate)
+
+**Graph — Neo4j**
+
+Cypher ใช้ pattern ของ relationship ในการ query ตัวอย่างนี้หา product ที่ลูกค้ากลุ่มใกล้เคียงกันเคยซื้อ
+
+```cypher
+MATCH (customer:Customer {id: $customerId})-[:BOUGHT]->(:Product)
+      <-[:BOUGHT]-(peer:Customer)-[:BOUGHT]->(candidate:Product)
+WHERE NOT EXISTS {
+  MATCH (customer)-[:BOUGHT]->(candidate)
+}
+RETURN candidate.id, candidate.name, count(*) AS score
+ORDER BY score DESC
+LIMIT 10;
+```
+
+Graph database เหมาะเมื่อ relationship traversal เป็นงานหลัก ถ้า lookup product จาก ID อย่างเดียว เราไม่จำเป็นต้องใช้ model นี้ อ่านต่อได้ใน [Neo4j Cypher MATCH documentation](https://neo4j.com/docs/cypher-manual/current/clauses/match/)
+
+**Object storage — Amazon S3 with Athena**
+
+Object storage ไม่มี row lookup มาให้เอง แต่ Athena ใช้ SQL query data ใน file ที่ลงทะเบียนไว้ใน data catalog ได้ ตัวอย่างนี้อ่าน refunded order จาก export partition ของวันเดียว
+
+```sql
+SELECT order_id, status, total_amount
+FROM order_exports
+WHERE export_date = DATE '2026-08-05'
+  AND status = 'REFUNDED'
+LIMIT 100;
+```
+
+การแบ่ง file ตาม `export_date` ช่วยให้ Athena ไม่ต้อง scan data ที่ไม่เกี่ยว งานแบบนี้เหมาะกับ analytics กับ audit มากกว่า checkout request path อ่านต่อได้ใน [Amazon Athena SELECT documentation](https://docs.aws.amazon.com/athena/latest/ug/select.html)
+
+**Search index — OpenSearch**
+
+OpenSearch รวม analyzed text, relevance และ exact filter ไว้ใน query เดียวได้
+
+```json
+GET /products/_search
+{
+  "size": 20,
+  "query": {
+    "bool": {
+      "must": {
+        "multi_match": {
+          "query": "wireless keyboard",
+          "fields": ["name^3", "description"]
+        }
+      },
+      "filter": [
+        { "term": { "status": "ACTIVE" } },
+        { "term": { "category_id": 42 } }
+      ]
+    }
+  }
+}
+```
+
+Search index อาจคืน product data ที่เก่าไปบ้าง ตอน checkout จึงต้องอ่านราคาและ inventory ล่าสุดจาก source of truth อ่านต่อได้ใน [OpenSearch multi-match documentation](https://docs.opensearch.org/latest/query-dsl/full-text/multi-match/)
+
+**Vector index — pgvector**
+
+Vector query เรียงผลจาก distance แทนการหา exact value โดย `$1` คือ embedding จาก search text หรือ product ที่ลูกค้าเลือก
+
+```sql
+SELECT id,
+       name,
+       1 - (embedding <=> $1) AS similarity
+FROM product_embeddings
+WHERE status = 'ACTIVE'
+ORDER BY embedding <=> $1
+LIMIT 10;
+```
+
+Operator `<=>` ใช้คำนวณ cosine distance ผลที่ใกล้ที่สุดในเชิงคณิตศาสตร์อาจไม่ใช่ product ที่เหมาะกับลูกค้าเสมอครับ เรายังต้องมี business filter และวัดคุณภาพของผลลัพธ์ อ่านต่อได้ใน [pgvector query documentation](https://github.com/pgvector/pgvector#querying)
+
 Product 1 ตัวใช้หลาย store ได้ แต่ data 1 ชุดควรมี source of truth ที่ชัด แล้วต้องรู้ด้วยว่า derived store จะ update หรือ repair ยังไงเมื่อ data ไม่เหมือนกัน
 
 Discord เขียนเรื่องนี้ไว้ในบทความ [storing trillions of messages](https://discord.com/blog/how-discord-stores-trillions-of-messages) ช่วงต้นปี 2022 ระบบมี Cassandra 177 nodes แล้วเจอทั้ง hot partition, read cost, compaction และ operational toil สุดท้าย Discord เปลี่ยน database พร้อมเพิ่ม data service เพื่อลดการเข้าถึง database จาก product service แบบ direct access
