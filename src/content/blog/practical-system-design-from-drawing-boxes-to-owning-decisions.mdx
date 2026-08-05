@@ -500,6 +500,25 @@ It does not help every read. Ask:
 - Can a popular key become a hotspot?
 - What happens when the whole cache is cold?
 
+#### Cache eviction and expiration
+
+A cache has limited memory. When it is full, an **eviction policy** decides which item leaves. This is different from expiration. A TTL controls how long an item may stay before it becomes too old.
+
+{/* IMAGE PROMPT (cache-eviction-policies.png): Wide modern green 2D cartoon infographic on a warm-white and pale-mint background. Use four equal panels to compare cache removal choices. TTL shows an item expiring beside a clock. LRU removes the item that has not been used for the longest time. LFU removes the item with the lowest access count. FIFO removes the oldest inserted item. Render each exact label once: TTL, LRU, LFU, FIFO, EVICT. Spell exactly. No other text, duplicate labels or panels, dark background, blue-led palette, photorealism, glossy 3D, logos, or watermarks. */}
+
+![TTL controls age while LRU, LFU, and FIFO choose which cached item leaves](/assets/images/blogs/practical-system-design/cache-eviction-policies.png)
+
+The common choices solve different problems:
+
+- **TTL** removes data after a time limit. Use it when freshness has a clear limit.
+- **LRU** removes the least recently used item. It works well when recent items are likely to be read again.
+- **LFU** removes the least frequently used item. It can protect items that stay popular for a long time, but it may adapt slowly when traffic changes.
+- **FIFO** removes the oldest inserted item. It is simple, but it does not know which item is useful.
+
+Many caches use TTL together with a capacity policy such as LRU or LFU. Also plan for a large number of keys expiring together. TTL jitter, request coalescing, and stale-while-revalidate can reduce that sudden load.
+
+Measure hit rate, miss latency, evictions, and source load. A policy name is only a starting point. Redis, for example, uses approximate LRU and LFU algorithms to reduce memory cost. Its [key eviction documentation](https://redis.io/docs/latest/develop/reference/eviction/) explains the available policies and their trade-offs.
+
 Meta built TAO because its social graph had a large, read-heavy workload that did not fit a simple database cache well. The [TAO engineering article](https://engineering.fb.com/2013/06/25/core-infra/tao-the-power-of-the-graph/) explains how Meta created a graph-focused data abstraction over MySQL and distributed caching. The abstraction also reduced the amount of cache and database knowledge each product engineer needed.
 
 That last part matters. A platform can improve scale and make the safer path easier for other teams.
@@ -543,6 +562,43 @@ But the queue adds ownership:
 - the queue may grow faster than workers can drain it.
 
 The queue does not create reliability by itself. The producer, consumer, data model, and recovery process must agree on the processing rules.
+
+#### Queue, pub-sub, or stream?
+
+These words are often mixed because one product may support more than one model. Start with the delivery rule you need.
+
+{/* IMAGE PROMPT (queue-pubsub-stream.png): Wide modern green 2D cartoon infographic on a warm-white and pale-mint background. Compare three equal columns. QUEUE shows one job handled by one worker and then ACK. PUB-SUB shows one event copied to several independent subscribers through FAN-OUT. STREAM shows an ordered stored log, one consumer OFFSET, and a backward REPLAY arrow. Render each exact label once: QUEUE, ACK, PUB-SUB, FAN-OUT, STREAM, OFFSET, REPLAY. Spell exactly. No other text, duplicate labels or panels, dark background, blue-led palette, photorealism, glossy 3D, logos, or watermarks. */}
+
+![A queue distributes work, pub-sub fans an event out, and a stream keeps records for offset-based replay](/assets/images/blogs/practical-system-design/queue-pubsub-stream.png)
+
+- **Queue:** one job is normally handled by one worker from a competing group. Use it to distribute work, such as packing an order.
+- **Pub-sub:** each subscription receives its own copy of an event. Use it when inventory, shipping, and analytics must react independently to the same order event.
+- **Stream:** records stay in an ordered log for a retention period. Consumers track an offset and may replay old records. Ordering is usually guaranteed inside one partition, not across the whole stream.
+
+Durability depends on the product and subscription settings. Do not assume that every pub-sub system keeps an event when no subscriber is ready.
+
+The product does not decide the model by itself. Kafka stores a stream, while a consumer group can distribute records in a queue-like way. RabbitMQ can support work queues, pub-sub, and streams. Define acknowledgment, retention, ordering, and replay before choosing the product. The [RabbitMQ tutorials](https://www.rabbitmq.com/tutorials) show the competing-consumer and pub-sub models, while the [Kafka distribution documentation](https://kafka.apache.org/43/implementation/distribution/) explains consumer offsets.
+
+#### Dead-letter queues and replay
+
+Some messages will keep failing after a safe number of retries. A dead-letter queue, or DLQ, isolates them so one poison message does not block normal work.
+
+{/* IMAGE PROMPT (dead-letter-replay.png): Wide modern green 2D cartoon infographic on a warm-white and pale-mint background. Show exactly one left-to-right path: QUEUE to RETRY to DLQ to INSPECT to FIX to REPLAY to WORKER. RETRY is bounded. DLQ is isolated. REPLAY is a deliberate operator action. Render each exact label once: QUEUE, RETRY, DLQ, INSPECT, FIX, REPLAY, WORKER. Spell exactly. No other text, bypass path, automatic loop, duplicate labels or boxes, dark background, blue-led palette, photorealism, glossy 3D, logos, or watermarks. */}
+
+![A failed message moves to a DLQ, is inspected and fixed, then returns through controlled replay](/assets/images/blogs/practical-system-design/dead-letter-replay.png)
+
+A useful DLQ record should keep enough context to diagnose the failure:
+
+- message payload or a safe reference to it;
+- message key and source;
+- schema or event version;
+- error reason and attempt count;
+- first and latest failure time;
+- correlation or trace ID.
+
+The DLQ is isolation, not resolution. Alert when messages enter it. Give a team clear ownership. Fix the cause, test the handler, and replay at a controlled rate through the normal idempotent path. Do not build an automatic infinite loop between the main queue and DLQ.
+
+Retention, encryption, and access control still apply because failed messages may contain customer data. AWS documents the same inspect-and-redrive flow in its [SQS dead-letter queue guide](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html).
 
 ### Real-time connections and offline clients
 
@@ -882,7 +938,28 @@ A good key spreads load and supports the main query. A bad key creates hotspots.
 
 Suppose one large seller receives 1 million orders while most sellers receive 1,000. Partitioning only by `seller_id` sends the large seller to one partition. Adding an order ID hash or time bucket can spread the work.
 
-But more partitions add cost:
+### Consistent hashing: move fewer keys when nodes change
+
+The simple rule `hash(key) % number_of_nodes` spreads keys while the node count stays fixed. When a node is added or removed, the result changes for many keys. That can cause a large cache refill or data movement.
+
+Consistent hashing places nodes and keys on the same hash ring. A key belongs to the next node around the ring. When a node joins, only a nearby key range moves to it.
+
+{/* IMAGE PROMPT (consistent-hashing-ring.png): Wide modern green 2D cartoon infographic on a warm-white and pale-mint background. Show one HASH RING with physical NODES, many KEYS, one ADD NODE action, and only a nearby range moving under MOVE FEWER KEYS. Show several smaller token positions as VIRTUAL NODES. Render each exact label once: HASH RING, KEYS, NODES, ADD NODE, MOVE FEWER KEYS, VIRTUAL NODES. Spell exactly. No other text, duplicate rings or labels, dark background, blue-led palette, photorealism, glossy 3D, logos, or watermarks. */}
+
+![Consistent hashing moves a nearby key range when a node joins the ring](/assets/images/blogs/practical-system-design/consistent-hashing-ring.png)
+
+Production designs often give each physical node several **virtual nodes**. They spread the ranges more evenly and make recovery load easier to share.
+
+Consistent hashing still has limits:
+
+- one popular key can still overload its owner;
+- virtual nodes improve balance but add routing metadata;
+- replicas and zone-aware placement are still needed for availability;
+- a poor partition key stays poor after hashing.
+
+It is useful for distributed caches, sharded stores, and stable worker ownership. The original [consistent hashing paper](https://people.csail.mit.edu/karger/Papers/web.pdf) introduced the technique for distributed caching. Amazon later described consistent hashing and virtual nodes in the [Dynamo paper](https://www.amazon.science/publications/dynamo-amazons-highly-available-key-value-store).
+
+Consistent hashing does not remove the wider cost of partitioning:
 
 - cross-partition queries;
 - rebalancing;
