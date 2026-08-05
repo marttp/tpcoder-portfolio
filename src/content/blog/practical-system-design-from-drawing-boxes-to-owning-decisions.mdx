@@ -395,11 +395,11 @@ sum(rate(checkout_requests_total{status="failed"}[5m]))
 
 **Graph — Neo4j**
 
-Cypher describes a relationship pattern. This query finds products bought by customers with purchase history similar to one customer.
+In simple words, this query asks: Which products did similar customers buy that this customer has not bought yet?
 
 ```cypher
-MATCH (customer:Customer {id: $customerId})-[:BOUGHT]->(:Product)
-      <-[:BOUGHT]-(peer:Customer)-[:BOUGHT]->(candidate:Product)
+MATCH (customer:Customer {id: $customerId})-[:BOUGHT]->(shared:Product)
+      <-[:BOUGHT]-(other:Customer)-[:BOUGHT]->(candidate:Product)
 WHERE NOT EXISTS {
   MATCH (customer)-[:BOUGHT]->(candidate)
 }
@@ -408,21 +408,24 @@ ORDER BY score DESC
 LIMIT 10;
 ```
 
-A graph database helps when relationship traversal is the main work. A product lookup by ID does not need this model. See the [Neo4j Cypher MATCH documentation](https://neo4j.com/docs/cypher-manual/current/clauses/match/).
+A graph database follows the relationships from one customer to shared products, other customers, and candidate products. It helps when this traversal is the main work. A product lookup by ID does not need this model. See the [Neo4j Cypher MATCH documentation](https://neo4j.com/docs/cypher-manual/current/clauses/match/).
 
-**Object storage — Amazon S3 with Athena**
+**Object storage — files by key**
 
-Object storage does not provide normal row lookup by itself. Athena can use SQL over files registered in a data catalog. This query reads refunded orders from one export partition.
+Object storage is not queried like a row database. The application puts each file under an object key and keeps small searchable metadata in a database.
 
-```sql
-SELECT order_id, status, total_amount
-FROM order_exports
-WHERE export_date = DATE '2026-08-05'
-  AND status = 'REFUNDED'
-LIMIT 100;
-```
+{/* IMAGE PROMPT (object-storage-file-flow.png): Wide modern green 2D cartoon infographic on a warm-white and pale-mint background. Show four file cards flowing into one central storage bucket: a product photo, catalog spreadsheet, invoice PDF, and export archive. Show the product photo flowing to a CDN, the other files flowing to a worker, and small metadata flowing to a separate database. Render each exact label once and spell exactly: PRODUCT IMAGE, CATALOG FILE, INVOICE, EXPORT, OBJECT STORAGE, METADATA DB, CDN, WORKER. No other text, duplicate labels or boxes, dark background, blue-led palette, photorealism, glossy 3D, company logos, or watermarks. */}
 
-Partitioning files by `export_date` helps Athena avoid scanning unrelated data. This fits analytics and audit work better than the checkout request path. See the [Amazon Athena SELECT documentation](https://docs.aws.amazon.com/athena/latest/ug/select.html).
+![Product images, catalog files, invoices, and exports use object storage while a database keeps their metadata](/assets/images/blogs/practical-system-design/object-storage-file-flow.png)
+
+The files can serve different jobs:
+
+- a CDN reads product images and sends them to customers;
+- a worker reads catalog files and imports product data;
+- invoices stay available for download and audit;
+- exports hold large batch results.
+
+To read one file, the application gets it by bucket and object key. To find files by seller, date, or status, query the metadata database first, then fetch the matching objects. The database supports search. Object storage holds the large file content.
 
 **Search index — OpenSearch**
 
