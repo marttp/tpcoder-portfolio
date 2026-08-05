@@ -531,13 +531,19 @@ Replication คือการ copy data ไปหลาย node เพื่อ
 - หลาย leader รับ write จากคนละ region
 - leaderless replica ใช้ quorum rule สำหรับ read และ write
 
+![Replication แบบ leader, multi-leader และ leaderless quorum](/assets/images/blogs/practical-system-design/replication-patterns.png)
+
 Synchronous replication ปกป้องข้อมูลล่าสุดได้ดี แต่เพิ่ม write latency และอาจลด availability ตอน network มีปัญหา ส่วน asynchronous replication เร็วกว่า แต่ recent write อาจหายหลัง failover
 
 CAP theorem มีผลตอนเกิด network partition ระบบต้องเลือกว่า operation จะรอเพื่อรักษา consistency หรือทำงานต่อพร้อมความเสี่ยงที่ data state แยกกัน
 
 ถ้าหลายเครื่องต้องคุยผ่าน network เราตัด partition tolerance ออกจากโจทย์ไม่ได้
 
+![ตอน network partition ระบบต้องเลือกระหว่าง consistency กับ availability](/assets/images/blogs/practical-system-design/cap-network-partition.png)
+
 PACELC ชวนให้เราถามต่อในช่วงที่ network ยังทำงานปกติด้วย เพราะระบบมักต้องเลือกระหว่าง latency ที่ต่ำกับ consistency ที่สูงกว่า
+
+![PACELC เทียบ consistency กับ availability ตอน partition และเทียบ latency กับ consistency ตอน network ปกติ](/assets/images/blogs/practical-system-design/pacelc-tradeoff.png)
 
 อย่าใช้ guarantee เดียวกับทุก record ครับ cart edit, access check, progress counter และ search result ต้องการคำตอบคนละแบบ ถ้าเลือก strong consistency ให้ทุกอย่าง cost กับ latency ก็เพิ่มตาม
 

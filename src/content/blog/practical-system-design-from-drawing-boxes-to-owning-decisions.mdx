@@ -584,11 +584,23 @@ Common choices include:
 - several leaders accept writes in different regions;
 - leaderless replicas accept reads and writes through quorum rules.
 
+{/* IMAGE PROMPT (replication-patterns.png): Wide modern green 2D cartoon infographic on a warm-white and pale-mint background. Show three side-by-side patterns: one leader receiving writes and copying data to two followers, two leaders in different regions exchanging data, and three equal replicas where a quorum reaches two of three. Use arrows and small request or data symbols to make each flow self-explanatory. Render only these labels: LEADER, FOLLOWER, MULTI-LEADER, QUORUM. No title, sentences, dark background, blue-led palette, photorealism, glossy 3D, logos, or watermarks. */}
+
+![Leader, multi-leader, and leaderless quorum replication patterns](/assets/images/blogs/practical-system-design/replication-patterns.png)
+
 Synchronous replication can protect fresh data, but it adds write latency and may reduce availability during a network problem. Asynchronous replication is faster, but a recent write may be missing after failover.
 
 The CAP theorem matters when the network splits. A distributed system must decide whether an operation should wait to protect consistency or continue with a risk of different data states. Partition tolerance is not an optional feature when machines communicate over a network.
 
+{/* IMAGE PROMPT (cap-network-partition.png): Wide modern green 2D cartoon infographic on a warm-white and pale-mint background. Show database nodes separated by a broken network connection. One path pauses a write to preserve the same data state; the other keeps serving requests while data may temporarily differ. Make clear that the choice happens during a network partition, not as an anytime choose-two triangle. Render each exact label once: PARTITION, CONSISTENCY, AVAILABILITY. No title, extra words, duplicate labels, dark background, blue-led palette, photorealism, glossy 3D, logos, or watermarks. */}
+
+![During a network partition, a system balances consistency and availability](/assets/images/blogs/practical-system-design/cap-network-partition.png)
+
 PACELC adds the normal case: even when there is no partition, a system often trades lower latency against stronger consistency.
+
+{/* IMAGE PROMPT (pacelc-tradeoff.png): Wide modern green 2D cartoon infographic on a warm-white and pale-mint background. Build a balanced decision map with a broken network state and a healthy network state. During a partition, show the choice between availability and consistency. During normal operation, show the choice between lower latency and stronger consistency. Use simple database, clock, request, and network symbols. Render only these labels: PARTITION, NORMAL, CONSISTENCY, AVAILABILITY, LATENCY. No title, sentences, equations, dark background, blue-led palette, photorealism, glossy 3D, logos, or watermarks. */}
+
+![PACELC compares consistency and availability during a partition, then latency and consistency during normal operation](/assets/images/blogs/practical-system-design/pacelc-tradeoff.png)
 
 Do not choose one rule for every record. An order update, an inventory check, a product view counter, and a search result may need different guarantees.
 
