@@ -477,6 +477,23 @@ Cache ไม่ได้ช่วยทุก read ก่อนเพิ่ม�
 - popular key จะกลายเป็น hotspot ไหม?
 - ถ้า cache ทั้งก้อน cold พร้อมกัน ระบบรับไหวหรือเปล่า?
 
+#### Cache eviction and expiration
+
+Cache มี memory จำกัด พอเต็มแล้ว **eviction policy** จะตัดสินว่า item ไหนต้องออก ส่วน expiration ตอบอีกคำถามหนึ่ง เพราะ TTL กำหนดว่า item อยู่ได้นานแค่ไหนก่อนเก่าเกิน limit ที่เรายอมรับ
+
+![TTL คุมอายุ ส่วน LRU, LFU และ FIFO เลือกว่า item ไหนต้องออกจาก cache](/assets/images/blogs/practical-system-design/cache-eviction-policies.png)
+
+แต่ละ policy เหมาะกับ access pattern คนละแบบ:
+
+- **TTL** ลบ data เมื่อครบเวลา ใช้เมื่อ freshness มี limit ที่กำหนดได้
+- **LRU** ลบ item ที่ไม่ได้ถูกใช้นานที่สุด เหมาะเมื่อ item ที่เพิ่งถูกอ่านมีโอกาสถูกอ่านซ้ำ
+- **LFU** ลบ item ที่ถูกใช้น้อยที่สุด ช่วยเก็บ item ที่นิยมต่อเนื่อง แต่อาจปรับตัวช้าเมื่อ traffic เปลี่ยน
+- **FIFO** ลบ item ที่ถูกใส่เข้ามาก่อน เริ่มต้นง่าย แต่ไม่รู้ว่า item ไหนยังมีประโยชน์
+
+หลายระบบใช้ TTL คู่กับ capacity policy อย่าง LRU หรือ LFU และต้องเตรียมรับกรณี key จำนวนมากหมดอายุพร้อมกันด้วย TTL jitter, request coalescing หรือ stale-while-revalidate ช่วยลด load ที่พุ่งขึ้นในช่วงนั้นได้
+
+หลังเปิดใช้แล้วให้วัด hit rate, miss latency, eviction และ load ที่ย้อนกลับไป source เพราะชื่อ policy เป็นเพียงจุดเริ่มต้น ตัวอย่างเช่น Redis ใช้ LRU และ LFU แบบประมาณค่าเพื่อลด memory cost รายละเอียดอยู่ใน [key eviction documentation](https://redis.io/docs/latest/develop/reference/eviction/)
+
 Meta สร้าง TAO เพราะ social graph เป็น read-heavy workload ขนาดใหญ่ที่ simple database cache รับได้ไม่ดี [TAO engineering article](https://engineering.fb.com/2013/06/25/core-infra/tao-the-power-of-the-graph/) อธิบายการสร้าง graph-focused data abstraction บน MySQL และ distributed cache
 
 Abstraction นี้ช่วยให้ product engineer ไม่ต้องรู้รายละเอียดของ cache กับ database ทุกชั้น Platform ที่ดีต้องช่วยให้ระบบ scale และทำให้ทางที่ปลอดภัยใช้งานง่ายด้วย
@@ -514,6 +531,39 @@ Design นี้ช่วยรับ burst, scale worker และ retry งา
 - queue อาจโตเร็วกว่า worker ระบายออก
 
 Queue ไม่ได้ทำให้ระบบ reliable ขึ้นมาเองครับ producer, consumer, data model และ recovery process ต้องใช้ processing rule ชุดเดียวกัน
+
+#### Queue, pub-sub, or stream?
+
+คำ 3 คำนี้ถูกใช้ปนกันบ่อย เพราะ product 1 ตัวอาจรองรับได้หลาย model ก่อนเลือก technology ให้เริ่มจาก delivery rule ที่ระบบต้องการ
+
+![Queue กระจายงาน, pub-sub ส่ง event ให้หลาย subscriber และ stream เก็บ record เพื่อ replay จาก offset](/assets/images/blogs/practical-system-design/queue-pubsub-stream.png)
+
+- **Queue:** งาน 1 ชิ้นมักถูกจัดการโดย worker 1 ตัวใน competing group เหมาะกับการแบ่งงาน เช่น การส่ง order ไปขั้นตอน packing
+- **Pub-sub:** แต่ละ subscription ได้ event ของตัวเอง เหมาะเมื่อ inventory, shipping และ analytics ต้องตอบสนองต่อ order event เดียวกันแบบอิสระ
+- **Stream:** record อยู่ใน ordered log ตาม retention period consumer จำ offset ของตัวเองและย้อนมา replay record เก่าได้ ส่วน ordering มักรับประกันภายใน partition เดียว ไม่ได้ครอบคลุมทั้ง stream
+
+Durability ขึ้นอยู่กับ product และ subscription setting อย่าคิดว่า pub-sub ทุกระบบจะเก็บ event ไว้ให้ เมื่อยังไม่มี subscriber พร้อมรับ
+
+อย่าตัดสิน model จากชื่อ product อย่างเดียว Kafka เก็บข้อมูลเป็น stream แต่ consumer group กระจาย record แบบ queue ได้ ส่วน RabbitMQ รองรับทั้ง work queue, pub-sub และ stream ให้กำหนด acknowledgment, retention, ordering และ replay ก่อน แล้วค่อยเลือก product ดูตัวอย่าง model ได้จาก [RabbitMQ tutorials](https://www.rabbitmq.com/tutorials) และอ่านเรื่อง consumer offset ต่อใน [Kafka distribution documentation](https://kafka.apache.org/43/implementation/distribution/)
+
+#### Dead-letter queues and replay
+
+Message บางตัวจะ fail ซ้ำแม้ retry ครบจำนวนที่กำหนดแล้ว Dead-letter queue หรือ DLQ แยก message เหล่านี้ออกมา เพื่อไม่ให้ poison message ขวางงานปกติ
+
+![Message ที่ fail ถูกย้ายไป DLQ เพื่อตรวจ แก้สาเหตุ และ replay กลับอย่างควบคุมได้](/assets/images/blogs/practical-system-design/dead-letter-replay.png)
+
+DLQ record ควรเก็บ context ให้พอวิเคราะห์ปัญหา:
+
+- message payload หรือ reference ที่จัดเก็บอย่างปลอดภัย
+- message key และ source
+- schema หรือ event version
+- error reason และ attempt count
+- เวลาที่ fail ครั้งแรกและครั้งล่าสุด
+- correlation หรือ trace ID
+
+DLQ ช่วยแยกปัญหาออกมา แต่ยังไม่ได้แก้ปัญหา ทีมต้องมี alert, owner และขั้นตอนตรวจสอบที่ชัด แก้สาเหตุ ทดสอบ handler แล้ว replay ผ่าน idempotent path เดิมด้วย rate ที่ควบคุมได้ อย่าทำ automatic loop ที่ส่ง message วนระหว่าง main queue กับ DLQ แบบไม่จบ
+
+Retention, encryption และ access control ยังต้องครอบคลุม DLQ เพราะ failed message อาจมี customer data ส่วนขั้นตอน inspect และ redrive ดูเพิ่มได้ใน [SQS dead-letter queue guide](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html)
 
 ### Real-time connections and offline clients
 
@@ -793,7 +843,26 @@ Key ที่ดีต้องกระจาย load ได้ และยั
 
 สมมุติ seller รายใหญ่มี order 1,000,000 รายการ ขณะที่ seller ส่วนใหญ่มี 1,000 รายการ ถ้า partition ด้วย `seller_id` อย่างเดียว งานของ seller รายใหญ่จะลง partition เดียว การเพิ่ม order ID hash หรือ time bucket ช่วยกระจายงานได้
 
-แต่ partition มากขึ้นก็เพิ่ม cross-partition query, rebalancing, transaction ที่ซับซ้อนขึ้น, operational tool ที่ทำยากขึ้น และ migration ที่ลำบากขึ้น
+### Consistent hashing: move fewer keys when nodes change
+
+Rule แบบ `hash(key) % number_of_nodes` กระจาย key ได้ในช่วงที่จำนวน node คงที่ แต่พอเพิ่มหรือลด node ผลลัพธ์ของ key จำนวนมากจะเปลี่ยนตาม ทำให้ต้อง refill cache หรือย้าย data ก้อนใหญ่
+
+Consistent hashing วาง node และ key ไว้บน hash ring เดียวกัน โดย key จะอยู่กับ node ถัดไปบนวง เมื่อ node ใหม่เข้ามา มีเพียง key range ใกล้จุดนั้นที่ต้องย้าย
+
+![Consistent hashing ย้าย key range ใกล้เคียงเมื่อเพิ่ม node ใหม่บน ring](/assets/images/blogs/practical-system-design/consistent-hashing-ring.png)
+
+ระบบ production มักให้ physical node 1 ตัวรับผิดชอบ **virtual nodes** หลายจุด เพื่อกระจาย range ให้สมดุลขึ้น และแชร์ recovery load ไปหลายเครื่องได้
+
+Consistent hashing ยังมีข้อจำกัด:
+
+- popular key 1 ตัวทำให้ owner รับ load หนักได้เหมือนเดิม
+- virtual nodes ช่วยเรื่อง balance แต่เพิ่ม routing metadata
+- availability ยังต้องใช้ replica และ zone-aware placement
+- partition key ที่เลือกไม่ดีไม่ได้ดีขึ้นเพราะผ่าน hash
+
+Pattern นี้ใช้ได้กับ distributed cache, sharded store และ stable worker ownership ต้นทางของแนวคิดอยู่ใน [consistent hashing paper](https://people.csail.mit.edu/karger/Papers/web.pdf) และ Amazon อธิบายการใช้ consistent hashing ร่วมกับ virtual nodes ไว้ใน [Dynamo paper](https://www.amazon.science/publications/dynamo-amazons-highly-available-key-value-store)
+
+Consistent hashing ไม่ได้ตัด cost ส่วนอื่นของ partitioning ออก ระบบยังมี cross-partition query, rebalancing, transaction ที่ซับซ้อนขึ้น, operational tool ที่ทำยากขึ้น และ migration ที่ลำบากขึ้น
 
 Partition เมื่อ access pattern ตอนนี้ต้องใช้ และอย่าเพิ่มความซับซ้อนเพียงเพราะวันหนึ่งระบบอาจใหญ่
 
