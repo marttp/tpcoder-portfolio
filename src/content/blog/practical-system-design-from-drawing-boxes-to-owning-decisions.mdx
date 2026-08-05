@@ -174,6 +174,36 @@ Before adding anything, make this version safe:
 - make checkout and integration calls idempotent;
 - protect customer and seller actions with authentication and authorization.
 
+### Protect and Observe Version One
+
+Security and observability do not wait for scale. A small system still handles customer data, money, and calls to other services.
+
+Start with a small security boundary:
+
+- authenticate every customer and seller action;
+- check authorization on the order or product being changed;
+- keep secrets outside the code and logs;
+- record sensitive actions in an audit trail.
+
+{/* IMAGE PROMPT (security-boundary-basics.png): Wide modern green 2D cartoon infographic on a warm-white and pale-mint background. Show customer and seller requests crossing a shield-shaped trust boundary, identity and access checks, protected application data, a separate secret vault, and an audit trail. Render each exact label once: IDENTITY, ACCESS, SECRETS, AUDIT, DATA. No other text, duplicate labels, dark background, blue-led palette, photorealism, glossy 3D, logos, or watermarks. */}
+
+![A small system protects identity, access, secrets, audit records, and sensitive data from version one](/assets/images/blogs/practical-system-design/security-boundary-basics.png)
+
+Start with signals that answer basic operational questions:
+
+- Did the request succeed or fail?
+- How long did it take?
+- Which order and payment attempt were involved?
+- Is a dependency failing repeatedly?
+
+Use structured logs, a correlation ID, basic latency and error metrics, and one useful alert. This is enough to debug the first version without building a large observability platform.
+
+{/* IMAGE PROMPT (observability-basics.png): Wide modern green 2D cartoon infographic on a warm-white and pale-mint background. Show one customer order request moving through a compact application flow, producing logs, metrics, and a trace in one operations view, with an actionable alert pointing an engineer to a failed dependency. Render each exact label once: REQUEST, LOGS, METRICS, TRACE, ALERT. No other text, duplicate labels, dark background, blue-led palette, photorealism, glossy 3D, logos, or watermarks. */}
+
+![Logs, metrics, traces, and alerts make the first system observable](/assets/images/blogs/practical-system-design/observability-basics.png)
+
+The later sections go deeper into boundaries, controls, metrics, and recovery. The important point here is that neither concern starts after the system becomes distributed.
+
 Then wait for a constraint to push the design forward.
 
 ## Let Constraints Add the Building Blocks
@@ -772,7 +802,7 @@ Events are contracts too. Add schema versions, clear ownership, and compatibilit
 
 ## Security Starts with Boundaries
 
-Security is not one box at the edge of the diagram.
+The first version already had authentication, authorization, secret handling, and an audit trail. As the system grows, make every boundary explicit. Security is not one box at the edge of the diagram.
 
 Ask:
 
@@ -801,7 +831,7 @@ For sensitive flows, isolation may be worth the extra cost. A separate account, 
 
 ## Observability Must Answer Operational Questions
 
-Logs, metrics, and traces are tools. Start from the questions the team must answer.
+The first version already had basic logs, metrics, a correlation ID, and an alert. As the flow grows, the questions become more specific. Logs, metrics, and traces are tools. Start from the questions the team must answer.
 
 For the E-commerce system:
 
