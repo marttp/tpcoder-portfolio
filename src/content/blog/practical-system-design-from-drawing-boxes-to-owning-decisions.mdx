@@ -327,6 +327,146 @@ Different storage families solve different shapes of work:
 - **Search index:** text search, ranking, filtering, and aggregation.
 - **Vector index:** similarity search over embeddings.
 
+#### How each storage type is queried
+
+The syntax changes, but the larger lesson is the same: design the data around the reads and writes the product needs. These examples use one E-commerce system. They are small on purpose.
+
+**Relational — PostgreSQL**
+
+Use SQL when you need conditions, relationships, constraints, and transactions. This query returns the newest active products in one category.
+
+```sql
+SELECT id, name, price
+FROM product
+WHERE category_id = 42
+  AND status = 'ACTIVE'
+ORDER BY created_at DESC, id DESC
+LIMIT 20;
+```
+
+The table may need an index on `(category_id, status, created_at DESC, id DESC)`. PostgreSQL also needs a stable `ORDER BY` when `LIMIT` returns one page of a larger result. See the [PostgreSQL LIMIT documentation](https://www.postgresql.org/docs/current/queries-limit.html).
+
+**Key-value — Redis**
+
+A key-value query starts from the exact key. This command loads the fields stored for one SKU.
+
+```text
+HGETALL product:sku:SKU-123
+```
+
+This is simple and fast for a known key. It cannot find every active product in a category unless the application maintains another structure for that access pattern. See the [Redis HGETALL documentation](https://redis.io/docs/latest/commands/hgetall/).
+
+**Document — MongoDB**
+
+A document query can filter and return nested product data together.
+
+```javascript
+db.products.find(
+  { categoryId: 42, status: "ACTIVE" },
+  { name: 1, price: 1, attributes: 1 }
+).sort({ createdAt: -1, _id: -1 }).limit(20)
+```
+
+The document can keep flexible attributes close to the product. The query still needs an index that supports its filter and sort. See the MongoDB documentation for [`find()`](https://www.mongodb.com/docs/manual/reference/method/db.collection.find/) and [`sort()`](https://www.mongodb.com/docs/manual/reference/method/cursor.sort/).
+
+**Wide-column — Cassandra**
+
+Cassandra tables are often built for a known query. Suppose `products_by_category` uses `category_id` as its partition key and starts its clustering columns with `status`.
+
+```sql
+SELECT product_id, name, price
+FROM products_by_category
+WHERE category_id = 42
+  AND status = 'ACTIVE'
+LIMIT 20;
+```
+
+This query reads one known partition. A different access pattern, such as products by seller, often needs another table. CQL does not provide normal joins or free queries across tables. See the [Cassandra CQL SELECT documentation](https://cassandra.apache.org/doc/latest/cassandra/developing/cql/dml.html).
+
+**Time-series — Prometheus**
+
+PromQL works with metrics over time. This query calculates the failed checkout rate per second over the last 5 minutes.
+
+```text
+sum(rate(checkout_requests_total{status="failed"}[5m]))
+```
+
+`rate()` is for counters. The labels must stay bounded; using `customer_id` or `order_id` as a label can create too many time series. See the Prometheus documentation for [PromQL basics](https://prometheus.io/docs/prometheus/latest/querying/basics/) and [`rate()`](https://prometheus.io/docs/prometheus/latest/querying/functions/#rate).
+
+**Graph — Neo4j**
+
+Cypher describes a relationship pattern. This query finds products bought by customers with purchase history similar to one customer.
+
+```cypher
+MATCH (customer:Customer {id: $customerId})-[:BOUGHT]->(:Product)
+      <-[:BOUGHT]-(peer:Customer)-[:BOUGHT]->(candidate:Product)
+WHERE NOT EXISTS {
+  MATCH (customer)-[:BOUGHT]->(candidate)
+}
+RETURN candidate.id, candidate.name, count(*) AS score
+ORDER BY score DESC
+LIMIT 10;
+```
+
+A graph database helps when relationship traversal is the main work. A product lookup by ID does not need this model. See the [Neo4j Cypher MATCH documentation](https://neo4j.com/docs/cypher-manual/current/clauses/match/).
+
+**Object storage — Amazon S3 with Athena**
+
+Object storage does not provide normal row lookup by itself. Athena can use SQL over files registered in a data catalog. This query reads refunded orders from one export partition.
+
+```sql
+SELECT order_id, status, total_amount
+FROM order_exports
+WHERE export_date = DATE '2026-08-05'
+  AND status = 'REFUNDED'
+LIMIT 100;
+```
+
+Partitioning files by `export_date` helps Athena avoid scanning unrelated data. This fits analytics and audit work better than the checkout request path. See the [Amazon Athena SELECT documentation](https://docs.aws.amazon.com/athena/latest/ug/select.html).
+
+**Search index — OpenSearch**
+
+OpenSearch can combine analyzed text, relevance, and exact filters.
+
+```json
+GET /products/_search
+{
+  "size": 20,
+  "query": {
+    "bool": {
+      "must": {
+        "multi_match": {
+          "query": "wireless keyboard",
+          "fields": ["name^3", "description"]
+        }
+      },
+      "filter": [
+        { "term": { "status": "ACTIVE" } },
+        { "term": { "category_id": 42 } }
+      ]
+    }
+  }
+}
+```
+
+The index may return stale product data, so checkout must read the current price and inventory from their sources of truth. See the [OpenSearch multi-match documentation](https://docs.opensearch.org/latest/query-dsl/full-text/multi-match/).
+
+**Vector index — pgvector**
+
+A vector query sorts by distance instead of an exact value. `$1` is the embedding for the customer's search text or selected product.
+
+```sql
+SELECT id,
+       name,
+       1 - (embedding <=> $1) AS similarity
+FROM product_embeddings
+WHERE status = 'ACTIVE'
+ORDER BY embedding <=> $1
+LIMIT 10;
+```
+
+The `<=>` operator calculates cosine distance. The nearest result has a close vector score, but it may still be a poor product match. Keep business filters and measure result quality. See the [pgvector query documentation](https://github.com/pgvector/pgvector#querying).
+
 One product may use several stores. Keep one source of truth for each fact, and state how derived stores are updated and repaired.
 
 Discord described this lesson in its article about [storing trillions of messages](https://discord.com/blog/how-discord-stores-trillions-of-messages). The company had 177 Cassandra nodes in early 2022. Hot partitions, read cost, compaction, and operational toil became serious problems. Discord changed the database and also added a data service that reduced direct database access from product services.
