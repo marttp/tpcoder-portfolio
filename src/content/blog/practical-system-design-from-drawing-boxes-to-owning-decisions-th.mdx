@@ -20,9 +20,7 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 
 การบอกว่าเพิ่ม component อะไรเข้าไปนั้นง่ายครับ ส่วนที่ยากกว่าคืออธิบายให้ได้ว่า component นี้แก้ปัญหาอะไร อะไรพังได้ แล้วหลังจากขึ้น production ใครจะดูแลต่อ
 
-บทความนี้ต่อยอดจาก [complete System Design guide](https://www.systemdesignhandbook.com/guides/system-design-interview/) และ [senior engineer questions](https://www.systemdesignhandbook.com/guides/system-design-interview-questions-for-senior-software-engineer/) ซึ่งครอบคลุม principles, building blocks และคำถามของระบบขนาดใหญ่ไว้กว้างมาก
-
-ส่วนบทความของผมจะตัดเรื่อง interview process ออก แล้วเรียงเนื้อหาให้ใช้ coach หรือ mentor คนที่กำลังฝึก System Design ได้ง่ายขึ้น
+บทความของผมจะตัดเรื่อง interview process ออก แล้วเรียงเนื้อหาให้ใช้ coach หรือ mentor คนที่กำลังฝึก System Design ได้ง่ายขึ้น
 
 แกนหลักมีประโยคเดียวครับ:
 
@@ -34,9 +32,9 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 
 ## Start with the Problem, Not the Components
 
-สมมุติว่าเรากำลังออกแบบ multi-tenant employee onboarding platform
+สมมุติว่าเรากำลังออกแบบ E-commerce marketplace ครับ
 
-HR จะสร้าง onboarding case เลือก role กับ location ของพนักงาน ใส่ onboarding plan และกำหนด start date ระบบต้อง schedule งานให้ HR, IT, payroll และ integration ที่ได้รับอนุญาต พร้อมบอกได้ว่าแต่ละขั้นตอนไปถึงไหนแล้ว
+ลูกค้าเข้ามาดูสินค้า ใส่ของลง cart แล้ววาง order ระบบต้องเช็ก inventory, รับ payment, ส่ง order ไป fulfillment และตาม status จนส่งของสำเร็จ ส่วน seller ต้องจัดการสินค้า ราคา และ stock ได้ด้วย
 
 ก่อนวาด diagram ลองถามก่อนครับว่าระบบต้องทำอะไร
 
@@ -44,27 +42,27 @@ HR จะสร้าง onboarding case เลือก role กับ location
 
 สิ่งที่ user ต้องใช้งานได้มีประมาณนี้:
 
-- สร้างและแก้ onboarding case
-- ลงทะเบียนพนักงานและเลือก onboarding plan ให้ถูกคน
-- schedule task จาก start date
-- pause หรือ cancel case ก่อน automated task เริ่ม
-- assign task ให้คนหรือ integration ที่ได้รับอนุญาต
-- แสดง progress ของแต่ละ onboarding step
+- browse และ search สินค้า
+- เพิ่ม แก้ และลบสินค้าใน cart
+- วาง order และจ่ายเงิน
+- reserve inventory โดยไม่ขายเกิน stock
+- ส่ง paid order ไป fulfillment
+- แสดง order และ delivery progress
 
 ### Non-functional requirements
 
 ส่วนนี้บอกว่าระบบต้องทำงานได้ดีแค่ไหน:
 
-- **Correctness:** พนักงานต้องอยู่ใน tenant ที่ถูก และได้ plan ที่ถูก
-- **Availability:** scheduled work ยังต้องเริ่มได้แม้ server บางตัวล้ม
-- **Durability:** schedule ที่รับแล้วต้องไม่หาย
-- **Scale:** ต้องรองรับ seasonal hiring ก้อนใหญ่จากหลาย tenant
-- **Security:** เฉพาะ HR และ service ที่ได้รับอนุญาตเท่านั้นจึงจะเข้าถึงข้อมูลหรือเริ่ม sensitive task ได้
+- **Correctness:** ห้ามสร้าง order ซ้ำ ห้ามตัดเงินซ้ำ และห้ามขายสินค้าที่หมดแล้ว
+- **Availability:** ลูกค้าควรดูสินค้าและวาง order ได้แม้ server บางตัวล้ม
+- **Durability:** order ที่รับแล้วต้องไม่หาย
+- **Scale:** product read อาจมากกว่า order write หลายเท่า และ traffic เปลี่ยนเร็วได้
+- **Security:** ลูกค้า seller และ service ต้องเข้าถึงเฉพาะ data กับ action ที่ตัวเองมีสิทธิ์
 - **Auditability:** ทีมต้องรู้ว่าใครเปลี่ยนอะไร เมื่อไหร่
 
 อย่าเพิ่งเขียน requirement ทุกอย่างที่นึกออกครับ ให้หาเฉพาะข้อที่ทำให้ design เปลี่ยน
 
-ตัวอย่างเช่น welcome checklist ช้าไปหนึ่งนาทีอาจไม่เป็นไร แต่ถ้าเป็นการ revoke access ของพนักงานที่ออกจากบริษัท หนึ่งนาทีก็อาจนานเกินไป ทั้งคู่เป็น HR workflow เหมือนกัน แต่ quality goal คนละแบบ
+ตัวอย่างเช่น product view counter ช้าไปหนึ่งนาทีอาจไม่เป็นไร แต่ inventory กับ payment status ตอน checkout ต้องใช้กติกาที่เข้มกว่า ทั้งหมดอยู่ใน product เดียวกัน แต่ quality goal คนละแบบครับ
 
 ก่อนเลือก technology ลองถามหกข้อนี้:
 
@@ -109,23 +107,24 @@ Availability กับ reliability เกี่ยวข้องกัน แ�
 
 Estimation มีประโยชน์เมื่อเลขนั้นเปลี่ยนการตัดสินใจ ไม่ต้องแข่งกันทายให้เป๊ะทุกหลัก
 
-สมมุติลูกค้ารายใหญ่ import พนักงานตามฤดูกาล 100,000 คน แต่ละ onboarding plan สร้าง task เฉลี่ย 50 รายการ และ task record หนึ่งรายการมีขนาด 2 KB
+สมมุติ marketplace มีลูกค้า 10 ล้านคนต่อวัน แต่ละคนเปิด product page เฉลี่ย 20 หน้า และลูกค้า 2% วาง order
 
 คำถามที่ควรถามมีประมาณนี้:
 
-- onboarding run จะสร้าง task กี่รายการ?
-- งานทั้งหมดจบช้าได้แค่ไหน?
-- identity, payroll และ equipment integration รับ peak rate ไหวหรือเปล่า?
-- execution history ต้องเก็บมากแค่ไหน?
-- traffic เข้ามาเรื่อย ๆ หรือกระแทกเข้ามาเป็นก้อน?
+- ระบบต้องรับ product read กี่ครั้ง?
+- แต่ละวันมี order ใหม่กี่รายการ?
+- inventory, payment และ fulfillment service รับ peak rate ไหวหรือเปล่า?
+- ต้องเก็บ order กับ event history เท่าไร?
+- peak traffic สูงกว่าค่าเฉลี่ยต่อวันแค่ไหน?
 
-เราจะได้ task ประมาณ 5 ล้านรายการ ถ้า queue message หนึ่งก้อนมี 500 task ก็จะมีประมาณ 10,000 message
+ตัวเลขชุดนี้ได้ product view ประมาณ 200 ล้านครั้ง และ order 200,000 รายการต่อวัน ฝั่ง product เป็น read-heavy ส่วน order หนึ่งรายการสร้างทั้ง write และ call ไป service อื่นอีกหลายครั้ง
 
 ```text
-100,000 employees x 50 tasks / 500 tasks per chunk = 10,000 chunks
+10,000,000 customers x 20 product views = 200,000,000 product views/day
+10,000,000 customers x 2% conversion = 200,000 orders/day
 ```
 
-เลข 10,000 ช่วยคิดต่อเรื่อง queue size, worker concurrency, progress tracking, retry scope และ operational tools ได้มากกว่า total user count เสียอีก
+ตัวเลขสองชุดพาเราไปคนละทางครับ Product browsing อาจต้องใช้ cache, CDN และ read scaling ส่วน order processing ต้องมี durable write, idempotency, queue และ recovery tool
 
 ให้เวลาเฉพาะเลขที่มีผลต่อ design:
 
@@ -147,12 +146,12 @@ Estimation มีประโยชน์เมื่อเลขนั้นเ
 
 <MermaidDiagram chart={`
 flowchart LR
-    U["HR user"] --> A["Application"]
+    U["Customer"] --> A["Application"]
     A --> D["Database"]
-    A --> P["HR and IT integrations"]
+    A --> P["Payment and shipping"]
 `} />
 
-Application เก็บ onboarding case กับ schedule ลง database แล้วใช้ timer ตรวจ task ที่ถึงเวลา ก่อนเรียก integration ที่เกี่ยวข้อง
+Application เก็บ product, cart และ order ไว้ใน database เดียว แล้วเรียก payment กับ shipping service ตอนลูกค้าวาง order
 
 สำหรับทีมเล็กและ volume ยังน้อย แค่นี้อาจพอแล้วครับ เข้าใจง่าย deploy ง่าย และ debug ง่าย
 
@@ -160,11 +159,11 @@ Application เก็บ onboarding case กับ schedule ลง database แ�
 
 ก่อนเพิ่ม component ทำเวอร์ชันนี้ให้ปลอดภัยก่อน:
 
-- เก็บ timestamp ด้วย time zone ที่ตกลงกัน ส่วนมากคือ UTC
-- schedule ที่รับแล้วต้องอยู่ใน durable database ไม่ใช่ process memory
-- บันทึก task attempt
-- ทำ integration call ให้ idempotent เมื่อทำได้
-- ป้องกันการสร้าง onboarding case ด้วย authentication และ authorization
+- เก็บเงินด้วยหน่วยย่อยสุดของ currency แทน floating-point number
+- order ที่รับแล้วต้องอยู่ใน durable database ไม่ใช่ process memory
+- บันทึก payment และ fulfillment attempt
+- ทำ checkout กับ integration call ให้ idempotent
+- ป้องกัน action ของ customer และ seller ด้วย authentication กับ authorization
 
 จากนั้นรอให้ constraint เป็นตัวบอกว่า design ต้องโตไปทางไหน
 
@@ -249,13 +248,14 @@ Rate limiting ช่วยป้องกัน capacity และแบ่ง u
 
 ![Different access patterns lead to different data designs](/assets/images/blogs/practical-system-design/choose-for-access-pattern.png)
 
-สำหรับ onboarding system เราอาจมี record หลักดังนี้:
+สำหรับ E-commerce system เราอาจมี record หลักดังนี้:
 
-- onboarding case
-- employee profile reference
-- onboarding plan
-- scheduled task
-- task attempt
+- product
+- inventory
+- cart
+- order และ order item
+- payment attempt
+- fulfillment
 - audit event
 
 Relational database เป็นตัวเลือกแรกที่ดี เมื่อระบบต้องใช้ transaction, relationship ที่ชัด และ operational query ที่ยืดหยุ่น
@@ -284,9 +284,9 @@ Discord เขียนเรื่องนี้ไว้ในบทควา
 
 Cache เก็บ data ไว้ในจุดที่อ่านได้เร็วกว่าเป็นเวลาจำกัด เช่น:
 
-- onboarding plan ที่ถูกอ่านซ้ำบ่อย
-- role และ location policy ที่ worker หลายตัวใช้
-- integration credential หรือ routing rule
+- product และ category page ที่ถูกอ่านซ้ำบ่อย
+- seller และ shipping policy ที่หลาย request ใช้
+- inventory summary ที่กำหนด freshness limit ไว้แล้ว
 - query ราคาแพงที่ยอมรับ stale data ได้
 
 Cache ไม่ได้ช่วยทุก read ก่อนเพิ่มลองถาม:
@@ -304,27 +304,27 @@ Abstraction นี้ยังลดภาระให้ product engineer ไ�
 
 ### Queue and workers: move slow work off the request path
 
-การประมวลผล onboarding task หลายล้านรายการใน HTTP request เดียวไปไม่รอดแน่ request จะ timeout และ failure ครั้งเดียวอาจทำให้เริ่มงานก้อนใหญ่อีกครั้ง
+ถ้าทำ payment, inventory, fulfillment, email และ analytics ใน HTTP request เดียว request จะผูกกับ dependency หลายตัวเกินไปครับ แค่ตัวหนึ่งช้าก็ timeout ได้ และ failure ครั้งเดียวอาจทำให้งานที่สำเร็จแล้วถูกรันซ้ำ
 
 Queue แยกการรับงานออกจากการทำงาน
 
 <MermaidDiagram chart={`
 flowchart LR
-    A["Onboarding API"] --> D["Onboarding DB"]
-    S["Scheduler"] --> D
-    S --> Q["Task queue"]
+    A["Order API"] --> D["Order DB"]
+    D --> P["Event publisher"]
+    P --> Q["Order queue"]
     Q --> W1["Worker 1"]
     Q --> W2["Worker 2"]
     Q --> W3["Worker N"]
-    W1 --> P["HR and IT integrations"]
-    W2 --> P
-    W3 --> P
+    W1 --> F["Fulfillment services"]
+    W2 --> F
+    W3 --> F
     W1 --> R["Task results"]
     W2 --> R
     W3 --> R
 `} />
 
-Design นี้ช่วยรับ burst, scale worker, retry งานก้อนเล็ก, pause processing โดยไม่ทำ onboarding run หาย และ track progress แยกตาม chunk
+Design นี้ช่วยรับ burst, scale worker, retry งานก้อนเล็ก, pause fulfillment โดยไม่ทำ accepted order หาย และ track progress แยกตาม order
 
 แต่ queue ก็สร้างสิ่งที่ทีมต้องรับผิดชอบเพิ่ม:
 
@@ -358,11 +358,11 @@ Offline client ต้องมีกติกา sync ที่ชัด วิ�
 
 ### Object storage: keep large immutable data outside the database
 
-สมมุติ onboarding run หนึ่ง import พนักงาน 100,000 คน พร้อม document และ task input การยัด import ทั้งก้อนไว้ใน database row เดียวคงใช้งานลำบากครับ
+สมมุติ seller อัปโหลด product catalog ก้อนใหญ่พร้อมรูปและ specification file การยัด file ทั้งก้อนไว้ใน database row เดียวคงใช้งานลำบากครับ
 
-Object storage เก็บ original import, employee document หรือ task chunk ที่เตรียมไว้ล่วงหน้า ส่วน database เก็บ object key, checksum, size, version และ processing status
+Object storage เก็บ original catalog file, product image, invoice หรือ generated export ส่วน database เก็บ object key, checksum, size, version และ processing status
 
-เหมาะเมื่อ data มีขนาดใหญ่ worker อ่านเป็น batch object ไม่เปลี่ยนหลังสร้าง และ audit อาจต้องใช้ import version เดิมในภายหลัง
+เหมาะเมื่อ data มีขนาดใหญ่ worker อ่านเป็น batch object ไม่เปลี่ยนหลังสร้าง และ audit อาจต้องใช้ file version เดิมในภายหลัง
 
 ### Distributed files and chunk size
 
@@ -385,7 +385,7 @@ Search engine ช่วยเมื่อ user ต้องการ full-text s
 
 กำหนด source of truth ให้ชัดครับ search index มักเป็น derived read model ซึ่งรับ update จาก main database ผ่าน outbox หรือ change stream
 
-ถ้า indexing เป็น asynchronous UI อาจเห็นผลลัพธ์เก่าได้ ช้าสองสามวินาทีอาจรับได้สำหรับ onboarding case search แต่ใช้กับ access หรือ security policy check ไม่ได้
+ถ้า indexing เป็น asynchronous UI อาจเห็น product detail เก่าได้ ช้าสองสามวินาทีอาจรับได้ใน search result แต่ checkout ต้องอ่านราคาและ inventory ล่าสุดจาก source of truth
 
 ## Design the Data Flow, Not Only the Boxes
 
@@ -403,35 +403,39 @@ Diagram สองรูปมีกล่องเหมือนกันทุ
 6. result เก็บไว้ที่ไหน?
 7. caller รู้ผลอย่างไร?
 
-Onboarding flow อาจเป็นแบบนี้:
+Checkout และ fulfillment flow อาจเป็นแบบนี้:
 
 <MermaidDiagram chart={`
 sequenceDiagram
-    participant U as HR user
-    participant A as Onboarding API
+    participant U as Customer
+    participant A as Order API
     participant D as Database
-    participant S as Scheduler
+    participant P as Payment service
+    participant E as Event publisher
     participant Q as Queue
     participant W as Worker
-    participant P as HR and IT integrations
+    participant F as Fulfillment service
 
-    U->>A: Create scheduled onboarding run
-    A->>D: Save run and onboarding plan
-    A-->>U: Accepted with onboarding run ID
-    S->>D: Claim due run
-    S->>Q: Publish task chunks
-    Q->>W: Process one chunk
-    W->>P: Execute integration tasks
-    P-->>W: Result
-    W->>D: Store onboarding progress
+    U->>A: Place order
+    A->>D: Create pending order
+    A->>P: Authorize payment
+    P-->>A: Payment authorized
+    A->>D: Mark paid and save event
+    A-->>U: Order accepted
+    E->>D: Read unpublished event
+    E->>Q: Publish order event
+    Q->>W: Process order
+    W->>F: Create fulfillment request
+    F-->>W: Fulfillment result
+    W->>D: Store fulfillment progress
 `} />
 
 Sequence นี้เปิดคำถามที่ box diagram ซ่อนไว้:
 
-- scheduler สอง instance claim onboarding run เดียวกันได้ไหม?
+- request สองครั้งสร้าง order จาก checkout เดียวกันได้ไหม?
 - database commit สำเร็จ แต่ publish queue fail จะทำอย่างไร?
-- integration ทำงานสำเร็จแล้ว แต่ worker timeout ล่ะ?
-- worker ประมวลผล chunk เดิมซ้ำอย่างปลอดภัยได้ไหม?
+- payment สำเร็จแล้ว แต่ API timeout ล่ะ?
+- worker ประมวลผล order เดิมซ้ำอย่างปลอดภัยได้ไหม?
 
 คำถามเหล่านี้พาเราไปเรื่อง correctness ครับ
 
@@ -443,16 +447,16 @@ Distributed system มีโอกาสทำงานซ้ำเสมอ net
 
 Idempotent operation รันมากกว่าหนึ่งครั้งแล้ว final result ยังเหมือนเดิม
 
-ตอนสร้าง onboarding run client อาจส่ง idempotency key มา server จะเก็บ key พร้อมผลลัพธ์ของ request แรก หาก retry ด้วย key เดิมก็คืนผลเดิมแทนการสร้าง run ใหม่
+ตอน checkout client อาจส่ง idempotency key มา server จะเก็บ key พร้อมผลลัพธ์ของ request แรก หาก retry ด้วย key เดิมก็คืนผลเดิมแทนการสร้าง order หรือตัด payment ซ้ำ
 
 [Stripe ใช้ idempotency key](https://docs.stripe.com/api/idempotent_requests) กับ POST request เพื่อให้ client retry หลัง network error ได้อย่างปลอดภัย แนวคิดเดียวกันใช้ได้ทั้ง API, queue และ integration boundary
 
 Deduplication key ที่ใช้ได้ เช่น:
 
-- `onboarding_run_id + employee_id + task_type`
-- `onboarding_run_id + chunk_id`
+- `checkout_id`
+- `order_id + operation_type`
 - request key จาก client
-- integration request key
+- payment หรือ fulfillment request key
 
 Idempotency ต้องพึ่ง durable state ครับ in-memory set จะหายทันทีเมื่อ process restart
 
@@ -460,12 +464,12 @@ Idempotency ต้องพึ่ง durable state ครับ in-memory set �
 
 Event ทุกตัวไม่ต้องมี global order ลองถามก่อนว่าอะไรต้องเรียงลำดับกันแน่:
 
-- onboarding run ทั้งบริษัท
-- task ของ employee คนเดียว
-- state change ของ onboarding case เดียว
-- event ภายใน task chunk เดียว
+- order ทั้ง marketplace
+- order ของ customer คนเดียว
+- state change ของ order เดียว
+- event ของ inventory item เดียว
 
-การรักษาลำดับต่อ key เล็ก ๆ เช่น case หรือ employee ง่ายกว่าบังคับทั้งระบบให้เรียงเป็นเส้นเดียว
+การรักษาลำดับต่อ key เล็ก ๆ เช่น order หรือ inventory item ง่ายกว่าบังคับทั้งระบบให้เรียงเป็นเส้นเดียว
 
 ถ้า order สำคัญ ให้ partition message ด้วย key นั้นและป้องกัน state transition ใน database ถึงอย่างนั้นก็ยังต้องรองรับ delayed และ duplicate message อยู่ดี
 
@@ -473,10 +477,10 @@ Event ทุกตัวไม่ต้องมี global order ลองถา
 
 Consistency ไม่ใช่ switch ที่เลือกเพียง strong หรือ eventual ข้อมูลแต่ละแบบใช้กติกาต่างกันได้:
 
-- onboarding case status อาจต้องใช้ transaction
-- progress counter ใช้ eventual consistency ได้
-- search result เก่าได้สองสามวินาที
-- employee access state ต้องอ่านค่าล่าสุดก่อน provisioning
+- order status อาจต้องใช้ transaction
+- product view counter ใช้ eventual consistency ได้
+- product search result เก่าได้สองสามวินาที
+- inventory กับราคาต้องอ่านค่าล่าสุดก่อน confirm checkout
 - financial settlement ต้องการ guarantee สูงกว่า analytics dashboard
 
 Google สร้าง [Spanner](https://research.google/pubs/spanner-googles-globally-distributed-database-2/) เพื่อรองรับ globally distributed data และ externally consistent transaction ความสามารถนี้มีประโยชน์มาก แต่ก็มาจากระบบที่ซับซ้อนและ trade-off เฉพาะตัว ระบบส่วนใหญ่ควรถามก่อนว่า operation ไหนต้องการ consistency ระดับนั้น
@@ -584,23 +588,23 @@ Backpressure เปิดทางให้ consumer ควบคุมว่า
 
 ![Backpressure controls a large incoming flow before workers are overloaded](/assets/images/blogs/practical-system-design/backpressure-valve.png)
 
-ใน onboarding system worker ไม่ควรดึง chunk ไม่จำกัดเมื่อ identity, payroll หรือ equipment integration ช้า Queue ช่วย buffer burst ได้ แต่ต้องมี limit และแผนรับมือเชิง operation
+ใน E-commerce system worker ไม่ควรดึง order ไม่จำกัดเมื่อ warehouse หรือ shipping integration ช้า Queue ช่วย buffer burst ได้ แต่ต้องมี limit และแผนรับมือเชิง operation
 
 Control ที่ใช้ได้มี worker concurrency, batch size, queue prefetch, integration rate limit, delay ระหว่าง batch และ maximum queue age
 
-ถ้า queue age โตต่อเนื่อง การเติม task เข้าไปอีกไม่ใช่ recovery ทีมอาจต้อง pause onboarding run, ลด concurrency หรือย้าย blocked work ไป manual review
+ถ้า queue age โตต่อเนื่อง การเพิ่ม worker อาจทำให้ dependency รับ load หนักกว่าเดิม ทีมอาจต้องลด concurrency, pause fulfillment route หนึ่งเส้น หรือย้าย blocked order ไป manual review
 
 ## Partitioning and Hotspots
 
 ระบบใหญ่แบ่ง data และงานไปหลายเครื่อง โดย partition key เป็นตัวตัดสินว่า item แต่ละชิ้นจะไปไหน
 
-![A partition rule spreads onboarding work into balanced groups](/assets/images/blogs/practical-system-design/partition-hotspots.png)
+![A partition rule spreads marketplace work into balanced groups](/assets/images/blogs/practical-system-design/partition-hotspots.png)
 
-Key ที่พบบ่อย ได้แก่ user ID, account ID, onboarding run ID, tenant ID, time bucket และ geographic region
+Key ที่พบบ่อย ได้แก่ user ID, account ID, order ID, seller ID, time bucket และ geographic region
 
 Key ที่ดีต้องกระจาย load และรองรับ main query ส่วน key ที่เลือกไม่ดีจะสร้าง hotspot
 
-สมมุติ tenant หนึ่ง import พนักงานตามฤดูกาล 1 ล้านคน ขณะที่ tenant ส่วนใหญ่มีเพียง 1,000 คน ถ้า partition ด้วย `tenant_id` อย่างเดียว import ก้อนใหญ่จะลง partition เดียว การเพิ่ม onboarding run, chunk หรือ hash suffix ช่วยกระจายงานได้
+สมมุติ seller รายใหญ่มี order 1 ล้านรายการ ขณะที่ seller ส่วนใหญ่มี 1,000 รายการ ถ้า partition ด้วย `seller_id` อย่างเดียว งานของ seller รายใหญ่จะลง partition เดียว การเพิ่ม order ID hash หรือ time bucket ช่วยกระจายงานได้
 
 แต่ partition มากขึ้นก็เพิ่ม cross-partition query, rebalancing, transaction ที่ซับซ้อนขึ้น, operational tool ที่ทำยากขึ้น และ migration ที่ลำบากขึ้น
 
@@ -631,7 +635,7 @@ flowchart LR
 - network partition แล้วจะทำอย่างไร?
 - ทีมทดสอบ regional recovery ได้บ่อยแค่ไหน?
 
-Scheduled onboarding checklist ช้าสั้น ๆ อาจรับได้ แต่ payment authorization หรือ urgent access removal อาจต้องการอีกคำตอบหนึ่ง
+Product recommendation ช้าสั้น ๆ อาจรับได้ แต่ payment authorization หรือ inventory reservation อาจต้องการอีกคำตอบหนึ่ง
 
 รันสอง region โดยไม่เคยทดสอบ failover อาจได้ cost ของ multi-region มาเต็ม ๆ โดยยังไม่ได้ safety ครับ
 
@@ -639,16 +643,16 @@ Scheduled onboarding checklist ช้าสั้น ๆ อาจรับไ�
 
 API คือสัญญาที่เรามอบให้ caller จึงควรกำหนด resource name และ ID, request/response shape, error model, idempotency, pagination, rate limit, versioning, authentication และ authorization ให้ครบ
 
-ถ้าเป็น asynchronous work ให้คืน job หรือ onboarding run ID เพื่อให้ caller เช็ก status หรือรับ webhook
+ถ้าเป็น asynchronous work ให้คืน order หรือ job ID เพื่อให้ caller เช็ก status หรือรับ webhook
 
 ```http
-POST /onboarding-runs
+POST /orders
 Idempotency-Key: 2d3817...
 
 202 Accepted
 {
-  "onboardingRunId": "onb_123",
-  "status": "scheduled"
+  "orderId": "ord_123",
+  "status": "accepted"
 }
 ```
 
@@ -661,8 +665,8 @@ Event ก็เป็น contract เช่นกัน ต้องมี schem
 Security ไม่ใช่กล่องหนึ่งใบที่ขอบ diagram ลองถาม:
 
 - ใครเรียก API นี้ได้?
-- คนนี้ดูหรือแก้ onboarding case ไหนได้บ้าง?
-- service ไหนอ่าน employee data ได้?
+- customer หรือ seller คนนี้ดูหรือแก้ order ไหนได้บ้าง?
+- service ไหนอ่าน customer หรือ payment data ได้?
 - data ใดต้อง encrypt?
 - action ไหนต้องสร้าง audit event?
 - worker แต่ละตัวเข้าถึง secret อะไรได้?
@@ -670,28 +674,28 @@ Security ไม่ใช่กล่องหนึ่งใบที่ขอ�
 
 Control ที่ควรพิจารณามี authentication, role/attribute-based authorization, least-privilege service identity, encryption in transit และ at rest, secret rotation, network boundary, immutable audit log รวมถึง data retention และ deletion policy
 
-ตรวจ authorization ที่ resource boundary ครับ user ที่แก้ case หนึ่งได้ ไม่ควรเข้าถึง case ของทุก tenant เพียงเปลี่ยน ID ใน URL
+ตรวจ authorization ที่ resource boundary ครับ seller ที่แก้ product หนึ่งได้ ไม่ควรเข้าถึง product ของ seller รายอื่นเพียงเปลี่ยน ID ใน URL
 
-สำหรับ sensitive flow การแยก account, cloud profile, database หรือ worker อาจคุ้มกับ cost ที่เพิ่ม เพราะช่วยลด failure และ access surface
+สำหรับ sensitive flow การแยก account, cloud profile, database หรือ payment worker อาจคุ้มกับ cost ที่เพิ่ม เพราะช่วยลด failure และ access surface
 
 ## Observability Must Answer Operational Questions
 
 Log, metric และ trace เป็นเครื่องมือ เริ่มจากคำถามที่ทีมต้องตอบก่อน:
 
-- scheduled onboarding run เริ่มหรือยัง?
-- มี chunk รออยู่กี่ก้อน?
-- chunk เก่าสุดรอนานเท่าไร?
-- integration ไหนช้า?
-- task สำเร็จ fail หรือ skip กี่รายการ?
-- tenant เดียวใช้ capacity ส่วนใหญ่หรือเปล่า?
-- หยุด onboarding run เดียวอย่างปลอดภัยได้ไหม?
-- replay failed chunk ได้หรือเปล่า?
+- order ถูก accept และจ่ายเงินแล้วหรือยัง?
+- มี order รอ fulfillment กี่รายการ?
+- order เก่าสุดรอนานเท่าไร?
+- payment, warehouse หรือ shipping integration ตัวไหนช้า?
+- order สำเร็จ fail หรือต้อง manual review กี่รายการ?
+- seller รายเดียวใช้ capacity ส่วนใหญ่หรือเปล่า?
+- pause fulfillment route เดียวอย่างปลอดภัยได้ไหม?
+- replay failed order step ได้หรือเปล่า?
 
-Metric ที่มีประโยชน์ ได้แก่ request rate/error/latency, queue depth และ age, worker throughput, retry count, integration response code, database connection usage, cache hit rate รวมถึง onboarding progress และ final result
+Metric ที่มีประโยชน์ ได้แก่ request rate/error/latency, queue depth และ age, worker throughput, retry count, integration response code, database connection usage, cache hit rate รวมถึง order และ fulfillment progress
 
-ใช้ correlation ID เช่น onboarding run ID, employee ID, chunk ID และ integration request ID เพื่อให้ทีมตามหนึ่ง flow ข้ามหลาย service ได้
+ใช้ correlation ID เช่น order ID, customer ID, payment attempt ID และ fulfillment request ID เพื่อให้ทีมตามหนึ่ง flow ข้ามหลาย service ได้
 
-Alert ควรพาไปสู่ action queue depth สูงอาจปกติในช่วง bulk import ที่วางแผนไว้ แต่ queue age ที่เสี่ยงทำให้พนักงานเริ่มงานไม่ทันให้ข้อมูลกับทีมมากกว่า
+Alert ควรพาไปสู่ action queue depth สูงอาจรับได้ถ้า worker ระบายงานทัน แต่ queue age ที่เสี่ยงทำให้ส่งของช้ากว่าเวลาที่รับปากลูกค้าให้ข้อมูลกับทีมมากกว่าครับ
 
 ## Ownership Changes the Design
 

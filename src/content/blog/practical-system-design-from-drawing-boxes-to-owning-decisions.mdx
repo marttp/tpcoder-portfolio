@@ -23,9 +23,7 @@ The diagram may look impressive. But it does not explain the most important part
 
 Adding a component is easy to explain. The harder part is explaining why the component belongs there, what can fail, and who must care for it later.
 
-This guide started from two detailed references: the [complete System Design guide](https://www.systemdesignhandbook.com/guides/system-design-interview/) and its [senior engineer questions](https://www.systemdesignhandbook.com/guides/system-design-interview-questions-for-senior-software-engineer/). They give a wide map of principles, building blocks, and large-system questions.
-
-This guide takes a different path. It does not cover the interview process or provide a list of answers to remember. It is a practical way to coach someone through System Design knowledge.
+This guide does not cover the interview process or provide a list of answers to remember. It is a practical way to coach someone through System Design knowledge.
 
 The main idea is simple:
 
@@ -37,9 +35,9 @@ This guide cannot cover every type of system. No guide can. Its goal is to help 
 
 ## Start with the Problem, Not the Components
 
-Let us use one running example: a multi-tenant employee onboarding platform.
+Let us use one running example: an E-commerce marketplace.
 
-An HR user creates an onboarding case, selects the employee's role and location, applies an onboarding plan, and sets a start date. The system schedules work for HR, IT, payroll, and other approved services. It also tracks which steps are complete.
+A customer browses products, adds items to a cart, and places an order. The system checks inventory, accepts payment, sends the order to fulfillment, and tracks each step until delivery. Sellers also manage products, prices, and available stock.
 
 Before drawing anything, ask what the system must do.
 
@@ -47,27 +45,27 @@ Before drawing anything, ask what the system must do.
 
 These describe user-visible behavior:
 
-- create and edit an onboarding case;
-- register an employee and apply the correct onboarding plan;
-- schedule tasks from the employee's start date;
-- pause or cancel the case before automated work starts;
-- assign tasks to people and approved integrations;
-- show the progress of each onboarding step.
+- browse and search for products;
+- add, update, and remove cart items;
+- place an order and pay for it;
+- reserve inventory without overselling;
+- send paid orders to fulfillment;
+- show order and delivery progress.
 
 ### Non-functional requirements
 
 These describe how well the system must work:
 
-- **Correctness:** keep each employee in the correct tenant and apply the correct plan.
-- **Availability:** scheduled work should start even if one server fails.
-- **Durability:** an accepted schedule should not disappear.
-- **Scale:** the system may handle large seasonal hiring runs across many tenants.
-- **Security:** only approved HR staff and services can access employee data or start sensitive tasks.
+- **Correctness:** do not create duplicate orders, charge twice, or sell stock that is gone.
+- **Availability:** customers should still browse and place orders if one server fails.
+- **Durability:** an accepted order should not disappear.
+- **Scale:** product reads may be far higher than order writes, and traffic can change quickly.
+- **Security:** customers, sellers, and services should access only the data and actions they need.
 - **Auditability:** the team must know who changed what and when.
 
 Do not write every possible requirement. Find the ones that change the design.
 
-For example, a one-minute delay may be fine when creating a welcome checklist. It may be unacceptable when the system must revoke access for an employee who has left. Both are HR workflows, but the system goals are different.
+For example, a product view counter may be a minute behind. Inventory and payment status need a stronger rule during checkout. Both belong to the same product, but their quality goals are different.
 
 Ask these questions before choosing technology:
 
@@ -114,23 +112,24 @@ For example, 99.9% monthly availability allows about 43 minutes of downtime. A h
 
 Estimation is useful when it changes a decision. It is not a contest to produce a perfect number.
 
-Suppose a large customer imports 100,000 seasonal employees. Each onboarding plan creates an average of 50 automated and human tasks, with an average task record of 2 KB.
+Suppose the marketplace has 10 million daily customers. Each customer opens an average of 20 product pages, and 2% of customers place an order.
 
 We can ask:
 
-- How many tasks will the onboarding run create?
-- How long may the full run take?
-- Can identity, payroll, and equipment integrations accept the peak request rate?
-- How much execution history must we store?
-- Is the traffic steady or does it arrive in large bursts?
+- How many product reads must the system serve?
+- How many orders will it create each day?
+- Can inventory, payment, and fulfillment services accept the peak request rate?
+- How much order and event history must we store?
+- How far can peak traffic rise above the daily average?
 
-The import creates about 5 million tasks. If one queue message contains 500 tasks, the onboarding run creates about 10,000 queue messages.
+This produces about 200 million product views and 200,000 orders per day. Product traffic is read-heavy, while each order creates several writes and calls to other services.
 
 ```text
-100,000 employees x 50 tasks / 500 tasks per chunk = 10,000 chunks
+10,000,000 customers x 20 product views = 200,000,000 product views/day
+10,000,000 customers x 2% conversion = 200,000 orders/day
 ```
 
-That number tells us more than the total user count. It helps us think about queue size, worker concurrency, progress tracking, retry scope, and operational tools.
+These numbers show two different workloads. Product browsing may need caching, a CDN, and read scaling. Order processing needs durable writes, idempotency, queues, and recovery tools.
 
 Not every number needs the same attention:
 
@@ -156,12 +155,12 @@ The first version can be very small.
 
 <MermaidDiagram chart={`
 flowchart LR
-    U["HR user"] --> A["Application"]
+    U["Customer"] --> A["Application"]
     A --> D["Database"]
-    A --> P["HR and IT integrations"]
+    A --> P["Payment and shipping"]
 `} />
 
-The application stores the onboarding case and schedule in a database. A timer checks for due tasks and calls the required integration.
+The application stores products, carts, and orders in one database. It calls payment and shipping services when an order is placed.
 
 For a small team and low volume, this may be enough. It is easy to understand, deploy, and debug.
 
@@ -169,11 +168,11 @@ Do not call it naive as an insult. A small design is often the right design for 
 
 Before adding anything, make this version safe:
 
-- store timestamps in a clear time zone, usually UTC;
-- use a durable database, not process memory, for accepted schedules;
-- record task attempts;
-- make integration calls idempotent when possible;
-- protect onboarding case creation with authentication and authorization.
+- store money in the smallest currency unit, not a floating-point number;
+- use a durable database, not process memory, for accepted orders;
+- record payment and fulfillment attempts;
+- make checkout and integration calls idempotent;
+- protect customer and seller actions with authentication and authorization.
 
 Then wait for a constraint to push the design forward.
 
@@ -260,13 +259,14 @@ The database choice starts with how the system reads and writes data.
 
 ![Different access patterns lead to different data designs](/assets/images/blogs/practical-system-design/choose-for-access-pattern.png)
 
-For the onboarding system, the main records may include:
+For the E-commerce system, the main records may include:
 
-- onboarding case;
-- employee profile reference;
-- onboarding plan;
-- scheduled task;
-- task attempt;
+- product;
+- inventory;
+- cart;
+- order and order item;
+- payment attempt;
+- fulfillment;
 - audit event.
 
 A relational database is a good first choice when the system needs transactions, clear relationships, and flexible operational queries.
@@ -297,9 +297,9 @@ A cache keeps data in a faster place for a limited time.
 
 It can help with:
 
-- onboarding plans read many times;
-- role and location policies used by many workers;
-- integration credentials or routing rules;
+- product and category pages read many times;
+- seller and shipping policies used by many requests;
+- inventory summaries with a clear freshness limit;
 - expensive read queries with acceptable staleness.
 
 It does not help every read. Ask:
@@ -317,21 +317,21 @@ That last part matters. A platform can improve scale and make the safer path eas
 
 ### Queue and workers: move slow work off the request path
 
-Processing millions of onboarding tasks inside one HTTP request will not work well. The request will time out, and one failure may restart too much work.
+Completing payment, inventory, fulfillment, email, and analytics inside one HTTP request will not work well. A slow dependency can time out the whole request, and one failure may repeat work that already succeeded.
 
 A queue separates accepting work from doing work.
 
 <MermaidDiagram chart={`
 flowchart LR
-    A["Onboarding API"] --> D["Onboarding DB"]
-    S["Scheduler"] --> D
-    S --> Q["Task queue"]
+    A["Order API"] --> D["Order DB"]
+    D --> P["Event publisher"]
+    P --> Q["Order queue"]
     Q --> W1["Worker 1"]
     Q --> W2["Worker 2"]
     Q --> W3["Worker N"]
-    W1 --> P["HR and IT integrations"]
-    W2 --> P
-    W3 --> P
+    W1 --> F["Fulfillment services"]
+    W2 --> F
+    W3 --> F
     W1 --> R["Task results"]
     W2 --> R
     W3 --> R
@@ -342,8 +342,8 @@ This design helps with:
 - burst absorption;
 - worker scaling;
 - retrying a small unit of work;
-- pausing processing without losing the onboarding run;
-- tracking progress per chunk.
+- pausing fulfillment without losing accepted orders;
+- tracking progress for each order.
 
 But the queue adds ownership:
 
@@ -384,16 +384,16 @@ Plan for:
 
 ### Object storage: keep large immutable data outside the database
 
-Suppose one bulk onboarding run imports 100,000 employees with documents and task inputs. Storing the full import inside one database row is not useful.
+Suppose a seller uploads a large product catalog with images and specification files. Storing the full upload inside one database row is not useful.
 
-An object store can hold the original import, employee documents, or pre-built task chunks. The database stores the object key, checksum, size, version, and processing status.
+An object store can hold the original catalog file, product images, invoices, or generated exports. The database stores the object key, checksum, size, version, and processing status.
 
 This works well when:
 
 - the data is large;
 - workers read it in batches;
 - the object is immutable after creation;
-- a later audit may need the exact import version.
+- a later audit may need the exact file version.
 
 ### Distributed files and chunk size
 
@@ -424,7 +424,7 @@ A search engine can help when users need full-text search, filtering across many
 
 Keep the source of truth clear. The search index is often a derived read model. Updates flow from the main database through an outbox or change stream.
 
-If indexing is asynchronous, the UI may show stale results. That can be acceptable for onboarding case search. It may not be acceptable for access or security policy checks.
+If indexing is asynchronous, the UI may show stale product details. That can be acceptable in search results. The checkout path must read the current price and inventory from their sources of truth.
 
 ## Design the Data Flow, Not Only the Boxes
 
@@ -444,35 +444,39 @@ For every important flow, write the steps:
 6. Where is the result stored?
 7. How does the caller learn the result?
 
-The onboarding flow may look like this:
+The checkout and fulfillment flow may look like this:
 
 <MermaidDiagram chart={`
 sequenceDiagram
-    participant U as HR user
-    participant A as Onboarding API
+    participant U as Customer
+    participant A as Order API
     participant D as Database
-    participant S as Scheduler
+    participant P as Payment service
+    participant E as Event publisher
     participant Q as Queue
     participant W as Worker
-    participant P as HR and IT integrations
+    participant F as Fulfillment service
 
-    U->>A: Create scheduled onboarding run
-    A->>D: Save run and onboarding plan
-    A-->>U: Accepted with onboarding run ID
-    S->>D: Claim due run
-    S->>Q: Publish task chunks
-    Q->>W: Process one chunk
-    W->>P: Execute integration tasks
-    P-->>W: Result
-    W->>D: Store onboarding progress
+    U->>A: Place order
+    A->>D: Create pending order
+    A->>P: Authorize payment
+    P-->>A: Payment authorized
+    A->>D: Mark paid and save event
+    A-->>U: Order accepted
+    E->>D: Read unpublished event
+    E->>Q: Publish order event
+    Q->>W: Process order
+    W->>F: Create fulfillment request
+    F-->>W: Fulfillment result
+    W->>D: Store fulfillment progress
 `} />
 
 This sequence exposes questions that a box diagram hides:
 
-- Can two scheduler instances claim the same onboarding run?
+- Can two requests create orders for the same checkout?
 - What if the database commit succeeds but queue publishing fails?
-- What if the integration succeeds but the worker times out?
-- Can the worker safely process the same chunk again?
+- What if payment succeeds but the API times out?
+- Can the worker safely process the same order again?
 
 Those questions lead us to correctness.
 
@@ -484,16 +488,16 @@ Distributed systems often repeat work. Networks time out. Workers crash after co
 
 An idempotent operation can run more than once without creating a different final result.
 
-For onboarding run creation, the client may send an idempotency key. The server stores the key with the result of the first accepted request. A retry with the same key returns that result instead of creating another run.
+For checkout, the client may send an idempotency key. The server stores the key with the result of the first accepted request. A retry with the same key returns that result instead of creating another order or payment.
 
 [Stripe uses idempotency keys](https://docs.stripe.com/api/idempotent_requests) for POST requests so clients can retry safely after a network error. A local system can use the same idea at API, queue, and integration boundaries.
 
 Useful deduplication keys include:
 
-- `onboarding_run_id + employee_id + task_type`;
-- `onboarding_run_id + chunk_id`;
+- `checkout_id`;
+- `order_id + operation_type`;
 - a client-provided request key;
-- an integration request key.
+- a payment or fulfillment request key.
 
 Idempotency needs durable state. An in-memory set disappears when the process restarts.
 
@@ -503,12 +507,12 @@ Not every event needs global order.
 
 Ask what must be ordered:
 
-- all onboarding runs in the whole company;
-- tasks for one employee;
-- state changes for one onboarding case;
-- events inside one task chunk.
+- all orders in the marketplace;
+- orders for one customer;
+- state changes for one order;
+- events for one inventory item.
 
-Ordering a small key, such as one onboarding case or one employee, is easier than ordering the whole system.
+Ordering a small key, such as one order or inventory item, is easier than ordering the whole system.
 
 If order matters, partition messages by that key and protect state transitions in the database. Still plan for delayed and duplicate messages.
 
@@ -516,10 +520,10 @@ If order matters, partition messages by that key and protect state transitions i
 
 Consistency is not one switch between strong and eventual. Different data can need different rules.
 
-- Onboarding case status may need a transaction.
-- Progress counters may be eventually consistent.
-- Search results may be a few seconds stale.
-- An employee's access state may need a fresh check before provisioning.
+- Order status may need a transaction.
+- Product view counters may be eventually consistent.
+- Product search results may be a few seconds stale.
+- Inventory and price need a fresh check before checkout is confirmed.
 - Financial settlement may need stronger guarantees than an analytics dashboard.
 
 Google built [Spanner](https://research.google/pubs/spanner-googles-globally-distributed-database-2/) to support globally distributed data with externally consistent transactions. That is a valuable capability, but it comes from a complex system and specific trade-offs. Most systems should first ask which operations need that level of consistency.
@@ -540,7 +544,7 @@ The CAP theorem matters when the network splits. A distributed system must decid
 
 PACELC adds the normal case: even when there is no partition, a system often trades lower latency against stronger consistency.
 
-Do not choose one rule for every record. An onboarding case edit, an access check, a progress counter, and a search result may need different guarantees.
+Do not choose one rule for every record. An order update, an inventory check, a product view counter, and a search result may need different guarantees.
 
 ### Coordination and consensus
 
@@ -643,7 +647,7 @@ Backpressure lets a consumer control how much work it can accept.
 
 ![Backpressure controls a large incoming flow before workers are overloaded](/assets/images/blogs/practical-system-design/backpressure-valve.png)
 
-In the onboarding system, workers should not pull unlimited chunks when an identity, payroll, or equipment integration is slow. The queue may buffer a burst, but it must have a limit and an operational response.
+In the E-commerce system, workers should not pull unlimited orders when a warehouse or shipping integration is slow. The queue may buffer a burst, but it must have a limit and an operational response.
 
 Useful controls include:
 
@@ -654,7 +658,7 @@ Useful controls include:
 - delay between batches;
 - maximum queue age.
 
-If the queue age keeps growing, adding more tasks is not recovery. The team may need to pause onboarding runs, reduce concurrency, or move blocked work to manual review.
+If the queue age keeps growing, adding more workers may overload the dependency. The team may need to reduce concurrency, pause one fulfillment route, or move blocked orders to manual review.
 
 ## Partitioning and Hotspots
 
@@ -662,20 +666,20 @@ Large systems split data and work across machines. The partition key decides whe
 
 {/* IMAGE PROMPT (partition-hotspots.png): Wide modern green 2D cartoon infographic on a light background. Show records passing through a partition key and splitter into balanced shards, plus a contrasting bad key that creates one hot shard. Render only these labels once: KEY, SPLIT, BALANCE, HOTSPOT. */}
 
-![A partition rule spreads onboarding work into balanced groups](/assets/images/blogs/practical-system-design/partition-hotspots.png)
+![A partition rule spreads marketplace work into balanced groups](/assets/images/blogs/practical-system-design/partition-hotspots.png)
 
 Common keys include:
 
 - user ID;
 - account ID;
-- onboarding run ID;
+- order ID;
 - tenant ID;
 - time bucket;
 - geographic region.
 
 A good key spreads load and supports the main query. A bad key creates hotspots.
 
-Suppose one tenant imports 1 million seasonal employees while most tenants process 1,000. Partitioning only by `tenant_id` sends the large import to one partition. Adding the onboarding run, chunk, or a hash suffix can spread the work.
+Suppose one large seller receives 1 million orders while most sellers receive 1,000. Partitioning only by `seller_id` sends the large seller to one partition. Adding an order ID hash or time bucket can spread the work.
 
 But more partitions add cost:
 
@@ -714,7 +718,7 @@ Before choosing active-active or active-passive, ask:
 - What happens during a network split?
 - Can the team test regional recovery often?
 
-For a scheduled onboarding checklist, a short delay may be acceptable. For payment authorization or urgent access removal, the business may need a different answer.
+For product recommendations, a short delay may be acceptable. For payment authorization or inventory reservation, the business may need a different answer.
 
 Running in two regions without testing failover can create the cost of multi-region without the safety.
 
@@ -733,16 +737,16 @@ Define:
 - versioning;
 - authentication and authorization.
 
-For asynchronous work, return a job or onboarding run ID. Let the caller check status or receive a webhook.
+For asynchronous work, return an order or job ID. Let the caller check status or receive a webhook.
 
 ```http
-POST /onboarding-runs
+POST /orders
 Idempotency-Key: 2d3817...
 
 202 Accepted
 {
-  "onboardingRunId": "onb_123",
-  "status": "scheduled"
+  "orderId": "ord_123",
+  "status": "accepted"
 }
 ```
 
@@ -757,8 +761,8 @@ Security is not one box at the edge of the diagram.
 Ask:
 
 - Who can call this API?
-- Which onboarding case can this person view or change?
-- Which service can read employee data?
+- Which order can this customer or seller view or change?
+- Which service can read customer or payment data?
 - Which data must be encrypted?
 - Which action needs an audit event?
 - Which secret can each worker access?
@@ -775,24 +779,24 @@ Useful controls include:
 - immutable audit logs;
 - data retention and deletion policies.
 
-Validate authorization at the resource boundary. A user who can edit one onboarding case should not gain access to every tenant's cases by changing an ID in the URL.
+Validate authorization at the resource boundary. A seller who can edit one product should not gain access to another seller's products by changing an ID in the URL.
 
-For sensitive flows, isolation may be worth the extra cost. A separate account, cloud profile, database, or onboarding worker can reduce the failure and access surface.
+For sensitive flows, isolation may be worth the extra cost. A separate account, cloud profile, database, or payment worker can reduce the failure and access surface.
 
 ## Observability Must Answer Operational Questions
 
 Logs, metrics, and traces are tools. Start from the questions the team must answer.
 
-For the onboarding system:
+For the E-commerce system:
 
-- Did the scheduled onboarding run start?
-- How many chunks are waiting?
-- How old is the oldest chunk?
-- Which integration is slow?
-- How many tasks succeeded, failed, or were skipped?
-- Is one tenant using most of the capacity?
-- Can we stop one onboarding run safely?
-- Can we replay a failed chunk?
+- Was the order accepted and paid?
+- How many orders are waiting for fulfillment?
+- How old is the oldest waiting order?
+- Which payment, warehouse, or shipping integration is slow?
+- How many orders succeeded, failed, or need review?
+- Is one seller using most of the capacity?
+- Can we pause one fulfillment route safely?
+- Can we replay a failed order step?
 
 Useful metrics include:
 
@@ -803,11 +807,11 @@ Useful metrics include:
 - integration response codes;
 - database connection use;
 - cache hit rate;
-- onboarding progress and final result.
+- order and fulfillment progress.
 
-Use correlation IDs such as onboarding run ID, employee ID, chunk ID, and integration request ID. They help the team follow one flow across services.
+Use correlation IDs such as order ID, customer ID, payment attempt ID, and fulfillment request ID. They help the team follow one flow across services.
 
-An alert should describe an action. A high queue depth may be fine during a planned bulk import. A queue age that may delay an employee's start date is more useful.
+An alert should describe an action. A high queue depth may be fine if workers are draining it fast enough. A queue age that may break the promised delivery time is more useful.
 
 ## Ownership Changes the Design
 
