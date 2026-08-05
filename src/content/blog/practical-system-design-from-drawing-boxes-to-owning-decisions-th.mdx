@@ -376,11 +376,11 @@ sum(rate(checkout_requests_total{status="failed"}[5m]))
 
 **Graph — Neo4j**
 
-Cypher ใช้ pattern ของ relationship ในการ query ตัวอย่างนี้หา product ที่ลูกค้ากลุ่มใกล้เคียงกันเคยซื้อ
+ถ้าพูดแบบสั้น Query นี้ถามว่า **ลูกค้าคนอื่นที่เคยซื้อ product เหมือนลูกค้าคนนี้ เขาซื้ออะไรเพิ่มอีกบ้าง?**
 
 ```cypher
-MATCH (customer:Customer {id: $customerId})-[:BOUGHT]->(:Product)
-      <-[:BOUGHT]-(peer:Customer)-[:BOUGHT]->(candidate:Product)
+MATCH (customer:Customer {id: $customerId})-[:BOUGHT]->(shared:Product)
+      <-[:BOUGHT]-(other:Customer)-[:BOUGHT]->(candidate:Product)
 WHERE NOT EXISTS {
   MATCH (customer)-[:BOUGHT]->(candidate)
 }
@@ -389,21 +389,22 @@ ORDER BY score DESC
 LIMIT 10;
 ```
 
-Graph database เหมาะเมื่อ relationship traversal เป็นงานหลัก ถ้า lookup product จาก ID อย่างเดียว เราไม่จำเป็นต้องใช้ model นี้ อ่านต่อได้ใน [Neo4j Cypher MATCH documentation](https://neo4j.com/docs/cypher-manual/current/clauses/match/)
+Graph database ไล่ relationship จาก customer ไป shared product ต่อไปยัง customer คนอื่น แล้วหา candidate product เหมาะกับงานที่ traversal เป็นแกนหลัก ถ้า lookup product จาก ID อย่างเดียว เราไม่จำเป็นต้องใช้ model นี้ อ่านต่อได้ใน [Neo4j Cypher MATCH documentation](https://neo4j.com/docs/cypher-manual/current/clauses/match/)
 
-**Object storage — Amazon S3 with Athena**
+**Object storage — files by key**
 
-Object storage ไม่มี row lookup มาให้เอง แต่ Athena ใช้ SQL query data ใน file ที่ลงทะเบียนไว้ใน data catalog ได้ ตัวอย่างนี้อ่าน refunded order จาก export partition ของวันเดียว
+Object storage ไม่ได้ query แบบ row ใน database Application จะเก็บ file แต่ละตัวด้วย object key แล้วเก็บ metadata ขนาดเล็กที่ค้นหาได้ไว้ใน database
 
-```sql
-SELECT order_id, status, total_amount
-FROM order_exports
-WHERE export_date = DATE '2026-08-05'
-  AND status = 'REFUNDED'
-LIMIT 100;
-```
+![Product image, catalog file, invoice และ export อยู่ใน object storage ส่วน database เก็บ metadata](/assets/images/blogs/practical-system-design/object-storage-file-flow.png)
 
-การแบ่ง file ตาม `export_date` ช่วยให้ Athena ไม่ต้อง scan data ที่ไม่เกี่ยว งานแบบนี้เหมาะกับ analytics กับ audit มากกว่า checkout request path อ่านต่อได้ใน [Amazon Athena SELECT documentation](https://docs.aws.amazon.com/athena/latest/ug/select.html)
+File แต่ละแบบถูกนำไปใช้คนละงาน:
+
+- CDN อ่าน product image แล้วส่งให้ลูกค้า
+- worker อ่าน catalog file เพื่อนำ product data เข้า system
+- invoice เก็บไว้ให้ download และใช้ตอน audit
+- export เก็บ batch result ขนาดใหญ่
+
+เวลาอ่าน file 1 ตัว Application ดึงจาก bucket และ object key หากต้องหาตาม seller, date หรือ status ให้ query metadata database ก่อน แล้วค่อย fetch object ที่ match กัน Database ช่วยเรื่อง search ส่วน object storage รับหน้าที่เก็บ file ขนาดใหญ่
 
 **Search index — OpenSearch**
 
