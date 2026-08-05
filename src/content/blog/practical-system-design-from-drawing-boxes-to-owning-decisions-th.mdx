@@ -14,21 +14,21 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 
 ## Why This Guide Exists
 
-เวลาเริ่มเรียน System Design ภาพแรกที่เราเจอมักเป็น diagram ใหญ่ ๆ ครับ มีทั้ง load balancer, cache, queue, database, worker, region แล้วก็ลูกศรเต็มไปหมด
+เวลาเริ่มเรียน System Design ภาพแรกที่เราเจอมักเป็น diagram มีทั้ง load balancer, cache, queue, database, worker, region แล้วก็ลูกศรเต็มไปหมด
 
-ภาพแบบนั้นดูครบดี แต่คำถามสำคัญกลับหายไปว่า **ทำไมระบบถึงต้องมีกล่องแต่ละใบ?**
+ดูดีนะ แต่คำถามสำคัญ **ทำไมระบบถึงต้องมีไอ box พวกนี้ด้วย?**
 
 การบอกว่าจะเพิ่ม component อะไรนั้นไม่ยาก ส่วนที่ยากกว่าคืออธิบายว่า component นี้แก้ปัญหาอะไร มีอะไรพังได้บ้าง และเมื่อขึ้น production แล้วใครจะดูแลต่อ
 
-บทความนี้จึงตัดเรื่อง interview process ออกครับ ผมอยากเรียงเนื้อหาให้คุณใช้ฝึกด้วยตัวเอง หรือหยิบไปใช้ coach และ mentor คนที่กำลังพัฒนาเรื่อง System Design ได้ง่ายขึ้น
+บทความนี้จะตัดเรื่อง interview process ออก ผมอยากเรียงเนื้อหาให้ทุกคนใช้ฝึกด้วยตัวเอง หรือหยิบไปใช้ coach และ mentor คนที่กำลังพัฒนาเรื่อง System Design ได้ง่ายขึ้น
 
 แกนหลักมีประโยคเดียวครับ:
 
 **System Design คือการเปลี่ยนปัญหาให้เป็นระบบที่ทีมสร้าง รัน แก้ไข และดูแลต่อได้**
 
-เราจะเริ่มจากระบบเล็ก ๆ หนึ่งตัว แล้วค่อยเพิ่ม constraint ทีละข้อ ระหว่างทางคุณจะได้คิดเรื่อง data, scaling, failure, security, operations และ engineering judgment ไปพร้อมกัน
+เราจะเริ่มจากระบบเล็ก ๆ แล้วโยน constraint เข้าไปทีละข้อ ระหว่างทางก็จะเจอทั้ง data, scaling, failure, security, operations และ engineering judgment
 
-บทความเดียวคงครอบคลุมระบบทุกแบบไม่ได้ครับ เป้าหมายของผมคือช่วยให้คุณตั้งคำถามได้ดีขึ้น ต่อให้ระบบถัดไปมีหน้าตาไม่เหมือนตัวอย่างนี้ คุณก็ควรอธิบายเหตุผลของ design ได้โดยไม่ต้องจำ diagram สำเร็จรูป
+บทความเดียวคงครอบคลุมระบบทุกแบบไม่ได้ครับ ผมแค่อยากช่วยให้ทุกคนตั้งคำถามได้ดีขึ้น ต่อให้ระบบถัดไปไม่เหมือนตัวอย่างนี้ เราก็ควรอธิบายเหตุผลของ design ได้โดยไม่ต้องจำ diagram สำเร็จรูป
 
 ## Start with the Problem, Not the Components
 
@@ -36,7 +36,7 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 
 ลูกค้าเข้ามาดูสินค้า ใส่ของลง cart แล้ววาง order จากนั้นระบบต้องเช็ก inventory, รับ payment, ส่ง order ไป fulfillment และติดตาม status จนส่งของสำเร็จ ส่วน seller ก็ต้องจัดการสินค้า ราคา และ stock ได้
 
-ก่อนวาด diagram ลองถามก่อนครับว่าระบบต้องทำอะไร
+ก่อนวาด diagram ลองตอบคำถามง่าย ๆ ก่อนครับ ระบบต้องทำอะไร?
 
 ### Functional requirements
 
@@ -73,13 +73,13 @@ Non-functional requirements บอกคุณภาพและข้อจำ�
 5. ถ้า dependency ใช้งานไม่ได้จะเกิดอะไรขึ้น?
 6. action ไหนสร้างต้นทุนให้ธุรกิจหรือลูกค้า?
 
-ถ้าคุณตอบคำถามพวกนี้ได้ ทุกกล่องบน diagram ก็ควรมีเหตุผลรองรับครับ
+ถ้าตอบคำถามพวกนี้ได้ ทุก box บน diagram ก็ควรมีเหตุผลของมันครับ
 
 ![Customer needs become requirements and system constraints](/assets/images/blogs/practical-system-design/requirements-first.png)
 
 ## Core Quality Goals Pull the Design in Different Directions
 
-ระบบหนึ่งตัวทำทุก quality ให้สูงสุดพร้อมกันไม่ได้ครับ เราต้องรู้ก่อนว่าข้อไหนสำคัญกว่า และยอมลดข้อไหนได้บ้าง
+ระบบหนึ่งตัวดันทุก quality ให้สุดพร้อมกันไม่ได้ครับ ต้องเลือกว่าข้อไหนสำคัญกว่า และข้อไหนยอมลดได้
 
 - **Scalability** คือความสามารถในการรับ user, data หรืองานที่เพิ่มขึ้น
 - **Performance** พูดถึงความเร็วและ resource ที่ใช้ โดยมักดู latency กับ throughput
@@ -105,7 +105,7 @@ Availability กับ reliability เกี่ยวข้องกัน แ�
 
 ## Estimate Only What Can Change the Design
 
-Estimation มีประโยชน์เมื่อเลขนั้นเปลี่ยนการตัดสินใจครับ เราไม่ต้องเสียเวลาทายให้เป๊ะทุกหลัก
+Estimation มีประโยชน์เมื่อเลขนั้นเปลี่ยน decision ครับ ถ้าไม่เปลี่ยนก็ไม่ต้องเสียเวลาทายให้เป๊ะทุกหลัก
 
 สมมุติ marketplace มีลูกค้า 10 ล้านคนต่อวัน แต่ละคนเปิด product page เฉลี่ย 20 หน้า และลูกค้า 2% วาง order
 
@@ -140,7 +140,7 @@ Estimation มีประโยชน์เมื่อเลขนั้นเ
 
 ## Build the Smallest Useful System
 
-เวอร์ชันแรกเริ่มเล็กกว่าที่หลายคนคิดได้ครับ
+Version แรกเริ่มเล็กกว่าที่หลายคนคิดได้ครับ
 
 ![A small useful system with room to grow](/assets/images/blogs/practical-system-design/start-small.png)
 
@@ -155,9 +155,9 @@ Application เก็บ product, cart และ order ไว้ใน database 
 
 ถ้าทีมยังเล็กและ volume ยังไม่มาก design นี้อาจพอแล้ว ทั้งเข้าใจง่าย deploy ง่าย และ debug ง่าย
 
-คำว่า naive ไม่ควรใช้ดูถูก design เล็ก ๆ ครับ ถ้าปัญหายังเล็ก ระบบเล็กอาจเป็นคำตอบที่เหมาะกว่า architecture ก้อนใหญ่
+Naive ไม่ได้แปลว่าแย่ครับ ถ้าปัญหายังเล็ก ระบบเล็กอาจเหมาะกว่า architecture ก้อนใหญ่
 
-ก่อนเพิ่ม component ทำเวอร์ชันนี้ให้ปลอดภัยก่อน:
+ก่อนเพิ่ม component ทำ version นี้ให้ปลอดภัยก่อน:
 
 - เก็บเงินด้วยหน่วยย่อยสุดของ currency แทน floating-point number
 - order ที่รับแล้วต้องอยู่ใน durable database ไม่ใช่ process memory
@@ -167,7 +167,7 @@ Application เก็บ product, cart และ order ไว้ใน database 
 
 ### Protect and Observe Version One
 
-Security กับ observability ต้องเริ่มพร้อมเวอร์ชันแรกครับ เพราะระบบเล็กก็จัดการทั้ง customer data, เงิน และการเรียก external service อยู่แล้ว
+Security กับ observability อย่ารอให้ระบบใหญ่ครับ เพราะ version แรกก็แตะทั้ง customer data, เงิน และ external service แล้ว
 
 ฝั่ง security เริ่มจาก boundary ที่จำเป็นก่อน:
 
@@ -176,7 +176,7 @@ Security กับ observability ต้องเริ่มพร้อมเ�
 - แยก secret ออกจาก code และ log
 - เก็บ audit trail สำหรับ sensitive action
 
-![ระบบเล็กป้องกัน identity, access, secret, audit record และ sensitive data ตั้งแต่เวอร์ชันแรก](/assets/images/blogs/practical-system-design/security-boundary-basics.png)
+![ระบบเล็กป้องกัน identity, access, secret, audit record และ sensitive data ตั้งแต่ version แรก](/assets/images/blogs/practical-system-design/security-boundary-basics.png)
 
 ฝั่ง observability ให้เริ่มจากคำถามพื้นฐานที่ทีมต้องตอบเวลาเกิดปัญหา:
 
@@ -185,17 +185,17 @@ Security กับ observability ต้องเริ่มพร้อมเ�
 - เกี่ยวข้องกับ order และ payment attempt ไหน?
 - dependency ตัวไหน fail ซ้ำ?
 
-สำหรับเวอร์ชันแรก มี structured log, correlation ID, latency/error metric และ alert ที่บอกว่าทีมควรทำอะไรต่อก็พอ โดยยังไม่ต้องรีบสร้าง observability platform ก้อนใหญ่
+สำหรับ version แรก มี structured log, correlation ID, latency/error metric และ alert ที่บอกว่าทีมควรทำอะไรต่อก็พอ ยังไม่ต้องรีบสร้าง observability platform ก้อนใหญ่
 
-![Log, metric, trace และ alert ช่วยให้ทีมมองเห็นการทำงานของระบบเวอร์ชันแรก](/assets/images/blogs/practical-system-design/observability-basics.png)
+![Log, metric, trace และ alert ช่วยให้ทีมมองเห็นการทำงานของระบบ version แรก](/assets/images/blogs/practical-system-design/observability-basics.png)
 
-ช่วงท้ายบทความเราจะกลับมาลงรายละเอียดเรื่อง boundary, control, metric และ recovery อีกครั้งครับ ประเด็นที่อยากให้คุณเก็บไว้ตอนนี้คือ security กับ observability ต้องโตไปพร้อมระบบ
+เดี๋ยวช่วงท้ายจะกลับมาดู boundary, control, metric และ recovery อีกทีครับ ตอนนี้จำไว้ก่อนว่า security กับ observability ต้องโตไปพร้อมระบบ
 
 จากนั้นรอให้ constraint เป็นตัวบอกว่า design ต้องโตไปทางไหน
 
 ## Let Constraints Add the Building Blocks
 
-Building block ทุกตัวควรเข้ามาแก้ปัญหาบางอย่างครับ ไม่ควรโผล่มาเพียงเพราะ architecture diagram อื่นมีกัน
+ทุก building block ต้องตอบให้ได้ว่าเข้ามาแก้ปัญหาอะไรครับ อย่าใส่เพียงเพราะ architecture diagram อื่นมีกัน
 
 ถ้าให้ดูภาพรวม ระบบอาจค่อย ๆ evolve ประมาณนี้:
 
@@ -223,7 +223,7 @@ Vertical scaling เริ่มง่ายกว่า แต่ติดเ�
 
 ### CDN and edge delivery
 
-CDN เก็บ content ที่ cache ได้ไว้ใกล้ user จึงเหมาะกับ image, video, JavaScript, download และ public API response ที่เรากำหนด cache rule ได้อย่างปลอดภัย
+CDN เก็บ content ที่ cache ได้ไว้ใกล้ user เหมาะกับ image, video, JavaScript, download และ public API response ที่กำหนด cache rule ได้อย่างปลอดภัย
 
 CDN ลด origin traffic และ latency ได้ แต่เพิ่มเรื่องที่ต้องตัดสินใจ:
 
@@ -260,7 +260,7 @@ Health check ควรเช็กว่า instance พร้อมรับง
 
 API gateway เป็น entry point กลางสำหรับ authentication, routing, request limit, protocol conversion และ shared logging เหมาะเมื่อ client หลายแบบเรียก service หลายตัว
 
-ข้อควรระวังคือ gateway อาจกลายเป็น shared failure point ขนาดใหญ่ จึงควรจำกัดงานของมันและรันแบบมี redundancy
+แต่ gateway อาจกลายเป็น shared failure point ก้อนใหญ่ได้ จำกัดหน้าที่ให้พอดีและรันแบบมี redundancy
 
 ![API gateway ใช้ shared control ก่อน route request จาก client ไป backend service](/assets/images/blogs/practical-system-design/api-gateway-entry-point.png)
 
@@ -274,7 +274,7 @@ Policy ที่พบบ่อยมี:
 - concurrency limit สำหรับงานแพง
 - quota แยกตาม user, tenant, API key หรือ region
 
-เมื่อชน limit ควรตอบ error พร้อม retry time ให้ client เข้าใจครับ หากบอกเพียงว่า request ถูกจำกัด client อาจ retry ถี่ขึ้นจนระบบรับ load หนักกว่าเดิม
+เวลา request ชน limit ให้ตอบ error พร้อม retry time ครับ ถ้าบอกแค่ว่าถูกจำกัด client อาจ retry ถี่ขึ้นแล้วเพิ่ม load ให้ระบบอีก
 
 ### Database: choose from the access pattern
 
@@ -294,7 +294,7 @@ Policy ที่พบบ่อยมี:
 
 Relational database เป็นตัวเลือกแรกที่ดี เมื่อระบบต้องใช้ transaction, relationship ที่ชัด และ operational query ที่ยืดหยุ่น
 
-Key-value หรือ wide-column store ช่วยได้เมื่อ access pattern เรียบง่ายและ volume สูงมาก แต่เรายังต้องออกแบบ data model ตาม query อยู่ดี การใช้ distributed database ไม่ได้ทำให้เรื่อง data modeling หายไป กลับทำให้ access pattern สำคัญขึ้นกว่าเดิม
+Key-value หรือ wide-column store ช่วยได้เมื่อ access pattern เรียบง่ายและ volume สูงมาก แต่ data model ยังต้องออกแบบตาม query อยู่ดี Distributed database ไม่ได้ทำให้ data modeling หายไป กลับทำให้ access pattern สำคัญขึ้นกว่าเดิม
 
 Storage แต่ละตระกูลเหมาะกับงานคนละทรง:
 
@@ -308,11 +308,11 @@ Storage แต่ละตระกูลเหมาะกับงานคน
 - **Search index:** text search, ranking, filtering และ aggregation
 - **Vector index:** similarity search จาก embedding
 
-Product หนึ่งตัวใช้หลาย store ได้ แต่ข้อมูลหนึ่งชุดควรมี source of truth ที่ระบุได้ชัด และทีมต้องรู้ว่า derived store จะอัปเดตหรือ repair อย่างไรเมื่อ data ไม่สอดคล้องกัน
+Product หนึ่งตัวใช้หลาย store ได้ แต่ data ชุดเดียวควรมี source of truth ที่ชัด แล้วต้องรู้ด้วยว่า derived store จะ update หรือ repair ยังไงเมื่อ data ไม่เหมือนกัน
 
 Discord เขียนเรื่องนี้ไว้ในบทความ [storing trillions of messages](https://discord.com/blog/how-discord-stores-trillions-of-messages) ช่วงต้นปี 2022 ระบบมี Cassandra 177 nodes แล้วเจอทั้ง hot partition, read cost, compaction และ operational toil สุดท้าย Discord เปลี่ยน database พร้อมเพิ่ม data service เพื่อลดการเข้าถึง database จาก product service แบบ direct access
 
-บทเรียนจากเรื่องนี้ไม่ได้บอกว่า Cassandra แย่ หรือ ScyllaDB ชนะทุกกรณีครับ เวลาเลือก database เราต้องมอง data shape, access pattern, hotspot และความสามารถในการ operate ของทีมเป็นโจทย์เดียวกัน
+เรื่องนี้ไม่ได้บอกว่า Cassandra แย่ หรือ ScyllaDB ชนะทุกกรณีครับ เวลาเลือก database ต้องดู data shape, access pattern, hotspot และความสามารถในการ operate ของทีมพร้อมกัน
 
 ### Cache: save work that repeats
 
@@ -338,7 +338,7 @@ Cache ไม่ได้ช่วยทุก read ก่อนเพิ่ม�
 
 Meta สร้าง TAO เพราะ social graph เป็น read-heavy workload ขนาดใหญ่ที่ simple database cache รับได้ไม่ดี [TAO engineering article](https://engineering.fb.com/2013/06/25/core-infra/tao-the-power-of-the-graph/) อธิบายการสร้าง graph-focused data abstraction บน MySQL และ distributed cache
 
-Abstraction นี้ช่วยลดภาระของ product engineer เพราะทีมไม่ต้องรู้รายละเอียดของ cache กับ database ทุกชั้น Platform ที่ดีควรช่วยให้ระบบ scale และทำให้ทางเลือกที่ปลอดภัยเป็นทางที่ใช้งานง่าย
+Abstraction นี้ช่วยให้ product engineer ไม่ต้องรู้รายละเอียดของ cache กับ database ทุกชั้น Platform ที่ดีต้องช่วยให้ระบบ scale และทำให้ทางที่ปลอดภัยใช้งานง่ายด้วย
 
 ### Queue and workers: move slow work off the request path
 
@@ -362,7 +362,7 @@ flowchart LR
     W3 --> R
 `} />
 
-Design นี้ช่วยให้ระบบรับ burst, scale worker และ retry งานเป็นก้อนเล็กได้ อีกทั้งทีมยัง pause fulfillment ได้โดยไม่ทำ accepted order หาย และติดตาม progress แยกตาม order ได้ด้วย
+Design นี้ช่วยรับ burst, scale worker และ retry งานเป็นก้อนเล็กได้ ทีมยัง pause fulfillment ได้โดยไม่ทำ accepted order หาย และ track progress แยกตาม order ได้ด้วย
 
 พอเพิ่ม queue ทีมก็มี operational responsibilities เพิ่ม:
 
@@ -413,25 +413,25 @@ File ขนาดใหญ่มักถูกแบ่งเป็น chunk �
 
 Distributed file service ยังต้องดู chunk placement, replication, checksum, garbage collection, re-replication, metadata backup, repair และ rebalancing
 
-เลือก chunk size จาก file size, read/write pattern, retry cost และ metadata capacity โดยไม่มีค่า default เดียวที่เหมาะกับทุก workload
+เลือก chunk size จาก file size, read/write pattern, retry cost และ metadata capacity ไม่มี default เดียวที่เหมาะกับทุก workload
 
-ส่วน trade-off คือ object storage ไม่ได้ออกแบบมาให้ query เหมือน database ดังนั้นการแก้ข้อมูล user คนเดียวใน file ใหญ่จึงมีต้นทุนสูง และ point lookup อาจต้องใช้ index หรือ membership store แยก
+Trade-off คือ object storage ไม่ได้ออกแบบมาให้ query เหมือน database การแก้ข้อมูล user คนเดียวใน file ใหญ่จะแพง และ point lookup อาจต้องมี index หรือ membership store แยก
 
 ### Search index: support queries the main database cannot serve well
 
 Search engine ช่วยเมื่อ user ต้องการ full-text search, filtering หลาย field, relevance ranking หรือ fast aggregation
 
-กำหนด source of truth ให้ชัด โดย search index มักเป็น derived read model ที่รับ update จาก main database ผ่าน outbox หรือ change stream
+กำหนด source of truth ให้ชัด ส่วน search index มักเป็น derived read model ที่รับ update จาก main database ผ่าน outbox หรือ change stream
 
 ถ้า indexing เป็น asynchronous UI อาจเห็น product detail เก่าได้ ช้าสองสามวินาทีอาจรับได้ใน search result แต่ checkout ต้องอ่านราคาและ inventory ล่าสุดจาก source of truth
 
 ## Design the Data Flow, Not Only the Boxes
 
-Diagram สองรูปอาจมีกล่องเหมือนกันทุกใบ แต่ทำงานเป็นคนละระบบได้ เพราะลูกศรและลำดับการไหลของ data ต่างกัน
+Diagram สองรูปอาจมี box เหมือนกันทุกใบ แต่ทำงานเป็นคนละระบบได้ เพราะลูกศรและลำดับการไหลของ data ต่างกัน
 
 ![A complete data flow connects input, processing, delivery, and operations](/assets/images/blogs/practical-system-design/observable-data-flow.png)
 
-สำหรับ flow สำคัญ ลองเขียนทีละขั้น:
+Flow สำคัญลองไล่ทีละ step:
 
 1. อะไรเริ่ม flow?
 2. service ไหนรับงาน?
@@ -468,7 +468,7 @@ sequenceDiagram
     W->>D: Store fulfillment progress
 `} />
 
-พอวาดเป็น sequence เราจะเห็นคำถามที่ box diagram ซ่อนไว้:
+พอวาดเป็น sequence จะเห็นคำถามที่ box diagram ซ่อนไว้:
 
 - request สองครั้งสร้าง order จาก checkout เดียวกันได้ไหม?
 - database commit สำเร็จ แต่ publish queue fail จะทำอย่างไร?
@@ -500,7 +500,7 @@ Idempotency ต้องพึ่ง durable state เพราะ in-memory set
 
 ### Ordering
 
-Event ทุกตัวไม่ต้องเรียงกันแบบ global order ดังนั้นลองถามก่อนว่าอะไรต้องเรียงลำดับกันแน่:
+Event ทุกตัวไม่ต้องเรียงแบบ global order คำถามคืออะไรต้องมี ordering กันแน่:
 
 - order ทั้ง marketplace
 - order ของ customer คนเดียว
@@ -521,11 +521,11 @@ Consistency ไม่ได้มี switch กลางที่เลือก
 - inventory กับราคาต้องอ่านค่าล่าสุดก่อน confirm checkout
 - financial settlement ต้องการ guarantee สูงกว่า analytics dashboard
 
-Google สร้าง [Spanner](https://research.google/pubs/spanner-googles-globally-distributed-database-2/) เพื่อรองรับ globally distributed data และ externally consistent transaction ความสามารถนี้มีประโยชน์มาก แต่ก็มาจากระบบที่ซับซ้อนและ trade-off เฉพาะตัว ระบบส่วนใหญ่ควรถามก่อนว่า operation ไหนต้องการ consistency ระดับนั้น
+Google สร้าง [Spanner](https://research.google/pubs/spanner-googles-globally-distributed-database-2/) เพื่อรองรับ globally distributed data และ externally consistent transaction ความสามารถนี้มีประโยชน์มาก แต่แลกมากับความซับซ้อนและ trade-off ของมันเอง ก่อนเลือกต้องถามว่า operation ไหนต้องการ consistency ระดับนั้น
 
 ### Replication, CAP, and PACELC
 
-Replication คือการ copy data ไปหลาย node เพื่อให้ node อื่นช่วย read หรือ recover หลัง failure ได้ โดยมี pattern ที่พบบ่อยดังนี้:
+Replication คือการ copy data ไปหลาย node เพื่อช่วย read หรือ recover หลัง failure Pattern ที่พบบ่อยมี:
 
 - leader หนึ่งตัวรับ write แล้ว follower copy ตาม
 - หลาย leader รับ write จากคนละ region
@@ -533,11 +533,13 @@ Replication คือการ copy data ไปหลาย node เพื่อ
 
 Synchronous replication ปกป้องข้อมูลล่าสุดได้ดี แต่เพิ่ม write latency และอาจลด availability ตอน network มีปัญหา ส่วน asynchronous replication เร็วกว่า แต่ recent write อาจหายหลัง failover
 
-CAP theorem เข้ามามีผลตอนเกิด network partition เมื่อถึงตอนนั้นระบบต้องเลือกว่า operation จะรอเพื่อรักษา consistency หรือทำงานต่อพร้อมความเสี่ยงที่ data state แยกกัน เมื่อหลายเครื่องต้องคุยผ่าน network เราตัด partition tolerance ออกจากโจทย์ไม่ได้
+CAP theorem มีผลตอนเกิด network partition ระบบต้องเลือกว่า operation จะรอเพื่อรักษา consistency หรือทำงานต่อพร้อมความเสี่ยงที่ data state แยกกัน
+
+ถ้าหลายเครื่องต้องคุยผ่าน network เราตัด partition tolerance ออกจากโจทย์ไม่ได้
 
 PACELC ชวนให้เราถามต่อในช่วงที่ network ยังทำงานปกติด้วย เพราะระบบมักต้องเลือกระหว่าง latency ที่ต่ำกับ consistency ที่สูงกว่า
 
-อย่าใช้ guarantee เดียวกับทุก record ครับ cart edit, access check, progress counter และ search result อาจต้องการคำตอบคนละแบบ ถ้าคุณเลือก strong consistency ให้ทุกอย่าง cost กับ latency ที่เพิ่มขึ้นก็จะตามมาด้วย
+อย่าใช้ guarantee เดียวกับทุก record ครับ cart edit, access check, progress counter และ search result ต้องการคำตอบคนละแบบ ถ้าเลือก strong consistency ให้ทุกอย่าง cost กับ latency ก็เพิ่มตาม
 
 ### Coordination and consensus
 
@@ -563,7 +565,7 @@ Last-write-wins เรียบง่าย แต่ลบ valid update แบ�
 
 ![Reliability comes from several controls along the request path](/assets/images/blogs/practical-system-design/failure-controls.png)
 
-สำหรับ dependency ทุกตัว ลองคิดไว้ก่อนว่าจะรับมืออย่างไรเมื่อเจอ slow response, timeout, connection failure, partial success, stale response, invalid response หรือ outage เต็มรูปแบบ
+ทุก dependency ต้องคิด failure mode ไว้ก่อน ทั้ง slow response, timeout, connection failure, partial success, stale response, invalid response และ outage เต็มรูปแบบ
 
 ### Timeouts
 
@@ -618,7 +620,7 @@ Control ที่ช่วยป้องกันมี:
 - per-customer quota
 - graceful degradation
 
-[Handling overload](https://sre.google/sre-book/handling-overload/) ของ Google เตือนด้วยว่า request แต่ละแบบมี cost ไม่เท่ากัน การดูเพียง requests per second อาจทำให้เราไม่เห็นว่า CPU, memory, concurrency หรือ resource ตัวไหนกำลังชน limit ดังนั้น capacity signal ที่เหมาะกับแต่ละระบบอาจต่างกัน
+[Handling overload](https://sre.google/sre-book/handling-overload/) ของ Google เตือนว่า request แต่ละแบบมี cost ไม่เท่ากัน ดูแค่ requests per second อาจไม่เห็นว่า CPU, memory, concurrency หรือ resource ตัวไหนกำลังชน limit แต่ละระบบจึงใช้ capacity signal คนละแบบได้
 
 ### Backpressure
 
@@ -634,7 +636,7 @@ Control ที่ใช้ได้มี worker concurrency, batch size, queue 
 
 ## Partitioning and Hotspots
 
-เมื่อระบบใหญ่ขึ้น เราอาจต้องแบ่ง data และงานไปหลายเครื่อง โดย partition key จะเป็นตัวตัดสินว่า item แต่ละชิ้นไปอยู่ที่ไหน
+พอระบบใหญ่ขึ้น data และงานอาจต้องกระจายไปหลายเครื่อง partition key จะเป็นตัวตัดสินว่า item แต่ละชิ้นไปอยู่ที่ไหน
 
 ![A partition rule spreads marketplace work into balanced groups](/assets/images/blogs/practical-system-design/partition-hotspots.png)
 
@@ -679,7 +681,7 @@ Product recommendation ช้าลงช่วงสั้น ๆ อาจร�
 
 ## APIs and Contracts Are Part of the Design
 
-API คือ contract ที่เรามอบให้ caller ดังนั้นเราควรกำหนด resource name และ ID, request/response shape, error model, idempotency, pagination, rate limit, versioning, authentication และ authorization ให้ครบ
+API คือ contract ที่ให้กับ caller ต้องกำหนด resource name และ ID, request/response shape, error model, idempotency, pagination, rate limit, versioning, authentication และ authorization ให้ครบ
 
 ถ้าเป็น asynchronous work ให้คืน order หรือ job ID เพื่อให้ caller เช็ก status หรือรับ webhook
 
@@ -700,9 +702,9 @@ Event ก็เป็น contract เช่นกัน ควรมี schema v
 
 ## Security Starts with Boundaries
 
-เวอร์ชันแรกมี authentication, authorization, secret handling และ audit trail ขั้นพื้นฐานแล้ว เมื่อระบบโตขึ้น เราต้องระบุแต่ละ boundary ให้ละเอียดขึ้น เพราะ Security ไม่ได้จบด้วยกล่องหนึ่งใบที่ขอบ diagram
+Version แรกมี authentication, authorization, secret handling และ audit trail ขั้นพื้นฐานแล้ว พอระบบโตแต่ละ boundary ต้องละเอียดขึ้น เพราะ Security ไม่ได้จบที่ box เดียวข้าง diagram
 
-ลองถามระบบของคุณว่า:
+ลองถามระบบว่า:
 
 - ใครเรียก API นี้ได้?
 - customer หรือ seller คนนี้ดูหรือแก้ order ไหนได้บ้าง?
@@ -727,9 +729,9 @@ Control ที่ควรพิจารณามีหลายชั้น:
 
 ## Observability Must Answer Operational Questions
 
-เวอร์ชันแรกมี log, metric, correlation ID และ alert ขั้นพื้นฐานแล้ว เมื่อ flow โตขึ้น คำถามที่ทีมต้องตอบก็จะละเอียดขึ้นตาม
+Version แรกมี log, metric, correlation ID และ alert ขั้นพื้นฐานแล้ว พอ flow โต คำถามที่ทีมต้องตอบก็ละเอียดขึ้นตาม
 
-Log, metric และ trace เป็นเครื่องมือ ดังนั้นก่อนเลือกเครื่องมือ ลองเริ่มจากคำถามที่ทีมต้องตอบ:
+Log, metric และ trace เป็นเครื่องมือ ก่อนเลือกลองเริ่มจากคำถามที่ทีมต้องตอบ:
 
 - order ถูก accept และจ่ายเงินแล้วหรือยัง?
 - มี order รอ fulfillment กี่รายการ?
@@ -740,7 +742,7 @@ Log, metric และ trace เป็นเครื่องมือ ดัง
 - pause fulfillment route เดียวอย่างปลอดภัยได้ไหม?
 - replay failed order step ได้หรือเปล่า?
 
-Metric ที่มีประโยชน์ควรครอบคลุมทั้ง traffic, dependency และ business flow เช่น:
+Metric ที่ควรมีต้องครอบคลุม traffic, dependency และ business flow เช่น:
 
 - request rate, error rate และ latency
 - queue depth และ queue age
@@ -751,7 +753,7 @@ Metric ที่มีประโยชน์ควรครอบคลุม�
 
 ใช้ correlation ID เช่น order ID, customer ID, payment attempt ID และ fulfillment request ID เพื่อให้เวลามีปัญหา ทีมตามหนึ่ง flow ข้ามหลาย service ได้ง่ายขึ้น
 
-Alert ที่ดีควรนำไปสู่ action ได้ Queue depth สูงอาจยังรับได้ถ้า worker ระบายงานทัน แต่ถ้า queue age เริ่มเสี่ยงทำให้ส่งของช้ากว่าเวลาที่รับปากลูกค้า metric นี้จะช่วยตัดสินใจได้มากกว่า
+Alert ที่ดีต้องนำไปสู่ action ได้ Queue depth สูงยังพอรับได้ถ้า worker ระบายทัน แต่ถ้า queue age เริ่มทำให้ส่งของช้ากว่าที่รับปากลูกค้า metric นี้สำคัญกว่า
 
 ## Ownership Changes the Design
 
@@ -759,7 +761,7 @@ Technology สองตัวอาจแก้ technical problem เดีย�
 
 ![Owning a decision means explaining why, trade-offs, failure, and ownership](/assets/images/blogs/practical-system-design/own-the-decision.png)
 
-ลองเช็กมุมเหล่านี้:
+เช็กมุมพวกนี้ด้วย:
 
 - **Skills:** ทีม debug และ upgrade เป็นไหม?
 - **Operations:** ใคร on-call ให้ระบบนี้?
@@ -787,7 +789,7 @@ Safe migration อาจใช้ขั้นตอนเหล่านี้:
 6. **Cut over:** ย้าย new path ขึ้นเป็น primary
 7. **Keep rollback:** เก็บทางกลับไว้จนมั่นใจพอ
 
-Dual write อาจ fail เพียงฝั่งเดียว ดังนั้นต้องวางแผน reconciliation ก่อนเปิดใช้
+Dual write อาจ fail แค่ฝั่งเดียว ต้องวางแผน reconciliation ก่อนเปิดใช้
 
 Migration tool เองก็ต้องมี idempotency, monitoring, pause, resume และ audit support เพราะ temporary system มักถูกใช้งานนานกว่าที่ทีมวางแผนไว้
 
@@ -799,7 +801,7 @@ Coaching loop ทำได้แบบนี้:
 
 1. ให้ engineer อธิบาย user และเป้าหมาย
 2. หา requirement ที่ทำให้ design เปลี่ยน
-3. วาดเวอร์ชันเล็กที่สุดที่ทำงานได้
+3. วาด version เล็กที่สุดที่ทำงานได้
 4. เพิ่ม constraint หนึ่งข้อ
 5. ถามว่าอะไรจะพังก่อน
 6. เทียบสองหรือสาม option
@@ -825,7 +827,7 @@ Mentor ไม่จำเป็นต้องซ่อนคำตอบ เพ
 
 ## A Practical Design Checklist
 
-ตอนเริ่ม design ใหม่ ลองบันทึกข้อมูลชุดนี้:
+ตอนเริ่ม design ใหม่ ลองจดข้อมูลชุดนี้:
 
 ```text
 Problem and user:
@@ -854,7 +856,7 @@ Migration plan:
 Revisit when:
 ```
 
-ระบบเล็กไม่ต้องกรอกทุกช่อง ให้ใช้ checklist เพื่อหาการตัดสินใจที่ยังขาด อย่าเปลี่ยน checklist ให้เป็นงานเอกสารอีกก้อนหนึ่ง
+ระบบเล็กไม่ต้องกรอกทุกช่อง ใช้ checklist หา decision ที่ยังขาด อย่าเปลี่ยน checklist ให้เป็นงานเอกสารอีกก้อนหนึ่ง
 
 ## Final Thoughts
 
@@ -873,4 +875,4 @@ System Design มีทั้ง database, cache, queue, load balancer, API, par
 - ใครเป็น owner
 - เมื่อไหร่ควรกลับมาทบทวน
 
-เมื่อฝึกแบบนี้ การวาดกล่องจะเป็นเพียงจุดเริ่มต้นครับ สิ่งที่ตามมาคือการอธิบายและรับผิดชอบทุกการตัดสินใจใน design ของคุณ
+เมื่อฝึกแบบนี้ การวาด box เป็นแค่จุดเริ่มต้นครับ สิ่งที่ตามมาคือการอธิบายและรับผิดชอบทุก decision ใน design ที่เลือก
