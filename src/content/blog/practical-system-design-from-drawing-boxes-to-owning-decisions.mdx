@@ -200,6 +200,10 @@ There are two basic ways to add capacity:
 
 Vertical scaling is often simpler. It has a hardware limit and can leave one large failure point. Horizontal scaling can grow further and isolate failures, but it needs load distribution, partitioning, coordination, and operational tools.
 
+{/* IMAGE PROMPT (scale-up-vs-scale-out.png): Wide modern green 2D cartoon infographic on a warm-white and pale-mint background. Compare one server growing upward until a visible limit with several servers sharing distributed work. Render each exact label once: VERTICAL, HORIZONTAL, LIMIT, DISTRIBUTE. Spell exactly. No other text, duplicate labels, dark background, photorealism, glossy 3D, logos, or watermarks. */}
+
+![Vertical scaling grows one machine while horizontal scaling distributes work across machines](/assets/images/blogs/practical-system-design/scale-up-vs-scale-out.png)
+
 Many systems use both. A database may first move to a larger machine. Application servers may scale out because they are easier to keep stateless.
 
 ### CDN and edge delivery
@@ -221,6 +225,10 @@ Do not cache private content with a key that ignores the user or tenant.
 
 A load balancer sends traffic across several application instances.
 
+{/* IMAGE PROMPT (load-balancer-health-routing.png): Wide modern green 2D cartoon infographic on a warm-white and pale-mint background. Show customer traffic entering one load balancer, routing to a group of two healthy servers, and skipping one separate unhealthy server. Render each exact label once: TRAFFIC, LOAD BALANCER, HEALTHY, UNHEALTHY. Spell exactly. No other text, duplicate labels, arrow to the unhealthy server, dark background, photorealism, glossy 3D, logos, or watermarks. */}
+
+![A load balancer routes traffic to healthy instances and removes an unhealthy instance](/assets/images/blogs/practical-system-design/load-balancer-health-routing.png)
+
 It helps when:
 
 - one instance cannot handle the traffic;
@@ -240,6 +248,10 @@ A health check should test useful readiness, not only whether the process is ali
 ### API gateway and rate limiting
 
 An API gateway can provide one entry point for authentication, routing, request limits, protocol changes, and shared logging. It is useful when many clients call many services. It can also become a large shared failure point, so keep its work bounded and run it with redundancy.
+
+{/* IMAGE PROMPT (api-gateway-entry-point.png): Wide modern green 2D cartoon infographic on a warm-white and pale-mint background. Show web, mobile, and partner clients entering one gateway that handles authentication, request limits, and routing before several backend services. Render each exact label once: CLIENTS, API GATEWAY, AUTH, LIMIT, ROUTE, SERVICES. Spell exactly. No other text, duplicate labels, dark background, photorealism, glossy 3D, logos, or watermarks. */}
+
+![An API gateway applies shared controls before routing clients to backend services](/assets/images/blogs/practical-system-design/api-gateway-entry-point.png)
 
 Rate limiting protects capacity and fair use. Common policies include:
 
@@ -294,6 +306,10 @@ The lesson is not that Cassandra is bad or ScyllaDB is always better. The lesson
 ### Cache: save work that repeats
 
 A cache keeps data in a faster place for a limited time.
+
+{/* IMAGE PROMPT (cache-hit-miss.png): Wide modern green 2D cartoon infographic on a warm-white and pale-mint background. Show one product request checking one cache. A cache hit returns immediately. A cache miss reads one database, then fills the same cache. Render each exact label once: REQUEST, CACHE, HIT, MISS, DATABASE, FILL. Spell exactly. No other text, duplicate labels or boxes, dark background, photorealism, glossy 3D, logos, or watermarks. */}
+
+![A cache hit returns data quickly while a cache miss reads the database and fills the cache](/assets/images/blogs/practical-system-design/cache-hit-miss.png)
 
 It can help with:
 

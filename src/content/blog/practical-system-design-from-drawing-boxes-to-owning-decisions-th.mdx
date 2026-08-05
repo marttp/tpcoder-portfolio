@@ -191,6 +191,8 @@ flowchart TD
 
 Vertical scaling เริ่มง่ายกว่า แต่มีเพดาน hardware และยังเหลือ failure point ขนาดใหญ่หนึ่งจุด ส่วน horizontal scaling โตต่อได้และแยก failure ได้ดีขึ้น แต่ต้องมี load distribution, partitioning, coordination และ operational tools
 
+![Vertical scaling เพิ่ม capacity ให้เครื่องเดียว ส่วน horizontal scaling กระจายงานไปหลายเครื่อง](/assets/images/blogs/practical-system-design/scale-up-vs-scale-out.png)
+
 ระบบจำนวนมากใช้ทั้งสองแบบ เช่น database อาจเริ่มจากขยับไปเครื่องใหญ่ขึ้น ส่วน application server scale out ได้ง่ายกว่าเพราะทำให้ stateless ได้
 
 ### CDN and edge delivery
@@ -212,6 +214,8 @@ CDN ลด origin traffic และ latency ได้ แต่เพิ่ม�
 
 Load balancer กระจาย traffic ไปหลาย application instance มีประโยชน์เมื่อ:
 
+![Load balancer ส่ง traffic ไป healthy instance และหยุดส่งไป unhealthy instance](/assets/images/blogs/practical-system-design/load-balancer-health-routing.png)
+
 - instance เดียวรับ traffic ไม่ไหว
 - ต้อง deploy โดยไม่หยุด traffic ทั้งหมด
 - ต้องเอา unhealthy instance ออกจากระบบ
@@ -231,6 +235,8 @@ Health check ควรเช็ก readiness ที่ใช้งานได�
 API gateway เป็น entry point กลางสำหรับ authentication, routing, request limit, protocol conversion และ shared logging เหมาะเมื่อ client หลายแบบเรียก service หลายตัว
 
 ข้อควรระวังคือ gateway อาจกลายเป็น shared failure point ขนาดใหญ่ จึงควรจำกัดงานของมันและรันแบบมี redundancy
+
+![API gateway ใช้ shared control ก่อน route request จาก client ไป backend service](/assets/images/blogs/practical-system-design/api-gateway-entry-point.png)
 
 Rate limiting ช่วยป้องกัน capacity และแบ่ง usage ให้เป็นธรรม policy ที่พบบ่อยมี:
 
@@ -282,7 +288,11 @@ Discord เขียนเรื่องนี้ไว้ในบทควา
 
 ### Cache: save work that repeats
 
-Cache เก็บ data ไว้ในจุดที่อ่านได้เร็วกว่าเป็นเวลาจำกัด เช่น:
+Cache เก็บ data ไว้ในจุดที่อ่านได้เร็วกว่าเป็นเวลาจำกัดครับ
+
+![Cache hit คืน data ได้ทันที ส่วน cache miss อ่าน database แล้ว fill cache](/assets/images/blogs/practical-system-design/cache-hit-miss.png)
+
+Cache ช่วยได้กับ:
 
 - product และ category page ที่ถูกอ่านซ้ำบ่อย
 - seller และ shipping policy ที่หลาย request ใช้
