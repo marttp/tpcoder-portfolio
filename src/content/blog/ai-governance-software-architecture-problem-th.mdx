@@ -1,0 +1,331 @@
+---
+title: "เมื่อ AI Governance กลายเป็นโจทย์ของ Software Architecture"
+description: "ออกแบบ ownership, inventory, evaluation, approval, audit, monitoring และ shutdown ของ AI ไว้ใน production architecture"
+pubDate: "2026-09-12"
+tags:
+  ["AI Governance", "Software Architecture", "AI", "Risk Management"]
+heroImage: "/assets/images/blogs/ai-governance-architecture/hero-banner.png"
+language: "th"
+translationSlug: "ai-governance-software-architecture-problem"
+servicesNote: true
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+{/* IMAGE PROMPT (hero-banner.png): Wide Bauhaus-inspired editorial illustration on a bright white background. Show a small AI product prototype as one colorful geometric module entering a larger accountable production building made of visible layers: ownership, inventory, evaluation, policy, deployment, monitoring, and shutdown controls represented only by icons and shapes. Use ultramarine, magenta, golden yellow, black, and white in bold geometric composition. No text, letters, logos, watermark, gradients, dark background, robot, clay style, paper collage, risograph, green system palette, or glossy 3D. */}
+
+
+## The Prototype Works. Then the Difficult Questions Begin.
+
+AI prototype อาจมีของอยู่ไม่กี่ชิ้น
+
+- Prompt 1 ชุด
+- Model API 1 ตัว
+- Vector database 1 ตัว
+- Tools ไม่กี่ตัว
+- Web page 1 หน้า
+
+Demo ตอบคำถามที่เตรียมไว้ได้ แล้วคนก็เริ่มอยากนำไปใช้ต่อ
+
+พอจะขึ้น production คำถามอีกชุดก็ตามมาครับ
+
+- ใครเป็น owner ของ AI system นี้
+- System ใช้ data ชุดไหนได้บ้าง
+- Model และ prompt version ไหนกำลัง run
+- มีอะไรเปลี่ยนหลัง evaluation รอบล่าสุด
+- System ทำ action อะไรได้
+- ใคร approve release
+- ถ้า system ให้ harmful result เราจะ investigate อย่างไร
+- เราหยุด AI system อย่างไร
+
+ถ้าระบบตอบคำถามเหล่านี้ไม่ได้ ลำพัง policy document อย่างเดียวก็ช่วยไม่พอครับ
+
+ประเด็นหลักของผมคือ
+
+**AI Governance จะใช้งานได้เมื่อเราออกแบบ requirements เหล่านี้เข้าไปใน architecture และ delivery process**
+
+บทความนี้มองจากฝั่ง engineering และไม่ใช่ legal advice ครับ Regulation กับ industry rules ขึ้นอยู่กับ location และ use case ของแต่ละระบบ ถึงอย่างนั้น architecture มักต้องรองรับเรื่องคล้ายกัน คือรู้ว่ามีอะไรทำงานอยู่ ใครดูแล เปลี่ยนแปลงอย่างไร ติดตาม behavior ได้แค่ไหน และหยุด unsafe operation อย่างไร
+
+## Turn Governance Questions into System Requirements
+
+คำว่า governance อาจฟังดูห่างจาก software delivery ลองแปลงเป็นคำถามที่ระบบต้องตอบครับ
+
+| Governance question | Architecture capability |
+|---|---|
+| เรา run AI systems อะไรอยู่ | Inventory และ dependency map |
+| ใครรับผิดชอบ | Product, technical, data และ risk owners ที่มีชื่อ |
+| Version ไหนสร้าง action นี้ | Version ของ model, prompt, tools, policy และ data |
+| ผ่าน test หรือยัง | Evaluation evidence และ release gate |
+| ทำอะไรได้บ้าง | Identity, authorization และ action policy |
+| เกิดอะไรขึ้น | Trace, decision record, audit event และ outcome |
+| Behavior กำลังเปลี่ยนไหม | Production monitoring และ review |
+| หยุดอย่างไร | Disable switch, rollback, credential revocation และ fallback |
+
+<MermaidDiagram chart={`
+flowchart LR
+    Q["Governance question"] --> R["Technical requirement"]
+    R --> C["Architecture control"]
+    C --> E["Evidence"]
+    E --> V["Review and decision"]
+    V --> Q
+`} />
+
+NIST แบ่ง AI risk management เป็น 4 functions คือ **Govern, Map, Measure และ Manage** โดย governance เชื่อมกับ functions อื่น ส่วน inventory, testing, monitoring, ownership และ safe decommissioning ปรากฏเป็น outcome ที่นำไปใช้ได้ [NIST AI RMF Core](https://airc.nist.gov/airmf-resources/airmf/5-sec-core/)
+
+Framework นี้ไม่ใช่ architecture diagram ครับ แต่ช่วยให้เรามองเห็นว่า architecture ควรรองรับ capability อะไรบ้าง
+
+## Start with an Inventory
+
+ถ้าไม่มีใครรู้ว่า AI system 1 ตัวมีอยู่ เราก็ดูแลระบบนั้นไม่ได้ครับ
+
+Inventory ควรเก็บมากกว่าชื่อ model เพราะ product 1 ตัวประกอบด้วยหลายส่วน และแต่ละส่วนเปลี่ยน version แยกกันได้
+
+- Product และ use case
+- Owner และ operational contact
+- Model provider, model ID และ version
+- Prompts และ system instructions
+- Retrieval sources และ data classification
+- Tools และ external systems
+- Agent identity และ permissions
+- Evaluation set และผลล่าสุด
+- Deployment environments
+- Risk level และ approval state
+- Monitoring และ shutdown path
+
+<MermaidDiagram chart={`
+flowchart TD
+    P["AI product"] --> M["Model + version"]
+    P --> R["Prompt + retrieval"]
+    P --> T["Tools + permissions"]
+    P --> D["Data + retention"]
+    P --> O["Owners + approvals"]
+    P --> E["Evals + monitoring"]
+    P --> K["Rollback + shutdown"]
+`} />
+
+วันแรกยังไม่ต้องสร้าง platform ใหญ่ครับ ถ้ามีเพียงไม่กี่ systems จะใช้ versioned file หรือ database เล็ก ๆ ก็ได้ สิ่งสำคัญคือเชื่อม inventory เข้ากับ deployment และหลักฐานจาก runtime
+
+ถ้าทีม deploy model ใหม่โดยไม่ update inventory ข้อมูลก็จะเก่า ส่วน production logs ที่ระบุ deployed version ไม่ได้ ก็ทำให้ทีมตาม bad result กลับไปหา configuration ชุดที่สร้างผลลัพธ์นั้นไม่เจอ
+
+## Give Every System an Owner and a Risk Level
+
+AI ownership แบ่งกันรับผิดชอบได้ แต่ยังต้องระบุให้ได้ว่าใครดูแลเรื่องไหน
+
+Ownership model อาจมีคนเหล่านี้
+
+- **product owner:** กำหนด intended use และ user outcome
+- **technical owner:** ดูแล system และ delivery path
+- **data owner:** approve data use, access, retention และ quality
+- **risk หรือ security owner:** review control สำหรับ higher-risk use
+- **business operator:** จัดการ exceptions และผลกระทบต่อ user
+
+จากนั้น classify use case ตาม impact
+
+- **Low:** สรุป public information เพื่อทำ internal draft
+- **Medium:** ตอบ customer จาก approved content พร้อม human handoff
+- **High:** ตัดสินใจหรือให้ recommendation เรื่อง money, employment, health, access หรือ legal rights
+
+ชื่อของแต่ละ level สำคัญน้อยกว่า control ที่ตามมาครับ Higher-risk system อาจต้องมี evaluation, approval, access control, logging, human oversight และ incident response ที่เข้มกว่า
+
+อย่า classify จาก model เพียงอย่างเดียวครับ Model ตัวเดียวกันอาจเป็น low-risk เมื่อใช้ช่วยร่างข้อความ และกลายเป็น high-risk เมื่อเชื่อมกับ payment หรือ access-control tool
+
+## Version the Whole Decision Path
+
+Model version เป็นแค่ 1 ส่วนที่กำหนด system behavior
+
+Output เปลี่ยนได้เพราะ
+
+- system prompt
+- tool description
+- retrieval data
+- ranking logic
+- memory
+- policy
+- model parameters
+- application code
+- external API behavior
+
+Release record ควรเชื่อมของเหล่านี้เข้าด้วยกัน
+
+```yaml
+release: support-agent-2026-09-10.2
+model: provider/model-v4
+prompt: support-system-v17
+retrieval_index: support-docs-2026-09-09
+tools: support-tools-v6
+policy: customer-support-v4
+evaluation: eval-run-8821
+approved_by: ai-product-review
+rollback_to: support-agent-2026-09-03.1
+```
+
+วิธีนี้ไม่ได้ทำให้ AI system deterministic แต่ทำให้เราระบุ production state แต่ละชุดได้ และนำไปเทียบกับ version อื่นได้
+
+## Put Evaluation in the Release Path
+
+Evaluation ไม่ควรเป็น report ที่ run เพียง 1 ครั้งก่อน launch แล้วจบครับ
+
+การเปลี่ยน model, prompt, retrieval source, tool หรือ policy ล้วนเปลี่ยน behavior ได้ Release path จึงต้องระบุว่า change แต่ละแบบต้อง run test ชุดไหน
+
+<MermaidDiagram chart={`
+flowchart LR
+    C["Model, prompt, data, tool, or policy change"] --> I["Update inventory"]
+    I --> E["Run risk-based evaluations"]
+    E --> G{Release gate}
+    G -->|Pass| D["Deploy gradually"]
+    G -->|Needs review| H["Human review"]
+    G -->|Fail| B["Block release"]
+    D --> M["Monitor production evidence"]
+    M --> I
+`} />
+
+Evaluation อาจครอบคลุม
+
+- task success
+- grounded answer และ answer correctness
+- refusal เมื่อข้อมูลไม่พอ
+- permission และ tool-call correctness
+- prompt-injection resistance
+- sensitive-data handling
+- latency และ cost
+- human review ของ edge cases สำคัญ
+
+Score เดียวใช้แทนทุก risk ไม่ได้ Average อาจซ่อน failure category ที่สร้างผลกระทบสูง Behavior บางข้อควรมี threshold แยก และห้ามใช้คะแนนรวมมาชดเชย
+
+NIST AI RMF ระบุว่า AI systems ควรถูก test ก่อน deployment และ test เป็นระยะระหว่างใช้งาน รวมถึงเชื่อม risk treatment กับ response และ recovery plan [NIST AI RMF Core](https://airc.nist.gov/airmf-resources/airmf/5-sec-core/)
+
+## Runtime Governance Is Still Software
+
+Pre-release evaluation ครอบคลุม production input ได้ไม่ครบทุกแบบ Runtime controls จึงยังสำคัญ
+
+System อาจต้องมี
+
+- agent และ user identity
+- least-privilege tool access
+- policy check ก่อน action
+- data-boundary enforcement ก่อน retrieval
+- human approval สำหรับ high-impact action
+- rate, cost และ action limits
+- output validation และ safe fallback
+- trace และ audit records
+- วิธี disable tool, agent, model หรือ tenant แยกกัน
+
+2 บทความก่อนหน้าใน series นี้วาง foundation ไว้คนละด้าน
+
+- **Give Your AI Agent an Identity** ถามว่าใครเป็น actor และใช้ authority ของใคร
+- **Designing Irreversible Actions** ถามว่า actor ทำอะไรได้ และระบบ recover อย่างไร
+
+Governance เชื่อม controls เหล่านี้เข้ากับ ownership, evidence, release decision และการ review ระหว่างที่ระบบยังใช้งานอยู่
+
+## Monitor Behavior, Not Only Infrastructure
+
+CPU, memory และ API errors ยังสำคัญ แต่ไม่ได้บอกว่า AI product มีประโยชน์และปลอดภัยแค่ไหน
+
+Production monitoring อาจดู
+
+- task completion และ handoff rate
+- grounded-answer rate
+- refusal rate
+- tool selection และ tool failure
+- policy denial และ approval rate
+- user correction หรือ complaint
+- cost และ latency ต่อ completed task
+- drift ของ input, retrieval หรือ outcome
+- harmful-event และ security reports
+
+ผลจาก monitoring ต้องนำไปสู่ action ได้
+
+- Investigate ความเปลี่ยนแปลงที่พบ
+- เพิ่ม sampling หรือ human review
+- Disable tool 1 ตัว
+- ย้าย traffic ไป version ก่อนหน้า
+- หยุด agent
+- Notify affected users หรือ owners
+
+Alert ที่ไม่มี owner หรือ response path ก็เป็นเพียง message ที่ไม่มีใครรู้ว่าต้องทำอะไรต่อครับ
+
+## Prepare the Incident Path Before You Need It
+
+สมมุติว่า prompt version ใหม่ทำให้ agent ใส่ internal notes ลง customer reply
+
+Incident path ที่ใช้งานได้ควรประมาณนี้
+
+<MermaidDiagram chart={`
+flowchart LR
+    S["Unsafe result detected"] --> C["Contain\nDisable prompt, tool, or agent"]
+    C --> F["Find affected executions"]
+    F --> A["Assess data and user impact"]
+    A --> R["Recover or notify"]
+    R --> X["Fix + evaluate + approve"]
+    X --> L["Learn and update controls"]
+`} />
+
+Architecture ต้องรองรับทุก step ใน flow นี้
+
+- Identify affected release และ executions
+- หยุด unsafe actions ชุดใหม่
+- Search audit history
+- หา users และ data ที่ได้รับผลกระทบ
+- Rollback หรือสลับไป safe fallback
+- Preserve evidence
+- เพิ่ม failure แบบนี้เข้า evaluation รอบถัดไป
+
+ถ้าทำได้เพียงแก้ prompt แล้วหวังว่าจะหาย ระบบยังไม่พร้อมสำหรับงานสำคัญครับ
+
+{/* IMAGE PROMPT (prototype-to-accountable-system.png): Wide Bauhaus-style visual progression on white. On the left, one loose colorful geometric AI module with exposed wires. Across the middle, the module passes through distinct geometric checkpoints for owner, inventory, evaluation, policy, and monitoring. On the right, it becomes a stable modular production structure with a visible emergency stop control. Use ultramarine, magenta, golden yellow, black, and white. No text, letters, numbers, logos, watermark, gradients, dark background, robot, clay, paper collage, risograph, green system diagram, or glossy 3D. */}
+
+![AI prototype ค่อย ๆ เพิ่ม control ก่อนกลายเป็น production system ที่มี accountability](/assets/images/blogs/ai-governance-architecture/prototype-to-accountable-system.png)
+
+## Current Rules Make This More Practical, Not Less
+
+Regulation อาจผลักให้เราต้องมี capability เหล่านี้ครับ แต่ product และ operation ก็ได้ประโยชน์จากของชุดเดียวกัน
+
+ข้อมูลจาก European Commission ในเดือน July 2026 ระบุว่า transparency obligations สำหรับ AI system บางประเภทเริ่มใช้ตั้งแต่ 2 August 2026 ส่วน timeline ล่าสุดของ AI Omnibus ระบุว่า rules สำหรับ high-risk AI system เริ่มใช้ 2 December 2027 และ AI ใน physical products บางประเภทเริ่มใช้ 2 August 2028 [European Commission transparency guidance](https://digital-strategy.ec.europa.eu/en/library/guidelines-transparency-obligations-providers-and-deployers-ai-systems), [AI Omnibus timeline](https://digital-strategy.ec.europa.eu/en/news/ai-omnibus-enters-force)
+
+Obligations ที่ต้องทำขึ้นอยู่กับ system และ role ของแต่ละ organization หากต้องทำ compliance ควรปรึกษาผู้เชี่ยวชาญด้านกฎหมายครับ
+
+จากมุม engineering ทิศทางนี้ก็มีประโยชน์กับการดูแลระบบ เราต้องมี documentation, ownership, evaluation, transparency, monitoring และ incident evidence ที่ดีขึ้น Capability เหล่านี้ช่วยทั้ง customer, operator และ business แม้ regulation บางฉบับจะไม่ได้ apply กับระบบนั้น
+
+## A Small Governance Architecture
+
+ผมจะไม่เริ่มจากซื้อ governance platform ขนาดใหญ่
+
+สำหรับ organization เล็ก version แรกอาจมีเพียงของเหล่านี้
+
+1. Versioned inventory ของ AI systems และ owners
+2. Risk level กับ allowed-use statement ของแต่ละ system
+3. เก็บ version ของ prompts, models, tools, policies และ data sources
+4. Automated evaluations ใน release workflow
+5. Approval เฉพาะจุดที่ risk ต้องการ
+6. Runtime identity, policy, audit และ monitoring
+7. มี disable และ rollback path ที่ test แล้ว
+8. Periodic review เพื่อเพิ่มหรือลด control ตามข้อมูลที่พบ
+
+จากนั้นค่อยพัฒนาเป็น shared internal service หรือ product
+
+- inventory API
+- policy และ approval workflow
+- evaluation registry
+- evidence collection
+- release gate
+- runtime audit และ monitoring
+- compliance reporting
+
+Product opportunity ไม่ได้อยู่ที่ dashboard ซึ่งขึ้นคำว่า governed ครับ สิ่งที่มีประโยชน์คือ product ที่เชื่อม requirement ไปหา control ซึ่ง enforce ได้ และมี evidence ว่า control นั้นถูกเรียกใช้แล้ว
+
+## What I Would Keep
+
+AI Governance ไม่ควรทำให้ทุก experiment ต้องผ่าน approval 10 ชั้น ระดับของ control ควรเหมาะกับ impact
+
+หลักที่ผมจะเก็บไว้มีประมาณนี้
+
+- รู้ว่ามี AI systems อะไรอยู่
+- ระบุชื่อคนที่รับผิดชอบ result
+- เก็บ version ของทุกส่วนที่มีผลต่อ behavior
+- Test change ตาม risk
+- Control identity และ action ตอน runtime
+- Monitor user และ safety outcomes
+- เตรียม rollback, shutdown และ investigation
+- เก็บ evidence ให้ reviewer อ่านแล้วตามเหตุการณ์ได้
+
+Governance กลายเป็น architecture problem เมื่อ product ต้อง enforce control และพิสูจน์ได้ว่า control ทำงานระหว่าง runtime ช่วงนี้เองที่ engineer ช่วยเปลี่ยน governance จาก document ให้ทำงานอยู่ในระบบได้ครับ
