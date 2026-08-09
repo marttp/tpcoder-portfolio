@@ -1,0 +1,333 @@
+---
+title: "AI Governance Is Becoming a Software Architecture Problem"
+description: "Turn AI ownership, inventory, evaluation, approval, audit, monitoring, and shutdown requirements into parts of the production architecture."
+pubDate: "2026-09-12"
+tags:
+  ["AI Governance", "Software Architecture", "AI", "Risk Management"]
+heroImage: "/assets/images/blogs/ai-governance-architecture/hero-banner.png"
+language: "en"
+translationSlug: "ai-governance-software-architecture-problem-th"
+servicesNote: true
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+{/* IMAGE PROMPT (hero-banner.png): Wide Bauhaus-inspired editorial illustration on a bright white background. Show a small AI product prototype as one colorful geometric module entering a larger accountable production building made of visible layers: ownership, inventory, evaluation, policy, deployment, monitoring, and shutdown controls represented only by icons and shapes. Use ultramarine, magenta, golden yellow, black, and white in bold geometric composition. No text, letters, logos, watermark, gradients, dark background, robot, clay style, paper collage, risograph, green system palette, or glossy 3D. */}
+
+
+## The Prototype Works. Then the Difficult Questions Begin.
+
+An AI prototype can be small:
+
+- one prompt;
+- one model API;
+- one vector database;
+- a few tools;
+- one web page.
+
+The demo answers the expected questions. People want to use it.
+
+Then production questions arrive:
+
+- Who owns this AI system?
+- Which data may it use?
+- Which model and prompt are running now?
+- What changed since the last evaluation?
+- Which actions may it perform?
+- Who approved the release?
+- How do we investigate a harmful result?
+- How do we stop it?
+
+If the system cannot answer, a policy document alone will not save it.
+
+My central claim is:
+
+**AI governance becomes useful when its requirements are built into the architecture and delivery process.**
+
+This article is an engineering view, not legal advice. Regulations and industry rules depend on location and use case. Even so, the architecture often needs the same basic controls. The team must know what exists, who owns it, how it changes, how it behaves, and how to stop unsafe operation.
+
+## Turn Governance Questions into System Requirements
+
+The word governance can sound far away from software delivery. Translate it into questions the system must answer.
+
+| Governance question | Architecture capability |
+|---|---|
+| What AI systems do we run? | Inventory and dependency map |
+| Who is responsible? | Named product, technical, data, and risk owners |
+| What version acted? | Versioned model, prompt, tools, policy, and data |
+| Was it tested? | Evaluation evidence and release gate |
+| What may it do? | Identity, authorization, and action policy |
+| What happened? | Trace, decision record, audit event, and outcome |
+| Is behavior changing? | Production monitoring and review |
+| How do we stop it? | Disable switch, rollback, credential revocation, and fallback |
+
+<MermaidDiagram chart={`
+flowchart LR
+    Q["Governance question"] --> R["Technical requirement"]
+    R --> C["Architecture control"]
+    C --> E["Evidence"]
+    E --> V["Review and decision"]
+    V --> Q
+`} />
+
+NIST organizes AI risk management into four functions: **Govern, Map, Measure, and Manage**. Governance crosses the other functions, while inventory, testing, monitoring, ownership, and safe decommissioning appear as practical outcomes. [NIST AI RMF Core](https://airc.nist.gov/airmf-resources/airmf/5-sec-core/)
+
+That framework is not an architecture diagram. It can still help us find the capabilities the diagram must support.
+
+## Start with an Inventory
+
+You cannot govern an AI system that nobody knows exists.
+
+An inventory should record more than a model name. One product may combine several moving parts:
+
+- product and use case;
+- owner and operational contact;
+- model provider, model ID, and version;
+- prompts and system instructions;
+- retrieval sources and data classification;
+- tools and external systems;
+- agent identity and permissions;
+- evaluation set and latest result;
+- deployment environments;
+- risk level and approval state;
+- monitoring and shutdown path.
+
+<MermaidDiagram chart={`
+flowchart TD
+    P["AI product"] --> M["Model + version"]
+    P --> R["Prompt + retrieval"]
+    P --> T["Tools + permissions"]
+    P --> D["Data + retention"]
+    P --> O["Owners + approvals"]
+    P --> E["Evals + monitoring"]
+    P --> K["Rollback + shutdown"]
+`} />
+
+The inventory does not need to become one large platform on day one. A versioned file or small database can work for a few systems. The important part is connecting it to deployment and runtime evidence.
+
+If a team can deploy a new model without updating the inventory, the inventory will become stale. If production logs cannot identify the deployed version, the team cannot connect a bad result to the recorded system.
+
+## Give Every System an Owner and a Risk Level
+
+AI ownership is shared, but shared does not mean unnamed.
+
+A useful ownership model may include:
+
+- **product owner:** defines the intended use and user outcome;
+- **technical owner:** runs the system and delivery path;
+- **data owner:** approves data use, access, retention, and quality;
+- **risk or security owner:** reviews controls for higher-risk use;
+- **business operator:** handles exceptions and user impact.
+
+Then classify the use case by impact.
+
+For example:
+
+- **Low:** summarize public information for an internal draft.
+- **Medium:** answer customers from approved content with a human handoff.
+- **High:** make or recommend decisions about money, employment, health, access, or legal rights.
+
+The exact labels matter less than the effect they have. A higher-risk system may need stronger evaluation, approval, access control, logging, human oversight, and incident response.
+
+Do not classify only the model. The same model may be low-risk in a writing helper and high-risk when connected to a payment or access-control tool.
+
+## Version the Whole Decision Path
+
+A model version is one part of system behavior.
+
+The output may change because of:
+
+- system prompt;
+- tool description;
+- retrieval data;
+- ranking logic;
+- memory;
+- policy;
+- model parameters;
+- application code;
+- external API behavior.
+
+A release record should connect these parts:
+
+```yaml
+release: support-agent-2026-09-10.2
+model: provider/model-v4
+prompt: support-system-v17
+retrieval_index: support-docs-2026-09-09
+tools: support-tools-v6
+policy: customer-support-v4
+evaluation: eval-run-8821
+approved_by: ai-product-review
+rollback_to: support-agent-2026-09-03.1
+```
+
+This does not make an AI system deterministic. It makes one production state identifiable and easier to compare.
+
+## Put Evaluation in the Release Path
+
+Evaluation should not be a report that someone runs once before launch.
+
+A change to the model, prompt, retrieval source, tool, or policy may change behavior. The release path should decide which tests must run.
+
+<MermaidDiagram chart={`
+flowchart LR
+    C["Model, prompt, data, tool, or policy change"] --> I["Update inventory"]
+    I --> E["Run risk-based evaluations"]
+    E --> G{Release gate}
+    G -->|Pass| D["Deploy gradually"]
+    G -->|Needs review| H["Human review"]
+    G -->|Fail| B["Block release"]
+    D --> M["Monitor production evidence"]
+    M --> I
+`} />
+
+Evaluation may include:
+
+- task success;
+- grounded or correct answer;
+- refusal when information is missing;
+- permission and tool-call correctness;
+- prompt-injection resistance;
+- sensitive-data handling;
+- latency and cost;
+- human review of important edge cases.
+
+One score is not enough for every risk. An average can hide a dangerous failure category. Keep separate thresholds for behaviors that must not be traded away.
+
+The NIST AI RMF says AI systems should be tested before deployment and regularly during operation. It also connects risk treatment with response and recovery plans. [NIST AI RMF Core](https://airc.nist.gov/airmf-resources/airmf/5-sec-core/)
+
+## Runtime Governance Is Still Software
+
+Pre-release evaluation cannot cover every production input. Runtime controls matter.
+
+The system may need:
+
+- agent and user identity;
+- least-privilege tool access;
+- policy checks before actions;
+- data-boundary enforcement before retrieval;
+- human approval for high-impact actions;
+- rate, cost, and action limits;
+- output validation and safe fallback;
+- trace and audit records;
+- a way to disable one tool, agent, model, or tenant.
+
+The previous two articles in this series provide two foundations:
+
+- **Give Your AI Agent an Identity** asks who is acting and under whose authority.
+- **Designing Irreversible Actions** asks what the actor may do and how the system recovers.
+
+Governance connects these controls with ownership, evidence, release decisions, and ongoing review.
+
+## Monitor Behavior, Not Only Infrastructure
+
+CPU, memory, and API errors still matter. They do not show whether the AI product is useful or safe.
+
+Production monitoring may include:
+
+- task completion and handoff rate;
+- grounded-answer rate;
+- refusal rate;
+- tool selection and tool failure;
+- policy denial and approval rate;
+- user correction or complaint;
+- cost and latency per completed task;
+- drift in input, retrieval, or outcomes;
+- harmful-event and security reports.
+
+Use the monitoring result to trigger an action:
+
+- investigate a small change;
+- increase sampling or human review;
+- disable one tool;
+- move traffic to an earlier version;
+- stop the agent;
+- notify affected users or owners.
+
+An alert without an owner or response path is only a message.
+
+## Prepare the Incident Path Before You Need It
+
+Suppose a new prompt causes an agent to include internal notes in customer replies.
+
+A useful incident path looks like this:
+
+<MermaidDiagram chart={`
+flowchart LR
+    S["Unsafe result detected"] --> C["Contain\nDisable prompt, tool, or agent"]
+    C --> F["Find affected executions"]
+    F --> A["Assess data and user impact"]
+    A --> R["Recover or notify"]
+    R --> X["Fix + evaluate + approve"]
+    X --> L["Learn and update controls"]
+`} />
+
+The architecture must support the steps:
+
+- identify the affected release and executions;
+- stop new unsafe actions;
+- search the audit history;
+- find which users and data were involved;
+- roll back or switch to a safe fallback;
+- preserve evidence;
+- add the failure to future evaluation.
+
+If the only response is to edit the prompt and hope, the system is not ready for important work.
+
+{/* IMAGE PROMPT (prototype-to-accountable-system.png): Wide Bauhaus-style visual progression on white. On the left, one loose colorful geometric AI module with exposed wires. Across the middle, the module passes through distinct geometric checkpoints for owner, inventory, evaluation, policy, and monitoring. On the right, it becomes a stable modular production structure with a visible emergency stop control. Use ultramarine, magenta, golden yellow, black, and white. No text, letters, numbers, logos, watermark, gradients, dark background, robot, clay, paper collage, risograph, green system diagram, or glossy 3D. */}
+
+![An AI prototype gaining the controls needed for accountable production use](/assets/images/blogs/ai-governance-architecture/prototype-to-accountable-system.png)
+
+## Current Rules Make This More Practical, Not Less
+
+Regulation is one reason to build these capabilities, but it is not the only reason.
+
+As of July 2026, the European Commission says transparency obligations for certain AI systems apply from 2 August 2026. The latest AI Omnibus timeline says rules for high-risk AI systems apply from 2 December 2027, while rules for AI embedded in some physical products apply from 2 August 2028. [European Commission transparency guidance](https://digital-strategy.ec.europa.eu/en/library/guidelines-transparency-obligations-providers-and-deployers-ai-systems), [AI Omnibus timeline](https://digital-strategy.ec.europa.eu/en/news/ai-omnibus-enters-force)
+
+The exact obligation depends on the system and role. Teams should get qualified legal advice for compliance.
+
+From an engineering view, the direction is useful: systems need better documentation, ownership, evaluation, transparency, monitoring, and incident evidence. Those abilities also help customers, operators, and the business even when one regulation does not apply.
+
+## A Small Governance Architecture
+
+I would not begin by buying a large governance platform.
+
+For a small organization, the first useful version can be:
+
+1. A versioned inventory of AI systems and owners.
+2. A risk level and allowed-use statement for each system.
+3. Versioned prompts, models, tools, policies, and data sources.
+4. Automated evaluations in the release workflow.
+5. Approval only where the risk needs it.
+6. Runtime identity, policy, audit, and monitoring.
+7. A tested disable and rollback path.
+8. A periodic review that can reduce or increase controls.
+
+The system can grow later into a shared internal service or a product:
+
+- inventory API;
+- policy and approval workflow;
+- evaluation registry;
+- evidence collection;
+- release gate;
+- runtime audit and monitoring;
+- compliance reporting.
+
+The product opportunity is not a dashboard that says governed. The useful product connects a requirement to an enforced control and evidence that the control ran.
+
+## What I Would Keep
+
+AI governance should not mean that every experiment needs ten approvals. It should make the amount of control match the impact.
+
+I would keep these principles:
+
+- know which AI systems exist;
+- name the people who own the result;
+- version the full behavior path;
+- test changes based on risk;
+- control identity and actions at runtime;
+- monitor user and safety outcomes;
+- prepare rollback, shutdown, and investigation;
+- keep evidence that a reviewer can understand.
+
+Governance becomes an architecture problem when a product must enforce these controls and prove that they work at runtime. This is where engineers can turn governance from a document into part of the working system.
