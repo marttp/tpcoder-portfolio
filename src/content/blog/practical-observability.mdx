@@ -1,0 +1,297 @@
+---
+title: "Practical Observability"
+description: "A practical guide to using logs, metrics, traces, SLOs, and alerts to explain what users experience in a running system."
+pubDate: "2026-08-19"
+tags:
+  ["Observability", "Software Architecture", "Backend", "SRE"]
+heroImage: "/assets/images/blogs/practical-observability/hero-banner.png"
+language: "en"
+translationSlug: "practical-observability-th"
+servicesNote: true
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+{/* IMAGE PROMPT (hero-banner.png): Wide editorial risograph illustration on an off-white paper background. Show one customer request as a bright coral line traveling through a busy city-transit map of services while an engineer follows the line with a small flashlight. Use coral red, electric cyan, charcoal, and pale yellow with visible risograph grain and imperfect ink overlap. No text, labels, letters, logos, watermark, glossy 3D, robot, dark background, green system palette, blue AI lifecycle, or paper-note ADR scene. */}
+
+
+## The Dashboard Is Green. The User Still Failed.
+
+Suppose a customer says checkout took 18 seconds and then failed. You open the dashboard.
+
+- CPU is normal.
+- Memory is normal.
+- Error rate is below the alert threshold.
+- Every service is marked healthy.
+
+The dashboard is green. The customer still had a bad result.
+
+Monitoring can tell us that a known limit was crossed. Observability should also help us investigate a question we did not prepare in advance.
+
+OpenTelemetry describes observability as the ability to understand a system from the signals it creates. These signals help us ask why something is happening. The system needs useful instrumentation, such as traces, metrics, and logs, to support that work. [OpenTelemetry Observability Primer](https://opentelemetry.io/docs/concepts/observability-primer/)
+
+My main point is:
+
+**Observability starts from a user journey and a question. It does not start from collecting every signal a tool can store.**
+
+## Start with One User Journey
+
+Let us use an E-commerce checkout:
+
+1. The customer submits an order.
+2. The order service checks inventory.
+3. The payment service authorizes payment.
+4. The order service confirms the order.
+5. A worker sends the receipt.
+
+<MermaidDiagram chart={`
+sequenceDiagram
+    actor C as Customer
+    participant O as Order API
+    participant I as Inventory
+    participant P as Payment
+    participant Q as Receipt queue
+    C->>O: Place order
+    O->>I: Reserve stock
+    I-->>O: Reserved
+    O->>P: Authorize payment
+    P-->>O: Authorized
+    O->>Q: Publish receipt job
+    O-->>C: Order accepted
+`} />
+
+Before choosing a tool, write the questions the team should answer:
+
+- Did the customer receive a successful response?
+- How long did the full checkout take?
+- Which dependency used most of that time?
+- Did payment succeed while order confirmation failed?
+- Did a retry create another payment attempt?
+- Is one region, version, seller, or payment provider affected?
+
+Now each signal has a job.
+
+## The Smallest Useful View
+
+For the first version, I would collect only what helps run the journey:
+
+- request count;
+- success and failure count;
+- latency distribution;
+- dependency errors and latency;
+- structured logs with an operation ID;
+- queue age and failed jobs;
+- deployment version.
+
+This already answers several known questions. It can show whether checkout is failing, whether latency changed after a release, and whether receipt jobs are waiting too long.
+
+This view is still limited. An aggregate metric may say that p95 latency is 800 milliseconds. A small group of customers may still wait 18 seconds. A log may show a payment timeout but not the inventory call before it. A trace may show the path but not explain why a business rule rejected the order.
+
+That is why the signals work together.
+
+## Give Each Signal a Job
+
+### Metrics show shape over time
+
+Metrics are good for rates, distributions, and trends:
+
+- requests per second;
+- error ratio;
+- p50, p95, and p99 latency;
+- queue depth and age;
+- connection-pool usage;
+- payment-provider timeouts.
+
+Use metrics to see **that** a problem exists and how large it is.
+
+Do not use an average when the slow tail matters. An average can hide the users who wait much longer than everyone else.
+
+### Logs explain an event
+
+Structured logs should describe a useful event with fields that a machine can search:
+
+```json
+{
+  "event": "payment_authorization_failed",
+  "order_id": "ord_84f2",
+  "payment_attempt_id": "pay_18c1",
+  "provider": "provider_a",
+  "reason": "timeout",
+  "duration_ms": 5032,
+  "trace_id": "4bf92f3577b34da6"
+}
+```
+
+Do not log passwords, tokens, full card data, or sensitive customer details. A useful log is not a copy of every input.
+
+### Traces connect the path
+
+A distributed trace connects work across services. Each span represents one operation and records its timing, status, and useful attributes.
+
+For the slow checkout, the trace may show:
+
+- inventory: 120 ms;
+- order database: 45 ms;
+- payment provider: 5,032 ms;
+- payment retry: another 5,010 ms;
+- response mapping: 20 ms.
+
+The trace turns **checkout was slow** into **two payment attempts used ten seconds**.
+
+### Events record meaningful changes
+
+Some events deserve a durable history outside normal application logs:
+
+- order accepted;
+- payment authorized;
+- refund requested;
+- permission changed;
+- deployment started;
+- feature flag changed.
+
+Events can help with audit, recovery, and business investigation. They should have a clear owner and retention rule.
+
+<MermaidDiagram chart={`
+flowchart TD
+    Q["What happened to this checkout?"] --> M["Metrics show size and timing"]
+    Q --> L["Logs explain events"]
+    Q --> T["Trace connects the path"]
+    Q --> E["Events record important changes"]
+    M --> A["One explanation"]
+    L --> A
+    T --> A
+    E --> A
+`} />
+
+## Context Connects the Signals
+
+The signals become much more useful when they share context.
+
+Common fields include:
+
+- trace ID and span ID;
+- operation or request ID;
+- order ID or job ID;
+- service and version;
+- region and environment;
+- dependency name;
+- result or error category.
+
+OpenTelemetry Baggage can pass contextual key-value data across services and make it available to traces, metrics, or logs. Its documentation also warns that baggage may travel in headers and has no built-in integrity check. Do not place secrets or blindly trusted authorization data in it. [OpenTelemetry Baggage](https://opentelemetry.io/docs/concepts/signals/baggage/)
+
+<MermaidDiagram chart={`
+flowchart LR
+    A["API\ntrace_id + order_id"] --> I["Inventory\nsame trace_id"]
+    I --> P["Payment\nsame trace_id"]
+    P --> Q["Queue message\ntrace_id + order_id"]
+    Q --> W["Receipt worker\nsame operation context"]
+`} />
+
+Choose context that helps an investigation. High-cardinality fields such as order IDs are useful in logs and traces. They can be expensive or unsafe as metric labels.
+
+## Measure What the User Needs
+
+Infrastructure health matters, but a healthy CPU is not the product outcome.
+
+For checkout, the important outcome may be:
+
+> A valid order request receives a final accepted or rejected result within 3 seconds, without a duplicate charge.
+
+From that sentence, we can define:
+
+- **SLI:** the measured ratio of valid checkout requests that meet the result and latency rule;
+- **SLO:** the target, such as 99.9% over 28 days;
+- **error budget:** the allowed amount that does not meet the target.
+
+The exact target is a product and engineering decision. A larger number of nines needs more redundancy, testing, and operational work.
+
+An alert should point to a condition that needs action. Google SRE recommends monitoring for alerting, investigation, visualization, and long-term planning. It also warns that monitoring data needs a long-term view if the team wants to understand system growth. [Google SRE Workbook](https://sre.google/workbook/monitoring/)
+
+I would avoid paging someone because one instance reached 80% CPU for two minutes. I would page when users are losing an important outcome and a person can help now.
+
+<MermaidDiagram chart={`
+flowchart LR
+    J["User journey"] --> S["SLI measures the outcome"]
+    S --> O["SLO sets the target"]
+    O --> B["Error budget tracks the gap"]
+    B --> A{Needs action now?}
+    A -->|Yes| P["Page with context"]
+    A -->|No| W["Ticket or review"]
+`} />
+
+## Walk Through the Failure
+
+Return to the customer who waited 18 seconds.
+
+The investigation may look like this:
+
+1. The checkout SLO alert shows a small rise in slow requests.
+2. The alert links to traces for the affected time and version.
+3. Slow traces share the same payment provider and retry path.
+4. Logs show the first call timed out after five seconds.
+5. The client library retried twice with a long backoff.
+6. Payment succeeded once, and idempotency prevented a second charge.
+7. A recent configuration change increased the timeout and retry count.
+
+Now the team has a cause, impact, and safe next action. It can roll back the configuration, check payment status, and verify that no order remains stuck.
+
+{/* IMAGE PROMPT (green-dashboard-failed-user.png): Wide editorial risograph split scene on off-white paper. On the left, calm generic status panels and smooth charts appear healthy. On the right, one customer's checkout path is tangled in a bright coral delay loop around an external dependency. Use coral red, electric cyan, charcoal, and pale yellow with screen-print grain. No readable text, numbers, logos, watermark, glossy UI, photorealism, dark background, or duplicated panels. */}
+
+![A healthy overview can still hide one failed user journey](/assets/images/blogs/practical-observability/green-dashboard-failed-user.png)
+
+## Observability Has Its Own Failure Modes
+
+More telemetry creates more cost and more places to lose control.
+
+### Cardinality
+
+A metric label for `status=failed` has a few possible values. A label for `order_id` may create millions of time series. Put high-cardinality investigation fields in the right signal.
+
+### Sampling
+
+Keeping every trace may cost too much. Random sampling is simple, but it may drop rare failures. Tail sampling can keep slow or failed traces after seeing the result, but it needs more infrastructure.
+
+### Retention
+
+Recent detailed traces may help incidents. Older aggregated metrics may help capacity planning. They do not need the same retention period.
+
+### Sensitive data
+
+Telemetry crosses many systems and is often widely searchable. Treat it as a data product with access control, redaction, retention, and deletion rules.
+
+### Pipeline failure
+
+If the telemetry collector fails, the application should not always fail with it. Decide what can be dropped, buffered, or sent through another path. Monitor the observability pipeline too.
+
+## Build It in Layers
+
+I would grow observability in this order:
+
+1. Pick one important user journey.
+2. Define its useful result and failure states.
+3. Add a small set of service and dependency metrics.
+4. Use structured events and shared operation context.
+5. Trace the path across service boundaries.
+6. Define an SLI and SLO from the user outcome.
+7. Alert only when action is needed.
+8. Review telemetry cost, security, and gaps after incidents.
+
+<MermaidDiagram chart={`
+flowchart LR
+    U["User outcome"] --> B["Basic signals"]
+    B --> C["Shared context"]
+    C --> T["End-to-end trace"]
+    T --> S["SLI and SLO"]
+    S --> R["Incident learning"]
+    R --> U
+`} />
+
+The tools will change. The useful questions remain:
+
+- What did the user experience?
+- Where did the path change?
+- Which system state explains it?
+- How many users were affected?
+- What can we do safely now?
+
+If the telemetry cannot answer these questions, collecting more of the same data will not help. Start from the journey. Then add the signal that answers the next open question.
