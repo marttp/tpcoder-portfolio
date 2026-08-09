@@ -1,0 +1,196 @@
+---
+title: "Architecture Decision Records in Practice"
+description: "A short and practical way to record an architecture decision, keep its context, and change it later without rewriting history."
+pubDate: "2026-08-12"
+tags:
+  ["Software Architecture", "Software Engineering", "Leadership", "Documentation"]
+heroImage: "/assets/images/blogs/architecture-decision-records/hero-banner.png"
+language: "en"
+translationSlug: "architecture-decision-records-in-practice-th"
+servicesNote: true
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+{/* IMAGE PROMPT (hero-banner.png): Wide editorial paper-cut collage on a clean cream background. Show an architecture blueprint on a desk with one red thread connecting a past decision note to the current system and a future change. Use burgundy, ochre, ink black, cream, and muted sage. Handmade paper texture, asymmetric composition, soft natural shadows. No text, letters, logos, watermark, glossy 3D, cartoon robot, dark background, blue-led palette, or green-led system diagram. */}
+
+
+## The Diagram Stayed. The Reason Disappeared.
+
+Suppose you join a team and see Kafka between two services. You ask why the team chose it.
+
+The answers may sound like this:
+
+- Someone decided it two years ago.
+- It was discussed in a meeting.
+- The staff engineer probably knows.
+- We already use Kafka, so we kept using it.
+
+The code and diagram survived. The decision did not.
+
+This is where an **Architecture Decision Record**, or ADR, helps. An ADR is a short document. It records one important architecture choice, its context, and the work that follows from it.
+
+My main point is simple:
+
+**An ADR should preserve the reason behind a decision. It should not become paperwork that protects the past from change.**
+
+AWS gives a similar definition. An ADR records an important architecture choice, its context, and its consequences. A group of ADRs becomes the decision log for a system. [AWS Prescriptive Guidance](https://docs.aws.amazon.com/prescriptive-guidance/latest/architectural-decision-records/adr-process.html)
+
+<MermaidDiagram chart={`
+flowchart LR
+    D["Decision in a meeting"] --> C["Code and architecture"]
+    D -. "Time passes" .-> L["Reason is lost"]
+    C --> N["Next engineer"]
+    L --> N
+    N --> Q["Repeat the old discussion"]
+`} />
+
+## The Smallest ADR That Helps
+
+An ADR does not need to be long. For most decisions, I would start with these parts:
+
+```md
+# Use a queue for invoice generation
+
+Status: Accepted
+Date: 2026-08-10
+Owner: Billing team
+
+## Context
+Invoice generation can take 5–20 seconds. The HTTP request should not wait for it.
+
+## Options
+1. Generate the invoice inside the request
+2. Put the job in a database table and poll it
+3. Publish the job to the existing queue
+
+## Decision
+Use the existing queue and a separate invoice worker.
+
+## Consequences
+- The API can return after accepting the job.
+- The worker needs idempotency and retry handling.
+- The team must monitor queue age and failed jobs.
+```
+
+The useful part is not the format. It is the thinking inside it:
+
+- **Context:** What problem and limits did we have?
+- **Options:** What choices did we consider?
+- **Decision:** What did we choose?
+- **Consequences:** What benefit and ownership did we accept?
+
+Some templates add assumptions, evidence, reviewers, or a review date. Add them when they help. Do not add ten empty sections because the template has ten headings.
+
+## One Decision, One Story
+
+Let us continue with the invoice example.
+
+The first option is simple: generate the PDF inside the request. It needs fewer components. If invoice generation is fast and traffic is low, this may be enough.
+
+Then a constraint appears. Generation may take 20 seconds and the external tax service is sometimes slow. Customers retry when the page waits too long. Now the simple option can create duplicate work and a poor user experience.
+
+The team already operates a queue. That changes the comparison:
+
+| Option | What it gives us | What we must own |
+|---|---|---|
+| Inside the request | Simple flow | Long request, timeout, customer retry |
+| Database job table | Uses an existing database | Polling, locking, cleanup |
+| Existing queue | Async work and worker scaling | Idempotency, DLQ, queue monitoring |
+
+The ADR should explain why the third option fits **this** context. It should not claim that queues are always better.
+
+<MermaidDiagram chart={`
+flowchart LR
+    P["Slow invoice generation"] --> O["Compare three options"]
+    O --> C["Existing queue fits the constraints"]
+    C --> B["API returns after acceptance"]
+    C --> K["Team owns worker recovery"]
+`} />
+
+This small example also makes review easier. A reviewer can challenge the decision with a useful question:
+
+- Is the queue already reliable enough?
+- Can the worker safely retry?
+- How does a customer check the invoice status?
+- What happens when the tax service is unavailable for one day?
+
+The discussion stays connected to the problem.
+
+## Accepted Does Not Mean Permanent
+
+An accepted ADR is a record of what the team knew at that time. Editing it later to make the old choice look better removes that history.
+
+If the context changes, write a new ADR and mark the old one as superseded.
+
+For example, the invoice volume may later become very small. The queue platform may also become expensive to run. The team can move the jobs into a database-backed scheduler. This does not prove that the old choice was wrong. The constraints have changed.
+
+<MermaidDiagram chart={`
+stateDiagram-v2
+    [*] --> Proposed
+    Proposed --> Accepted
+    Proposed --> Rejected
+    Accepted --> Superseded: New context and new ADR
+    Rejected --> [*]
+    Superseded --> [*]
+`} />
+
+AWS recommends treating accepted ADRs as immutable and using a new ADR when a later decision replaces them. This keeps the decision log useful as history. [AWS Prescriptive Guidance](https://docs.aws.amazon.com/prescriptive-guidance/latest/architectural-decision-records/adr-process.html)
+
+## Not Every Decision Needs an ADR
+
+An ADR has a cost. Someone must write, review, find, and maintain the decision log.
+
+I would consider an ADR when a decision:
+
+- changes a system boundary or important data flow;
+- creates a long-term dependency;
+- affects security, availability, or recovery;
+- is expensive to reverse;
+- caused a meaningful disagreement;
+- will be difficult to understand from the code alone.
+
+I would usually skip it for:
+
+- a local refactor with no architecture effect;
+- a small library update with an easy rollback;
+- a temporary experiment that has a clear end date;
+- a choice already explained well by a team standard.
+
+The goal is not to count ADR files. The goal is to make important decisions easier to understand and revisit.
+
+## Where I Would Keep Them
+
+For a software system, I prefer keeping ADRs close to the code, for example:
+
+```text
+docs/
+  decisions/
+    0001-use-postgresql.md
+    0002-publish-invoice-jobs.md
+    0003-supersede-invoice-queue.md
+```
+
+This gives the decision history the same review and version control as the system. A central documentation platform can also work if people can find it and the team already maintains it.
+
+The storage tool matters less than three habits:
+
+1. Link the ADR from the change that implements it.
+2. Use a short title that people can search.
+3. Create a new record when the decision changes.
+
+## A Small Coaching Tool
+
+An ADR can help mentoring because it gives a junior or new engineer a safe place to ask questions.
+
+Instead of saying **we use Kafka because it scales**, open the ADR and walk through the context:
+
+- What problem existed?
+- Which option was simpler?
+- Which constraint removed that option?
+- What new work did the chosen design create?
+- Is the decision still worth its cost?
+
+That conversation teaches more than the final technology name.
+
+An ADR is not proof that the architecture is correct. It is evidence that the team made a choice with a known context. When the context changes, the team can make another choice without pretending the past never happened.
