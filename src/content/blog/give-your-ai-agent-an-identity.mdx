@@ -1,0 +1,260 @@
+---
+title: "Give Your AI Agent an Identity"
+description: "Design AI agent identity like cloud workload and employee access: scoped permissions, delegation, short-lived credentials, audit, and revocation."
+pubDate: "2026-08-29"
+tags:
+  ["AI Agent", "Security", "Software Architecture", "Identity"]
+heroImage: "/assets/images/blogs/ai-agent-identity/hero-banner.png"
+language: "en"
+translationSlug: "give-your-ai-agent-an-identity-th"
+servicesNote: true
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+{/* IMAGE PROMPT (hero-banner.png): Wide playful clay stop-motion diorama on a bright warm-peach studio background. Show three distinct characters at an access checkpoint: a human employee with a photo badge, a cloud service as a small utility vehicle with a machine badge, and an AI agent as a friendly abstract helper with its own separate badge. A security gate checks each badge before different doors open. Use indigo, tangerine, cream, and small lime accents. Soft clay texture and rounded shapes. No text, letters, logos, watermark, photorealistic humans, dark background, flat vector style, paper collage, risograph grain, robot head, or duplicated badges. */}
+
+
+## We Would Not Share One Admin Account with Everyone
+
+Imagine a company with three kinds of actors:
+
+- an employee who reviews customer cases;
+- a backend service that reads order data;
+- an AI agent that can search documents and update a support ticket.
+
+The employee has a user account. The backend service has a workload identity. Then the agent receives one shared API key with broad access because it needs to call several tools.
+
+That last part should feel uncomfortable.
+
+If the agent changes a ticket, who performed the action? Was it the user, the application, or the model? If the key leaks, what can use it? If the agent changes jobs, how do we remove only its access?
+
+My main idea is:
+
+**An AI agent should have an identity, permissions, and an owner, similar to a service or an employee in cloud architecture.**
+
+The model name is not an identity. A prompt is not an identity. An API key shared by ten agents does not tell us which agent acted.
+
+## Start from Identities We Already Know
+
+Cloud architecture already has useful patterns.
+
+| Actor | Identity normally represents | Common lifetime | Example access |
+|---|---|---|---|
+| Person | One employee or customer | Months or years | Review assigned cases |
+| Service | One deployed workload | Minutes to months | Read order status |
+| Job | One automation or execution | Minutes or hours | Export one report |
+| AI agent | One owned agent or agent role | Depends on the task | Search, propose, or act through tools |
+
+SPIFFE defines a workload as software running for one purpose and gives it a verifiable workload identity. Its identity documents are short-lived and rotate automatically, which limits exposure when credentials leak. [SPIFFE Concepts](https://spiffe.io/docs/latest/spiffe/concepts/)
+
+An AI agent is not the same as a normal service in every way. It may choose tools at runtime and act for different users. Still, the workload-identity lesson is useful. Identify the running actor. Do not put one permanent secret inside it. Verify the identity before giving access.
+
+<MermaidDiagram chart={`
+flowchart LR
+    H["Human identity\nWho requested?"] --> A["Agent identity\nWho planned and acted?"]
+    S["Service identity\nWhich workload called?"] --> A
+    A --> T["Tool policy\nWhat is allowed?"]
+    T --> R["Resource\nWhich data or action?"]
+`} />
+
+## Decide Which Hat the Agent Is Wearing
+
+An agent may act in several modes. Mixing them creates confusing access rules.
+
+### The agent acts as itself
+
+Example: a monitoring agent reads service health and creates an internal incident summary.
+
+The audit record should show the agent identity. The agent receives only the permissions needed for that role.
+
+### The agent acts on behalf of a user
+
+Example: a support agent looks up the order that the current support employee is allowed to view.
+
+The request needs both identities:
+
+- **subject:** the user whose authority is being used;
+- **actor:** the agent performing the work.
+
+OAuth 2.0 Token Exchange defines an actor token for a party authorized to act on behalf of a subject. It does not solve the whole agent design, but its subject-and-actor model is a useful way to preserve both identities. [RFC 8693](https://www.rfc-editor.org/info/rfc8693/)
+
+### The agent performs a background job
+
+Example: an approved workflow asks an agent to classify 500 documents overnight.
+
+The task should have a job identity or execution ID linked to the agent, owner, approval, input set, and deadline. Do not let the job reuse a person's long-lived session.
+
+<MermaidDiagram chart={`
+sequenceDiagram
+    actor U as User
+    participant A as Agent
+    participant I as Identity service
+    participant T as Tool API
+    U->>A: Request an allowed task
+    A->>I: Exchange user + agent identity
+    I-->>A: Short-lived scoped token
+    A->>T: Call with subject + actor + scope
+    T-->>A: Result
+    A-->>U: Result and action record
+`} />
+
+## Authentication Is Not Authorization
+
+An identity answers **who is this?** Authorization answers **what may this identity do here?**
+
+For an agent, I would make permission more specific than one broad role:
+
+```text
+agent: support-order-reader
+owner: customer-support-platform
+environment: production
+allowed tools:
+  - order.get
+  - ticket.add_note
+denied tools:
+  - order.refund
+  - customer.export_pii
+constraints:
+  - user must have access to the same customer case
+  - ticket must be assigned to the user
+  - token expires in 10 minutes
+```
+
+The policy should combine several facts:
+
+- agent identity;
+- user identity when acting on behalf of someone;
+- tool and action;
+- resource or customer boundary;
+- environment;
+- time and approval state;
+- risk of the requested action.
+
+The model may select a tool. A deterministic policy engine should decide whether the call is allowed.
+
+## Use Short-Lived Credentials
+
+A common first version stores one API key in the agent runtime. The key often has more permission than one task needs, and it may remain valid for months.
+
+A safer flow is:
+
+1. Verify the workload running the agent.
+2. Check the current user or job context.
+3. Evaluate the requested tool and scope.
+4. Issue a short-lived credential for that action boundary.
+5. Send the credential to the tool, not to the model text.
+6. Record and expire it.
+
+<MermaidDiagram chart={`
+flowchart LR
+    W["Verified agent workload"] --> P["Policy check"]
+    U["User or job context"] --> P
+    X["Requested tool and scope"] --> P
+    P -->|Allowed| C["Short-lived credential"]
+    P -->|Denied| D["Denied + audit event"]
+    C --> T["One tool boundary"]
+    C --> E["Expires automatically"]
+`} />
+
+The model should not see raw credentials in its prompt, memory, or tool response. A credential broker or agent runtime can attach them after the policy decision.
+
+## One Agent Should Not Quietly Become Another
+
+Agent-to-agent delegation adds another question: who gave authority to whom?
+
+Suppose a coordinator agent asks a research agent to collect data, then asks an action agent to update a record.
+
+The action agent should not inherit every permission from the coordinator. Delegation needs a smaller scope:
+
+- which task;
+- which resources;
+- which tools;
+- which time window;
+- whether further delegation is allowed;
+- which approval applies.
+
+<MermaidDiagram chart={`
+flowchart LR
+    U["User"] -->|Delegates research| C["Coordinator agent"]
+    C -->|Read-only scope| R["Research agent"]
+    R -->|Findings only| C
+    C -->|Approved update scope| A["Action agent"]
+    A --> T["Ticket API"]
+    U -.-> L["Audit chain"]
+    C -.-> L
+    R -.-> L
+    A -.-> L
+    T -.-> L
+`} />
+
+Without this chain, the final tool sees only the last caller. The organization loses the reason and authority behind the action.
+
+## Audit the Chain, Not Only the Result
+
+An agent audit record should help answer:
+
+- Who requested the work?
+- Which agent and version handled it?
+- Which goal and policy applied?
+- Which tools did it request?
+- Which calls were allowed or denied?
+- Was there human approval?
+- What changed in the external system?
+- Can we connect the action to its trace and evaluation?
+
+For example:
+
+```json
+{
+  "user_id": "support_user_42",
+  "agent_id": "support-order-agent",
+  "agent_version": "2026-08-27.1",
+  "execution_id": "exec_91ab",
+  "tool": "ticket.add_note",
+  "resource": "ticket_731",
+  "policy": "support-note-v3",
+  "decision": "allowed",
+  "result": "completed"
+}
+```
+
+Do not store the full private prompt by default. Record enough to explain and reproduce the control decision while following data-retention rules.
+
+{/* IMAGE PROMPT (shared-admin-vs-owned-identities.png): Wide clay stop-motion comparison diorama on a warm-peach background. Left side: several different AI helpers crowd around one oversized master key and one open gate, creating confusion. Right side: each helper has a small unique badge, a named owner represented by a simple person token, and access to only one matching door. Use indigo, tangerine, cream, and small lime accents. No text, letters, logos, watermark, photorealism, flat vector, paper collage, risograph, dark background, or duplicate characters. */}
+
+![Shared administrator access compared with separate owned agent identities](/assets/images/blogs/ai-agent-identity/shared-admin-vs-owned-identities.png)
+
+## Revocation Is Part of Identity Design
+
+Identity design is incomplete if access is easy to grant and difficult to remove.
+
+Prepare for these cases:
+
+- the agent owner leaves the team;
+- the agent moves from test to production;
+- a tool is no longer needed;
+- a credential or agent runtime is compromised;
+- the model or agent framework changes;
+- the agent is retired;
+- one delegated job must be stopped without stopping every agent.
+
+Short-lived credentials reduce the waiting time after revocation. Separate identities reduce the blast radius. A central policy point can deny future calls. The audit trail tells the team which past actions need review.
+
+## A Practical Starting Design
+
+You do not need a large identity platform for the first internal agent. Start with clear boundaries:
+
+1. Give the agent a unique ID and owner.
+2. Keep user identity when the agent acts for a user.
+3. Put tool calls behind authenticated APIs.
+4. Grant a small allowlist of actions.
+5. Use short-lived credentials when the platform supports them.
+6. Record user, agent, tool, policy, action, and result.
+7. Test revocation before production.
+
+OWASP lists identity and privilege abuse among the main risks for agentic applications. Recent OWASP material also connects over-broad service-agent identity with tool misuse and data access. [OWASP Agentic Security Initiative](https://genai.owasp.org/initiatives/agentic-security-initiative/)
+
+The agent may speak like a person and work across many tools. The architecture should still treat it as a controlled actor.
+
+Give the agent an identity that the platform can verify. Give it only the access its job needs. Record the person or service that delegated the work. Then make sure the organization can audit and remove that authority later.
