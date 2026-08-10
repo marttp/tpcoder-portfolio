@@ -12,7 +12,7 @@ servicesNote: true
 
 import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 
-{/* IMAGE PROMPT (hero-banner.png): Wide Bauhaus-inspired editorial illustration on a bright white background. Show a small AI product prototype as one colorful geometric module entering a larger accountable production building made of visible layers: ownership, inventory, evaluation, policy, deployment, monitoring, and shutdown controls represented only by icons and shapes. Use ultramarine, magenta, golden yellow, black, and white in bold geometric composition. No text, letters, logos, watermark, gradients, dark background, robot, clay style, paper collage, risograph, green system palette, or glossy 3D. */}
+{/* IMAGE PROMPT (hero-banner.png): Use case: infographic-diagram. Wide 16:9 editorial infographic for a technical blog hero. Show one working AI support system in the center of a practical governance control room. Around it, show five concrete control stations connected to the system: an owner badge, an evidence folder, a policy gate, a monitoring screen, and an emergency stop control. Render these exact labels once and spell exactly: "OWNER", "EVIDENCE", "CONTROL", "MONITOR", "STOP". Balanced palette of warm paper, charcoal ink, amber, muted teal, and coral with no dominant lead color. Clean illustrated objects, readable hierarchy, light background, subtle print texture, not abstract geometry. No other text, no duplicate labels, no typos, no logos, no watermark, no robot, no brain, no dark background, no glossy 3D. */}
 
 
 An AI prototype can move fast and stay small. The harder questions often arrive when people want to use the demo in production.
@@ -40,6 +40,8 @@ Then production questions arrive:
 
 If the system cannot answer, a policy document alone will not save it.
 
+In practical terms, **AI governance is how an organization decides which AI systems may exist, who owns them, which data and actions they may use, which evidence is required, and when the systems must stop.**
+
 I wrote this article to turn AI governance questions into architecture and delivery controls that engineers can build.
 
 My central claim is:
@@ -47,6 +49,14 @@ My central claim is:
 **AI governance becomes useful when its requirements are built into the architecture and delivery process.**
 
 This article is an engineering view, not legal advice. Regulations and industry rules depend on location and use case. Even so, the architecture often needs the same basic controls. The team must know what exists, who owns it, how it changes, how it behaves, and how to stop unsafe operation.
+
+These three areas are related, but they answer different questions.
+
+| Area | Main question | What architecture should support |
+|---|---|---|
+| Governance | Who decides, who owns the result, and which evidence is used? | Ownership, approval, policy, and review paths |
+| Risk management | What can fail, how large is the impact, and how do we reduce it? | Evaluation, runtime controls, monitoring, and recovery |
+| Compliance | Which laws, standards, or internal rules apply? | Documentation, traceability, retention, and reporting |
 
 ## Turn Governance Questions into System Requirements
 
@@ -76,6 +86,8 @@ NIST organizes AI risk management into four functions: **Govern, Map, Measure, a
 
 That framework is not an architecture diagram. It can still help us find the capabilities the diagram must support.
 
+This article uses one hypothetical customer-support assistant as a running example. At first, it answers from approved documents and drafts replies. Later, the team adds order lookup and refund proposals. Its risk, owners, evaluations, and runtime controls must change with those capabilities. The model name alone does not define the risk.
+
 ## Start with an Inventory
 
 You cannot govern an AI system that nobody knows exists.
@@ -85,6 +97,7 @@ An inventory should record more than a model name. One product may combine sever
 - product and use case;
 - owner and operational contact;
 - model provider, model ID, and version;
+- provider region, dependencies, and model deprecation path;
 - prompts and system instructions;
 - retrieval sources and data classification;
 - tools and external systems;
@@ -133,7 +146,11 @@ The exact labels matter less than the effect they have. A higher-risk system may
 
 Do not classify only the model. The same model may be low-risk in a writing helper and high-risk when connected to a payment or access-control tool.
 
-## Version the Whole Decision Path
+{/* IMAGE PROMPT (ownership-map.png): Use case: infographic-diagram. Wide landscape ownership map for an AI governance article on a light warm-paper background. Put "AI SYSTEM" in the center. Connect it to five clear role cards. Render each role and responsibility exactly once and spell exactly: "PRODUCT OWNER" with "Intended use"; "TECH OWNER" with "Runtime"; "DATA OWNER" with "Data access"; "RISK OWNER" with "Risk controls"; "OPERATOR" with "Incident response". Use simple concrete icons such as product brief, server, database, shield checklist, and incident headset. Balanced charcoal, amber, muted teal, coral, and cream; no dominant lead color. Clean vector-like editorial infographic, strong hierarchy, readable text, generous spacing. No other text, no duplicate cards, no typos, no logos, no watermark, no abstract shapes, no robot, no dark background, no glossy 3D. */}
+
+![The ownership map for an AI system, from intended use to incident response](/assets/images/blogs/ai-governance-architecture/ownership-map.png)
+
+## Build a Release Evidence Bundle
 
 A model version is one part of system behavior.
 
@@ -164,6 +181,10 @@ rollback_to: support-agent-2026-09-03.1
 ```
 
 This does not make an AI system deterministic. It makes one production state identifiable and easier to compare.
+
+{/* IMAGE PROMPT (release-evidence-bundle.png): Use case: infographic-diagram. Wide landscape technical infographic on a light neutral paper background. Show one central folder labeled "RELEASE ID" collecting seven evidence cards labeled exactly once: "MODEL", "PROMPT", "DATA", "TOOLS", "POLICY", "EVAL", "APPROVAL". From the folder, show three clear outgoing paths labeled exactly once: "DEPLOY", "MONITOR", "ROLLBACK". Use concrete folder, document, database, tool, shield, test report, approval stamp, deployment, chart, and rollback icons. Balanced charcoal, amber, muted teal, coral, and cream with no dominant lead color. Clean editorial vector-like style, readable typography, generous spacing, subtle paper texture. No title, no other text, no duplicate labels, no typos, no logos, no watermark, no abstract geometry, no robot, no dark background, no glossy 3D. */}
+
+![One release evidence bundle connects model, prompt, data, tools, policy, evaluation, and approval](/assets/images/blogs/ai-governance-architecture/release-evidence-bundle.png)
 
 ## Put Evaluation in the Release Path
 
@@ -216,8 +237,8 @@ The system may need:
 
 The previous two articles in this series provide two foundations:
 
-- **Give Your AI Agent an Identity** asks who is acting and under whose authority.
-- **Designing Irreversible Actions** asks what the actor may do and how the system recovers.
+- [**Give Your AI Agent an Identity**](/blog/give-your-ai-agent-an-identity) asks who is acting and under whose authority.
+- [**Designing Irreversible Actions**](/blog/how-i-think-about-designing-irreversible-actions-ai-agent-era) asks what the actor may do and how the system recovers.
 
 Governance connects these controls with ownership, evidence, release decisions, and ongoing review.
 
@@ -276,21 +297,17 @@ The architecture must support the steps:
 
 If the only response is to edit the prompt and hope, the system is not ready for important work.
 
-{/* IMAGE PROMPT (prototype-to-accountable-system.png): Wide Bauhaus-style visual progression on white. On the left, one loose colorful geometric AI module with exposed wires. Across the middle, the module passes through distinct geometric checkpoints for owner, inventory, evaluation, policy, and monitoring. On the right, it becomes a stable modular production structure with a visible emergency stop control. Use ultramarine, magenta, golden yellow, black, and white. No text, letters, numbers, logos, watermark, gradients, dark background, robot, clay, paper collage, risograph, green system diagram, or glossy 3D. */}
-
-![An AI prototype gaining the controls needed for accountable production use](/assets/images/blogs/ai-governance-architecture/prototype-to-accountable-system.png)
-
-## Current Rules Make This More Practical, Not Less
+## Regulation Changes, the Engineering Need Does Not
 
 Regulation is one reason to build these capabilities, but it is not the only reason.
 
-As of July 2026, the European Commission says transparency obligations for certain AI systems apply from 2 August 2026. The latest AI Omnibus timeline says rules for high-risk AI systems apply from 2 December 2027, while rules for AI embedded in some physical products apply from 2 August 2028. [European Commission transparency guidance](https://digital-strategy.ec.europa.eu/en/library/guidelines-transparency-obligations-providers-and-deployers-ai-systems), [AI Omnibus timeline](https://digital-strategy.ec.europa.eu/en/news/ai-omnibus-enters-force)
+At the time of writing, the European Commission says transparency rules apply from August 2026. Rules for some high-risk use cases apply from 2 December 2027, while rules for AI inside some regulated products apply from 2 August 2028. Timelines and scope can change, so check the [European Commission AI Act overview](https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai) before doing compliance work.
 
 The exact obligation depends on the system and role. Teams should get qualified legal advice for compliance.
 
 From an engineering view, the direction is useful: systems need better documentation, ownership, evaluation, transparency, monitoring, and incident evidence. Those abilities also help customers, operators, and the business even when one regulation does not apply.
 
-## A Small Governance Architecture
+## Build the Smallest Governance Loop That Works
 
 I would not begin by buying a large governance platform.
 
@@ -317,19 +334,12 @@ The system can grow later into a shared internal service or a product:
 
 The product opportunity is not a dashboard that says governed. The useful product connects a requirement to an enforced control and evidence that the control ran.
 
-## What I Would Keep
+ISO/IEC 42001 uses Plan-Do-Check-Act to improve an AI management system over time. NIST AI RMF also says risk management should continue across the AI lifecycle. Governance architecture should not end with one approval before launch. [ISO/IEC 42001 overview](https://www.iso.org/artificial-intelligence/ai-management-systems), [NIST AI RMF Core](https://airc.nist.gov/airmf-resources/airmf/5-sec-core/)
 
-AI governance should not mean that every experiment needs ten approvals. It should make the amount of control match the impact.
+{/* IMAGE PROMPT (governance-operating-loop.png): Use case: infographic-diagram. Wide landscape infographic titled exactly "AI GOVERNANCE OPERATING LOOP". Show one practical customer-support AI system in the center. Around it, create a clear clockwise operating loop with seven labeled stations, each rendered exactly once and spelled exactly: "INVENTORY", "RISK", "RELEASE", "RUN", "MONITOR", "RESPOND", "REVIEW". Use concrete icons: system registry, risk checklist, release evidence folder, guarded runtime API, behavior dashboard, incident controls, and review meeting. Show arrows between every station and back to inventory. Balanced warm paper, charcoal, amber, muted teal, and coral with no dominant lead color. Clean self-describing editorial infographic, readable typography, generous spacing, subtle print texture. No other text, no duplicate labels, no typos, no logos, no watermark, no abstract-only shapes, no robot, no dark background, no glossy 3D. */}
 
-I would keep these principles:
+![The AI governance operating loop from inventory through review and back to system updates](/assets/images/blogs/ai-governance-architecture/governance-operating-loop.png)
 
-- know which AI systems exist;
-- name the people who own the result;
-- version the full behavior path;
-- test changes based on risk;
-- control identity and actions at runtime;
-- monitor user and safety outcomes;
-- prepare rollback, shutdown, and investigation;
-- keep evidence that a reviewer can understand.
+AI governance should not make every experiment pass through ten approvals. Start with one AI system. Name its owner and risk. Connect each release to evidence. Add runtime controls. Test the disable, rollback, and incident paths. Add more structure only when the impact and number of systems grow.
 
-Governance becomes an architecture problem when a product must enforce these controls and prove that they work at runtime. This is where engineers can turn governance from a document into part of the working system.
+Governance becomes an architecture problem when a product must enforce these controls and show evidence that they worked at runtime. This is where engineers can turn governance from a document into part of the working system.
