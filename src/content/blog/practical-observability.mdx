@@ -35,7 +35,17 @@ Monitoring tells us when a known condition crosses a limit. Observability should
 | Did the error rate cross a threshold? | Which users, versions, or payment providers were affected? |
 | Is the queue growing? | Which jobs are stuck, and can we replay them safely? |
 
-OpenTelemetry describes observability as the ability to understand a system from the signals it creates. It supports traces, metrics, logs, and context that can connect those signals. [OpenTelemetry Observability Primer](https://opentelemetry.io/docs/concepts/observability-primer/)
+In practical terms, **observability is our ability to understand what is happening inside a running system from the data it produces**. It should help us explain what happened, why it happened, and which users were affected. The team should still be able to investigate when nobody prepared a dashboard for that exact question.
+
+OpenTelemetry calls the produced data signals. The three common signals have different shapes and answer different questions. [OpenTelemetry Observability Primer](https://opentelemetry.io/docs/concepts/observability-primer/)
+
+| Signal | What the data looks like | Best used for | Main limit |
+|---|---|---|---|
+| Metrics | Numbers measured over time | Rate, trend, alert, and system health | Hides the detail of one request |
+| Logs | Timestamped events with fields and messages | Explaining what happened at one point | Volume grows fast, and events are hard to connect without shared IDs |
+| Traces | One operation split into connected spans | Finding where time or failure happened across services | Needs context propagation, sampling, and storage control |
+
+One signal cannot answer every question. Metrics show the shape of a problem. Logs give event details. Traces connect the path across services.
 
 My main point is simple:
 
@@ -80,14 +90,14 @@ The questions decide what to record. The tools come later.
 
 ## Give Each Signal a Clear Job
 
-Metrics, logs, traces, and business events should explain different parts of the same story.
+Metrics, logs, and traces are not competing ways to store the same data. They work together during an investigation:
 
-| Signal | Best question | Good example | Weak use |
-|---|---|---|---|
-| Metrics | How often, how much, or how slow? | Error ratio, p95 latency, queue age | One series per order ID |
-| Logs | What happened in one event? | Payment timeout with reason and trace ID | Copying the whole request body |
-| Traces | Where did time or failure happen? | One checkout across order, inventory, and payment | Adding a span for every tiny function |
-| Business events | What important state changed? | Payment authorized, refund requested | Treating every debug line as an audit event |
+1. Metrics show that checkout latency increased and tell us how wide the impact is.
+2. Traces narrow the problem to a slow payment span on the retry path.
+3. Logs explain the timeout, provider response, and retry decision in that span.
+4. Business events confirm whether payment or order state changed and needs recovery.
+
+Business events are separate because they keep an important state change, such as `payment_authorized` or `refund_requested`. They should not be treated like normal debug logs.
 
 {/* IMAGE PROMPT (four-signals-one-checkout.png): Wide four-panel editorial risograph illustration on warm off-white paper. Show the same checkout parcel examined through four visual lenses: a small trend chart for metrics, an event card stack for logs, a connected route for traces, and a stamped durable record for business events. No readable words, letters, numbers, logos, or watermark. Use coral red, electric cyan, charcoal, and pale yellow with visible screen-print grain and imperfect ink overlap. Each panel must have one distinct subject, no duplicated panels, no glossy UI, no photorealism, no dark background. */}
 
