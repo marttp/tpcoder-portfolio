@@ -132,7 +132,9 @@ sequenceDiagram
 
 The important state is not only `success` or `failed`. An external action can have an **unknown outcome**. A timeout tells us that the caller did not receive a response. It does not prove that the provider did nothing.
 
-AWS explains this problem in its guidance on idempotent APIs. A caller may time out after a resource was created. A blind retry can then create an unwanted duplicate. A caller-provided request ID helps the service recognize the same intent and return the existing result safely. [Amazon Builders’ Library](https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/)
+I learned this technique mainly from Stripe. A client sends an `Idempotency-Key` when it creates or updates an object. If a connection error happens, the client can retry the same request. Stripe returns the stored result instead of running the same operation twice. [Stripe API Reference](https://docs.stripe.com/api/idempotent_requests)
+
+AWS explains the same problem in more detail through idempotent APIs. A caller may time out after a resource was created. A blind retry can then create an unwanted duplicate. A caller-provided request ID helps the service recognize the same intent and return the existing result safely. [Amazon Builders’ Library](https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/)
 
 Normal recovery tools include:
 
