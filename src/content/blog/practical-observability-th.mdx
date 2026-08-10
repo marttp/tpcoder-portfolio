@@ -1,9 +1,9 @@
 ---
-title: "Practical Observability: ออกแบบระบบให้ตอบได้ว่าเกิดอะไรขึ้น"
-description: "แนวทางใช้ logs, metrics, traces, SLO และ alerts เพื่ออธิบายสิ่งที่ user เจอในระบบที่กำลังทำงาน"
+title: "Practical Observability by TP Coder"
+description: "แนวทางออกแบบ logs, metrics, traces, OpenTelemetry, SLO, query และ incident investigation ให้เริ่มจากสิ่งที่ user เจอ"
 pubDate: "2026-08-19"
 tags:
-  ["Observability", "Software Architecture", "Backend", "SRE"]
+  ["Observability", "OpenTelemetry", "Software Architecture", "Backend", "SRE"]
 heroImage: "/assets/images/blogs/practical-observability/hero-banner.png"
 language: "th"
 translationSlug: "practical-observability"
@@ -15,7 +15,7 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 {/* IMAGE PROMPT (hero-banner.png): Wide editorial risograph illustration on an off-white paper background. Show one customer request as a bright coral line traveling through a busy city-transit map of services while an engineer follows the line with a small flashlight. Use coral red, electric cyan, charcoal, and pale yellow with visible risograph grain and imperfect ink overlap. No text, labels, letters, logos, watermark, glossy 3D, robot, dark background, green system palette, blue AI lifecycle, or paper-note ADR scene. */}
 
 
-## The Dashboard Is Green. The User Still Failed.
+## Dashboard เป็นสีเขียว แต่ User ยังใช้งานไม่สำเร็จ
 
 สมมุติว่า customer แจ้งว่า checkout ใช้เวลา 18 วินาทีแล้วจบด้วย error คุณเปิด dashboard ขึ้นมาดู
 
@@ -26,17 +26,24 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 
 Dashboard เป็นสีเขียว แต่ customer ใช้งานไม่สำเร็จครับ
 
-Monitoring บอกเราได้ว่า condition ที่รู้จักเริ่มผิดปกติหรือยัง ส่วน Observability ควรช่วยให้เราสืบต่อได้ แม้ทีมไม่เคยเตรียม dashboard สำหรับคำถามนั้นไว้ก่อน
+Monitoring ช่วยบอกว่า condition ที่เรารู้จักเริ่มผิดปกติหรือยัง ส่วน Observability ควรพาเราไปต่อได้ แม้ทีมไม่เคยเตรียม dashboard สำหรับคำถามนั้นไว้ก่อน
 
-OpenTelemetry อธิบาย Observability ว่าเป็นความสามารถในการเข้าใจระบบผ่าน signal ที่ระบบปล่อยออกมา และช่วยตอบคำถามว่าทำไมเหตุการณ์นี้ถึงเกิดขึ้น ระบบจึงต้องมี instrumentation ที่ใช้งานได้ เช่น traces, metrics และ logs [OpenTelemetry Observability Primer](https://opentelemetry.io/docs/concepts/observability-primer/)
+| Monitoring ถาม | Observability ช่วยถามต่อ |
+|---|---|
+| Service ยังทำงานอยู่ไหม | Checkout ของ customer คนนี้ fail เพราะอะไร |
+| CPU เกิน 80% หรือยัง | Dependency ตัวไหนทำให้ request นี้ช้า |
+| Error rate เกิน threshold ไหม | Problem กระทบ user, version หรือ payment provider กลุ่มไหน |
+| Queue กำลังโตไหม | Job ชุดไหนค้าง และ replay อย่างปลอดภัยได้หรือเปล่า |
+
+OpenTelemetry อธิบาย Observability ว่าเป็นความสามารถในการเข้าใจระบบจาก signals ที่ระบบสร้างขึ้นมา โดยรองรับทั้ง traces, metrics, logs และ context ที่ใช้เชื่อมข้อมูลเหล่านี้เข้าด้วยกัน [OpenTelemetry Observability Primer](https://opentelemetry.io/docs/concepts/observability-primer/)
 
 ประเด็นหลักของบทความนี้คือ
 
 **Observability ควรเริ่มจาก user journey และคำถามที่ทีมต้องตอบ ไม่ควรเริ่มจากการเก็บทุก signal ที่ tool รองรับ**
 
-## Start with One User Journey
+## เริ่มจาก Checkout Journey เพียง 1 เส้น
 
-เราจะใช้ E-commerce checkout เป็นตัวอย่างครับ
+บทความนี้จะใช้ E-commerce checkout เป็นตัวอย่างครับ
 
 1. Customer ส่ง order
 2. Order service ขอ reserve inventory
@@ -62,83 +69,215 @@ sequenceDiagram
 
 ก่อนเลือก tool ลองเขียนคำถามที่ทีมควรตอบให้ได้ก่อน
 
-- Customer ได้ response สำเร็จหรือเปล่า
+- Customer ได้ response ที่นำไปใช้ต่อได้หรือเปล่า
 - Checkout ทั้ง flow ใช้เวลาเท่าไร
 - Dependency ตัวไหนใช้เวลามากที่สุด
-- Payment สำเร็จ แต่ confirm order ล้มเหลวหรือไม่
-- Retry ทำให้เกิด payment attempt อีกอันหรือเปล่า
-- Problem เกิดเฉพาะ region, version, seller หรือ payment provider บางรายไหม
+- Payment สำเร็จแล้ว แต่ confirm order ล้มเหลวหรือไม่
+- Retry ทำให้เกิด payment attempt เพิ่มหรือเปล่า
+- Problem เกิดเฉพาะ region, version, seller หรือ provider บางรายไหม
 
-พอรู้ว่าจะตอบคำถามอะไร เราค่อยเลือกครับว่าเรื่องไหนควรดูจาก metrics, logs, traces หรือ events
+คำถามเป็นตัวกำหนดว่าเราต้องเก็บอะไร ส่วน tool ค่อยเลือกทีหลังครับ
 
-## The Smallest Useful View
+## กำหนดหน้าที่ให้แต่ละ Signal
 
-สำหรับ version แรก ผมจะเก็บเฉพาะข้อมูลที่ช่วยให้ทีมดูแล journey นี้ได้ก่อน
+Metrics, logs, traces และ business events ควรช่วยกันอธิบายคนละด้านของเหตุการณ์เดียวกัน
 
-- request count
-- success และ failure count
-- latency distribution
+| Signal | คำถามที่เหมาะ | ตัวอย่างที่มีประโยชน์ | สิ่งที่ไม่ควรทำ |
+|---|---|---|---|
+| Metrics | เกิดบ่อยแค่ไหน เยอะแค่ไหน หรือช้าแค่ไหน | Error ratio, p95 latency, queue age | สร้าง 1 time series ต่อ order ID |
+| Logs | Event นี้เกิดอะไรขึ้น | Payment timeout พร้อม reason และ trace ID | Copy request body ทั้งก้อน |
+| Traces | เวลาและ failure ไปอยู่ช่วงไหน | Checkout 1 ครั้งที่วิ่งผ่าน order, inventory และ payment | สร้าง span ให้ทุก function เล็ก ๆ |
+| Business events | State สำคัญอะไรเปลี่ยนไป | Payment authorized, refund requested | ใช้ debug log ทุกบรรทัดเป็น audit event |
+
+{/* IMAGE PROMPT (four-signals-one-checkout.png): Wide four-panel editorial risograph illustration on warm off-white paper. Show the same checkout parcel examined through four visual lenses: a small trend chart for metrics, an event card stack for logs, a connected route for traces, and a stamped durable record for business events. No readable words, letters, numbers, logos, or watermark. Use coral red, electric cyan, charcoal, and pale yellow with visible screen-print grain and imperfect ink overlap. Each panel must have one distinct subject, no duplicated panels, no glossy UI, no photorealism, no dark background. */}
+
+![Checkout เดียวกันเมื่อมองผ่าน metrics, logs, traces และ business events](/assets/images/blogs/practical-observability/four-signals-one-checkout.png)
+
+Version แรกยังไม่ต้องเก็บเยอะครับ ผมจะเริ่มประมาณนี้
+
+- request, success และ failure count
+- latency histogram
 - dependency errors และ latency
-- structured logs ที่มี operation ID
+- structured logs ที่มี context ชุดเดียวกัน
+- end-to-end traces เฉพาะ boundary ที่มีประโยชน์
 - queue age และ failed jobs
-- deployment version
+- service และ deployment version
 
-ข้อมูลเท่านี้ช่วยตอบคำถามพื้นฐานได้หลายข้อแล้ว เช่น checkout fail เพิ่มขึ้นไหม latency เปลี่ยนหลัง release หรือเปล่า และ receipt jobs ค้างนานแค่ไหน
+ข้อมูลชุดนี้พอให้เริ่ม investigate ได้ แต่ยังตอบไม่ได้ทุกคำถาม ซึ่งไม่เป็นไรครับ เราค่อยเพิ่มเมื่อเจอช่องว่างที่ควรปิด
 
-แต่ view นี้ยังมีข้อจำกัดครับ Metric แบบ aggregate อาจบอกว่า p95 latency อยู่ที่ 800 milliseconds ทั้งที่ customer กลุ่มเล็กต้องรอ 18 วินาที Log อาจมี payment timeout แต่ไม่เห็น inventory call ก่อนหน้า ส่วน trace อาจเห็น path ครบ แต่ไม่รู้ว่า business rule ข้อไหน reject order
+## ออกแบบ Context ก่อนสร้าง Dashboard
 
-ถ้าอยากอธิบายเหตุการณ์ให้ครบ เราจึงต้องใช้หลาย signals ประกอบกัน
+Signal แต่ละแบบจะมีประโยชน์ขึ้นมาก ถ้าเราเชื่อมกลับมาหา request หรืองานชิ้นเดียวกันได้
 
-## Give Each Signal a Job
+Field ที่มักช่วยตอน investigate เช่น
 
-### Metrics show shape over time
+- `trace_id` และ `span_id`
+- `request_id` หรือ `operation_id`
+- `order_id`, `payment_attempt_id` หรือ `job_id`
+- `service.name` และ `service.version`
+- deployment environment และ region
+- dependency name
+- outcome และ error category
 
-Metrics เหมาะกับ rate, distribution และ trend
+<MermaidDiagram chart={`
+flowchart LR
+    A["Order API\ntrace_id + order_id"] --> I["Inventory\nsame trace_id"]
+    I --> P["Payment\nsame trace_id"]
+    P --> Q["Queue message\ntrace_id + order_id"]
+    Q --> W["Receipt worker\nsame operation context"]
+`} />
 
-- requests per second
-- error ratio
-- p50, p95 และ p99 latency
-- queue depth และ age
-- connection-pool usage
-- payment-provider timeouts
+OpenTelemetry Semantic Conventions กำหนดชื่อกลางสำหรับ service, HTTP call, database, messaging และ operation แบบอื่น การใช้ naming scheme ร่วมกันช่วยให้ query ข้ามภาษาและข้ามทีมได้ง่ายขึ้น [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/)
 
-ใช้ metrics เพื่อดูว่า **มี problem เกิดขึ้นหรือเปล่า** และมีผลกระทบกว้างแค่ไหน
+OpenTelemetry Baggage ใช้ส่ง context บางส่วนข้าม service boundary ได้ แต่ baggage อาจติดไปกับ headers และไม่มี integrity check ในตัว อย่าใส่ secrets และอย่าใช้ข้อมูลใน baggage ตัดสิน authorization [OpenTelemetry Baggage](https://opentelemetry.io/docs/concepts/signals/baggage/)
 
-ถ้า slow tail สำคัญ อย่าดูแต่ average เพราะค่าเฉลี่ยซ่อน user ที่รอนานกว่าคนอื่นได้
+Field ที่มี cardinality สูงอย่าง `order_id` เหมาะกับ logs และ traces ส่วนการนำไปทำ metric label อาจสร้าง time series หลายล้านชุดได้
 
-### Logs explain an event
+## Log Format ที่ทีม Query ต่อได้
 
-Structured logs ควรอธิบาย event ด้วย field ที่ค้นหาได้
+Log ที่ใช้สืบปัญหาได้ควรเป็น event ซึ่งมี fields ที่คงรูป ไม่ควรเป็นประโยคที่มีแค่คนเขียนเข้าใจครับ
+
+ตัวอย่าง JSON log สำหรับ payment authorization ที่ fail
 
 ```json
 {
-  "event": "payment_authorization_failed",
+  "timestamp": "2026-08-10T09:42:17.381Z",
+  "severity": "ERROR",
+  "service.name": "checkout-api",
+  "service.version": "2026.08.10-3",
+  "deployment.environment.name": "production",
+  "event.name": "payment.authorization.failed",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "span_id": "00f067aa0ba902b7",
+  "request_id": "req_91ab",
   "order_id": "ord_84f2",
   "payment_attempt_id": "pay_18c1",
   "provider": "provider_a",
-  "reason": "timeout",
+  "outcome": "timeout",
+  "error.type": "provider_timeout",
   "duration_ms": 5032,
-  "trace_id": "4bf92f3577b34da6"
+  "retryable": true
 }
 ```
 
-อย่าเก็บ password, token, ข้อมูลบัตรแบบเต็ม หรือข้อมูล customer ที่ sensitive ลง log การทำ log ที่มีประโยชน์ไม่ได้แปลว่าต้อง copy input ทุก field
+ชื่อ field ของแต่ละทีมอาจไม่เหมือนกัน ขอให้ใช้รูปแบบเดียวกันในระบบก็พอ
 
-### Traces connect the path
+| กลุ่มข้อมูล | เก็บไว้ตอบอะไร |
+|---|---|
+| เวลาและ severity | วาง event ลงใน incident timeline |
+| Service และ version | หา code กับ release ที่สร้าง log นี้ |
+| Trace และ operation IDs | กระโดดจาก log ไปดู request path ทั้งเส้น |
+| Business IDs | หา order หรือ payment attempt ที่ได้รับผลกระทบ |
+| Outcome และ error type | รวม failure เป็นกลุ่มโดยไม่ต้อง parse ประโยค |
+| Duration และ retry state | อธิบาย latency กับพฤติกรรมตอน recovery |
 
-Distributed trace เชื่อมงานข้าม services แต่ละ span แทน operation 1 ช่วง พร้อม timing, status และ attributes ที่ใช้สืบต่อได้
+อย่าเก็บ password, access token, ข้อมูลบัตรแบบเต็ม หรือข้อมูล customer ที่ sensitive ลง log การทำ structured log ไม่ได้แปลว่าต้อง copy input ทุก field
 
-Slow checkout อาจมีหน้าตาแบบนี้
+ถ้าเก็บ logs ไว้ใน Grafana Loki เราใช้ LogQL query แบบนี้เพื่อหา events ของ trace เดียวกันได้
 
-- inventory: 120 ms
-- order database: 45 ms
-- payment provider: 5,032 ms
-- payment retry: อีก 5,010 ms
-- response mapping: 20 ms
+```logql
+{service_name="checkout-api"}
+| json
+| trace_id="4bf92f3577b34da6a3ce929d0e0e4736"
+```
 
-จากคำกว้าง ๆ ว่า **checkout ช้า** เราเริ่มตอบได้แล้วว่า **payment 2 attempts ใช้เวลาไปรวมประมาณ 10 วินาที**
+Loki รองรับการ parse JSON และ `logfmt` ระหว่าง query [Grafana Loki log queries](https://grafana.com/docs/loki/latest/query/log_queries/)
 
-### Events record meaningful changes
+## Metrics ต้องตอบคำถามได้ และ Query ต้องใช้ได้จริง
+
+เลือก metric type จากคำถามที่อยากตอบครับ
+
+| Metric type | เหมาะกับ | ตัวอย่างจาก checkout |
+|---|---|---|
+| Counter | ยอดรวมที่เพิ่มอย่างเดียว | Requests, failures, retries |
+| Histogram | การกระจายของค่า | Request และ provider latency |
+| Gauge | ค่าที่เพิ่มและลดได้ | Queue depth, active connections |
+
+ตัวอย่างต่อไปนี้เป็น PromQL และสมมุติว่า histogram หลัง export ชื่อ `http_server_request_duration_seconds` Backend อาจเปลี่ยนชื่อจาก OpenTelemetry หรือ Micrometer คนละแบบ เพราะงั้นเปิดดู series ที่ส่งออกมาก่อน copy query ไปใช้ครับ
+
+### Request rate
+
+```promql
+sum(
+  rate(http_server_request_duration_seconds_count{
+    service_name="checkout-api",
+    http_route="/checkout"
+  }[5m])
+)
+```
+
+`rate()` เปลี่ยน counter ให้เป็นค่าเฉลี่ยต่อวินาทีภายใน time window ที่เลือก
+
+### Server error ratio
+
+```promql
+sum(
+  rate(http_server_request_duration_seconds_count{
+    service_name="checkout-api",
+    http_route="/checkout",
+    http_response_status_code=~"5.."
+  }[5m])
+)
+/
+sum(
+  rate(http_server_request_duration_seconds_count{
+    service_name="checkout-api",
+    http_route="/checkout"
+  }[5m])
+)
+```
+
+Query นี้ให้สัดส่วน HTTP 5xx แต่ยังไม่รวม business failure ทุกแบบ เช่น payment ถูก reject แล้ว API ตอบ HTTP 200 เราอาจต้องมี counter สำหรับ product outcome แยกอีกชุด
+
+### p95 checkout latency
+
+```promql
+histogram_quantile(
+  0.95,
+  sum by (le) (
+    rate(http_server_request_duration_seconds_bucket{
+      service_name="checkout-api",
+      http_route="/checkout"
+    }[5m])
+  )
+)
+```
+
+Prometheus ใช้ `histogram_quantile()` คำนวณ quantile จาก histogram buckets และ classic histogram ต้องเก็บ label `le` ไว้ตอน aggregate [Prometheus query functions](https://prometheus.io/docs/prometheus/latest/querying/functions/#histogram_quantile)
+
+อย่าดูแต่ average ครับ เพราะค่าเฉลี่ยอาจนิ่ง ทั้งที่ customer กลุ่มเล็กกำลังรอนานกว่าคนอื่นมาก
+
+## ใช้ Traces เชื่อม Request Path
+
+Distributed trace ตาม operation 1 งานข้าม services แต่ละ span แทนช่วงงานที่มีประโยชน์ พร้อม timing, status และ attributes
+
+Slow checkout 1 ครั้งอาจมีข้อมูลแบบนี้
+
+| Span | Duration | สิ่งที่เราเริ่มตอบได้ |
+|---|---:|---|
+| Inventory reserve | 120 ms | Inventory ไม่ใช่ช่วงที่ช้า |
+| Order database | 45 ms | เวลาใน database ค่อนข้างน้อย |
+| Payment provider attempt 1 | 5,032 ms | Call แรกชน timeout |
+| Payment provider attempt 2 | 5,010 ms | Retry เพิ่มเวลาอีก 5 วินาที |
+| Response mapping | 20 ms | งานฝั่ง response ใช้เวลาน้อย |
+
+จากคำกว้าง ๆ ว่า **checkout ช้า** ทีมเริ่มถามได้แล้วว่า **ทำไม payment ถึง retry หลัง timeout 5 วินาที**
+
+ถ้าใช้ Grafana Tempo เราหา error spans ที่ช้ากว่า 1 วินาทีด้วย TraceQL ได้
+
+```traceql
+{
+  resource.service.name = "checkout-api" &&
+  status = error &&
+  duration > 1s
+}
+```
+
+TraceQL ใช้ filter spans จาก service, status, duration และ OpenTelemetry attributes ได้ [Grafana TraceQL examples](https://grafana.com/docs/grafana/latest/datasources/tempo/query-editor/traceql-query-examples/)
+
+ไม่ต้องสร้าง span ให้ทุก function ครับ เลือก boundary ที่ช่วยอธิบาย remote call, queue, database และ business operation สำคัญก็พอ
+
+## Business Events ต้องมีความหมายที่คงอยู่
 
 บาง event ควรมี durable history แยกจาก application logs ทั่วไป
 
@@ -149,65 +288,146 @@ Slow checkout อาจมีหน้าตาแบบนี้
 - deployment started
 - feature flag changed
 
-Event แบบนี้ช่วยได้ทั้ง audit, recovery และการตรวจสอบฝั่ง business ควรมี owner และ retention rule ระบุไว้ให้ครบ
+Events ชุดนี้ช่วยเรื่อง audit, recovery และการตรวจสอบฝั่ง business จึงควรมี owner, schema, retention rule และ delivery expectation ที่ระบุไว้
 
-<MermaidDiagram chart={`
-flowchart TD
-    Q["What happened to this checkout?"] --> M["Metrics show size and timing"]
-    Q --> L["Logs explain events"]
-    Q --> T["Trace connects the path"]
-    Q --> E["Events record important changes"]
-    M --> A["One explanation"]
-    L --> A
-    T --> A
-    E --> A
-`} />
+Debug log หลุดหายไป 1 บรรทัดอาจไม่กระทบ business state แต่ `payment_authorized` อาจเป็นส่วนที่ใช้ยืนยันว่าเกิดการเปลี่ยน state ขึ้นแล้ว การดูแลข้อมูล 2 แบบนี้เหมือนกันทั้งหมดจะสร้างปัญหาภายหลังครับ
 
-## Context Connects the Signals
+## OpenTelemetry ทำหน้าที่อะไร
 
-Signal แต่ละแบบจะมีประโยชน์ขึ้นมาก ถ้าเราเชื่อมกลับมาหา request หรืองานชิ้นเดียวกันได้
+OpenTelemetry ไม่ใช่ dashboard และไม่ใช่ storage database ครับ OpenTelemetry เป็นชุดของ APIs, SDKs, semantic conventions, instrumentation และ protocols สำหรับสร้างและส่ง telemetry โดยไม่ผูกกับ vendor รายเดียว
 
-Field ที่พบได้บ่อย เช่น
+แต่ละส่วนรับผิดชอบคนละงาน
 
-- trace ID และ span ID
-- operation หรือ request ID
-- order ID หรือ job ID
-- service และ version
-- region และ environment
-- dependency name
-- result หรือ error category
+| ส่วนประกอบ | หน้าที่ |
+|---|---|
+| API และ SDK | สร้าง telemetry ภายใน application |
+| Auto-instrumentation | เก็บ HTTP, database และ messaging telemetry โดยแก้ code น้อยหรือไม่ต้องแก้ |
+| Semantic Conventions | กำหนดชื่อกลางให้ operations และ attributes |
+| OTLP | ส่ง traces, metrics และ logs ผ่าน telemetry protocol ชุดเดียว |
+| Collector | Receive, process, filter, batch และ export telemetry |
+| Backend | Store, query, visualize และ alert จากข้อมูล |
 
-OpenTelemetry Baggage ส่ง contextual key-value data ข้าม services และนำไปใช้กับ traces, metrics หรือ logs ได้ Documentation เตือนด้วยว่า baggage อาจเดินทางไปกับ headers และไม่มี integrity check ในตัว อย่าใส่ secrets หรือเอาข้อมูล authorization จาก baggage ไปเชื่อทันที [OpenTelemetry Baggage](https://opentelemetry.io/docs/concepts/signals/baggage/)
+Collector ใช้ pipeline ที่ประกอบด้วย receivers, processors และ exporters เพื่อรับ OTLP แล้วส่ง telemetry ไปยัง backends 1 ตัวหรือหลายตัว [OpenTelemetry Collector architecture](https://opentelemetry.io/docs/collector/architecture/)
 
 <MermaidDiagram chart={`
 flowchart LR
-    A["API\ntrace_id + order_id"] --> I["Inventory\nsame trace_id"]
-    I --> P["Payment\nsame trace_id"]
-    P --> Q["Queue message\ntrace_id + order_id"]
-    Q --> W["Receipt worker\nsame operation context"]
+    A["Instrumented services\nSDK or auto-instrumentation"] -->|OTLP| R["Collector receivers"]
+    R --> P["Processors\nmemory limit, batch, filter, sample"]
+    P --> M["Metrics backend"]
+    P --> L["Logs backend"]
+    P --> T["Trace backend"]
+    M --> G["Query, dashboard, alert"]
+    L --> G
+    T --> G
 `} />
 
-เลือก context ที่ช่วยตอน investigate ครับ Field ที่มี cardinality สูงอย่าง order ID เหมาะกับ logs และ traces แต่ถ้าเอาไปทำ metric label อาจสร้างทั้งค่าใช้จ่ายและ risk เรื่องข้อมูล
+{/* IMAGE PROMPT (otel-collector-workbench.png): Wide editorial risograph workshop scene on warm off-white paper. Show several small application machines sending three kinds of colored paper strips into one central sorting workbench; the workbench batches, filters, and routes the strips into three different storage cabinets. Use coral red, electric cyan, charcoal, and pale yellow with screen-print grain. No readable text, letters, numbers, logos, or watermark. Clear left-to-right flow, no duplicated machines, no photorealism, no glossy 3D, no dark background. */}
 
-## Measure What the User Needs
+![Applications ส่ง telemetry ผ่าน OpenTelemetry Collector ไปยัง backends แยกกัน](/assets/images/blogs/practical-observability/otel-collector-workbench.png)
+
+Collector configuration ขนาดเล็กอาจมีหน้าตาแบบนี้
+
+```yaml
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+  batch: {}
+
+exporters:
+  otlphttp/backend:
+    endpoint: https://telemetry.example.com
+    headers:
+      authorization: Bearer ${env:OTEL_EXPORTER_TOKEN}
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/backend]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/backend]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/backend]
+```
+
+ตัวอย่างนี้มีไว้ให้เห็น shape ของ configuration ยังไม่ควรยกไปใช้ production ทั้งก้อนนะครับ Authentication, TLS, retries, queueing, resource limits, filtering และ high availability ยังต้องออกแบบเพิ่ม
+
+## เริ่มด้วย Automatic Instrumentation แล้วค่อยเติม Business Context
+
+Automatic instrumentation ช่วยเก็บ HTTP, database และ messaging spans ได้เร็ว แต่ไม่มีทางรู้เองว่า order ถูก accepted หรือ payment attempt นี้สำคัญอย่างไร
+
+| วิธี | ทำอะไรได้ดี | ข้อจำกัด |
+|---|---|---|
+| Auto-instrumentation | Framework และ library calls ทั่วไป | ไม่รู้ business outcome ของระบบ |
+| Manual instrumentation | Business spans, attributes และ custom metrics | ต้องแก้ code และดูแล naming ให้เป็นระบบ |
+| Structured application events | Domain outcomes และ audit context | ต้องมี event schema ที่คงรูป |
+
+สำหรับ Java เราใช้ OpenTelemetry Java agent เพื่อทำ zero-code instrumentation ให้หลาย libraries ได้ ส่วน Spring Boot รองรับทั้ง Micrometer Observation และการ export ผ่าน OTLP [OpenTelemetry Java](https://opentelemetry.io/docs/languages/java/), [Spring Boot Observability](https://docs.spring.io/spring-boot/reference/actuator/observability.html)
+
+ลำดับที่ผมแนะนำคือ
+
+1. เริ่มจาก auto-instrumentation สำหรับ calls ทั่วไป
+2. กำหนด resource attributes เช่น service name, version และ environment ให้คงที่
+3. เพิ่ม manual spans หรือ metrics เฉพาะ business boundary ที่สำคัญ
+4. เพิ่ม structured domain events สำหรับ outcome ที่ต้อง audit หรือ recover
+5. ตัด telemetry ที่ซ้ำหรือไม่มีใครใช้ออก ก่อนเก็บอย่างอื่นเพิ่ม
+
+## Technology แต่ละตัวอยู่ส่วนไหน
+
+ไม่มี product stack ชุดเดียวที่ทุกทีมต้องใช้ครับ ตารางนี้เป็นเพียงตัวอย่างว่า technology แต่ละกลุ่มอยู่ส่วนไหน
+
+| Layer | Open-source examples | Managed หรือ cloud examples |
+|---|---|---|
+| Instrumentation | OpenTelemetry SDK และ agents, Micrometer, Prometheus client libraries | Vendor SDKs และ agents |
+| Collection | OpenTelemetry Collector, Fluent Bit, Vector, Grafana Alloy | Cloud collectors และ agents |
+| Metrics | Prometheus, VictoriaMetrics, Grafana Mimir | Amazon CloudWatch, Google Cloud Monitoring, Azure Monitor, Datadog, New Relic |
+| Logs | Grafana Loki, OpenSearch, Elasticsearch | CloudWatch Logs, Google Cloud Logging, Azure Log Analytics, Datadog, Elastic Cloud |
+| Traces | Jaeger, Grafana Tempo | AWS X-Ray, Google Cloud Trace, Azure Application Insights, Datadog, New Relic |
+| Query และ dashboards | Grafana, OpenSearch Dashboards, Kibana | Cloud consoles และ vendor platforms |
+
+ทีมขนาดเล็กอาจเริ่มด้วย Prometheus, Loki, Tempo, Grafana และ OpenTelemetry Collector 1 ชุด อีกทีมอาจเลือก managed platform เพราะการดูแล observability storage ไม่ใช่งานหลักของบริษัท
+
+เวลาตัดสินใจ ผมจะดูเรื่องเหล่านี้
+
+- ทีมมีความรู้กับ platform ไหนอยู่แล้ว
+- Data volume และ retention เท่าไร
+- ต้องใช้ query แบบไหน
+- มีข้อกำหนดเรื่อง compliance และ data location หรือไม่
+- ค่าใช้จ่ายและงาน operation เป็นอย่างไร
+- Signals แต่ละแบบ link หากันได้ง่ายไหม
+- ถ้าจะเปลี่ยน vendor ภายหลังต้องแก้อะไรบ้าง
+
+อย่าเพิ่ม backends 5 ตัวเพียงเพราะ architecture diagram ดูครบครับ
+
+## วัดผลลัพธ์ที่ User ต้องการ
 
 Infrastructure health สำคัญ แต่ CPU ปกติไม่ได้แปลว่า product ให้ผลลัพธ์ที่ user ต้องการ
 
-สำหรับ checkout เราอาจนิยาม outcome แบบนี้
+สำหรับ checkout เราอาจนิยาม service-level indicator แบบนี้
 
 > Order request ที่ valid ต้องได้ผลลัพธ์ว่า accepted หรือ rejected ภายใน 3 วินาที และต้องไม่เกิด duplicate charge
 
-จากประโยคนี้ เราสร้างได้ทั้ง
+จากประโยคนี้ ทีมสร้างได้ทั้ง
 
-- **SLI:** สัดส่วนของ checkout requests ที่ได้ผลลัพธ์และ latency ตามเงื่อนไข
+- **SLI:** สัดส่วนของ requests ที่ได้ผลลัพธ์และ latency ตามเงื่อนไข
 - **SLO:** เป้าหมาย เช่น 99.9% ภายใน 28 วัน
 - **error budget:** สัดส่วนที่ยอมให้พลาดจากเป้าหมาย
 
-ตัวเลขนี้ควรเป็น decision ร่วมกันระหว่าง product และ engineering ยิ่งตั้งเป้าไว้ใกล้ 100% มากเท่าไร ระบบก็ยิ่งต้องลงทุนกับ redundancy, testing และ operation มากขึ้นครับ
-
-Alert ควรชี้ไปยัง condition ที่ต้องมีคนลงมือทำ Google SRE อธิบายว่า monitoring ใช้สำหรับ alerting, investigation, visualization และ long-term planning และถ้าอยากเห็นการเติบโตของระบบ เราต้องเก็บข้อมูลนานพอ [Google SRE Workbook](https://sre.google/workbook/monitoring/)
-
-ผมจะไม่รีบ page คนเพราะ 1 instance ใช้ CPU 80% อยู่ 2 นาที ผมจะ page เมื่อ user กำลังเสีย outcome สำคัญ และคนที่รับ alert มี action ที่ช่วยสถานการณ์ตอนนั้นได้ครับ
+ตัวเลขนี้ควรเป็น decision ร่วมกันระหว่าง product และ engineering ยิ่งตั้งเป้าใกล้ 100% มากเท่าไร ระบบก็ยิ่งต้องลงทุนกับ redundancy, testing และ operation มากขึ้น
 
 <MermaidDiagram chart={`
 flowchart LR
@@ -219,49 +439,51 @@ flowchart LR
     A -->|No| W["Ticket or review"]
 `} />
 
-## Walk Through the Failure
+Alert ควรพาคนไปหา action ที่ทำต่อได้ครับ
+
+| ปลายทาง | ใช้เมื่อ | ตัวอย่าง |
+|---|---|---|
+| Page | User กำลังเสีย outcome สำคัญ และคนที่รับ alert ช่วยได้ตอนนี้ | Checkout กำลังเผา error budget อย่างรวดเร็ว |
+| Ticket | Trend นี้ควรแก้ แต่ยังไม่ต้องตอบสนองทันที | Error budget ลดช้า ๆ ต่อเนื่องหลายวัน |
+| Dashboard | ข้อมูลช่วยให้เห็น context แต่ยังไม่มี action ที่ต้องทำทันที | JVM heap distribution แยกตาม instance |
+
+Google SRE แนะนำ multiwindow, multi-burn-rate alerts เป็นจุดเริ่มต้นสำหรับ SLO alerting โดยเช็กทั้ง window ยาวและ window สั้น เพื่อให้ spike เก่าหยุด page เมื่อ failure ปัจจุบันจบไปแล้ว [Google SRE Workbook: Alerting on SLOs](https://sre.google/workbook/alerting-on-slos/)
+
+## ไล่ดู Checkout ที่ล้มเหลวหลังผ่านไป 18 วินาที
 
 กลับมาที่ customer ซึ่งรอ 18 วินาที เราอาจไล่ investigation แบบนี้
 
 1. Checkout SLO alert แสดงว่า slow requests เพิ่มขึ้นเล็กน้อย
-2. Alert link ไปหา traces ในช่วงเวลาและ version ที่ได้รับผลกระทบ
-3. Slow traces ใช้ payment provider และ retry path เดียวกัน
-4. Logs แสดงว่า call แรก timeout หลัง 5 วินาที
-5. Client library retry อีก 2 ครั้ง พร้อม backoff ที่ยาว
-6. Payment สำเร็จ 1 ครั้ง และ idempotency ป้องกันการ charge ซ้ำ
-7. Configuration change ล่าสุดเพิ่ม timeout และ retry count
+2. Alert link ไปยัง time range และ deployment version ที่ได้รับผลกระทบ
+3. PromQL บอกว่า p95 แย่ลงเพียงเล็กน้อย ทีมจึงไปดู slow tail ต่อ
+4. Slow traces ใช้ payment provider และ retry path เดียวกัน
+5. Logs แสดงว่า provider call แรก timeout หลัง 5 วินาที
+6. Client library retry อีก 2 ครั้ง พร้อม backoff ที่ยาว
+7. Payment สำเร็จ 1 ครั้ง และ idempotency ป้องกัน duplicate charge
+8. Configuration change ล่าสุดเพิ่มทั้ง timeout และ retry count
 
-ตอนนี้ทีมรู้ทั้ง cause, impact และ next action ที่ปลอดภัยแล้ว เราสามารถ rollback configuration เช็ก payment status และตรวจต่อว่าไม่มี order ค้างอยู่
+ตอนนี้ทีมรู้ทั้ง cause, impact และ next action ที่ปลอดภัยแล้ว เราสามารถ rollback configuration เช็ก payment status และหา orders ที่ยังค้างอยู่ใน unknown state ต่อได้
 
 {/* IMAGE PROMPT (green-dashboard-failed-user.png): Wide editorial risograph split scene on off-white paper. On the left, calm generic status panels and smooth charts appear healthy. On the right, one customer's checkout path is tangled in a bright coral delay loop around an external dependency. Use coral red, electric cyan, charcoal, and pale yellow with screen-print grain. No readable text, numbers, logos, watermark, glossy UI, photorealism, dark background, or duplicated panels. */}
 
 ![Dashboard ภาพรวมดูปกติ แต่ user journey 1 เส้นยังล้มเหลว](/assets/images/blogs/practical-observability/green-dashboard-failed-user.png)
 
-## Observability Has Its Own Failure Modes
+## Observability ก็มี Failure Modes
 
 ยิ่งเก็บ telemetry มาก cost และจุดที่ทีมต้องควบคุมก็ยิ่งเพิ่มตามครับ
 
-### Cardinality
+| Risk | Problem ที่ตามมา | วิธีรับมือ |
+|---|---|---|
+| Cardinality | IDs หรือค่าที่ไม่จำกัดสร้าง metric series มากเกินไป | เก็บ IDs ไว้ใน logs และ traces พร้อม allowlist metric labels |
+| Sampling | Rare failure trace ถูกทิ้ง | เลือกเก็บ errors และ slow traces ด้วย sampling policy ที่เหมาะ |
+| Retention | Evidence หมดอายุก่อนเริ่ม investigation | กำหนด retention จากวิธีใช้ signal แต่ละแบบ |
+| Sensitive data | Secrets หรือ personal data หลุดเข้า telemetry ที่ค้นหาได้ | Redact ตั้งแต่ต้น พร้อม access control, retention และ deletion |
+| Pipeline failure | Collector หรือ exporter ทำข้อมูลหาย | Monitor telemetry pipeline และกำหนด buffering rule |
+| Cost growth | ทุกทีมเก็บทุก field ไว้ตลอด | ตั้ง volume budget และ review fields ที่ไม่มีใครใช้ |
 
-Metric label อย่าง `status=failed` มีค่าที่เป็นไปได้ไม่กี่แบบ ส่วน `order_id` อาจสร้าง time series หลายล้านชุด Field ที่ใช้ค้นหาเหตุการณ์ราย request ควรอยู่ใน signal ที่เหมาะกับงานนั้นครับ
+ถ้า telemetry collector ใช้งานไม่ได้ application ไม่ควรล้มตามทุกครั้ง ทีมต้องเลือกให้ได้ว่า signal ไหน drop ได้ buffer ได้ หรือควรส่งผ่านอีก path
 
-### Sampling
-
-เก็บทุก trace อาจแพงเกินไป Random sampling เรียบง่าย แต่อาจทิ้ง rare failure ส่วน tail sampling เก็บ slow หรือ failed traces หลังเห็นผลลัพธ์ได้ แลกกับ infrastructure ที่เพิ่มขึ้น
-
-### Retention
-
-Detailed traces ของช่วงล่าสุดช่วยตอนเกิด incident ส่วน aggregated metrics ระยะยาวช่วยเรื่อง capacity planning ข้อมูล 2 แบบนี้ไม่จำเป็นต้องเก็บนานเท่ากัน
-
-### Sensitive data
-
-Telemetry เดินทางผ่านหลายระบบและมักถูกค้นหาได้กว้าง ดูแล telemetry เหมือน data product ที่ต้องมี access control, redaction, retention และ deletion rule
-
-### Pipeline failure
-
-ถ้า telemetry collector ล้ม application ไม่ควรล้มตามไปด้วยทุกครั้ง ทีมควรเลือกให้ชัดว่า signal ไหน drop ได้ signal ไหน buffer ได้ หรือ signal ไหนต้องส่งผ่านอีก path แล้วอย่าลืม monitor observability pipeline ด้วยครับ
-
-## Build It in Layers
+## ค่อย ๆ เพิ่ม Observability ทีละ Layer
 
 ผมจะค่อย ๆ เพิ่ม Observability ตามลำดับนี้
 
@@ -271,8 +493,8 @@ Telemetry เดินทางผ่านหลายระบบและม�
 4. ใช้ structured events และ operation context ร่วมกัน
 5. Trace path ข้าม service boundaries
 6. สร้าง SLI และ SLO จาก user outcome
-7. Alert เฉพาะเมื่อมี action ที่ต้องทำ
-8. หลัง incident ให้ review ทั้ง cost, security และข้อมูลที่ยังขาด
+7. Alert เมื่อมีคนและ action ที่ช่วยสถานการณ์ได้
+8. หลัง incident ให้ review cost, security และข้อมูลที่ยังขาด
 
 <MermaidDiagram chart={`
 flowchart LR
@@ -284,12 +506,25 @@ flowchart LR
     R --> U
 `} />
 
-Tool เปลี่ยนได้เรื่อย ๆ ส่วนคำถามที่มีประโยชน์ยังคล้ายเดิม
+Technology เปลี่ยนได้เรื่อย ๆ ส่วนคำถามที่มีประโยชน์ยังคล้ายเดิม
 
 - User เจออะไร
-- Path เปลี่ยนที่ช่วงไหน
+- Path เริ่มช้าหรือ fail ที่ช่วงไหน
 - System state อะไรอธิบายเหตุการณ์นั้นได้
 - มี user กี่คนได้รับผลกระทบ
-- ตอนนี้เราทำอะไรได้อย่างปลอดภัย
+- ตอนนี้ทีมทำอะไรได้อย่างปลอดภัย
 
-ถ้า telemetry ตอบคำถามเหล่านี้ไม่ได้ การเก็บข้อมูลแบบเดิมเพิ่มก็ไม่ช่วยครับ เริ่มจาก journey แล้วค่อยเพิ่ม signal เพื่อปิดคำถามถัดไปที่เรายังตอบไม่ได้
+ถ้า telemetry ตอบคำถามเหล่านี้ไม่ได้ การเก็บข้อมูลแบบเดิมเพิ่มก็ไม่ช่วยครับ เริ่มจาก journey แล้วเพิ่ม signal เมื่อข้อมูลนั้นช่วยปิดคำถามที่ทีมยังตอบไม่ได้
+
+## References สำหรับอ่านต่อ
+
+- [OpenTelemetry Observability Primer](https://opentelemetry.io/docs/concepts/observability-primer/)
+- [OpenTelemetry Signals](https://opentelemetry.io/docs/concepts/signals/)
+- [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/)
+- [OpenTelemetry Collector Architecture](https://opentelemetry.io/docs/collector/architecture/)
+- [OpenTelemetry Java Documentation](https://opentelemetry.io/docs/languages/java/)
+- [Spring Boot Observability](https://docs.spring.io/spring-boot/reference/actuator/observability.html)
+- [Prometheus Query Functions](https://prometheus.io/docs/prometheus/latest/querying/functions/)
+- [Grafana Loki Log Queries](https://grafana.com/docs/loki/latest/query/log_queries/)
+- [Grafana TraceQL Query Examples](https://grafana.com/docs/grafana/latest/datasources/tempo/query-editor/traceql-query-examples/)
+- [Google SRE Workbook: Alerting on SLOs](https://sre.google/workbook/alerting-on-slos/)
