@@ -35,7 +35,17 @@ Monitoring ช่วยบอกว่า condition ที่เรารู้�
 | Error rate เกิน threshold ไหม | Problem กระทบ user, version หรือ payment provider กลุ่มไหน |
 | Queue กำลังโตไหม | Job ชุดไหนค้าง และ replay อย่างปลอดภัยได้หรือเปล่า |
 
-OpenTelemetry อธิบาย Observability ว่าเป็นความสามารถในการเข้าใจระบบจาก signals ที่ระบบสร้างขึ้นมา โดยรองรับทั้ง traces, metrics, logs และ context ที่ใช้เชื่อมข้อมูลเหล่านี้เข้าด้วยกัน [OpenTelemetry Observability Primer](https://opentelemetry.io/docs/concepts/observability-primer/)
+ถ้าอธิบายแบบเอาไปใช้ทำงาน **Observability คือความสามารถที่ช่วยให้เราเข้าใจว่าภายในระบบกำลังเกิดอะไรขึ้น จากข้อมูลที่ระบบสร้างออกมา** เราควรใช้ข้อมูลเหล่านี้ตอบให้ได้ว่าเกิดอะไรขึ้น เพราะอะไร และกระทบ user กลุ่มไหน แม้ทีมจะยังไม่มี dashboard เตรียมไว้สำหรับคำถามนั้นก็ตาม
+
+OpenTelemetry เรียกข้อมูลเหล่านี้ว่า signals โดย 3 แบบที่เราเจอบ่อยมีหน้าตาและหน้าที่ต่างกันครับ [OpenTelemetry Observability Primer](https://opentelemetry.io/docs/concepts/observability-primer/)
+
+| Signal | ข้อมูลมีหน้าตาแบบไหน | เหมาะกับการตอบอะไร | ข้อจำกัดหลัก |
+|---|---|---|---|
+| Metrics | ตัวเลขที่วัดต่อเนื่องตามเวลา | Rate, trend, alert และ system health | มองไม่เห็นรายละเอียดของ request เดียว |
+| Logs | Events ที่มีเวลา fields และ message | อธิบายว่าเกิดอะไรขึ้นในช่วงหนึ่ง | ปริมาณโตเร็ว และเชื่อม events ยากถ้าไม่มี shared IDs |
+| Traces | Operation 1 งานซึ่งแบ่งเป็น spans ที่เชื่อมกัน | หาว่าเวลาและ failure อยู่ช่วงไหนเมื่อ request ข้ามหลาย services | ต้องส่ง context ข้าม service พร้อมควบคุม sampling และ storage |
+
+Signal เพียงแบบเดียวตอบไม่ได้ทุกคำถามครับ Metrics ช่วยให้เห็นขนาดและแนวโน้มของปัญหา Logs ให้รายละเอียดของ event ส่วน Traces เชื่อม path ที่วิ่งข้าม services เข้าด้วยกัน
 
 ประเด็นหลักของบทความนี้คือ
 
@@ -80,14 +90,14 @@ sequenceDiagram
 
 ## กำหนดหน้าที่ให้แต่ละ Signal
 
-Metrics, logs, traces และ business events ควรช่วยกันอธิบายคนละด้านของเหตุการณ์เดียวกัน
+Metrics, logs และ traces ไม่ได้แข่งกันเก็บข้อมูลชุดเดียวกันนะครับ เวลา investigate เราใช้แต่ละแบบต่อกันประมาณนี้
 
-| Signal | คำถามที่เหมาะ | ตัวอย่างที่มีประโยชน์ | สิ่งที่ไม่ควรทำ |
-|---|---|---|---|
-| Metrics | เกิดบ่อยแค่ไหน เยอะแค่ไหน หรือช้าแค่ไหน | Error ratio, p95 latency, queue age | สร้าง 1 time series ต่อ order ID |
-| Logs | Event นี้เกิดอะไรขึ้น | Payment timeout พร้อม reason และ trace ID | Copy request body ทั้งก้อน |
-| Traces | เวลาและ failure ไปอยู่ช่วงไหน | Checkout 1 ครั้งที่วิ่งผ่าน order, inventory และ payment | สร้าง span ให้ทุก function เล็ก ๆ |
-| Business events | State สำคัญอะไรเปลี่ยนไป | Payment authorized, refund requested | ใช้ debug log ทุกบรรทัดเป็น audit event |
+1. Metrics บอกว่า checkout เริ่มช้าลง และ problem กระทบกว้างแค่ไหน
+2. Traces พาเราไปเจอ payment span ที่ช้าอยู่ใน retry path
+3. Logs อธิบาย timeout, provider response และ retry decision ของ span นั้น
+4. Business events ยืนยันว่า payment หรือ order เปลี่ยน state ไปแล้ว และต้อง recovery ต่อหรือไม่
+
+ผมแยก business events ออกมา เพราะข้อมูลกลุ่มนี้ใช้เก็บ state change สำคัญ เช่น `payment_authorized` หรือ `refund_requested` เราไม่ควรดูแลเหมือน debug logs ทั่วไป
 
 {/* IMAGE PROMPT (four-signals-one-checkout.png): Wide four-panel editorial risograph illustration on warm off-white paper. Show the same checkout parcel examined through four visual lenses: a small trend chart for metrics, an event card stack for logs, a connected route for traces, and a stamped durable record for business events. No readable words, letters, numbers, logos, or watermark. Use coral red, electric cyan, charcoal, and pale yellow with visible screen-print grain and imperfect ink overlap. Each panel must have one distinct subject, no duplicated panels, no glossy UI, no photorealism, no dark background. */}
 
