@@ -132,7 +132,9 @@ sequenceDiagram
 
 State สำคัญไม่ได้มีแค่ `success` หรือ `failed` ครับ External action มี **unknown outcome** ได้ Timeout บอกเพียงว่า caller ไม่ได้รับ response เราจึงสรุปไม่ได้ว่า provider ทำงานไปแล้วหรือยัง
 
-AWS อธิบาย problem นี้ไว้ในเรื่อง idempotent APIs Caller อาจ timeout หลัง resource ถูกสร้างไปแล้ว ถ้า retry โดยไม่รู้ state ก็อาจสร้างของซ้ำ Caller-provided request ID ช่วยให้ service รู้ว่า request นี้มาจาก intent เดิม และตอบกลับด้วย result เดิมได้ [Amazon Builders’ Library](https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/)
+ผมเรียนรู้ technique นี้จาก Stripe เป็นหลักครับ Stripe ให้ client ส่ง `Idempotency-Key` ตอนสร้างหรือ update object ถ้าเกิด connection error แล้วต้อง retry request เดิม Stripe จะคืน result ที่เก็บไว้ แทนการทำ operation ซ้ำ [Stripe API Reference](https://docs.stripe.com/api/idempotent_requests)
+
+AWS อธิบาย problem เดียวกันในมุมของ idempotent APIs ได้ละเอียดขึ้น Caller อาจ timeout หลัง resource ถูกสร้างไปแล้ว ถ้า retry โดยไม่รู้ state ก็อาจสร้างของซ้ำ Caller-provided request ID ช่วยให้ service รู้ว่า request นี้มาจาก intent เดิม และตอบกลับด้วย result เดิมได้ [Amazon Builders’ Library](https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/)
 
 Recovery tools ที่ system ปกติใช้มีหลายแบบ
 
