@@ -183,6 +183,10 @@ If logs are stored in Grafana Loki, this real LogQL query finds JSON events for 
 
 Loki can parse JSON and `logfmt` fields during a query. [Grafana Loki log queries](https://grafana.com/docs/loki/latest/query/log_queries/)
 
+![Grafana Explore with the Loki data source and LogQL editor](/assets/images/blogs/practical-observability/grafana-loki-explore-official.png)
+
+Official screenshot from the [Grafana Loki tutorial](https://grafana.com/docs/loki/latest/get-started/quick-start/tutorial/). Grafana Explore supports both a visual query builder and a code editor. The UI may change, but the working flow stays similar: choose Loki, set the time range, write or build the query, and inspect the returned logs.
+
 ## Metrics Need Meaning and Real Queries
 
 Choose the metric type from the question.
@@ -275,6 +279,10 @@ With Grafana Tempo, a TraceQL query can find slow error spans for the checkout s
 
 TraceQL can filter spans by service, status, duration, and OpenTelemetry attributes. [Grafana TraceQL examples](https://grafana.com/docs/grafana/latest/datasources/tempo/query-editor/traceql-query-examples/)
 
+![Grafana Tempo search builder producing TraceQL and trace results](/assets/images/blogs/practical-observability/grafana-tempo-query-builder-official.png)
+
+Official screenshot from the [Grafana Tempo search documentation](https://grafana.com/docs/grafana/latest/datasources/tempo/query-editor/traceql-search/). The builder turns service, status, duration, and tag filters into TraceQL. This is useful when someone does not remember the query syntax yet.
+
 Do not create a span for every small function. Trace boundaries should help explain remote calls, queues, database work, and important business operations.
 
 ## Business Events Need Durable Meaning
@@ -309,6 +317,10 @@ Its main parts have different jobs:
 
 The Collector uses pipelines made from receivers, processors, and exporters. It can receive OTLP and send telemetry to one or more backends. [OpenTelemetry Collector architecture](https://opentelemetry.io/docs/collector/architecture/)
 
+![Official OpenTelemetry Collector diagram showing receivers, processors, and exporters](/assets/images/blogs/practical-observability/otel-collector-official.svg)
+
+Diagram source: [OpenTelemetry Collector documentation](https://opentelemetry.io/docs/collector/) under [CC BY 4.0](https://github.com/open-telemetry/opentelemetry.io/blob/main/LICENSE). It shows one useful point that is easy to miss: a Collector can accept several protocols, process each pipeline, and send data to different destinations.
+
 <MermaidDiagram chart={`
 flowchart LR
     A["Instrumented services\nSDK or auto-instrumentation"] -->|OTLP| R["Collector receivers"]
@@ -320,10 +332,6 @@ flowchart LR
     L --> G
     T --> G
 `} />
-
-{/* IMAGE PROMPT (otel-collector-workbench.png): Wide editorial risograph workshop scene on warm off-white paper. Show several small application machines sending three kinds of colored paper strips into one central sorting workbench; the workbench batches, filters, and routes the strips into three different storage cabinets. Use coral red, electric cyan, charcoal, and pale yellow with screen-print grain. No readable text, letters, numbers, logos, or watermark. Clear left-to-right flow, no duplicated machines, no photorealism, no glossy 3D, no dark background. */}
-
-![Applications send telemetry through an OpenTelemetry Collector to separate backends](/assets/images/blogs/practical-observability/otel-collector-workbench.png)
 
 A small Collector configuration can look like this:
 
@@ -522,9 +530,12 @@ If telemetry cannot answer these questions, collecting more of the same data wil
 - [OpenTelemetry Signals](https://opentelemetry.io/docs/concepts/signals/)
 - [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/)
 - [OpenTelemetry Collector Architecture](https://opentelemetry.io/docs/collector/architecture/)
+- [OpenTelemetry Collector Overview](https://opentelemetry.io/docs/collector/)
 - [OpenTelemetry Java Documentation](https://opentelemetry.io/docs/languages/java/)
 - [Spring Boot Observability](https://docs.spring.io/spring-boot/reference/actuator/observability.html)
 - [Prometheus Query Functions](https://prometheus.io/docs/prometheus/latest/querying/functions/)
 - [Grafana Loki Log Queries](https://grafana.com/docs/loki/latest/query/log_queries/)
+- [Grafana Loki Tutorial](https://grafana.com/docs/loki/latest/get-started/quick-start/tutorial/)
 - [Grafana TraceQL Query Examples](https://grafana.com/docs/grafana/latest/datasources/tempo/query-editor/traceql-query-examples/)
+- [Grafana Tempo Search Builder](https://grafana.com/docs/grafana/latest/datasources/tempo/query-editor/traceql-search/)
 - [Google SRE Workbook: Alerting on SLOs](https://sre.google/workbook/alerting-on-slos/)
