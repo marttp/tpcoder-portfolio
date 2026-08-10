@@ -15,9 +15,7 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 {/* IMAGE PROMPT (hero-banner.png): Wide playful clay stop-motion diorama on a bright warm-peach studio background. Show three distinct characters at an access checkpoint: a human employee with a photo badge, a cloud service as a small utility vehicle with a machine badge, and an AI agent as a friendly abstract helper with its own separate badge. A security gate checks each badge before different doors open. Use indigo, tangerine, cream, and small lime accents. Soft clay texture and rounded shapes. No text, letters, logos, watermark, photorealistic humans, dark background, flat vector style, paper collage, risograph grain, robot head, or duplicated badges. */}
 
 
-## Introduction
-
-### We Would Not Share One Admin Account with Everyone
+เวลาออกแบบ Cloud architecture เราแทบไม่ให้ employee และ services ทุกตัวใช้ admin account ชุดเดียวกันอยู่แล้วครับ แต่พอ actor ตัวใหม่เป็น AI Agent หลักการนี้กลับถูกลืมได้ง่าย
 
 สมมุติว่าในบริษัทมี actor อยู่ 3 แบบ
 
@@ -30,6 +28,8 @@ Employee มี user account ส่วน backend service มี workload identi
 อ่านถึงจุดนี้แล้วน่าจะเริ่มรู้สึกไม่ค่อยดีใช่ไหมครับ
 
 ถ้า agent แก้ ticket ใครคือคนทำ action นี้กันแน่ User, application หรือ model ถ้า key หลุด ใครเอาไปใช้ต่อได้บ้าง แล้วถ้า agent เปลี่ยนหน้าที่ เราจะถอนเฉพาะ access ของ agent ตัวนั้นอย่างไร
+
+ผมเขียนบทความนี้เพื่อชวนคุณมอง AI Agent เป็น actor อีกตัวในระบบ แล้วนำหลัก identity และ access control ที่เราใช้กับคนและ services มาปรับใช้กับ agent ครับ
 
 ใจความของบทความนี้คือ
 
