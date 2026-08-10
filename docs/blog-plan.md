@@ -7,7 +7,7 @@ The plan uses a weekly cadence. Engineering foundation articles go out on Wednes
 | Order | Published date | Article | Visual budget |
 | --- | --- | --- | --- |
 | 1 | Wednesday, 12 August 2026 | Architecture Decision Records in Practice | 4 visuals: 1 designed image + 3 Mermaid diagrams |
-| 2 | Wednesday, 19 August 2026 | Practical Observability by TP Coder | 9 visuals: 4 designed images + 5 Mermaid diagrams |
+| 2 | Wednesday, 19 August 2026 | Practical Observability by TP Coder | 11 visuals: 3 designed images + 3 official product images + 5 Mermaid diagrams |
 | 3 | Saturday, 29 August 2026 | Give Your AI Agent an Identity | 6 visuals: 2 designed images + 4 Mermaid diagrams |
 | 4 | Saturday, 5 September 2026 | How I Think About Designing Irreversible Actions in the AI Agent Era | 7 visuals: 2 designed images + 5 Mermaid diagrams |
 | 5 | Saturday, 12 September 2026 | AI Governance Is Becoming a Software Architecture Problem | 6 visuals: 2 designed images + 4 Mermaid diagrams |
@@ -85,7 +85,9 @@ Use hypothetical situations when personal experience is not available. Keep expe
 - Mermaid: observability maturity from health checks to explainable user journeys
 - Designed concept: a green dashboard beside one failed customer request
 - Designed infographic: metrics, logs, traces, and business events around one checkout
-- Designed infographic: the OpenTelemetry Collector as a processing and routing workbench
+- Official diagram: OpenTelemetry Collector receivers, processors, and exporters
+- Official screenshot: Grafana Explore with Loki and LogQL
+- Official screenshot: Grafana Tempo query builder and trace results
 
 ### Give Your AI Agent an Identity
 
