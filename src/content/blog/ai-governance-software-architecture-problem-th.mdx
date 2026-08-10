@@ -4,7 +4,7 @@ description: "ออกแบบ ownership, inventory, evaluation, approval, aud
 pubDate: "2026-09-12"
 tags:
   ["AI Governance", "Software Architecture", "AI", "Risk Management"]
-heroImage: "/assets/images/blogs/ai-governance-architecture/hero-banner.png"
+heroImage: "/assets/images/blogs/ai-governance-architecture/hero-banner.webp"
 language: "th"
 translationSlug: "ai-governance-software-architecture-problem"
 servicesNote: true
@@ -12,7 +12,7 @@ servicesNote: true
 
 import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 
-{/* IMAGE PROMPT (hero-banner.png): Use case: infographic-diagram. Wide 16:9 editorial infographic for a technical blog hero. Show one working AI support system in the center of a practical governance control room. Around it, show five concrete control stations connected to the system: an owner badge, an evidence folder, a policy gate, a monitoring screen, and an emergency stop control. Render these exact labels once and spell exactly: "OWNER", "EVIDENCE", "CONTROL", "MONITOR", "STOP". Balanced palette of warm paper, charcoal ink, amber, muted teal, and coral with no dominant lead color. Clean illustrated objects, readable hierarchy, light background, subtle print texture, not abstract geometry. No other text, no duplicate labels, no typos, no logos, no watermark, no robot, no brain, no dark background, no glossy 3D. */}
+{/* IMAGE PROMPT (hero-banner.webp): Use case: infographic-diagram. Wide 16:9 editorial infographic for a technical blog hero. Show one working AI support system in the center of a practical governance control room. Around it, show five concrete control stations connected to the system: an owner badge, an evidence folder, a policy gate, a monitoring screen, and an emergency stop control. Render these exact labels once and spell exactly: "OWNER", "EVIDENCE", "CONTROL", "MONITOR", "STOP". Balanced palette of warm paper, charcoal ink, amber, muted teal, and coral with no dominant lead color. Clean illustrated objects, readable hierarchy, light background, subtle print texture, not abstract geometry. No other text, no duplicate labels, no typos, no logos, no watermark, no robot, no brain, no dark background, no glossy 3D. */}
 
 
 ช่วงทำ AI prototype ทุกอย่างอาจดูเล็กและเดินหน้าได้ไวครับ คำถามที่ยากกว่ามักตามมาตอนคนเริ่มอยากนำ demo ไปใช้กับ production
@@ -144,9 +144,9 @@ Ownership model อาจมีคนเหล่านี้
 
 อย่า classify จาก model เพียงอย่างเดียวครับ Model ตัวเดียวกันอาจเป็น low-risk เมื่อใช้ช่วยร่างข้อความ และกลายเป็น high-risk เมื่อเชื่อมกับ payment หรือ access-control tool
 
-{/* IMAGE PROMPT (ownership-map.png): Use case: infographic-diagram. Wide landscape ownership map for an AI governance article on a light warm-paper background. Put "AI SYSTEM" in the center. Connect it to five clear role cards. Render each role and responsibility exactly once and spell exactly: "PRODUCT OWNER" with "Intended use"; "TECH OWNER" with "Runtime"; "DATA OWNER" with "Data access"; "RISK OWNER" with "Risk controls"; "OPERATOR" with "Incident response". Use simple concrete icons such as product brief, server, database, shield checklist, and incident headset. Balanced charcoal, amber, muted teal, coral, and cream; no dominant lead color. Clean vector-like editorial infographic, strong hierarchy, readable text, generous spacing. No other text, no duplicate cards, no typos, no logos, no watermark, no abstract shapes, no robot, no dark background, no glossy 3D. */}
+{/* IMAGE PROMPT (ownership-map.webp): Use case: infographic-diagram. Wide landscape ownership map for an AI governance article on a light warm-paper background. Put "AI SYSTEM" in the center. Connect it to five clear role cards. Render each role and responsibility exactly once and spell exactly: "PRODUCT OWNER" with "Intended use"; "TECH OWNER" with "Runtime"; "DATA OWNER" with "Data access"; "RISK OWNER" with "Risk controls"; "OPERATOR" with "Incident response". Use simple concrete icons such as product brief, server, database, shield checklist, and incident headset. Balanced charcoal, amber, muted teal, coral, and cream; no dominant lead color. Clean vector-like editorial infographic, strong hierarchy, readable text, generous spacing. No other text, no duplicate cards, no typos, no logos, no watermark, no abstract shapes, no robot, no dark background, no glossy 3D. */}
 
-![Ownership map ของ AI system ตั้งแต่ intended use ไปจนถึง incident response](/assets/images/blogs/ai-governance-architecture/ownership-map.png)
+![Ownership map ของ AI system ตั้งแต่ intended use ไปจนถึง incident response](/assets/images/blogs/ai-governance-architecture/ownership-map.webp)
 
 ## Build a Release Evidence Bundle
 
@@ -180,9 +180,9 @@ rollback_to: support-agent-2026-09-03.1
 
 วิธีนี้ไม่ได้ทำให้ AI system deterministic แต่ทำให้เราระบุ production state แต่ละชุดได้ และนำไปเทียบกับ version อื่นได้
 
-{/* IMAGE PROMPT (release-evidence-bundle.png): Use case: infographic-diagram. Wide landscape technical infographic on a light neutral paper background. Show one central folder labeled "RELEASE ID" collecting seven evidence cards labeled exactly once: "MODEL", "PROMPT", "DATA", "TOOLS", "POLICY", "EVAL", "APPROVAL". From the folder, show three clear outgoing paths labeled exactly once: "DEPLOY", "MONITOR", "ROLLBACK". Use concrete folder, document, database, tool, shield, test report, approval stamp, deployment, chart, and rollback icons. Balanced charcoal, amber, muted teal, coral, and cream with no dominant lead color. Clean editorial vector-like style, readable typography, generous spacing, subtle paper texture. No title, no other text, no duplicate labels, no typos, no logos, no watermark, no abstract geometry, no robot, no dark background, no glossy 3D. */}
+{/* IMAGE PROMPT (release-evidence-bundle.webp): Use case: infographic-diagram. Wide landscape technical infographic on a light neutral paper background. Show one central folder labeled "RELEASE ID" collecting seven evidence cards labeled exactly once: "MODEL", "PROMPT", "DATA", "TOOLS", "POLICY", "EVAL", "APPROVAL". From the folder, show three clear outgoing paths labeled exactly once: "DEPLOY", "MONITOR", "ROLLBACK". Use concrete folder, document, database, tool, shield, test report, approval stamp, deployment, chart, and rollback icons. Balanced charcoal, amber, muted teal, coral, and cream with no dominant lead color. Clean editorial vector-like style, readable typography, generous spacing, subtle paper texture. No title, no other text, no duplicate labels, no typos, no logos, no watermark, no abstract geometry, no robot, no dark background, no glossy 3D. */}
 
-![Release evidence bundle เชื่อม model, prompt, data, tools, policy, eval และ approval เข้ากับ release เดียว](/assets/images/blogs/ai-governance-architecture/release-evidence-bundle.png)
+![Release evidence bundle เชื่อม model, prompt, data, tools, policy, eval และ approval เข้ากับ release เดียว](/assets/images/blogs/ai-governance-architecture/release-evidence-bundle.webp)
 
 ## Put Evaluation in the Release Path
 
@@ -334,9 +334,9 @@ Product opportunity ไม่ได้อยู่ที่ dashboard ซึ่�
 
 ISO/IEC 42001 ใช้แนวคิด Plan-Do-Check-Act สำหรับการปรับ AI management system ต่อเนื่อง ส่วน NIST AI RMF ก็เน้นว่า risk management ต้องทำตลอด lifecycle Governance architecture จึงไม่ควรจบที่ approval ก่อน launch เพียงครั้งเดียว [ISO/IEC 42001 overview](https://www.iso.org/artificial-intelligence/ai-management-systems), [NIST AI RMF Core](https://airc.nist.gov/airmf-resources/airmf/5-sec-core/)
 
-{/* IMAGE PROMPT (governance-operating-loop.png): Use case: infographic-diagram. Wide landscape infographic titled exactly "AI GOVERNANCE OPERATING LOOP". Show one practical customer-support AI system in the center. Around it, create a clear clockwise operating loop with seven labeled stations, each rendered exactly once and spelled exactly: "INVENTORY", "RISK", "RELEASE", "RUN", "MONITOR", "RESPOND", "REVIEW". Use concrete icons: system registry, risk checklist, release evidence folder, guarded runtime API, behavior dashboard, incident controls, and review meeting. Show arrows between every station and back to inventory. Balanced warm paper, charcoal, amber, muted teal, and coral with no dominant lead color. Clean self-describing editorial infographic, readable typography, generous spacing, subtle print texture. No other text, no duplicate labels, no typos, no logos, no watermark, no abstract-only shapes, no robot, no dark background, no glossy 3D. */}
+{/* IMAGE PROMPT (governance-operating-loop.webp): Use case: infographic-diagram. Wide landscape infographic titled exactly "AI GOVERNANCE OPERATING LOOP". Show one practical customer-support AI system in the center. Around it, create a clear clockwise operating loop with seven labeled stations, each rendered exactly once and spelled exactly: "INVENTORY", "RISK", "RELEASE", "RUN", "MONITOR", "RESPOND", "REVIEW". Use concrete icons: system registry, risk checklist, release evidence folder, guarded runtime API, behavior dashboard, incident controls, and review meeting. Show arrows between every station and back to inventory. Balanced warm paper, charcoal, amber, muted teal, and coral with no dominant lead color. Clean self-describing editorial infographic, readable typography, generous spacing, subtle print texture. No other text, no duplicate labels, no typos, no logos, no watermark, no abstract-only shapes, no robot, no dark background, no glossy 3D. */}
 
-![AI Governance operating loop ตั้งแต่ inventory ไปจนถึง review แล้ววนกลับมาอัปเดตระบบ](/assets/images/blogs/ai-governance-architecture/governance-operating-loop.png)
+![AI Governance operating loop ตั้งแต่ inventory ไปจนถึง review แล้ววนกลับมาอัปเดตระบบ](/assets/images/blogs/ai-governance-architecture/governance-operating-loop.webp)
 
 AI Governance ไม่ควรทำให้ทุก experiment ต้องผ่าน approval 10 ชั้นครับ เริ่มจาก AI system 1 ตัว ระบุ owner และ risk ให้ได้ เชื่อม release กับ evidence วาง runtime control แล้วลองซ้อม disable, rollback และ incident path ก่อน จากนั้นค่อยขยายเมื่อ impact และจำนวน systems เพิ่มขึ้น
 
