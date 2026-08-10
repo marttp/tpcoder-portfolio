@@ -183,7 +183,11 @@ Log ที่ใช้สืบปัญหาได้ควรเป็น eve
 
 Loki รองรับการ parse JSON และ `logfmt` ระหว่าง query [Grafana Loki log queries](https://grafana.com/docs/loki/latest/query/log_queries/)
 
-## Metrics ต้องตอบคำถามได้ และ Query ต้องใช้ได้จริง
+![Grafana Explore พร้อม Loki data source และ LogQL editor](/assets/images/blogs/practical-observability/grafana-loki-explore-official.png)
+
+ภาพจาก [Grafana Loki tutorial](https://grafana.com/docs/loki/latest/get-started/quick-start/tutorial/) ครับ Grafana Explore มีทั้ง visual query builder และ code editor หน้าตาของ UI อาจเปลี่ยนไปตาม version แต่ flow หลักยังคล้ายเดิม คือเลือก Loki กำหนด time range เขียนหรือประกอบ query แล้วค่อยดู logs ที่ได้กลับมา
+
+## Metrics ต้องตอบคำถามได้ และ Query ต้องใช้ต่อได้
 
 เลือก metric type จากคำถามที่อยากตอบครับ
 
@@ -275,6 +279,10 @@ Slow checkout 1 ครั้งอาจมีข้อมูลแบบนี�
 
 TraceQL ใช้ filter spans จาก service, status, duration และ OpenTelemetry attributes ได้ [Grafana TraceQL examples](https://grafana.com/docs/grafana/latest/datasources/tempo/query-editor/traceql-query-examples/)
 
+![Grafana Tempo search builder ที่สร้าง TraceQL และแสดง trace results](/assets/images/blogs/practical-observability/grafana-tempo-query-builder-official.png)
+
+ภาพจาก [Grafana Tempo search documentation](https://grafana.com/docs/grafana/latest/datasources/tempo/query-editor/traceql-search/) ครับ Builder จะเปลี่ยน filters เช่น service, status, duration และ tags ให้เป็น TraceQL เหมาะกับคนที่ยังจำ query syntax ไม่ได้ทั้งหมด
+
 ไม่ต้องสร้าง span ให้ทุก function ครับ เลือก boundary ที่ช่วยอธิบาย remote call, queue, database และ business operation สำคัญก็พอ
 
 ## Business Events ต้องมีความหมายที่คงอยู่
@@ -309,6 +317,10 @@ OpenTelemetry ไม่ใช่ dashboard และไม่ใช่ storage d
 
 Collector ใช้ pipeline ที่ประกอบด้วย receivers, processors และ exporters เพื่อรับ OTLP แล้วส่ง telemetry ไปยัง backends 1 ตัวหรือหลายตัว [OpenTelemetry Collector architecture](https://opentelemetry.io/docs/collector/architecture/)
 
+![OpenTelemetry Collector diagram จาก official documentation ซึ่งแสดง receivers, processors และ exporters](/assets/images/blogs/practical-observability/otel-collector-official.svg)
+
+ภาพจาก [OpenTelemetry Collector documentation](https://opentelemetry.io/docs/collector/) ภายใต้ [CC BY 4.0](https://github.com/open-telemetry/opentelemetry.io/blob/main/LICENSE) ครับ ภาพนี้ช่วยให้เห็นว่า Collector 1 ตัวรับข้อมูลได้หลาย protocol จากนั้นค่อย process แต่ละ pipeline แล้วส่งออกไปคนละปลายทาง
+
 <MermaidDiagram chart={`
 flowchart LR
     A["Instrumented services\nSDK or auto-instrumentation"] -->|OTLP| R["Collector receivers"]
@@ -320,10 +332,6 @@ flowchart LR
     L --> G
     T --> G
 `} />
-
-{/* IMAGE PROMPT (otel-collector-workbench.png): Wide editorial risograph workshop scene on warm off-white paper. Show several small application machines sending three kinds of colored paper strips into one central sorting workbench; the workbench batches, filters, and routes the strips into three different storage cabinets. Use coral red, electric cyan, charcoal, and pale yellow with screen-print grain. No readable text, letters, numbers, logos, or watermark. Clear left-to-right flow, no duplicated machines, no photorealism, no glossy 3D, no dark background. */}
-
-![Applications ส่ง telemetry ผ่าน OpenTelemetry Collector ไปยัง backends แยกกัน](/assets/images/blogs/practical-observability/otel-collector-workbench.png)
 
 Collector configuration ขนาดเล็กอาจมีหน้าตาแบบนี้
 
@@ -522,9 +530,12 @@ Technology เปลี่ยนได้เรื่อย ๆ ส่วนค�
 - [OpenTelemetry Signals](https://opentelemetry.io/docs/concepts/signals/)
 - [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/)
 - [OpenTelemetry Collector Architecture](https://opentelemetry.io/docs/collector/architecture/)
+- [OpenTelemetry Collector Overview](https://opentelemetry.io/docs/collector/)
 - [OpenTelemetry Java Documentation](https://opentelemetry.io/docs/languages/java/)
 - [Spring Boot Observability](https://docs.spring.io/spring-boot/reference/actuator/observability.html)
 - [Prometheus Query Functions](https://prometheus.io/docs/prometheus/latest/querying/functions/)
 - [Grafana Loki Log Queries](https://grafana.com/docs/loki/latest/query/log_queries/)
+- [Grafana Loki Tutorial](https://grafana.com/docs/loki/latest/get-started/quick-start/tutorial/)
 - [Grafana TraceQL Query Examples](https://grafana.com/docs/grafana/latest/datasources/tempo/query-editor/traceql-query-examples/)
+- [Grafana Tempo Search Builder](https://grafana.com/docs/grafana/latest/datasources/tempo/query-editor/traceql-search/)
 - [Google SRE Workbook: Alerting on SLOs](https://sre.google/workbook/alerting-on-slos/)
