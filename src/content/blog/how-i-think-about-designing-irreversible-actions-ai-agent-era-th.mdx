@@ -92,11 +92,22 @@ flowchart TD
 
 Classification นี้มีผลกับ design ครับ Reversible work เปิดให้ automate ได้มากกว่า Compensatable work ต้องมี recovery path ที่ test แล้ว ส่วน irreversible work ต้องมี control ที่เข้มก่อนข้าม boundary
 
-## How a Normal System Handles Failure
+## Map the Existing Deterministic Workflow First
 
 สมมุติว่า customer-support system ทำ refund และส่ง email หา customer ได้
 
 ถ้ายังไม่มี agent พนักงานจะเลือก order กรอก amount เลือก reason ดู message ก่อนส่ง แล้วค่อยกด confirm
+
+ก่อนเพิ่ม AI Agent เราควรแยก behavior เดิมของ workflow นี้ให้ได้ก่อนครับ
+
+| Existing behavior | Action class | เหตุผล | Control และ recovery |
+|---|---|---|---|
+| Save หรือแก้ draft note | Reversible | ระบบเก็บ version ก่อนหน้าไว้และ restore ได้ | Version history, authorization และ audit |
+| เปลี่ยน case status | Reversible | State machine พากลับไปยัง state ก่อนหน้าได้ ถ้า business rule อนุญาต | Allowed transitions และ audit |
+| Capture หรือ refund payment | Compensatable | Financial event เดิมยังอยู่ ต้องใช้ event ใหม่แก้ business effect | Idempotency, limit, reconciliation และ manual recovery |
+| ส่ง email หา customer | Irreversible | หลัง email ถูกส่ง เราบังคับให้ recipient ลบหรือไม่อ่านไม่ได้ | Preview, approved template และ approval ก่อนส่ง |
+
+Action class เหล่านี้ควรถูกกำหนดไว้ใน tool definition หรือ action registry ของระบบ ไม่ควรให้ employee, UI หรือ AI Agent เลือกใหม่เองทุกครั้ง
 
 Backend ไม่ควรเชื่อข้อมูลจากหน้าจอเพียงอย่างเดียว Backend ยังต้อง check ว่า
 
@@ -144,9 +155,19 @@ Recovery tools ที่ system ปกติใช้มีหลายแบบ
 - **reconciliation:** เทียบ internal state กับ external source of truth
 - **manual recovery:** ให้ operator มี evidence และเครื่องมือพอสำหรับจัดการ case ให้จบ
 
-## Then Add a Non-Deterministic Agent
+## Add the AI Agent to the Same Workflow
 
 บริษัทเพิ่ม AI Agent เข้ามา Agent อ่าน support conversation ดู order เสนอ refund และ draft email
+
+Agent อาจเสนอหลาย actions จาก request เดียว แต่ deterministic system จะจัดการแต่ละ action ตาม class ที่กำหนดไว้แล้ว
+
+| Agent proposal | Existing action class | Deterministic response |
+|---|---|---|
+| `case.note.update` | Reversible | Validate access แล้ว save พร้อม version history |
+| `payment.refund` | Compensatable | Check policy, amount และ idempotency จากนั้นขอ approval เมื่อเกิน limit |
+| `customer.email.send` | Irreversible | สร้าง preview และหยุดรอ confirmation ก่อนส่ง |
+
+Agent มีหน้าที่ตีความ request และเตรียม proposal ส่วน backend เป็นคนบอกว่า action นี้อยู่ class ไหน ใคร approve ได้ และต้องเตรียม recovery แบบใดครับ
 
 Agent มี failure mode เพิ่มจาก backend code ทั่วไป
 
@@ -188,7 +209,8 @@ Agent มีประโยชน์กับงานที่ต้องต�
 flowchart LR
     U["User request"] --> A["Non-deterministic agent\nUnderstand + propose"]
     A --> P["Structured action proposal"]
-    P --> G["Deterministic safety gate"]
+    P --> C["Action definition\nClass + owner + recovery"]
+    C --> G["Deterministic safety gate"]
     G -->|Allowed| X["Execution API"]
     G -->|Needs review| H["Human approval"]
     G -->|Invalid or unsafe| D["Deny + explain"]
@@ -248,6 +270,8 @@ Limit บางข้อควรเป็น hard rule
 - ห้าม access raw credentials
 
 Model อธิบายเหตุผลที่ขอ exception ได้ แต่อนุมัติ exception ให้ตัวเองไม่ได้
+
+OWASP มี guidance สำหรับ agentic applications ครอบคลุม goal hijacking, tool misuse, identity abuse และ unexpected code execution Mitigation ที่แนะนำรวมถึง confirmation ผ่าน human approval, policy engine หรือ platform guardrail เมื่อ goal เปลี่ยนหรือ action เริ่มไม่ปลอดภัย [OWASP Agentic Security Initiative](https://genai.owasp.org/initiatives/agentic-security-initiative/)
 
 ## Design the Recovery Before the Happy Path
 
@@ -317,22 +341,4 @@ Design แบบนี้ช่วยให้ทีมค่อย ๆ เพ�
 4. Low-risk cases ทำงานได้ภายใต้ limit ที่เข้ม
 5. ทีมเพิ่มหรือลด autonomy จาก production evidence
 
-## What I Would Choose
-
-ผมจะไม่เริ่มด้วย fully autonomous agent สำหรับ high-impact work
-
-ผมจะเริ่มจาก action ที่แคบ 1 อัน แล้วทำ control boundary ให้เห็นชัดว่าใครรับผิดชอบส่วนไหน
-
-- Agent เสนอ
-- Policy validate
-- Risk เป็นตัวกำหนดว่าต้อง approval หรือไม่
-- Deterministic API เป็นคน execute
-- System บันทึก result
-- Reconciliation แก้ uncertainty
-- คนหยุดและทำ recovery ให้ workflow ได้
-
-OWASP มี guidance สำหรับ agentic applications ครอบคลุม goal hijacking, tool misuse, identity abuse และ unexpected code execution Mitigation ที่แนะนำรวมถึง confirmation ผ่าน human approval, policy engine หรือ platform guardrail เมื่อ goal เปลี่ยนหรือ action เริ่มไม่ปลอดภัย [OWASP Agentic Security Initiative](https://genai.owasp.org/initiatives/agentic-security-initiative/)
-
-AI เปลี่ยน actor ที่ช่วยเลือก action แต่ไม่ได้ทำให้งานเดิมเรื่อง safe side effect หายไป
-
-ยิ่ง action ย้อนกลับยาก ผมยิ่งไม่วาง authority ไว้กับ probabilistic decision ปล่อยให้ agent ช่วยเรื่อง context และ judgment ส่วน final safety boundary ให้อยู่ในระบบที่ test, audit และทำ recovery ได้ครับ
+เมื่อวางแบบนี้ AI Agent จะเข้ามาช่วยตีความและเสนอ action ได้ โดยไม่ต้องสร้าง transaction path ชุดใหม่ ส่วน final safety boundary ยังอยู่ในระบบที่ test, audit และทำ recovery ได้ครับ
