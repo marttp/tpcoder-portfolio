@@ -15,11 +15,7 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 {/* IMAGE PROMPT (hero-banner.png): Wide modern graphic-novel storyboard on a light parchment background. Show an AI agent represented as a small masked courier approaching three action doors: a circular return door, a repair workshop door, and a one-way launch door. A calm control operator and a mechanical safety gate stand before the one-way door. Use black ink outlines, vermilion red, amber, cream, and small turquoise accents. Dynamic panels but clean reading order. No text, letters, logos, watermark, gore, dark background, clay style, paper-note collage, risograph transit map, glossy 3D, or robot head. */}
 
 
-## Introduction
-
-### Information Systems Already Do Things We Cannot Easily Undo
-
-A normal information system can:
+When people discuss AI agents, they often worry that an agent may take an action that cannot be undone. This problem did not start with AI. A normal information system can already:
 
 - send an email;
 - move money;
@@ -35,6 +31,8 @@ The request may time out after the external system accepted it. A worker may cra
 Distributed systems already need validation, idempotency, state machines, audit history, reconciliation, and recovery.
 
 Now place an AI agent above the same APIs. The system still has every old failure mode. It also has a new one: **the agent may choose the wrong action even when every service works correctly.**
+
+I wrote this article to compare these old system failures with the uncertainty that an AI agent adds. Then we can decide where control and recovery should live.
 
 This leads to my main point:
 

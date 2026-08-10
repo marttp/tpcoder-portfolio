@@ -15,15 +15,11 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 {/* IMAGE PROMPT (hero-banner.png): Wide 16:9 editorial hero for Practical AI System Design. Modern flat 2D cartoon infographic on a warm-white and pale-blue background. Blue-led palette with cobalt, sky blue, soft cyan, and small amber and coral accents. Show a clear lifecycle from a user need to DATA, MODEL, ACTION, and EVALUATE, then return feedback to DATA. Add small symbols for retrieval, an authorized tool, monitoring, cost, and safety. Use each exact label once. No other words, logos, watermarks, dark background, purple-led palette, glossy 3D, photorealism, robot or brain imagery, duplicated objects, or cropped elements. */}
 
 
-## Introduction
-
-### Why AI System Design Needs a Different Guide
-
-Calling a model API is easy. Building a product around that call is the larger job.
+If you are starting an AI product, the first model API call may take only a short time. The larger job starts when people use the product and a team must operate it.
 
 The product needs data, APIs, storage, security, monitoring, cost controls, evaluation, and a way to recover when the model gives a poor answer. If the system can use tools, it also needs limits on what the model may do.
 
-This guide puts these parts in a practical order.
+I wrote this guide to put these parts in a practical order. We will start from the product problem, then add what the system needs to run safely in production.
 
 The central idea is:
 

@@ -15,9 +15,7 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 {/* IMAGE PROMPT (hero-banner.png): Wide playful clay stop-motion diorama on a bright warm-peach studio background. Show three distinct characters at an access checkpoint: a human employee with a photo badge, a cloud service as a small utility vehicle with a machine badge, and an AI agent as a friendly abstract helper with its own separate badge. A security gate checks each badge before different doors open. Use indigo, tangerine, cream, and small lime accents. Soft clay texture and rounded shapes. No text, letters, logos, watermark, photorealistic humans, dark background, flat vector style, paper collage, risograph grain, robot head, or duplicated badges. */}
 
 
-## Introduction
-
-### We Would Not Share One Admin Account with Everyone
+In cloud architecture, we would not give every employee and service the same admin account. Yet this rule is easy to forget when the new actor is an AI agent.
 
 Imagine a company with three kinds of actors:
 
@@ -30,6 +28,8 @@ The employee has a user account. The backend service has a workload identity. Th
 That last part should feel uncomfortable.
 
 If the agent changes a ticket, who performed the action? Was it the user, the application, or the model? If the key leaks, what can use it? If the agent changes jobs, how do we remove only its access?
+
+I wrote this article to treat an AI agent as another actor in the system. We can then adapt the identity and access rules that we already use for people and services.
 
 My main idea is:
 
