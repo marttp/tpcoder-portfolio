@@ -1,9 +1,9 @@
 ---
-title: "Practical Observability"
-description: "A practical guide to using logs, metrics, traces, SLOs, and alerts to explain what users experience in a running system."
+title: "Practical Observability by TP Coder"
+description: "A practical guide to logs, metrics, traces, OpenTelemetry, SLOs, queries, technology choices, and incident investigation."
 pubDate: "2026-08-19"
 tags:
-  ["Observability", "Software Architecture", "Backend", "SRE"]
+  ["Observability", "OpenTelemetry", "Software Architecture", "Backend", "SRE"]
 heroImage: "/assets/images/blogs/practical-observability/hero-banner.png"
 language: "en"
 translationSlug: "practical-observability-th"
@@ -17,7 +17,7 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 
 ## The Dashboard Is Green. The User Still Failed.
 
-Suppose a customer says checkout took 18 seconds and then failed. You open the dashboard.
+Suppose a customer says checkout took 18 seconds and ended with an error. You open the dashboard.
 
 - CPU is normal.
 - Memory is normal.
@@ -26,20 +26,27 @@ Suppose a customer says checkout took 18 seconds and then failed. You open the d
 
 The dashboard is green. The customer still had a bad result.
 
-Monitoring can tell us that a known limit was crossed. Observability should also help us investigate a question we did not prepare in advance.
+Monitoring tells us when a known condition crosses a limit. Observability should also help us investigate a question that nobody prepared in advance.
 
-OpenTelemetry describes observability as the ability to understand a system from the signals it creates. These signals help us ask why something is happening. The system needs useful instrumentation, such as traces, metrics, and logs, to support that work. [OpenTelemetry Observability Primer](https://opentelemetry.io/docs/concepts/observability-primer/)
+| Monitoring asks | Observability helps us ask next |
+|---|---|
+| Is the service up? | Why did this checkout fail? |
+| Is CPU above 80%? | Which dependency made this request slow? |
+| Did the error rate cross a threshold? | Which users, versions, or payment providers were affected? |
+| Is the queue growing? | Which jobs are stuck, and can we replay them safely? |
 
-My main point is:
+OpenTelemetry describes observability as the ability to understand a system from the signals it creates. It supports traces, metrics, logs, and context that can connect those signals. [OpenTelemetry Observability Primer](https://opentelemetry.io/docs/concepts/observability-primer/)
+
+My main point is simple:
 
 **Observability starts from a user journey and a question. It does not start from collecting every signal a tool can store.**
 
-## Start with One User Journey
+## Start with One Checkout Journey
 
-Let us use an E-commerce checkout:
+This article follows one E-commerce checkout:
 
-1. The customer submits an order.
-2. The order service checks inventory.
+1. The customer places an order.
+2. The order service reserves inventory.
 3. The payment service authorizes payment.
 4. The order service confirms the order.
 5. A worker sends the receipt.
@@ -60,85 +67,217 @@ sequenceDiagram
     O-->>C: Order accepted
 `} />
 
-Before choosing a tool, write the questions the team should answer:
+Before choosing a tool, write down the questions the team must answer:
 
-- Did the customer receive a successful response?
+- Did the customer receive a useful response?
 - How long did the full checkout take?
-- Which dependency used most of that time?
+- Which dependency used most of the time?
 - Did payment succeed while order confirmation failed?
 - Did a retry create another payment attempt?
-- Is one region, version, seller, or payment provider affected?
+- Did the problem affect one region, version, seller, or provider?
 
-Now each signal has a job.
+The questions decide what to record. The tools come later.
 
-## The Smallest Useful View
+## Give Each Signal a Clear Job
 
-For the first version, I would collect only what helps run the journey:
+Metrics, logs, traces, and business events should explain different parts of the same story.
 
-- request count;
-- success and failure count;
-- latency distribution;
+| Signal | Best question | Good example | Weak use |
+|---|---|---|---|
+| Metrics | How often, how much, or how slow? | Error ratio, p95 latency, queue age | One series per order ID |
+| Logs | What happened in one event? | Payment timeout with reason and trace ID | Copying the whole request body |
+| Traces | Where did time or failure happen? | One checkout across order, inventory, and payment | Adding a span for every tiny function |
+| Business events | What important state changed? | Payment authorized, refund requested | Treating every debug line as an audit event |
+
+{/* IMAGE PROMPT (four-signals-one-checkout.png): Wide four-panel editorial risograph illustration on warm off-white paper. Show the same checkout parcel examined through four visual lenses: a small trend chart for metrics, an event card stack for logs, a connected route for traces, and a stamped durable record for business events. No readable words, letters, numbers, logos, or watermark. Use coral red, electric cyan, charcoal, and pale yellow with visible screen-print grain and imperfect ink overlap. Each panel must have one distinct subject, no duplicated panels, no glossy UI, no photorealism, no dark background. */}
+
+![The same checkout viewed through metrics, logs, traces, and business events](/assets/images/blogs/practical-observability/four-signals-one-checkout.png)
+
+The first useful version can stay small:
+
+- request, success, and failure counts;
+- latency histograms;
 - dependency errors and latency;
-- structured logs with an operation ID;
+- structured logs with shared context;
+- end-to-end traces for useful boundaries;
 - queue age and failed jobs;
-- deployment version.
+- service and deployment version.
 
-This already answers several known questions. It can show whether checkout is failing, whether latency changed after a release, and whether receipt jobs are waiting too long.
+This is enough to begin an investigation. It is not enough to answer every question, and that is okay.
 
-This view is still limited. An aggregate metric may say that p95 latency is 800 milliseconds. A small group of customers may still wait 18 seconds. A log may show a payment timeout but not the inventory call before it. A trace may show the path but not explain why a business rule rejected the order.
+## Design the Context Before the Dashboard
 
-That is why the signals work together.
+Signals become useful when they can point back to the same operation.
 
-## Give Each Signal a Job
+Useful fields often include:
 
-### Metrics show shape over time
+- `trace_id` and `span_id`;
+- `request_id` or `operation_id`;
+- `order_id`, `payment_attempt_id`, or `job_id`;
+- `service.name` and `service.version`;
+- deployment environment and region;
+- dependency name;
+- outcome and error category.
 
-Metrics are good for rates, distributions, and trends:
+<MermaidDiagram chart={`
+flowchart LR
+    A["Order API\ntrace_id + order_id"] --> I["Inventory\nsame trace_id"]
+    I --> P["Payment\nsame trace_id"]
+    P --> Q["Queue message\ntrace_id + order_id"]
+    Q --> W["Receipt worker\nsame operation context"]
+`} />
 
-- requests per second;
-- error ratio;
-- p50, p95, and p99 latency;
-- queue depth and age;
-- connection-pool usage;
-- payment-provider timeouts.
+OpenTelemetry Semantic Conventions give common names to services, HTTP calls, databases, messaging, and other operations. A shared naming scheme makes data easier to query across languages and teams. [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/)
 
-Use metrics to see **that** a problem exists and how large it is.
+OpenTelemetry Baggage can carry selected context across service boundaries. However, baggage may travel in headers and has no built-in integrity check. Do not put secrets in it. Do not use baggage as trusted authorization data. [OpenTelemetry Baggage](https://opentelemetry.io/docs/concepts/signals/baggage/)
 
-Do not use an average when the slow tail matters. An average can hide the users who wait much longer than everyone else.
+High-cardinality values such as `order_id` are useful in logs and traces. They are usually dangerous as metric labels because they can create millions of time series.
 
-### Logs explain an event
+## A Log Format the Team Can Query
 
-Structured logs should describe a useful event with fields that a machine can search:
+A useful log is an event with stable fields. It should not be a sentence that only the author understands.
+
+Here is one JSON log for a failed payment authorization:
 
 ```json
 {
-  "event": "payment_authorization_failed",
+  "timestamp": "2026-08-10T09:42:17.381Z",
+  "severity": "ERROR",
+  "service.name": "checkout-api",
+  "service.version": "2026.08.10-3",
+  "deployment.environment.name": "production",
+  "event.name": "payment.authorization.failed",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "span_id": "00f067aa0ba902b7",
+  "request_id": "req_91ab",
   "order_id": "ord_84f2",
   "payment_attempt_id": "pay_18c1",
   "provider": "provider_a",
-  "reason": "timeout",
+  "outcome": "timeout",
+  "error.type": "provider_timeout",
   "duration_ms": 5032,
-  "trace_id": "4bf92f3577b34da6"
+  "retryable": true
 }
 ```
 
-Do not log passwords, tokens, full card data, or sensitive customer details. A useful log is not a copy of every input.
+The exact schema can differ. The important part is consistency.
 
-### Traces connect the path
+| Field group | Why keep it |
+|---|---|
+| Time and severity | Place the event in the incident timeline |
+| Service and version | Find the code and release that produced it |
+| Trace and operation IDs | Move from a log to the full request path |
+| Business IDs | Find the affected order or payment attempt |
+| Outcome and error type | Group failures without parsing prose |
+| Duration and retry state | Explain latency and recovery behavior |
 
-A distributed trace connects work across services. Each span represents one operation and records its timing, status, and useful attributes.
+Do not log passwords, access tokens, full card data, or sensitive customer data. Useful logging does not mean copying every input field.
 
-For the slow checkout, the trace may show:
+If logs are stored in Grafana Loki, this real LogQL query finds JSON events for one trace:
 
-- inventory: 120 ms;
-- order database: 45 ms;
-- payment provider: 5,032 ms;
-- payment retry: another 5,010 ms;
-- response mapping: 20 ms.
+```logql
+{service_name="checkout-api"}
+| json
+| trace_id="4bf92f3577b34da6a3ce929d0e0e4736"
+```
 
-The trace turns **checkout was slow** into **two payment attempts used ten seconds**.
+Loki can parse JSON and `logfmt` fields during a query. [Grafana Loki log queries](https://grafana.com/docs/loki/latest/query/log_queries/)
 
-### Events record meaningful changes
+## Metrics Need Meaning and Real Queries
+
+Choose the metric type from the question.
+
+| Metric type | Use it for | Checkout example |
+|---|---|---|
+| Counter | A total that only increases | Requests, failures, retries |
+| Histogram | A distribution | Request and provider latency |
+| Gauge | A value that rises and falls | Queue depth, active connections |
+
+The examples below use PromQL and assume the exported histogram is named `http_server_request_duration_seconds`. Your backend may normalize OpenTelemetry or Micrometer names differently, so inspect the exported series before copying a query.
+
+### Request rate
+
+```promql
+sum(
+  rate(http_server_request_duration_seconds_count{
+    service_name="checkout-api",
+    http_route="/checkout"
+  }[5m])
+)
+```
+
+`rate()` turns a counter into the average per-second rate over the selected window.
+
+### Server error ratio
+
+```promql
+sum(
+  rate(http_server_request_duration_seconds_count{
+    service_name="checkout-api",
+    http_route="/checkout",
+    http_response_status_code=~"5.."
+  }[5m])
+)
+/
+sum(
+  rate(http_server_request_duration_seconds_count{
+    service_name="checkout-api",
+    http_route="/checkout"
+  }[5m])
+)
+```
+
+This gives the ratio of HTTP 5xx responses. It does not include every business failure. A rejected payment may return HTTP 200 with a business result, so product outcomes may need their own counter.
+
+### p95 checkout latency
+
+```promql
+histogram_quantile(
+  0.95,
+  sum by (le) (
+    rate(http_server_request_duration_seconds_bucket{
+      service_name="checkout-api",
+      http_route="/checkout"
+    }[5m])
+  )
+)
+```
+
+Prometheus documents `histogram_quantile()` for calculating a quantile from histogram buckets. The `le` label must remain in the aggregation for classic histograms. [Prometheus query functions](https://prometheus.io/docs/prometheus/latest/querying/functions/#histogram_quantile)
+
+Do not look only at averages. An average can stay calm while a small group of customers waits much longer.
+
+## Traces Connect the Request Path
+
+A distributed trace follows one operation across services. Each span represents one useful unit of work with timing, status, and attributes.
+
+One slow checkout may contain:
+
+| Span | Duration | What it tells us |
+|---|---:|---|
+| Inventory reserve | 120 ms | Inventory is not the slow part |
+| Order database | 45 ms | Database time is small |
+| Payment provider attempt 1 | 5,032 ms | The first call reached its timeout |
+| Payment provider attempt 2 | 5,010 ms | Retry added another 5 seconds |
+| Response mapping | 20 ms | Local response work is small |
+
+Now the team can change the question from **checkout is slow** to **why did payment retry after a 5-second timeout?**
+
+With Grafana Tempo, a TraceQL query can find slow error spans for the checkout service:
+
+```traceql
+{
+  resource.service.name = "checkout-api" &&
+  status = error &&
+  duration > 1s
+}
+```
+
+TraceQL can filter spans by service, status, duration, and OpenTelemetry attributes. [Grafana TraceQL examples](https://grafana.com/docs/grafana/latest/datasources/tempo/query-editor/traceql-query-examples/)
+
+Do not create a span for every small function. Trace boundaries should help explain remote calls, queues, database work, and important business operations.
+
+## Business Events Need Durable Meaning
 
 Some events deserve a durable history outside normal application logs:
 
@@ -149,65 +288,146 @@ Some events deserve a durable history outside normal application logs:
 - deployment started;
 - feature flag changed.
 
-Events can help with audit, recovery, and business investigation. They should have a clear owner and retention rule.
+These events support audit, recovery, and business investigation. They need an owner, schema, retention rule, and clear delivery expectation.
 
-<MermaidDiagram chart={`
-flowchart TD
-    Q["What happened to this checkout?"] --> M["Metrics show size and timing"]
-    Q --> L["Logs explain events"]
-    Q --> T["Trace connects the path"]
-    Q --> E["Events record important changes"]
-    M --> A["One explanation"]
-    L --> A
-    T --> A
-    E --> A
-`} />
+A debug log can be dropped without changing the business state. A `payment_authorized` event may be part of the business record. Treating both as the same kind of data creates trouble later.
 
-## Context Connects the Signals
+## What OpenTelemetry Does
 
-The signals become much more useful when they share context.
+OpenTelemetry is not a dashboard or a storage database. It is a vendor-neutral set of APIs, SDKs, semantic conventions, instrumentation, and protocols for creating and moving telemetry.
 
-Common fields include:
+Its main parts have different jobs:
 
-- trace ID and span ID;
-- operation or request ID;
-- order ID or job ID;
-- service and version;
-- region and environment;
-- dependency name;
-- result or error category.
+| Part | Job |
+|---|---|
+| API and SDK | Create telemetry inside an application |
+| Auto-instrumentation | Add common HTTP, database, and messaging telemetry with little or no code change |
+| Semantic Conventions | Give common names to operations and attributes |
+| OTLP | Move traces, metrics, and logs using one telemetry protocol |
+| Collector | Receive, process, filter, batch, and export telemetry |
+| Backend | Store, query, visualize, and alert on the data |
 
-OpenTelemetry Baggage can pass contextual key-value data across services and make it available to traces, metrics, or logs. Its documentation also warns that baggage may travel in headers and has no built-in integrity check. Do not place secrets or blindly trusted authorization data in it. [OpenTelemetry Baggage](https://opentelemetry.io/docs/concepts/signals/baggage/)
+The Collector uses pipelines made from receivers, processors, and exporters. It can receive OTLP and send telemetry to one or more backends. [OpenTelemetry Collector architecture](https://opentelemetry.io/docs/collector/architecture/)
 
 <MermaidDiagram chart={`
 flowchart LR
-    A["API\ntrace_id + order_id"] --> I["Inventory\nsame trace_id"]
-    I --> P["Payment\nsame trace_id"]
-    P --> Q["Queue message\ntrace_id + order_id"]
-    Q --> W["Receipt worker\nsame operation context"]
+    A["Instrumented services\nSDK or auto-instrumentation"] -->|OTLP| R["Collector receivers"]
+    R --> P["Processors\nmemory limit, batch, filter, sample"]
+    P --> M["Metrics backend"]
+    P --> L["Logs backend"]
+    P --> T["Trace backend"]
+    M --> G["Query, dashboard, alert"]
+    L --> G
+    T --> G
 `} />
 
-Choose context that helps an investigation. High-cardinality fields such as order IDs are useful in logs and traces. They can be expensive or unsafe as metric labels.
+{/* IMAGE PROMPT (otel-collector-workbench.png): Wide editorial risograph workshop scene on warm off-white paper. Show several small application machines sending three kinds of colored paper strips into one central sorting workbench; the workbench batches, filters, and routes the strips into three different storage cabinets. Use coral red, electric cyan, charcoal, and pale yellow with screen-print grain. No readable text, letters, numbers, logos, or watermark. Clear left-to-right flow, no duplicated machines, no photorealism, no glossy 3D, no dark background. */}
+
+![Applications send telemetry through an OpenTelemetry Collector to separate backends](/assets/images/blogs/practical-observability/otel-collector-workbench.png)
+
+A small Collector configuration can look like this:
+
+```yaml
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+  batch: {}
+
+exporters:
+  otlphttp/backend:
+    endpoint: https://telemetry.example.com
+    headers:
+      authorization: Bearer ${env:OTEL_EXPORTER_TOKEN}
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/backend]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/backend]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/backend]
+```
+
+This is a shape, not production-ready configuration. Authentication, TLS, retries, queueing, resource limits, filtering, and high availability still need design work.
+
+## Start with Automatic Instrumentation, Then Add Business Context
+
+Automatic instrumentation gives useful HTTP, database, and messaging spans quickly. It cannot know your business meaning.
+
+| Approach | Good at | Limit |
+|---|---|---|
+| Auto-instrumentation | Common framework and library calls | Does not know that an order was accepted |
+| Manual instrumentation | Business spans, attributes, and custom metrics | Needs code and naming discipline |
+| Structured application events | Domain outcomes and audit context | Needs a stable event schema |
+
+For Java, the OpenTelemetry Java agent can add zero-code instrumentation for many libraries. Spring Boot also supports Micrometer Observation and OTLP export paths. [OpenTelemetry Java](https://opentelemetry.io/docs/languages/java/), [Spring Boot Observability](https://docs.spring.io/spring-boot/reference/actuator/observability.html)
+
+A practical order is:
+
+1. Start with auto-instrumentation for common calls.
+2. Set stable resource attributes such as service name, version, and environment.
+3. Add manual spans or metrics only for important business boundaries.
+4. Add structured domain events for outcomes that need audit or recovery.
+5. Review noisy or duplicate telemetry before adding more.
+
+## Technology Names and Where They Fit
+
+There is no required product stack. These are common choices, not a ranking.
+
+| Layer | Open-source examples | Managed or cloud examples |
+|---|---|---|
+| Instrumentation | OpenTelemetry SDK and agents, Micrometer, Prometheus client libraries | Vendor SDKs and agents |
+| Collection | OpenTelemetry Collector, Fluent Bit, Vector, Grafana Alloy | Cloud collectors and agents |
+| Metrics | Prometheus, VictoriaMetrics, Grafana Mimir | Amazon CloudWatch, Google Cloud Monitoring, Azure Monitor, Datadog, New Relic |
+| Logs | Grafana Loki, OpenSearch, Elasticsearch | CloudWatch Logs, Google Cloud Logging, Azure Log Analytics, Datadog, Elastic Cloud |
+| Traces | Jaeger, Grafana Tempo | AWS X-Ray, Google Cloud Trace, Azure Application Insights, Datadog, New Relic |
+| Query and dashboards | Grafana, OpenSearch Dashboards, Kibana | Cloud consoles and vendor platforms |
+
+One small team might begin with Prometheus, Loki, Tempo, Grafana, and one OpenTelemetry Collector. Another team may use a managed platform because operating observability storage is not its main business.
+
+Choose based on:
+
+- existing platform knowledge;
+- data volume and retention;
+- query needs;
+- compliance and data location;
+- operational cost;
+- how easily signals link to each other;
+- how easily the team can leave or change a vendor.
+
+Do not adopt five backends only because the architecture diagram looks complete.
 
 ## Measure What the User Needs
 
-Infrastructure health matters, but a healthy CPU is not the product outcome.
+Infrastructure health matters, but normal CPU does not prove that the product gave users a useful result.
 
-For checkout, the important outcome may be:
+For checkout, one service-level indicator can be:
 
-> A valid order request receives a final accepted or rejected result within 3 seconds, without a duplicate charge.
+> A valid order request reaches an accepted or rejected result within 3 seconds and never creates a duplicate charge.
 
-From that sentence, we can define:
+From that statement, the team can define:
 
-- **SLI:** the measured ratio of valid checkout requests that meet the result and latency rule;
+- **SLI:** the ratio of requests that meet the result and latency rules;
 - **SLO:** the target, such as 99.9% over 28 days;
-- **error budget:** the allowed amount that does not meet the target.
+- **error budget:** the allowed gap from the target.
 
-The exact target is a product and engineering decision. A larger number of nines needs more redundancy, testing, and operational work.
-
-An alert should point to a condition that needs action. Google SRE recommends monitoring for alerting, investigation, visualization, and long-term planning. It also warns that monitoring data needs a long-term view if the team wants to understand system growth. [Google SRE Workbook](https://sre.google/workbook/monitoring/)
-
-I would avoid paging someone because one instance reached 80% CPU for two minutes. I would page when users are losing an important outcome and a person can help now.
+The target is a product and engineering decision. More nines usually need more redundancy, testing, and operational work.
 
 <MermaidDiagram chart={`
 flowchart LR
@@ -219,49 +439,49 @@ flowchart LR
     A -->|No| W["Ticket or review"]
 `} />
 
-## Walk Through the Failure
+An alert should point to an action.
 
-Return to the customer who waited 18 seconds.
+| Destination | Use it when | Example |
+|---|---|---|
+| Page | Users are losing an important outcome now, and someone can help | Fast error-budget burn during checkout |
+| Ticket | The trend needs work but does not need an immediate response | Slow error-budget burn over several days |
+| Dashboard | The data gives context but has no direct action | JVM heap distribution by instance |
 
-The investigation may look like this:
+Google SRE recommends multiwindow, multi-burn-rate alerts as a practical starting point for SLO alerting. This checks both a longer window and a shorter window, so an old spike does not keep paging after the current failure stops. [Google SRE Workbook: Alerting on SLOs](https://sre.google/workbook/alerting-on-slos/)
+
+## Walk Through the 18-Second Failure
+
+Now return to the customer who waited 18 seconds.
 
 1. The checkout SLO alert shows a small rise in slow requests.
-2. The alert links to traces for the affected time and version.
-3. Slow traces share the same payment provider and retry path.
-4. Logs show the first call timed out after five seconds.
-5. The client library retried twice with a long backoff.
-6. Payment succeeded once, and idempotency prevented a second charge.
-7. A recent configuration change increased the timeout and retry count.
+2. The alert links to the affected time range and deployment version.
+3. A PromQL query shows that p95 is only slightly worse, so the team checks the slow tail.
+4. Slow traces share the same payment provider and retry path.
+5. Logs show the first provider call timed out after 5 seconds.
+6. The client library retried twice with long backoff.
+7. One payment completed, and idempotency prevented a duplicate charge.
+8. A recent configuration change increased both timeout and retry count.
 
-Now the team has a cause, impact, and safe next action. It can roll back the configuration, check payment status, and verify that no order remains stuck.
+The team now knows the cause, impact, and safe next action. It can roll back the configuration, check payment status, and find orders left in an unknown state.
 
 {/* IMAGE PROMPT (green-dashboard-failed-user.png): Wide editorial risograph split scene on off-white paper. On the left, calm generic status panels and smooth charts appear healthy. On the right, one customer's checkout path is tangled in a bright coral delay loop around an external dependency. Use coral red, electric cyan, charcoal, and pale yellow with screen-print grain. No readable text, numbers, logos, watermark, glossy UI, photorealism, dark background, or duplicated panels. */}
 
-![A healthy overview can still hide one failed user journey](/assets/images/blogs/practical-observability/green-dashboard-failed-user.png)
+![The main dashboard looks healthy while one user journey still fails](/assets/images/blogs/practical-observability/green-dashboard-failed-user.png)
 
-## Observability Has Its Own Failure Modes
+## Observability Has Failure Modes Too
 
-More telemetry creates more cost and more places to lose control.
+More telemetry creates more cost and more controls to operate.
 
-### Cardinality
+| Risk | What goes wrong | Practical response |
+|---|---|---|
+| Cardinality | IDs or unbounded values create too many metric series | Keep IDs in logs and traces; allowlist metric labels |
+| Sampling | A rare failure trace is dropped | Keep errors and slow traces with a suitable sampling policy |
+| Retention | Useful evidence expires before an investigation | Set retention by signal and investigation need |
+| Sensitive data | Secrets or personal data enter searchable telemetry | Redact early; control access, retention, and deletion |
+| Pipeline failure | The collector or exporter drops data | Monitor the telemetry pipeline and define buffering rules |
+| Cost growth | Every team stores everything forever | Set volume budgets and review unused fields |
 
-A metric label for `status=failed` has a few possible values. A label for `order_id` may create millions of time series. Put high-cardinality investigation fields in the right signal.
-
-### Sampling
-
-Keeping every trace may cost too much. Random sampling is simple, but it may drop rare failures. Tail sampling can keep slow or failed traces after seeing the result, but it needs more infrastructure.
-
-### Retention
-
-Recent detailed traces may help incidents. Older aggregated metrics may help capacity planning. They do not need the same retention period.
-
-### Sensitive data
-
-Telemetry crosses many systems and is often widely searchable. Treat it as a data product with access control, redaction, retention, and deletion rules.
-
-### Pipeline failure
-
-If the telemetry collector fails, the application should not always fail with it. Decide what can be dropped, buffered, or sent through another path. Monitor the observability pipeline too.
+The application should not always fail because the telemetry collector is unavailable. Decide which signals can be dropped, buffered, or sent through another path.
 
 ## Build It in Layers
 
@@ -273,7 +493,7 @@ I would grow observability in this order:
 4. Use structured events and shared operation context.
 5. Trace the path across service boundaries.
 6. Define an SLI and SLO from the user outcome.
-7. Alert only when action is needed.
+7. Alert only when somebody has an action to take.
 8. Review telemetry cost, security, and gaps after incidents.
 
 <MermaidDiagram chart={`
@@ -286,12 +506,25 @@ flowchart LR
     R --> U
 `} />
 
-The tools will change. The useful questions remain:
+The technologies will change. The useful questions stay close to the same:
 
 - What did the user experience?
-- Where did the path change?
+- Where did the path become slow or fail?
 - Which system state explains it?
 - How many users were affected?
-- What can we do safely now?
+- What can the team do safely now?
 
-If the telemetry cannot answer these questions, collecting more of the same data will not help. Start from the journey. Then add the signal that answers the next open question.
+If telemetry cannot answer these questions, collecting more of the same data will not help. Start from the journey. Add the next signal only when it closes a useful gap.
+
+## References and Further Reading
+
+- [OpenTelemetry Observability Primer](https://opentelemetry.io/docs/concepts/observability-primer/)
+- [OpenTelemetry Signals](https://opentelemetry.io/docs/concepts/signals/)
+- [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/)
+- [OpenTelemetry Collector Architecture](https://opentelemetry.io/docs/collector/architecture/)
+- [OpenTelemetry Java Documentation](https://opentelemetry.io/docs/languages/java/)
+- [Spring Boot Observability](https://docs.spring.io/spring-boot/reference/actuator/observability.html)
+- [Prometheus Query Functions](https://prometheus.io/docs/prometheus/latest/querying/functions/)
+- [Grafana Loki Log Queries](https://grafana.com/docs/loki/latest/query/log_queries/)
+- [Grafana TraceQL Query Examples](https://grafana.com/docs/grafana/latest/datasources/tempo/query-editor/traceql-query-examples/)
+- [Google SRE Workbook: Alerting on SLOs](https://sre.google/workbook/alerting-on-slos/)
