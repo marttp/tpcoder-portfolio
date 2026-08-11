@@ -6,11 +6,11 @@ The plan uses a weekly cadence. Engineering foundation articles go out on Wednes
 
 | Order | Published date | Article | Visual budget |
 | --- | --- | --- | --- |
-| 1 | Wednesday, 12 August 2026 | Architecture Decision Records in Practice | 4 visuals: 1 designed image + 3 Mermaid diagrams |
-| 2 | Wednesday, 19 August 2026 | Practical Observability by TP Coder | 11 visuals: 3 designed images + 3 official product images + 5 Mermaid diagrams |
-| 3 | Saturday, 29 August 2026 | Give Your AI Agent an Identity | 6 visuals: 2 designed images + 4 Mermaid diagrams |
-| 4 | Saturday, 5 September 2026 | How I Think About Designing Irreversible Actions in the AI Agent Era | 7 visuals: 2 designed images + 5 Mermaid diagrams |
-| 5 | Saturday, 12 September 2026 | AI Governance Is Becoming a Software Architecture Problem | 6 visuals: 2 designed images + 4 Mermaid diagrams |
+| 1 | Monday, 10 August 2026 | Architecture Decision Records in Practice | 4 visuals: 1 designed image + 3 Mermaid diagrams |
+| 2 | Wednesday, 12 August 2026 | Practical Observability by TP Coder | 11 visuals: 3 designed images + 3 official product images + 5 Mermaid diagrams |
+| 3 | Friday, 14 August 2026 | Give Your AI Agent an Identity | 6 visuals: 2 designed images + 4 Mermaid diagrams |
+| 4 | Sunday, 16 August 2026 | How I Think About Designing Irreversible Actions in the AI Agent Era | 7 visuals: 2 designed images + 5 Mermaid diagrams |
+| 5 | Tuesday, 18 August 2026 | AI Governance Is Becoming a Software Architecture Problem | 6 visuals: 2 designed images + 4 Mermaid diagrams |
 
 Each designed-image budget includes one hero image. Mermaid is the default for architecture, flow, state, and sequence diagrams. A second designed image is useful only for a concept that Mermaid cannot explain well. This keeps each article visual without turning every diagram into a large image.
 
