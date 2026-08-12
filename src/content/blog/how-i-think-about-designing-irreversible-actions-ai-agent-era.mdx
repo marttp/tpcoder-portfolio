@@ -126,6 +126,10 @@ Control selection is therefore a two-step process:
 1. Use the action class to choose the recovery model.
 2. Use impact, scope, confidence, data boundary, and recovery cost to allow, limit, approve, or deny the action.
 
+{/* IMAGE PROMPT (action-class-vs-risk.png): Wide 16:9 premium enterprise editorial infographic on a warm-white technical grid. On the left, show three recovery mechanisms as parallel lanes: a circular undo path, a correction path that preserves the first ledger event and adds another, and a one-way path crossing a permanent boundary. On the right, show risk increasing independently through scope growth, protected data leaving a trust boundary, and recovery effort growing from one operator to an incident team. Connect the two sides to show that every recovery class can still have low or high impact. Use deep navy, slate, muted teal, warm amber, and restrained vermilion. No text, letters, numbers, logos, watermark, people, comic style, glossy 3D, dark background, clutter, duplicates, or cropped elements. */}
+
+![Recovery class chooses how the system responds while impact chooses how much control the action needs](/assets/images/blogs/ai-agent-irreversible-actions/action-class-vs-risk.png)
+
 ## Map the Existing Deterministic Workflow First
 
 Before adding an AI agent, start with actions the system already exposes through a UI, batch job, API, or operator tool.
@@ -203,6 +207,10 @@ Different parts of the system use this contract:
 The version also matters. If a policy or recovery path changes, an action approved under the old contract must be reviewed again. The old approval should not run under new rules.
 
 Whether an action comes from a screen, batch job, or AI agent, the backend still checks authoritative state, permission, policy, duplicate intent, and allowed transitions. It then records the intent before calling the external system.
+
+{/* IMAGE PROMPT (action-contract-safety-envelope.png): Wide 16:9 premium enterprise editorial infographic on a warm-white technical grid. Place one structured action proposal at the center of a deterministic safety envelope. Surround it with six distinct control modules for schema validation, identity and scoped permission, policy evaluation, exact-proposal approval, idempotent execution, and durable evidence with recovery. Reject malformed or unauthorized proposals outside the envelope and let one valid proposal leave through a narrow controlled port with a stable request identity. Use deep navy, slate, muted teal, warm amber, and restrained vermilion. No text, letters, numbers, code, logos, watermark, people, comic style, glossy 3D, dark background, clutter, duplicates, or cropped elements. */}
+
+![An action contract turns an agent proposal into a machine-enforced execution boundary](/assets/images/blogs/ai-agent-irreversible-actions/action-contract-safety-envelope.png)
 
 <MermaidDiagram chart={`
 sequenceDiagram
@@ -417,6 +425,10 @@ For example:
 - before sending a command to a physical device, check device state, safety conditions, and the emergency stop;
 - before deleting data, stop writers, check retention policy, verify the backup, and confirm that this is not the last copy;
 - before telling a user that work completed, verify the outcome from the authoritative system.
+
+{/* IMAGE PROMPT (point-of-no-return.png): Wide 16:9 premium enterprise editorial infographic on a warm-white technical grid. Show a left-to-right high-impact workflow. On the safe side, include authoritative-state validation, resource reservation, approval, preview, and a durable intent record. Place a guarded execution checkpoint at a red one-way boundary. On the external side, show a delivered message, protected data copied outside a trust boundary, and a physical shipment already moving. Add a lower recovery lane that can retry, reconcile, or compensate before the boundary and becomes containment and incident response afterward. Use deep navy, slate, muted teal, warm amber, and restrained vermilion. No text, letters, numbers, logos, watermark, people, comic style, glossy 3D, dark background, clutter, duplicates, or cropped elements. */}
+
+![Put validation and recoverable work before the point of no return](/assets/images/blogs/ai-agent-irreversible-actions/point-of-no-return.png)
 
 If the irreversible step happens too early, a later failure cannot remove the effect that already happened.
 
