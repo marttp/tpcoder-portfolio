@@ -126,6 +126,10 @@ Action class บอกว่า **หลัง action เกิดขึ้น�
 1. ใช้ action class เพื่อกำหนด recovery model
 2. ใช้ impact, scope, confidence, data boundary และ recovery cost เพื่อกำหนดว่า allow, limit, approve หรือ deny
 
+{/* IMAGE PROMPT (action-class-vs-risk.png): Wide 16:9 premium enterprise editorial infographic on a warm-white technical grid. On the left, show three recovery mechanisms as parallel lanes: a circular undo path, a correction path that preserves the first ledger event and adds another, and a one-way path crossing a permanent boundary. On the right, show risk increasing independently through scope growth, protected data leaving a trust boundary, and recovery effort growing from one operator to an incident team. Connect the two sides to show that every recovery class can still have low or high impact. Use deep navy, slate, muted teal, warm amber, and restrained vermilion. No text, letters, numbers, logos, watermark, people, comic style, glossy 3D, dark background, clutter, duplicates, or cropped elements. */}
+
+![Action class ใช้เลือกวิธี recovery ส่วน impact ใช้เลือกความเข้มของ control](/assets/images/blogs/ai-agent-irreversible-actions/action-class-vs-risk.png)
+
 ## Map the Existing Deterministic Workflow First
 
 ก่อนเพิ่ม AI Agent ให้เริ่มจาก actions ที่ระบบมีอยู่แล้ว ไม่ว่าจะถูกเรียกจาก UI, batch job, API หรือ operator tool
@@ -203,6 +207,10 @@ Contract นี้มีไว้ให้หลายส่วนใช้ต�
 Version ก็สำคัญ ถ้า policy หรือ recovery path เปลี่ยน action ที่ approve ด้วย contract version เก่า ต้องกลับไปตรวจใหม่ ห้ามนำ approval เดิมมาใช้กับกติกาชุดใหม่
 
 ไม่ว่า action จะมาจากหน้าจอ, batch job หรือ AI Agent ฝั่ง Backend ยังต้องตรวจ authoritative state, permission, policy, duplicate intent และ allowed transition ก่อนบันทึก intent แล้วเรียก external system
+
+{/* IMAGE PROMPT (action-contract-safety-envelope.png): Wide 16:9 premium enterprise editorial infographic on a warm-white technical grid. Place one structured action proposal at the center of a deterministic safety envelope. Surround it with six distinct control modules for schema validation, identity and scoped permission, policy evaluation, exact-proposal approval, idempotent execution, and durable evidence with recovery. Reject malformed or unauthorized proposals outside the envelope and let one valid proposal leave through a narrow controlled port with a stable request identity. Use deep navy, slate, muted teal, warm amber, and restrained vermilion. No text, letters, numbers, code, logos, watermark, people, comic style, glossy 3D, dark background, clutter, duplicates, or cropped elements. */}
+
+![Action contract เปลี่ยน proposal ของ agent ให้ผ่าน execution boundary ที่ระบบ enforce ได้](/assets/images/blogs/ai-agent-irreversible-actions/action-contract-safety-envelope.png)
 
 <MermaidDiagram chart={`
 sequenceDiagram
@@ -417,6 +425,10 @@ Workflow 1 ชุดอาจมีทั้ง reversible, compensatable แล
 - ก่อนส่ง command ให้ physical device ต้องตรวจ device state, safety condition และ emergency stop
 - ก่อนลบ data ต้องหยุด writer, ตรวจ retention policy, verify backup และยืนยันว่าไม่ได้ลบ copy ชุดสุดท้าย
 - ก่อนแจ้ง user ว่างานสำเร็จ ต้อง verify outcome จาก system ที่เป็น source of truth
+
+{/* IMAGE PROMPT (point-of-no-return.png): Wide 16:9 premium enterprise editorial infographic on a warm-white technical grid. Show a left-to-right high-impact workflow. On the safe side, include authoritative-state validation, resource reservation, approval, preview, and a durable intent record. Place a guarded execution checkpoint at a red one-way boundary. On the external side, show a delivered message, protected data copied outside a trust boundary, and a physical shipment already moving. Add a lower recovery lane that can retry, reconcile, or compensate before the boundary and becomes containment and incident response afterward. Use deep navy, slate, muted teal, warm amber, and restrained vermilion. No text, letters, numbers, logos, watermark, people, comic style, glossy 3D, dark background, clutter, duplicates, or cropped elements. */}
+
+![วาง validation และงานที่ยัง recovery ได้ไว้ก่อน point of no return](/assets/images/blogs/ai-agent-irreversible-actions/point-of-no-return.png)
 
 ถ้าทำ irreversible step เร็วเกินไป ต่อให้ steps หลังจากนั้น fail ระบบก็เอาผลที่เกิดขึ้นแล้วกลับมาไม่ได้
 

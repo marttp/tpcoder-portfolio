@@ -8,7 +8,7 @@ The series runs from 10–18 August 2026. The order moves from engineering found
 | --- | --- | --- | --- |
 | 1 | Monday, 10 August 2026 | Architecture Decision Records in Practice | 4 visuals: 1 designed image + 3 Mermaid diagrams |
 | 2 | Wednesday, 12 August 2026 | Practical Observability by TP Coder | 11 visuals: 3 designed images + 3 official product images + 5 Mermaid diagrams |
-| 3 | Thursday, 13 August 2026 | [Thinking Out Loud] If We Accept AI Agent Non-determinism, How Do We Design Irreversible Actions Without Losing Our Minds? | 7 visuals: 2 designed images + 5 Mermaid diagrams |
+| 3 | Thursday, 13 August 2026 | [Thinking Out Loud] If We Accept AI Agent Non-determinism, How Do We Design Irreversible Actions Without Losing Our Minds? | 10 visuals: 5 designed images + 5 Mermaid diagrams |
 | 4 | Friday, 14 August 2026 | Give Your AI Agent an Identity | 6 visuals: 2 designed images + 4 Mermaid diagrams |
 | 5 | Tuesday, 18 August 2026 | AI Governance Is Becoming a Software Architecture Problem | 6 visuals: 2 designed images + 4 Mermaid diagrams |
 
@@ -146,6 +146,9 @@ Use hypothetical situations when personal experience is not available. Keep expe
 - Mermaid: non-deterministic planning behind a deterministic execution boundary
 - Mermaid: risk classification leading to allow, preview, approval, or deny
 - Mermaid: intent, decision, approval, execution, postcondition, and audit sequence
+- Designed infographic: recovery class versus independent risk dimensions
+- Designed infographic: action contract as a machine-enforced safety envelope
+- Designed infographic: prevention before and containment after the point of no return
 - Designed concept: the same action performed by a person and by an AI agent
 
 ### AI Governance Is Becoming a Software Architecture Problem
