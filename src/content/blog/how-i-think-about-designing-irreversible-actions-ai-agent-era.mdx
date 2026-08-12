@@ -60,12 +60,12 @@ The first action remains in history. A second action can correct its business ef
 
 Examples:
 
-- refund a captured payment;
 - issue a credit after an incorrect invoice;
+- publish a correction after releasing incorrect information;
 - restore access with a new permission change;
 - create a correction entry in a ledger.
 
-A refund does not erase the original charge. It creates another financial event. The customer may still wait, pay a fee, or see both records.
+Compensation does not erase the first action. It creates another action to correct the business effect, so both records remain in history.
 
 ### Irreversible
 
@@ -90,86 +90,93 @@ flowchart TD
     B -->|No| I["Irreversible\nPrevent before execution"]
 `} />
 
-This classification changes the design. Reversible work may allow more automation. Compensatable work needs a tested recovery path. Irreversible work needs stronger prevention before the boundary is crossed.
+These three classes tell us which recovery model to prepare. They do not yet tell us how easily an action should be allowed to run.
 
-## Reversibility Is More Than One Label
+## Action Class Tells Us How to Recover, Not How Risky It Is
 
-An action class is a starting point. It should not be the final answer. Two actions in the same class may need very different controls.
+An action class answers one question: **After the action happens, how can the system handle its effects?**
 
-Compare two emails:
+- A reversible action has an operation that restores the earlier state.
+- A compensatable action needs a new business action to correct the effect.
+- An irreversible action cannot remove the effect, so validation and prevention matter before execution.
 
-- The first email says that a ticket was opened. Sending it to the wrong person is still a problem, but the data has limited impact.
-- The second email includes a customer statement. Sending it to the wrong person creates a data incident.
+The class alone does not tell us how dangerous an action is.
 
-Both emails become irreversible after they are sent. Their risk is not the same.
+- A feature flag is reversible, but a global mistake can still have a large blast radius.
+- A financial adjustment is compensatable, but the first record remains and may cause harm while the correction is pending.
+- A notification is irreversible after delivery, but a maintenance notice and a message containing PII have very different impact.
 
-I would check at least six more dimensions:
+After finding the action class, I check at least six more dimensions:
 
 | Dimension | What to check | Example |
 |---|---|---|
-| **Undo quality** | How much of the old state can return? | A draft can be restored, but a refund only corrects the business effect |
-| **Time window** | How long can the action be stopped or undone? | A scheduled email can be canceled before the provider accepts it |
+| **Undo quality** | How much of the old state can return? | A draft can be restored, while a ledger correction keeps the first record |
+| **Time window** | How long can the action be stopped or undone? | A scheduled job can be canceled before a worker accepts it |
 | **Blast radius** | How many users, tenants, or resources can be affected? | One tenant feature flag versus a global flag |
-| **Data exposure** | Did data leave the trust boundary? | An internal note versus an email to an external address |
-| **Detectability** | How quickly can the team know that the action was wrong? | A payment has provider status, but a data leak may be found after a report |
-| **Recovery cost** | How much time, money, and human work does recovery need? | Fixing a label versus recalling shipments across countries |
+| **Data exposure** | Did data leave the trust boundary? | An internal note versus a file sent outside the organization |
+| **Detectability** | How quickly can the team know that the action was wrong? | A deployment has health checks, while a data leak may be found after a report |
+| **Recovery cost** | How much time, money, and human work does recovery need? | Rolling back a deployment versus recalling shipments across countries |
 
-The reversible label does not mean that an agent should always run the action. The irreversible label also does not mean that every case needs human approval. Combine the class with impact, scope, confidence, and recovery quality before choosing the control.
+Control selection is therefore a two-step process:
+
+1. Use the action class to choose the recovery model.
+2. Use impact, scope, confidence, data boundary, and recovery cost to allow, limit, approve, or deny the action.
 
 ## Map the Existing Deterministic Workflow First
 
-Suppose a customer-support system can grant a refund and email the customer.
-
-Without an agent, an employee selects the order, enters the amount, chooses a reason, previews the message, and confirms.
-
-Before adding an AI agent, classify the existing behavior in this workflow.
+Before adding an AI agent, start with actions the system already exposes through a UI, batch job, API, or operator tool.
 
 | Existing behavior | Action class | Why | Control and recovery |
 |---|---|---|---|
 | Save or edit a draft note | Reversible | The system keeps an earlier version and can restore it | Version history, authorization, and audit |
-| Change the case status | Reversible | The state machine can return to the earlier state when business rules allow it | Allowed transitions and audit |
-| Capture or refund a payment | Compensatable | The earlier financial event stays in history, so another event must correct the business effect | Idempotency, limits, reconciliation, and manual recovery |
-| Send an email to the customer | Irreversible | The system cannot force the recipient to delete or forget a sent message | Preview, approved template, and approval before sending |
+| Change an access role | Reversible | A new permission change can restore the earlier role | Authorization, allowed transitions, and audit |
+| Record a financial adjustment | Compensatable | The earlier record remains, so a new record must correct the business effect | Idempotency, limits, reconciliation, and manual recovery |
+| Publish a document publicly | Irreversible | Unpublishing cannot control copies that people already read or saved | Preview, data classification, and approval before publishing |
+| Send a command to a physical device | Depends on device state | It may be canceled before work begins, then become compensatable or irreversible | Device status, timeout, safety interlock, and emergency stop |
+| Delete the last data copy | Irreversible | No source remains for restoration | Retention policy, backup verification, and a separate non-agent flow |
 
-The tool definition or action registry should own these action classes. An employee, UI, or AI agent should not classify the same action again for each request.
+The tool definition or action registry should own these action classes. Each caller should not classify the same action again for every request.
 
 ## Turn the Classification into an Action Contract
 
 A classification in a diagram cannot control runtime behavior. Each action should have a contract that the agent, policy engine, execution service, approval UI, and operator can use.
 
-For example, `payment.refund` may use this contract:
+This example uses `document.publish` to show a contract for an irreversible action:
 
 ```yaml
-action: payment.refund
+action: document.publish
 version: 3
-class: compensatable
-owner: payment-operations
+class: irreversible
+owner: content-operations
 
 input_schema:
-  order_id: string
-  amount_minor: integer
-  currency: string
-  reason_code: enum
+  document_id: string
+  destination: enum
+  classification: enum
   evidence_refs: array
 
 authorization:
-  required_scope: refund:propose
+  required_scope: document:publish:propose
   tenant_bound: true
 
 policy:
-  auto_execute_max_minor: 1000
-  daily_customer_limit_minor: 5000
-  approval_above_minor: 1000
+  allowed_destinations:
+    - company_website
+    - partner_portal
+  deny_classifications:
+    - restricted
+    - secret
+  approval_required: true
 
 execution:
-  endpoint: POST /internal/refunds
+  endpoint: POST /internal/publications
   idempotency: required
   timeout_state: outcome_unknown
 
 recovery:
-  verify_with: GET /internal/refunds/{request_id}
-  compensate_with: payment.adjustment.propose
-  manual_queue: payment-recovery
+  verify_with: GET /internal/publications/{request_id}
+  contain_with: document.unpublish
+  manual_queue: content-incident
 
 evidence:
   retain_days: 365
@@ -178,36 +185,33 @@ evidence:
     - proposal_hash
     - policy_result
     - approver
-    - provider_refund_id
+    - publication_id
 ```
 
-The contract is not only for the model. The backend enforces the schema and limits. The approval UI shows the impact. Monitoring finds the owner. The recovery worker knows how to verify or compensate for the outcome.
+Different parts of the system use this contract:
 
-The version also matters. If a policy or recovery path changes, an old approved action should not silently run with the new contract.
+- the backend enforces schema, authorization, and policy;
+- the approval UI shows the destination, data classification, and impact;
+- the execution service applies idempotency and state transitions;
+- monitoring finds the owner and action version;
+- incident tooling uses the verification, containment, and evidence fields.
 
-The backend should not trust the screen alone. It still checks:
+The version also matters. If a policy or recovery path changes, an action approved under the old contract must be reviewed again. The old approval should not run under new rules.
 
-- the employee may access this case;
-- the order belongs to the customer;
-- the payment is eligible for a refund;
-- the amount is within the remaining refundable amount;
-- the same request has not already completed;
-- the state change follows an allowed transition.
-
-Then it records the intent and calls the payment provider.
+Whether an action comes from a screen, batch job, or AI agent, the backend still checks authoritative state, permission, policy, duplicate intent, and allowed transitions. It then records the intent before calling the external system.
 
 <MermaidDiagram chart={`
 sequenceDiagram
-    actor H as Support employee
-    participant A as Support API
+    actor H as Human or agent
+    participant A as Action API
     participant D as Database
-    participant P as Payment provider
-    H->>A: Confirm refund with request ID
-    A->>A: Validate access, state, and amount
-    A->>D: Save refund intent
-    A->>P: Refund with idempotency key
-    alt Provider confirms
-        P-->>A: Refund ID
+    participant P as External system
+    H->>A: Submit action with request ID
+    A->>A: Validate access, state, and policy
+    A->>D: Save action intent
+    A->>P: Execute with idempotency key
+    alt External system confirms
+        P-->>A: External action ID
         A->>D: Mark completed
     else Timeout or unknown result
         A->>D: Mark outcome unknown
@@ -235,48 +239,60 @@ Normal recovery tools include:
 
 The word execute is too broad when an action affects another system. We need to know which step only prepares an intent and which step crosses the side-effect boundary.
 
-A refund flow may have these steps:
+A common flow can be separated into these steps:
 
-1. The agent creates a proposal. There is no side effect yet.
-2. The backend validates the order, amount, and policy. There is still no side effect.
-3. The system stores an intent and idempotency key. The record is durable, but money has not moved.
-4. The payment provider accepts the refund. This crosses the side-effect boundary.
-5. The system stores the provider result. Internal state now follows external state.
-6. Reconciliation checks again when the outcome is unknown.
+1. Accept a request or proposal. No side effect exists yet.
+2. Validate the schema, authoritative state, permission, and policy.
+3. Store the intent, request ID, and action version in durable storage.
+4. Dispatch the command to an execution service or external system.
+5. The external system accepts the action. The side effect may begin here.
+6. Record the outcome in internal state.
+7. Reconcile when the outcome remains unknown.
 
-A common failure happens when step 4 succeeds but the process crashes before step 5. The database may look like no refund happened, while the provider already processed it.
+A failure can happen between any two steps:
 
-Separate **intent, dispatch, and outcome**. Keep a correlation ID that works across services. If the system must update a database and publish an event, do not depend on two separate writes both succeeding. A transactional outbox stores the state change and event in one database transaction. A worker publishes the event after commit. The consumer must still handle duplicate events with idempotency. [AWS Transactional Outbox Pattern](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html)
+- before the intent is stored, the original request may be submitted again;
+- after intent but before dispatch, a worker can continue from durable state;
+- during dispatch, a timeout must not be treated as proof of failure;
+- after external completion but before the internal update, reconciliation must recover the outcome;
+- after the internal update but before event publication, downstream systems do not know that state changed.
 
-An outbox does not make an external action atomic with the database. It prevents the event from being lost between commit and publish. Idempotency and reconciliation still handle an unknown provider outcome.
+Represent **intent, dispatch, and outcome** as states that can be followed. Keep a correlation ID across services.
+
+When the system must update a database and publish an event, do not depend on two separate writes both succeeding. A transactional outbox stores the state change and event in one database transaction. A worker publishes the event after commit. The consumer must still handle duplicate events with idempotency. [AWS Transactional Outbox Pattern](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html)
+
+The outbox only closes the gap between database commit and event publication. It does not place the database and an external API in one transaction. An unknown external outcome still needs idempotency, status queries, and reconciliation.
 
 ## Add the AI Agent to the Same Workflow
 
-Now the company adds an AI agent. It reads the support conversation, checks the order, proposes a refund, and drafts the email.
+Adding an AI agent changes who proposes an action. A human, UI, or scheduled job is now joined by a component that interprets context and selects tools non-deterministically.
 
-The agent may propose several actions from one request. The deterministic system handles each action by using the class that is already defined.
+The deterministic system still handles each proposal through the existing action contract.
 
 | Agent proposal | Existing action class | Deterministic response |
 |---|---|---|
 | `case.note.update` | Reversible | Validate access, then save with version history |
-| `payment.refund` | Compensatable | Check policy, amount, and idempotency; require approval above a limit |
-| `customer.email.send` | Irreversible | Create a preview and wait for confirmation before sending |
+| `access.role.change` | Reversible | Check authority, target scope, and allowed transition |
+| `ledger.adjustment.create` | Compensatable | Check policy, value, and idempotency; require approval above a limit |
+| `customer.email.send` | Irreversible | Create a preview and wait for confirmation |
+| `document.publish` | Irreversible | Check classification, destination, and approval bound to the payload |
+| `data.last_copy.delete` | Irreversible | Deny because this action should not be an agent tool |
 
-The agent understands the request and prepares a proposal. The backend decides the action class, who may approve it, and which recovery path is required.
+The agent interprets the request and prepares a proposal. The backend reads the contract and applies its permission, policy, approval, and recovery rules.
 
 The agent may fail in ways that normal backend code does not:
 
 - misunderstand what the customer asked;
 - use a detail from another case;
 - select the wrong tool;
-- invent a refund reason;
-- choose an amount that sounds reasonable but breaks policy;
+- invent a reason code that does not exist;
+- choose a parameter that sounds reasonable but breaks policy;
 - continue after the goal changed;
 - follow malicious instructions hidden in a document or message.
 
 Even a strong evaluation does not remove this uncertainty.
 
-Suppose the agent completes 90% of an evaluation set correctly. That number does not mean every tenth production request will fail in a predictable way. Production inputs change. Rare cases may be more harmful than common cases. The evaluation may also miss a new tool, policy, language, or attack.
+Suppose the agent completes 90% of an evaluation set correctly. We still do not know which 10% will fail in production. Inputs change. Rare cases may be more harmful than common cases. The evaluation may also miss a new tool, policy, language, or attack.
 
 An evaluation is evidence. It is not permission to remove the system boundary.
 
@@ -295,7 +311,7 @@ The execution service should own deterministic checks:
 - validate schema and required fields;
 - load authoritative data;
 - evaluate permissions and business policy;
-- check amount and frequency limits;
+- check scope, value, and frequency limits;
 - require approval when risk is high;
 - apply idempotency and state transitions;
 - record the action and result.
@@ -313,16 +329,15 @@ flowchart LR
     X --> R["Result + audit + recovery state"]
 `} />
 
-The model should not construct a hidden database query or call a payment provider directly. Give it a narrow tool such as:
+The model should not construct a hidden database query or call an external system directly. Give it a narrow tool such as:
 
 ```json
 {
-  "tool": "refund.propose",
-  "order_id": "ord_84f2",
-  "amount_minor": 2500,
-  "currency": "THB",
-  "reason_code": "duplicate_charge",
-  "evidence_refs": ["message_18", "payment_attempt_2"]
+  "tool": "document.publish.propose",
+  "document_id": "doc_84f2",
+  "destination": "partner_portal",
+  "classification": "internal",
+  "evidence_refs": ["approval_request_18", "policy_check_2"]
 }
 ```
 
@@ -337,16 +352,16 @@ The review screen should show at least:
 - the person or agent that proposed the action;
 - the customer, tenant, and resource that will be affected;
 - the old value and proposed change;
-- the amount, destination, or permission;
+- the scope, destination, value, or permission;
 - the evidence used by the agent;
 - the policy result and reason for approval;
 - the action class, recovery path, and point of no return.
 
 When the person confirms, bind the approval to that exact data. Store values such as `proposal_hash`, action contract version, policy version, and expiry.
 
-If the agent changes the amount, recipient, attachment, or tool parameter, the hash must change. The old approval must no longer work. Do not approve a broad intent such as help this customer and let the agent select the final payload later.
+If the agent changes the scope, recipient, attachment, or tool parameter, the hash must change. The old approval must no longer work. Do not approve a broad goal and let the agent select the final payload later.
 
-Approval should also expire. The order state, balance, customer request, or policy may change while waiting for review. The backend must load authoritative state and validate it again before execution.
+Approval should also expire. Resource state, user intent, or policy may change while waiting for review. The backend must load authoritative state and validate it again before execution.
 
 ## Let Risk Choose the Control
 
@@ -359,8 +374,8 @@ Use the action class, impact, confidence, and context to choose a control.
 | Read public documentation | Allow and log |
 | Add an internal draft note | Allow with easy undo |
 | Send a normal reply from an approved template | Preview or sample review |
-| Refund a small eligible amount | Policy limit and post-action review |
-| Refund a large or unusual amount | Human approval |
+| Change one tenant configuration within an allowlist | Policy limit and post-action review |
+| Change access for many users | Human approval |
 | Export sensitive data | Deny by default or require a separate controlled flow |
 | Delete the last data copy | Do not expose as an agent tool |
 
@@ -375,7 +390,7 @@ flowchart TD
 
 Some limits should be hard rules:
 
-- maximum amount per action and per day;
+- maximum value or affected resources per action and per day;
 - allowed customer or tenant boundary;
 - allowed destination domains;
 - approved message templates;
@@ -390,9 +405,16 @@ OWASP's guidance for agentic applications covers risks such as goal hijacking, t
 
 ## Put the Point of No Return Near the End
 
-One request may create several actions. Suppose a customer asks to cancel an order, refund the payment, return inventory, and send a confirmation email.
+One workflow may contain reversible, compensatable, and irreversible steps. Their order is part of the safety design.
 
-If the agent selects the order of steps, it may send an email saying the refund succeeded before the payment provider accepted it. It may also return inventory to sale before fulfillment confirms that the shipment stopped.
+For example:
+
+- before publishing a document, validate its classification, scan for secrets, and confirm the destination;
+- before sending a command to a physical device, check device state, safety conditions, and the emergency stop;
+- before deleting data, stop writers, check retention policy, verify the backup, and confirm that this is not the last copy;
+- before telling a user that work completed, verify the outcome from the authoritative system.
+
+If the irreversible step happens too early, a later failure cannot remove the effect that already happened.
 
 A safer order is:
 
@@ -486,7 +508,7 @@ I would add autonomy in stages:
 2. **Shadow mode:** Let the agent propose actions without executing them.
 3. **Decision comparison:** Compare proposals with operator decisions and study disagreement.
 4. **Approval required:** Use the production execution path while every action still waits for a person.
-5. **Bounded automation:** Allow only low-risk cases within amount, tenant, and rate limits.
+5. **Bounded automation:** Allow only low-risk cases within scope, tenant, value, and rate limits.
 6. **Continuous review:** Send samples, incidents, denials, and compensation results back into evaluation.
 
 If unknown outcomes, compensation, or manual recovery increase after more autonomy, the system should be able to reduce access without waiting for a new model deployment.
