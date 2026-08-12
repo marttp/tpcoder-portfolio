@@ -1,0 +1,262 @@
+---
+title: "ให้ AI Agent มี Identity เป็นของตัวเอง"
+description: "ออกแบบ Identity ของ AI Agent เหมือน workload และ employee บน Cloud ตั้งแต่ permission, delegation, short-lived credential, audit จนถึง revocation"
+pubDate: "2026-08-14"
+tags:
+  ["AI Agent", "Security", "Software Architecture", "Identity"]
+heroImage: "/assets/images/blogs/ai-agent-identity/hero-banner.png"
+language: "th"
+translationSlug: "give-your-ai-agent-an-identity"
+servicesNote: true
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+{/* IMAGE PROMPT (hero-banner.png): Wide playful clay stop-motion diorama on a bright warm-peach studio background. Show three distinct characters at an access checkpoint: a human employee with a photo badge, a cloud service as a small utility vehicle with a machine badge, and an AI agent as a friendly abstract helper with its own separate badge. A security gate checks each badge before different doors open. Use indigo, tangerine, cream, and small lime accents. Soft clay texture and rounded shapes. No text, letters, logos, watermark, photorealistic humans, dark background, flat vector style, paper collage, risograph grain, robot head, or duplicated badges. */}
+
+
+เวลาออกแบบ Cloud architecture เราแทบไม่ให้ employee และ services ทุกตัวใช้ admin account ชุดเดียวกันอยู่แล้วครับ แต่พอ actor ตัวใหม่เป็น AI Agent หลักการนี้กลับถูกลืมได้ง่าย
+
+สมมุติว่าในบริษัทมี actor อยู่ 3 แบบ
+
+- Employee ที่ review customer case
+- Backend service ที่อ่าน order data
+- AI Agent ที่ค้น document และ update support ticket ได้
+
+Employee มี user account ส่วน backend service มี workload identity แต่พอถึง AI Agent เรากลับให้ API key ชุดเดียวที่มี access กว้าง เพราะ agent ต้องเรียกหลาย tools
+
+อ่านถึงจุดนี้แล้วน่าจะเริ่มรู้สึกไม่ค่อยดีใช่ไหมครับ
+
+ถ้า agent แก้ ticket ใครคือคนทำ action นี้กันแน่ User, application หรือ model ถ้า key หลุด ใครเอาไปใช้ต่อได้บ้าง แล้วถ้า agent เปลี่ยนหน้าที่ เราจะถอนเฉพาะ access ของ agent ตัวนั้นอย่างไร
+
+ผมเขียนบทความนี้เพื่อชวนคุณมอง AI Agent เป็น actor อีกตัวในระบบ แล้วนำหลัก identity และ access control ที่เราใช้กับคนและ services มาปรับใช้กับ agent ครับ
+
+ใจความของบทความนี้คือ
+
+**AI Agent ควรมี Identity, permission และ owner เหมือนกับ service หรือ employee ที่เราออกแบบไว้ใน Cloud architecture**
+
+ชื่อ model ไม่ใช่ Identity Prompt ก็ไม่ใช่ Identity และ API key ที่ agent 10 ตัวใช้ร่วมกันก็บอกไม่ได้ว่า agent ตัวไหนเป็นคนลงมือ
+
+## Start from Identities We Already Know
+
+Cloud architecture มี pattern ที่นำมาใช้ต่อได้อยู่แล้วครับ
+
+| Actor | Identity แทนอะไร | Lifetime ที่พบบ่อย | ตัวอย่าง access |
+|---|---|---|---|
+| Person | Employee หรือ customer 1 คน | หลายเดือนหรือหลายปี | Review case ที่ได้รับมอบหมาย |
+| Service | Workload ที่ deploy อยู่ 1 ชุด | หลายนาทีถึงหลายเดือน | อ่าน order status |
+| Job | Automation หรือ execution 1 ครั้ง | หลายนาทีหรือหลายชั่วโมง | Export report 1 ชุด |
+| AI agent | Agent หรือ agent role ที่มี owner | ขึ้นอยู่กับ task | Search, propose หรือ act ผ่าน tools |
+
+SPIFFE มอง workload เป็น software ที่ทำงานเพื่อ 1 purpose และออก verifiable workload identity ให้กับ workload นั้น Identity document มีอายุสั้นและ rotate อัตโนมัติ จึงลดช่วงเวลาที่ credential ซึ่งหลุดออกไปจะถูกนำไปใช้ได้ [SPIFFE Concepts](https://spiffe.io/docs/latest/spiffe/concepts/)
+
+AI Agent ไม่เหมือน service ทั่วไปทุกด้าน เพราะ agent เลือก tool ตอน runtime และอาจทำงานแทน user หลายคน ถึงอย่างนั้นแนวคิด workload identity ยังนำมาใช้ได้ครับ เราต้องระบุให้ได้ว่า actor ที่กำลังทำงานคือใคร ไม่ฝัง permanent secret ไว้ข้างใน และ verify identity ก่อนให้ access
+
+<MermaidDiagram chart={`
+flowchart LR
+    H["Human identity\nWho requested?"] --> A["Agent identity\nWho planned and acted?"]
+    S["Service identity\nWhich workload called?"] --> A
+    A --> T["Tool policy\nWhat is allowed?"]
+    T --> R["Resource\nWhich data or action?"]
+`} />
+
+## Decide Which Hat the Agent Is Wearing
+
+Agent รับบทได้หลายแบบ ถ้าเราเอาทุกบทมาปนกัน access rule จะอ่านยากมาก
+
+### The agent acts as itself
+
+ตัวอย่างเช่น monitoring agent อ่าน service health แล้วสร้าง internal incident summary
+
+Audit record ควรแสดง agent identity และ agent ควรได้เฉพาะ permission ที่ role นี้ต้องใช้
+
+### The agent acts on behalf of a user
+
+สมมุติว่า support agent เปิดดู order ที่ support employee คนนั้นมีสิทธิ์เห็น
+
+Request ควรเก็บ identity ไว้ทั้ง 2 ฝั่ง
+
+- **subject:** user ซึ่งเป็นเจ้าของ authority
+- **actor:** agent ที่ลงมือทำงาน
+
+OAuth 2.0 Token Exchange นิยาม actor token สำหรับผู้ที่ได้รับอนุญาตให้ทำงาน on behalf of subject Standard นี้ไม่ได้ตอบเรื่อง agent identity ครบทุกมุม แต่การแยก subject ออกจาก actor ช่วยให้ identity ของคนขอและคนลงมือไม่หายไประหว่างทาง [RFC 8693](https://www.rfc-editor.org/info/rfc8693/)
+
+### The agent performs a background job
+
+ตัวอย่างเช่น workflow ที่ approve แล้วสั่ง agent ให้ classify documents 500 ไฟล์ตอนกลางคืน
+
+Task ควรมี job identity หรือ execution ID ที่ link กลับไปหา agent, owner, approval, input set และ deadline ได้ อย่าให้ background job ยืม session อายุยาวของใครสักคนมาใช้ครับ
+
+<MermaidDiagram chart={`
+sequenceDiagram
+    actor U as User
+    participant A as Agent
+    participant I as Identity service
+    participant T as Tool API
+    U->>A: Request an allowed task
+    A->>I: Exchange user + agent identity
+    I-->>A: Short-lived scoped token
+    A->>T: Call with subject + actor + scope
+    T-->>A: Result
+    A-->>U: Result and action record
+`} />
+
+## Authentication Is Not Authorization
+
+Identity ตอบว่า **คนหรือ workload นี้คือใคร** ส่วน Authorization ตอบว่า **identity นี้ทำอะไรกับ resource นี้ได้บ้าง**
+
+สำหรับ agent ผมจะกำหนด permission ให้ละเอียดกว่าการให้ role กว้าง ๆ เพียง 1 อัน
+
+```text
+agent: support-order-reader
+owner: customer-support-platform
+environment: production
+allowed tools:
+  - order.get
+  - ticket.add_note
+denied tools:
+  - order.refund
+  - customer.export_pii
+constraints:
+  - user must have access to the same customer case
+  - ticket must be assigned to the user
+  - token expires in 10 minutes
+```
+
+Policy ควรพิจารณาข้อมูลหลายส่วนร่วมกัน
+
+- agent identity
+- user identity เมื่อ agent ทำงานแทนคน
+- tool และ action
+- resource หรือ customer boundary
+- environment
+- เวลาและ approval state
+- risk ของ action ที่ขอ
+
+Model เลือก tool ได้ครับ ส่วน deterministic policy engine เป็นผู้ตัดสินว่า call นั้นผ่านหรือไม่
+
+## Use Short-Lived Credentials
+
+แบบที่เจอบ่อยใน version แรกคือเก็บ API key 1 ชุดไว้ใน agent runtime Key ชุดนี้มักมี permission มากกว่าที่ 1 task ต้องใช้ และอาจ valid อยู่นานหลายเดือน
+
+Flow ที่ปลอดภัยขึ้นมีหน้าตาประมาณนี้
+
+1. Verify workload ที่ใช้ run agent
+2. Check user หรือ job context ปัจจุบัน
+3. Evaluate tool และ scope ที่ขอ
+4. ออก credential อายุสั้นสำหรับ action boundary นั้น
+5. ส่ง credential ให้ tool โดยไม่ใส่เข้า model text
+6. บันทึกการใช้งาน แล้วปล่อยให้ credential หมดอายุ
+
+<MermaidDiagram chart={`
+flowchart LR
+    W["Verified agent workload"] --> P["Policy check"]
+    U["User or job context"] --> P
+    X["Requested tool and scope"] --> P
+    P -->|Allowed| C["Short-lived credential"]
+    P -->|Denied| D["Denied + audit event"]
+    C --> T["One tool boundary"]
+    C --> E["Expires automatically"]
+`} />
+
+Model ไม่ควรเห็น raw credential ใน prompt, memory หรือ tool response ให้ credential broker หรือ agent runtime แนบ credential หลัง policy decision แทน
+
+## One Agent Should Not Quietly Become Another
+
+Agent-to-agent delegation เพิ่มคำถามขึ้นมาอีกข้อ ใครมอบ authority ให้ใคร
+
+สมมุติว่า coordinator agent สั่ง research agent ให้เก็บข้อมูล แล้วสั่ง action agent ให้ update record
+
+Action agent ไม่ควร inherit ทุก permission จาก coordinator เวลา delegate งาน เราควรส่งต่อ scope ที่เล็กลง
+
+- task ไหน
+- resources อะไร
+- tools ชุดไหน
+- time window เท่าไร
+- delegate ต่อได้หรือไม่
+- approval ไหนยัง valid
+
+<MermaidDiagram chart={`
+flowchart LR
+    U["User"] -->|Delegates research| C["Coordinator agent"]
+    C -->|Read-only scope| R["Research agent"]
+    R -->|Findings only| C
+    C -->|Approved update scope| A["Action agent"]
+    A --> T["Ticket API"]
+    U -.-> L["Audit chain"]
+    C -.-> L
+    R -.-> L
+    A -.-> L
+    T -.-> L
+`} />
+
+ถ้าไม่มี chain นี้ tool ตัวสุดท้ายจะเห็นเพียง caller ล่าสุด ทีมจะตามไม่เจอว่า action เริ่มมาจากใคร และใครเป็นคนมอบ authority ให้
+
+## Audit the Chain, Not Only the Result
+
+Audit record ของ agent ควรช่วยตอบคำถามเหล่านี้
+
+- ใคร request งาน
+- Agent และ version ไหนรับงาน
+- Goal และ policy ชุดไหนถูกใช้
+- Agent ขอเรียก tools อะไร
+- Call ไหน allowed หรือ denied
+- มี human approval หรือเปล่า
+- External system ถูกเปลี่ยนอะไร
+- Action เชื่อมกับ trace และ evaluation ชุดไหน
+
+ตัวอย่าง record
+
+```json
+{
+  "user_id": "support_user_42",
+  "agent_id": "support-order-agent",
+  "agent_version": "2026-08-27.1",
+  "execution_id": "exec_91ab",
+  "tool": "ticket.add_note",
+  "resource": "ticket_731",
+  "policy": "support-note-v3",
+  "decision": "allowed",
+  "result": "completed"
+}
+```
+
+ไม่ต้องเก็บ private prompt ทั้งหมดเป็น default ครับ เก็บเท่าที่ใช้อธิบายได้ว่า policy ตัดสิน call นั้นอย่างไร และยังต้องทำตาม data-retention rule
+
+{/* IMAGE PROMPT (shared-admin-vs-owned-identities.png): Wide clay stop-motion comparison diorama on a warm-peach background. Left side: several different AI helpers crowd around one oversized master key and one open gate, creating confusion. Right side: each helper has a small unique badge, a named owner represented by a simple person token, and access to only one matching door. Use indigo, tangerine, cream, and small lime accents. No text, letters, logos, watermark, photorealism, flat vector, paper collage, risograph, dark background, or duplicate characters. */}
+
+![Shared administrator access เทียบกับ agent identity ที่แยก owner และ permission](/assets/images/blogs/ai-agent-identity/shared-admin-vs-owned-identities.png)
+
+## Revocation Is Part of Identity Design
+
+Identity design ยังไม่ครบ ถ้าให้ access ง่ายแต่ถอนออกยาก
+
+ลองเตรียมทางรับมือสถานการณ์เหล่านี้ไว้ครับ
+
+- Agent owner ย้ายออกจากทีม
+- Agent ย้ายจาก test ไป production
+- Tool 1 ตัวไม่ต้องใช้อีกแล้ว
+- Credential หรือ agent runtime ถูก compromise
+- Model หรือ agent framework เปลี่ยน
+- Agent ถูก retire
+- ต้องหยุด delegated job 1 งาน โดยไม่หยุด agent ทั้งหมด
+
+Credential อายุสั้นช่วยลดเวลาที่ต้องรอหลัง revoke Identity ที่แยกกันช่วยจำกัด blast radius ส่วน policy point กลางใช้ deny call ถัดไปได้ทันที Audit trail ยังบอกทีมได้ว่า actions ชุดไหนที่ทำไปแล้วต้องกลับมา review
+
+## A Practical Starting Design
+
+Internal agent ตัวแรกยังไม่ต้องมี identity platform ขนาดใหญ่ครับ เริ่มจาก boundary ที่อธิบายได้ก่อน
+
+1. ให้ agent มี ID แยกจากตัวอื่นและมี owner
+2. เก็บ user identity ไว้เมื่อ agent ทำงานแทน user
+3. วาง tool calls ไว้หลัง authenticated APIs
+4. เริ่มจาก allowlist ของ actions ชุดเล็ก
+5. ใช้ short-lived credentials เมื่อ platform รองรับ
+6. บันทึก user, agent, tool, policy, action และ result
+7. Test revocation ก่อน production
+
+OWASP จัด identity and privilege abuse ไว้ในกลุ่ม risk สำคัญของ agentic applications เนื้อหาของ OWASP ยังเชื่อม service-agent identity ที่มี access กว้างเกินไปเข้ากับ tool misuse และ data access [OWASP Agentic Security Initiative](https://genai.owasp.org/initiatives/agentic-security-initiative/)
+
+Agent อาจพูดเหมือนคนและทำงานข้ามหลาย tools แต่ในมุม architecture เรายังควรมอง agent เป็น actor ที่ต้องอยู่ภายใต้ control
+
+ให้ agent มี identity ที่ platform verify ได้ ให้ access เท่าที่งานต้องใช้ เก็บไว้ด้วยว่าใครหรือ service ไหนเป็นคน delegate งาน แล้วทำให้ทีม audit และถอน authority นั้นภายหลังได้ครับ
