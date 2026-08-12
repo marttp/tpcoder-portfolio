@@ -1,0 +1,546 @@
+---
+title: "How I Think About Designing Irreversible Actions in the AI Agent Era"
+description: "Design action contracts, idempotency, approval, execution, and recovery for reversible, compensatable, and irreversible actions in the AI agent era."
+pubDate: "2026-08-16"
+tags:
+  ["AI Agent", "Software Architecture", "Reliability", "Security"]
+heroImage: "/assets/images/blogs/ai-agent-irreversible-actions/hero-banner.png"
+language: "en"
+translationSlug: "how-i-think-about-designing-irreversible-actions-ai-agent-era-th"
+servicesNote: true
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+{/* IMAGE PROMPT (hero-banner.png): Wide modern graphic-novel storyboard on a light parchment background. Show an AI agent represented as a small masked courier approaching three action doors: a circular return door, a repair workshop door, and a one-way launch door. A calm control operator and a mechanical safety gate stand before the one-way door. Use black ink outlines, vermilion red, amber, cream, and small turquoise accents. Dynamic panels but clean reading order. No text, letters, logos, watermark, gore, dark background, clay style, paper-note collage, risograph transit map, glossy 3D, or robot head. */}
+
+
+When people discuss AI agents, they often worry that an agent may take an action that cannot be undone. This problem did not start with AI. A normal information system can already:
+
+- send an email;
+- move money;
+- delete a customer record;
+- publish a document;
+- change someone’s access;
+- submit an order to an external company.
+
+These actions can fail even without AI.
+
+The request may time out after the external system accepted it. A worker may crash after sending the message but before saving the result. Two retries may arrive together. An operator may choose the wrong customer.
+
+Distributed systems already need validation, idempotency, state machines, audit history, reconciliation, and recovery.
+
+Now place an AI agent above the same APIs. The system still has every old failure mode. It also has a new one: **the agent may choose the wrong action even when every service works correctly.**
+
+I wrote this article to compare these old system failures with the uncertainty that an AI agent adds. Then we can decide where control and recovery should live.
+
+This leads to my main point:
+
+**An AI agent may propose or request an action. The deterministic system around it must own permission, execution, and recovery.**
+
+## First, Separate Three Kinds of Action
+
+People often call every high-impact action irreversible. I find it more useful to split them.
+
+### Reversible
+
+The system can restore the earlier state with a reliable inverse operation.
+
+Examples:
+
+- save a draft, then restore the previous version;
+- change a feature flag, then change it back;
+- move a ticket, then return it to the earlier queue.
+
+Reversal still needs authorization and history, but the old state remains available.
+
+### Compensatable
+
+The first action remains in history. A second action can correct its business effect.
+
+Examples:
+
+- issue a credit after an incorrect invoice;
+- publish a correction after releasing incorrect information;
+- restore access with a new permission change;
+- create a correction entry in a ledger.
+
+Compensation does not erase the first action. It creates another action to correct the business effect, so both records remain in history.
+
+### Irreversible
+
+The effect cannot be reliably removed.
+
+Examples:
+
+- send private data to the wrong address;
+- publish a secret to a public channel;
+- reveal information in a model response;
+- trigger a physical shipment that has already left;
+- delete the last copy of data.
+
+We can respond to the incident, but we cannot guarantee that the recipient forgot the information or that every copy disappeared.
+
+<MermaidDiagram chart={`
+flowchart TD
+    A["Requested action"] --> C{Can the old state be restored?}
+    C -->|Yes| R["Reversible\nRestore previous state"]
+    C -->|No| B{Can another action correct the effect?}
+    B -->|Yes| P["Compensatable\nKeep both events"]
+    B -->|No| I["Irreversible\nPrevent before execution"]
+`} />
+
+These three classes tell us which recovery model to prepare. They do not yet tell us how easily an action should be allowed to run.
+
+## Action Class Tells Us How to Recover, Not How Risky It Is
+
+An action class answers one question: **After the action happens, how can the system handle its effects?**
+
+- A reversible action has an operation that restores the earlier state.
+- A compensatable action needs a new business action to correct the effect.
+- An irreversible action cannot remove the effect, so validation and prevention matter before execution.
+
+The class alone does not tell us how dangerous an action is.
+
+- A feature flag is reversible, but a global mistake can still have a large blast radius.
+- A financial adjustment is compensatable, but the first record remains and may cause harm while the correction is pending.
+- A notification is irreversible after delivery, but a maintenance notice and a message containing PII have very different impact.
+
+After finding the action class, I check at least six more dimensions:
+
+| Dimension | What to check | Example |
+|---|---|---|
+| **Undo quality** | How much of the old state can return? | A draft can be restored, while a ledger correction keeps the first record |
+| **Time window** | How long can the action be stopped or undone? | A scheduled job can be canceled before a worker accepts it |
+| **Blast radius** | How many users, tenants, or resources can be affected? | One tenant feature flag versus a global flag |
+| **Data exposure** | Did data leave the trust boundary? | An internal note versus a file sent outside the organization |
+| **Detectability** | How quickly can the team know that the action was wrong? | A deployment has health checks, while a data leak may be found after a report |
+| **Recovery cost** | How much time, money, and human work does recovery need? | Rolling back a deployment versus recalling shipments across countries |
+
+Control selection is therefore a two-step process:
+
+1. Use the action class to choose the recovery model.
+2. Use impact, scope, confidence, data boundary, and recovery cost to allow, limit, approve, or deny the action.
+
+## Map the Existing Deterministic Workflow First
+
+Before adding an AI agent, start with actions the system already exposes through a UI, batch job, API, or operator tool.
+
+| Existing behavior | Action class | Why | Control and recovery |
+|---|---|---|---|
+| Save or edit a draft note | Reversible | The system keeps an earlier version and can restore it | Version history, authorization, and audit |
+| Change an access role | Reversible | A new permission change can restore the earlier role | Authorization, allowed transitions, and audit |
+| Record a financial adjustment | Compensatable | The earlier record remains, so a new record must correct the business effect | Idempotency, limits, reconciliation, and manual recovery |
+| Publish a document publicly | Irreversible | Unpublishing cannot control copies that people already read or saved | Preview, data classification, and approval before publishing |
+| Send a command to a physical device | Depends on device state | It may be canceled before work begins, then become compensatable or irreversible | Device status, timeout, safety interlock, and emergency stop |
+| Delete the last data copy | Irreversible | No source remains for restoration | Retention policy, backup verification, and a separate non-agent flow |
+
+The tool definition or action registry should own these action classes. Each caller should not classify the same action again for every request.
+
+## Turn the Classification into an Action Contract
+
+A classification in a diagram cannot control runtime behavior. Each action should have a contract that the agent, policy engine, execution service, approval UI, and operator can use.
+
+This example uses `document.publish` to show a contract for an irreversible action:
+
+```yaml
+action: document.publish
+version: 3
+class: irreversible
+owner: content-operations
+
+input_schema:
+  document_id: string
+  destination: enum
+  classification: enum
+  evidence_refs: array
+
+authorization:
+  required_scope: document:publish:propose
+  tenant_bound: true
+
+policy:
+  allowed_destinations:
+    - company_website
+    - partner_portal
+  deny_classifications:
+    - restricted
+    - secret
+  approval_required: true
+
+execution:
+  endpoint: POST /internal/publications
+  idempotency: required
+  timeout_state: outcome_unknown
+
+recovery:
+  verify_with: GET /internal/publications/{request_id}
+  contain_with: document.unpublish
+  manual_queue: content-incident
+
+evidence:
+  retain_days: 365
+  fields:
+    - actor
+    - proposal_hash
+    - policy_result
+    - approver
+    - publication_id
+```
+
+Different parts of the system use this contract:
+
+- the backend enforces schema, authorization, and policy;
+- the approval UI shows the destination, data classification, and impact;
+- the execution service applies idempotency and state transitions;
+- monitoring finds the owner and action version;
+- incident tooling uses the verification, containment, and evidence fields.
+
+The version also matters. If a policy or recovery path changes, an action approved under the old contract must be reviewed again. The old approval should not run under new rules.
+
+Whether an action comes from a screen, batch job, or AI agent, the backend still checks authoritative state, permission, policy, duplicate intent, and allowed transitions. It then records the intent before calling the external system.
+
+<MermaidDiagram chart={`
+sequenceDiagram
+    actor H as Human or agent
+    participant A as Action API
+    participant D as Database
+    participant P as External system
+    H->>A: Submit action with request ID
+    A->>A: Validate access, state, and policy
+    A->>D: Save action intent
+    A->>P: Execute with idempotency key
+    alt External system confirms
+        P-->>A: External action ID
+        A->>D: Mark completed
+    else Timeout or unknown result
+        A->>D: Mark outcome unknown
+        A->>P: Query by request ID
+        P-->>A: Final status
+        A->>D: Reconcile state
+    end
+`} />
+
+The important state is not only `success` or `failed`. An external action can have an **unknown outcome**. A timeout tells us that the caller did not receive a response. It does not prove that the provider did nothing.
+
+I learned this technique mainly from Stripe. A client sends an `Idempotency-Key` when it creates or updates an object. If a connection error happens, the client can retry the same request. Stripe returns the stored result instead of running the same operation twice. [Stripe API Reference](https://docs.stripe.com/api/idempotent_requests)
+
+AWS explains the same problem in more detail through idempotent APIs. A caller may time out after a resource was created. A blind retry can then create an unwanted duplicate. A caller-provided request ID helps the service recognize the same intent and return the existing result safely. [Amazon Builders’ Library](https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/)
+
+Normal recovery tools include:
+
+- **retry:** repeat a safe operation after a temporary failure;
+- **idempotency:** make repeated requests for the same intent avoid extra side effects;
+- **compensation:** perform another business action that corrects the effect;
+- **reconciliation:** compare internal state with the external source of truth;
+- **manual recovery:** give an operator enough evidence and controls to resolve the case.
+
+## Know Where the Side Effect Begins
+
+The word execute is too broad when an action affects another system. We need to know which step only prepares an intent and which step crosses the side-effect boundary.
+
+A common flow can be separated into these steps:
+
+1. Accept a request or proposal. No side effect exists yet.
+2. Validate the schema, authoritative state, permission, and policy.
+3. Store the intent, request ID, and action version in durable storage.
+4. Dispatch the command to an execution service or external system.
+5. The external system accepts the action. The side effect may begin here.
+6. Record the outcome in internal state.
+7. Reconcile when the outcome remains unknown.
+
+A failure can happen between any two steps:
+
+- before the intent is stored, the original request may be submitted again;
+- after intent but before dispatch, a worker can continue from durable state;
+- during dispatch, a timeout must not be treated as proof of failure;
+- after external completion but before the internal update, reconciliation must recover the outcome;
+- after the internal update but before event publication, downstream systems do not know that state changed.
+
+Represent **intent, dispatch, and outcome** as states that can be followed. Keep a correlation ID across services.
+
+When the system must update a database and publish an event, do not depend on two separate writes both succeeding. A transactional outbox stores the state change and event in one database transaction. A worker publishes the event after commit. The consumer must still handle duplicate events with idempotency. [AWS Transactional Outbox Pattern](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html)
+
+The outbox only closes the gap between database commit and event publication. It does not place the database and an external API in one transaction. An unknown external outcome still needs idempotency, status queries, and reconciliation.
+
+## Add the AI Agent to the Same Workflow
+
+Adding an AI agent changes who proposes an action. A human, UI, or scheduled job is now joined by a component that interprets context and selects tools non-deterministically.
+
+The deterministic system still handles each proposal through the existing action contract.
+
+| Agent proposal | Existing action class | Deterministic response |
+|---|---|---|
+| `case.note.update` | Reversible | Validate access, then save with version history |
+| `access.role.change` | Reversible | Check authority, target scope, and allowed transition |
+| `ledger.adjustment.create` | Compensatable | Check policy, value, and idempotency; require approval above a limit |
+| `customer.email.send` | Irreversible | Create a preview and wait for confirmation |
+| `document.publish` | Irreversible | Check classification, destination, and approval bound to the payload |
+| `data.last_copy.delete` | Irreversible | Deny because this action should not be an agent tool |
+
+The agent interprets the request and prepares a proposal. The backend reads the contract and applies its permission, policy, approval, and recovery rules.
+
+The agent may fail in ways that normal backend code does not:
+
+- misunderstand what the customer asked;
+- use a detail from another case;
+- select the wrong tool;
+- invent a reason code that does not exist;
+- choose a parameter that sounds reasonable but breaks policy;
+- continue after the goal changed;
+- follow malicious instructions hidden in a document or message.
+
+Even a strong evaluation does not remove this uncertainty.
+
+Suppose the agent completes 90% of an evaluation set correctly. We still do not know which 10% will fail in production. Inputs change. Rare cases may be more harmful than common cases. The evaluation may also miss a new tool, policy, language, or attack.
+
+An evaluation is evidence. It is not permission to remove the system boundary.
+
+## Keep Planning and Execution Separate
+
+The agent is useful at work that needs interpretation:
+
+- understand the request;
+- collect relevant context;
+- propose an action;
+- explain why it selected the action;
+- prepare the parameters.
+
+The execution service should own deterministic checks:
+
+- validate schema and required fields;
+- load authoritative data;
+- evaluate permissions and business policy;
+- check scope, value, and frequency limits;
+- require approval when risk is high;
+- apply idempotency and state transitions;
+- record the action and result.
+
+<MermaidDiagram chart={`
+flowchart LR
+    U["User request"] --> A["Non-deterministic agent\nUnderstand + propose"]
+    A --> P["Structured action proposal"]
+    P --> C["Action definition\nClass + owner + recovery"]
+    C --> G["Deterministic safety gate"]
+    G -->|Allowed| X["Execution API"]
+    G -->|Needs review| H["Human approval"]
+    G -->|Invalid or unsafe| D["Deny + explain"]
+    H -->|Approved| X
+    X --> R["Result + audit + recovery state"]
+`} />
+
+The model should not construct a hidden database query or call an external system directly. Give it a narrow tool such as:
+
+```json
+{
+  "tool": "document.publish.propose",
+  "document_id": "doc_84f2",
+  "destination": "partner_portal",
+  "classification": "internal",
+  "evidence_refs": ["approval_request_18", "policy_check_2"]
+}
+```
+
+The backend resolves the references and decides whether this proposal may become an action.
+
+## Bind Approval to the Exact Proposal
+
+Human approval helps when the person has enough context and the approval is tied to the action that will run. An Approve button alone does not prove that the person understood the action.
+
+The review screen should show at least:
+
+- the person or agent that proposed the action;
+- the customer, tenant, and resource that will be affected;
+- the old value and proposed change;
+- the scope, destination, value, or permission;
+- the evidence used by the agent;
+- the policy result and reason for approval;
+- the action class, recovery path, and point of no return.
+
+When the person confirms, bind the approval to that exact data. Store values such as `proposal_hash`, action contract version, policy version, and expiry.
+
+If the agent changes the scope, recipient, attachment, or tool parameter, the hash must change. The old approval must no longer work. Do not approve a broad goal and let the agent select the final payload later.
+
+Approval should also expire. Resource state, user intent, or policy may change while waiting for review. The backend must load authoritative state and validate it again before execution.
+
+## Let Risk Choose the Control
+
+Human approval for every tool call makes an agent slow and expensive. No approval makes every model mistake an operational risk.
+
+Use the action class, impact, confidence, and context to choose a control.
+
+| Situation | Possible control |
+|---|---|
+| Read public documentation | Allow and log |
+| Add an internal draft note | Allow with easy undo |
+| Send a normal reply from an approved template | Preview or sample review |
+| Change one tenant configuration within an allowlist | Policy limit and post-action review |
+| Change access for many users | Human approval |
+| Export sensitive data | Deny by default or require a separate controlled flow |
+| Delete the last data copy | Do not expose as an agent tool |
+
+<MermaidDiagram chart={`
+flowchart TD
+    P["Action proposal"] --> R["Risk classification"]
+    R --> L["Low\nAllow + log"]
+    R --> M["Medium\nPreview or bounded execution"]
+    R --> H["High\nHuman approval"]
+    R --> F["Forbidden\nDo not expose the tool"]
+`} />
+
+Some limits should be hard rules:
+
+- maximum value or affected resources per action and per day;
+- allowed customer or tenant boundary;
+- allowed destination domains;
+- approved message templates;
+- time window;
+- maximum tool calls;
+- no further agent delegation;
+- no access to raw credentials.
+
+The model can explain why it wants an exception. It should not grant itself one.
+
+OWASP's guidance for agentic applications covers risks such as goal hijacking, tool misuse, identity abuse, and unexpected code execution. Its mitigation material recommends confirmation through human approval, policy engines, or platform guardrails when goals shift or actions become unsafe. [OWASP Agentic Security Initiative](https://genai.owasp.org/initiatives/agentic-security-initiative/)
+
+## Put the Point of No Return Near the End
+
+One workflow may contain reversible, compensatable, and irreversible steps. Their order is part of the safety design.
+
+For example:
+
+- before publishing a document, validate its classification, scan for secrets, and confirm the destination;
+- before sending a command to a physical device, check device state, safety conditions, and the emergency stop;
+- before deleting data, stop writers, check retention policy, verify the backup, and confirm that this is not the last copy;
+- before telling a user that work completed, verify the outcome from the authoritative system.
+
+If the irreversible step happens too early, a later failure cannot remove the effect that already happened.
+
+A safer order is:
+
+1. Validate authoritative state and permission.
+2. Reserve required resources with a timeout.
+3. Store the intent and workflow state.
+4. Run reversible or compensatable steps.
+5. Verify each outcome.
+6. Run the irreversible step after all critical checks pass.
+7. Release reservations and close the workflow.
+
+<MermaidDiagram chart={`
+flowchart LR
+    V["Validate"] --> R["Reserve"]
+    R --> I["Record intent"]
+    I --> C["Compensatable steps"]
+    C --> G{"All critical checks pass?"}
+    G -->|No| B["Compensate or recover"]
+    G -->|Yes| P["Point of no return"]
+    P --> X["Irreversible action"]
+    X --> O["Observe outcome"]
+`} />
+
+When the workflow spans several services, a saga can store progress and choose forward or backward recovery after a step fails. [AWS Saga Patterns](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/saga-patterns.html)
+
+Compensation does not always restore every byte to the starting state. It also does not always run in the opposite order. Business rules may require the system to fix a sensitive resource first. Compensation can fail too. Make each step safe to retry, store checkpoints, and provide manual recovery. [Microsoft Compensating Transaction Pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/compensating-transaction)
+
+For a workflow with an irreversible step, mark the **point of no return** in the design. Move it after critical validation and compensatable work. If important uncertainty remains, do not cross the boundary yet.
+
+## Design the Recovery Before the Happy Path
+
+For each tool, I would ask these questions before production:
+
+1. How do we know whether the action happened?
+2. Can the same intent be retried safely?
+3. Can we reverse it or compensate for it?
+4. Which state represents an unknown outcome?
+5. Who receives the recovery task?
+6. What evidence will that person see?
+7. How do we stop this agent without stopping every workflow?
+
+<MermaidDiagram chart={`
+stateDiagram-v2
+    [*] --> Proposed
+    Proposed --> Denied
+    Proposed --> AwaitingApproval
+    Proposed --> Executing
+    AwaitingApproval --> Executing
+    AwaitingApproval --> Denied
+    Executing --> Completed
+    Executing --> OutcomeUnknown
+    OutcomeUnknown --> Completed: Reconcile
+    OutcomeUnknown --> Failed: Reconcile
+    Completed --> Compensating
+    Compensating --> Compensated
+`} />
+
+Store the important checkpoints:
+
+- original request and actor;
+- agent, model, prompt, and tool versions;
+- evidence used for the proposal;
+- structured proposal;
+- policy result;
+- approval and approver;
+- idempotency key;
+- external action ID;
+- final or unknown outcome;
+- compensation or manual recovery.
+
+## Observe the Action Lifecycle
+
+Model latency and token usage do not show how much operational work an agent creates. Observability for the action layer should follow the flow from proposal to recovery.
+
+| Signal | What it shows |
+|---|---|
+| Proposal count by action and risk | Which actions the agent tries more often |
+| Policy denials by reason | Which rules the prompt, tool, or user request is hitting |
+| Approval rate, expiry, and review time | Whether the human gate helps or becomes a bottleneck |
+| Completed, failed, and outcome unknown | Where the execution path has uncertainty |
+| Reconciliation age | How long unknown cases remain open |
+| Compensation rate and success | How much repair work the agent or workflow creates |
+| Manual recovery queue age | Whether the operations team can handle the workload |
+| Irreversible actions by actor and tenant | Whether an anomaly or blast radius needs to be stopped |
+
+These metrics should link back to the trace, proposal, policy result, approval, and external action ID. Without those links, a dashboard can show a problem while the operator still has to collect all evidence again.
+
+I would add autonomy in stages:
+
+1. **Offline evaluation:** Test proposals with historical cases.
+2. **Shadow mode:** Let the agent propose actions without executing them.
+3. **Decision comparison:** Compare proposals with operator decisions and study disagreement.
+4. **Approval required:** Use the production execution path while every action still waits for a person.
+5. **Bounded automation:** Allow only low-risk cases within scope, tenant, value, and rate limits.
+6. **Continuous review:** Send samples, incidents, denials, and compensation results back into evaluation.
+
+If unknown outcomes, compensation, or manual recovery increase after more autonomy, the system should be able to reduce access without waiting for a new model deployment.
+
+{/* IMAGE PROMPT (human-vs-agent-action.png): Wide graphic-novel diptych on light parchment. Left panel: a human operator requests a high-impact action through a guarded transaction machine. Right panel: an AI courier requests the same action through the same guarded machine. The safety machine is identical in both panels and includes visible checkpoints, a lock, a journal spool, and an emergency stop lever. Use black ink, vermilion, amber, cream, and small turquoise accents. No text, letters, logos, watermark, dark background, robot head, clay, risograph, glossy 3D, or duplicated panels. */}
+
+![A human and an AI agent use the same controlled execution boundary](/assets/images/blogs/ai-agent-irreversible-actions/human-vs-agent-action.png)
+
+## The Human System and Agent System Should Share the Core
+
+The person and agent do not need two unrelated transaction systems.
+
+Both should use the same:
+
+- authoritative data;
+- authorization service;
+- business rules;
+- state machine;
+- idempotent execution API;
+- audit and reconciliation path.
+
+The agent path adds controls for non-deterministic decisions, tool selection, model context, and evaluation. The human path adds UI controls and operator accountability. The transaction core remains deterministic.
+
+The decision entry path changes when an AI agent is added. The system must accept a structured proposal, check model context, and choose a control from risk. The transaction core still performs the same work:
+
+- validate authoritative state;
+- enforce authorization and business rules;
+- bind approval to the payload;
+- execute with idempotency;
+- keep durable state when the outcome is unknown;
+- reconcile, compensate, or send the case to manual recovery.
+
+If you remember one point from this article, remember this: **An agent may help decide and propose an action. Permission to create a side effect and responsibility for recovery must stay in the deterministic system.**
+
+This boundary lets the team add autonomy from production evidence without building a second transaction path. It also removes the need to hope that the model will never make another mistake.
