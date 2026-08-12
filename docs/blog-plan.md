@@ -2,19 +2,19 @@
 
 ## Publishing Roadmap
 
-The plan publishes one article every 2 days from 10–18 August 2026. The order moves from engineering foundations into the connected AI architecture series.
+The series runs from 10–18 August 2026. The order moves from engineering foundations into connected AI architecture topics.
 
 | Order | Published date | Article | Visual budget |
 | --- | --- | --- | --- |
 | 1 | Monday, 10 August 2026 | Architecture Decision Records in Practice | 4 visuals: 1 designed image + 3 Mermaid diagrams |
 | 2 | Wednesday, 12 August 2026 | Practical Observability by TP Coder | 11 visuals: 3 designed images + 3 official product images + 5 Mermaid diagrams |
-| 3 | Friday, 14 August 2026 | Give Your AI Agent an Identity | 6 visuals: 2 designed images + 4 Mermaid diagrams |
-| 4 | Sunday, 16 August 2026 | How I Think About Designing Irreversible Actions in the AI Agent Era | 7 visuals: 2 designed images + 5 Mermaid diagrams |
+| 3 | Thursday, 13 August 2026 | [Thinking Out Loud] If AI Agents Are Non-deterministic, How Should We Design Irreversible Actions? | 7 visuals: 2 designed images + 5 Mermaid diagrams |
+| 4 | Friday, 14 August 2026 | Give Your AI Agent an Identity | 6 visuals: 2 designed images + 4 Mermaid diagrams |
 | 5 | Tuesday, 18 August 2026 | AI Governance Is Becoming a Software Architecture Problem | 6 visuals: 2 designed images + 4 Mermaid diagrams |
 
 Each designed-image budget includes one hero image. Mermaid is the default for architecture, flow, state, and sequence diagrams. A second designed image is useful only for a concept that Mermaid cannot explain well. This keeps each article visual without turning every diagram into a large image.
 
-The short cadence keeps the series connected. It begins with ADR and observability, then moves through agent identity, high-impact actions, and governance. Each article can reuse the foundation from the previous one.
+The short cadence keeps the series connected. It begins with ADR and observability, then moves through high-impact actions, agent identity, and governance. Each article can reuse ideas from the wider series.
 
 ## Shared Storytelling Shape
 
@@ -117,9 +117,9 @@ Use hypothetical situations when personal experience is not available. Keep expe
 - Mermaid: user-to-agent-to-agent delegation and audit chain
 - Designed concept: one shared admin identity versus separate owned identities
 
-### How I Think About Designing Irreversible Actions in the AI Agent Era
+### [Thinking Out Loud] If AI Agents Are Non-deterministic, How Should We Design Irreversible Actions?
 
-**Published date:** Sunday, 16 August 2026
+**Published date:** Thursday, 13 August 2026
 
 **Central claim:** An AI agent may propose or request an action, but the surrounding system must own safety, execution, and recovery.
 
