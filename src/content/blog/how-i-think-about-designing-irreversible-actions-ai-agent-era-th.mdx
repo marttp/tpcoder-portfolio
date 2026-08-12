@@ -1,7 +1,7 @@
 ---
-title: "วิธีที่ผมคิดเรื่อง Irreversible Action ในยุค AI Agent"
-description: "ออกแบบ action contract, idempotency, approval, execution และ recovery สำหรับ Reversible, Compensatable และ Irreversible Action ในยุค AI Agent"
-pubDate: "2026-08-16"
+title: "[คิดเรื่อยเปื่อย] ถ้าเรายอมรับว่า AI Agent เป็น Non-deterministic แล้ว จะออกแบบ Irreversible Action ยังไงดีนะ"
+description: "ถ้ายอมรับว่า AI Agent ยังเลือกผิดได้ เราจะวาง action contract, approval, execution และ recovery รอบ Irreversible Action ยังไง"
+pubDate: "2026-08-13"
 tags:
   ["AI Agent", "Software Architecture", "Reliability", "Security"]
 heroImage: "/assets/images/blogs/ai-agent-irreversible-actions/hero-banner.png"
@@ -15,7 +15,9 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 {/* IMAGE PROMPT (hero-banner.png): Wide modern graphic-novel storyboard on a light parchment background. Show an AI agent represented as a small masked courier approaching three action doors: a circular return door, a repair workshop door, and a one-way launch door. A calm control operator and a mechanical safety gate stand before the one-way door. Use black ink outlines, vermilion red, amber, cream, and small turquoise accents. Dynamic panels but clean reading order. No text, letters, logos, watermark, gore, dark background, clay style, paper-note collage, risograph transit map, glossy 3D, or robot head. */}
 
 
-พอพูดถึง AI Agent หลายคนเริ่มกังวลว่า agent อาจลงมือทำสิ่งที่ย้อนกลับไม่ได้ แต่ปัญหานี้ไม่ได้เริ่มจาก AI เพราะ information system ทั่วไปก็มี action แบบนี้อยู่แล้ว
+ช่วงนี้ผมคิดอยู่เรื่องหนึ่ง ถ้าเรายอมรับตั้งแต่ต้นว่า AI Agent เป็น non-deterministic ต่อให้ evaluation ออกมาดี agent ก็ยังเลือก action หรือ parameter ผิดได้ แล้วเราจะยอมให้ agent แตะงานที่ย้อนผลกลับมาได้มากน้อยแค่ไหน
+
+การรอให้ model รุ่นถัดไปพลาดน้อยลงยังตอบคำถามนี้ไม่พอ เพราะปัญหา Irreversible Action ไม่ได้เริ่มจาก AI อยู่แล้ว Information system ทั่วไปก็มี action แบบนี้
 
 - ส่ง email
 - โอนเงิน
@@ -32,9 +34,11 @@ Distributed system จึงต้องมี validation, idempotency, state ma
 
 ทีนี้ลองวาง AI Agent ไว้เหนือ APIs ชุดเดิม ระบบยังมี failure mode เก่าครบทุกข้อ และมีของใหม่เพิ่มมาอีก 1 ข้อคือ **agent อาจเลือก action ผิด แม้ services ทุกตัวจะทำงานตามที่ออกแบบไว้**
 
-ผมเขียนบทความนี้เพื่อเทียบปัญหาเดิมของ information system กับความไม่แน่นอนที่ AI Agent เพิ่มเข้ามา แล้วค่อยดูว่าเราควรวาง control และ recovery ไว้ส่วนไหน
+คำถามที่ผมสนใจจึงเปลี่ยนไป ถ้า agent ยังพลาดได้ เราจะออกแบบระบบรอบข้างให้รับความไม่แน่นอนนั้น โดยไม่ปล่อยให้ทุกความผิดพลาดกลายเป็น incident ได้ยังไง
 
-ผมเลยมองเรื่องนี้แบบนี้
+บทความนี้เลยลองเทียบปัญหาเดิมของ information system กับความไม่แน่นอนที่ AI Agent เพิ่มเข้ามา แล้วค่อยไล่ดูว่า control และ recovery ควรอยู่ส่วนไหน
+
+Working answer ของผมตอนนี้คือ
 
 **AI Agent เสนอหรือ request action ได้ ส่วนระบบ deterministic รอบข้างต้องควบคุม permission, execution และ recovery**
 
@@ -541,6 +545,8 @@ Agent path ต้องเพิ่ม control สำหรับ non-determinis
 - เก็บ durable state เมื่อ outcome ยัง unknown
 - Reconcile, compensate หรือส่งต่อ manual recovery
 
-ถ้าจะจำบทความนี้เพียงเรื่องเดียว ผมอยากให้จำว่า **Agent ช่วยคิดและเสนอ action ได้ แต่สิทธิ์ในการสร้าง side effect กับความรับผิดชอบเรื่อง recovery ต้องอยู่ใน deterministic system**
+ถ้าจะเก็บคำตอบกลับไปจากบทความนี้ 1 ข้อ ผมมองว่า **Agent ช่วยคิดและเสนอ action ได้ แต่สิทธิ์ในการสร้าง side effect กับความรับผิดชอบเรื่อง recovery ต้องอยู่ใน deterministic system**
 
 เมื่อวาง boundary แบบนี้ เราเพิ่ม autonomy จาก production evidence ได้โดยไม่ต้องสร้าง transaction path ชุดใหม่ และไม่ต้องหวังว่า model จะไม่พลาดอีกเลย
+
+ทั้งหมดนี้เป็นวิธีที่ผมใช้เรียงความคิดในตอนนี้ ไม่ได้แปลว่าทุก action ต้องมี approval หรือทุก agent ต้องถูกจำกัดเหมือนกัน จุดเริ่มต้นคือยอมรับความเป็น non-deterministic ก่อน แล้วค่อยเลือก control จาก action class, impact, scope และ recovery ที่ระบบทำได้
