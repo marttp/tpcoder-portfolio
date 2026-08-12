@@ -1,6 +1,6 @@
 ---
 title: "How I Think About Designing Irreversible Actions in the AI Agent Era"
-description: "Start with failure and recovery in normal information systems, then add the uncertainty of an AI agent without giving the model control of the transaction."
+description: "Design action contracts, idempotency, approval, execution, and recovery for reversible, compensatable, and irreversible actions in the AI agent era."
 pubDate: "2026-08-16"
 tags:
   ["AI Agent", "Software Architecture", "Reliability", "Security"]
@@ -92,6 +92,30 @@ flowchart TD
 
 This classification changes the design. Reversible work may allow more automation. Compensatable work needs a tested recovery path. Irreversible work needs stronger prevention before the boundary is crossed.
 
+## Reversibility Is More Than One Label
+
+An action class is a starting point. It should not be the final answer. Two actions in the same class may need very different controls.
+
+Compare two emails:
+
+- The first email says that a ticket was opened. Sending it to the wrong person is still a problem, but the data has limited impact.
+- The second email includes a customer statement. Sending it to the wrong person creates a data incident.
+
+Both emails become irreversible after they are sent. Their risk is not the same.
+
+I would check at least six more dimensions:
+
+| Dimension | What to check | Example |
+|---|---|---|
+| **Undo quality** | How much of the old state can return? | A draft can be restored, but a refund only corrects the business effect |
+| **Time window** | How long can the action be stopped or undone? | A scheduled email can be canceled before the provider accepts it |
+| **Blast radius** | How many users, tenants, or resources can be affected? | One tenant feature flag versus a global flag |
+| **Data exposure** | Did data leave the trust boundary? | An internal note versus an email to an external address |
+| **Detectability** | How quickly can the team know that the action was wrong? | A payment has provider status, but a data leak may be found after a report |
+| **Recovery cost** | How much time, money, and human work does recovery need? | Fixing a label versus recalling shipments across countries |
+
+The reversible label does not mean that an agent should always run the action. The irreversible label also does not mean that every case needs human approval. Combine the class with impact, scope, confidence, and recovery quality before choosing the control.
+
 ## Map the Existing Deterministic Workflow First
 
 Suppose a customer-support system can grant a refund and email the customer.
@@ -108,6 +132,58 @@ Before adding an AI agent, classify the existing behavior in this workflow.
 | Send an email to the customer | Irreversible | The system cannot force the recipient to delete or forget a sent message | Preview, approved template, and approval before sending |
 
 The tool definition or action registry should own these action classes. An employee, UI, or AI agent should not classify the same action again for each request.
+
+## Turn the Classification into an Action Contract
+
+A classification in a diagram cannot control runtime behavior. Each action should have a contract that the agent, policy engine, execution service, approval UI, and operator can use.
+
+For example, `payment.refund` may use this contract:
+
+```yaml
+action: payment.refund
+version: 3
+class: compensatable
+owner: payment-operations
+
+input_schema:
+  order_id: string
+  amount_minor: integer
+  currency: string
+  reason_code: enum
+  evidence_refs: array
+
+authorization:
+  required_scope: refund:propose
+  tenant_bound: true
+
+policy:
+  auto_execute_max_minor: 1000
+  daily_customer_limit_minor: 5000
+  approval_above_minor: 1000
+
+execution:
+  endpoint: POST /internal/refunds
+  idempotency: required
+  timeout_state: outcome_unknown
+
+recovery:
+  verify_with: GET /internal/refunds/{request_id}
+  compensate_with: payment.adjustment.propose
+  manual_queue: payment-recovery
+
+evidence:
+  retain_days: 365
+  fields:
+    - actor
+    - proposal_hash
+    - policy_result
+    - approver
+    - provider_refund_id
+```
+
+The contract is not only for the model. The backend enforces the schema and limits. The approval UI shows the impact. Monitoring finds the owner. The recovery worker knows how to verify or compensate for the outcome.
+
+The version also matters. If a policy or recovery path changes, an old approved action should not silently run with the new contract.
 
 The backend should not trust the screen alone. It still checks:
 
@@ -154,6 +230,25 @@ Normal recovery tools include:
 - **compensation:** perform another business action that corrects the effect;
 - **reconciliation:** compare internal state with the external source of truth;
 - **manual recovery:** give an operator enough evidence and controls to resolve the case.
+
+## Know Where the Side Effect Begins
+
+The word execute is too broad when an action affects another system. We need to know which step only prepares an intent and which step crosses the side-effect boundary.
+
+A refund flow may have these steps:
+
+1. The agent creates a proposal. There is no side effect yet.
+2. The backend validates the order, amount, and policy. There is still no side effect.
+3. The system stores an intent and idempotency key. The record is durable, but money has not moved.
+4. The payment provider accepts the refund. This crosses the side-effect boundary.
+5. The system stores the provider result. Internal state now follows external state.
+6. Reconciliation checks again when the outcome is unknown.
+
+A common failure happens when step 4 succeeds but the process crashes before step 5. The database may look like no refund happened, while the provider already processed it.
+
+Separate **intent, dispatch, and outcome**. Keep a correlation ID that works across services. If the system must update a database and publish an event, do not depend on two separate writes both succeeding. A transactional outbox stores the state change and event in one database transaction. A worker publishes the event after commit. The consumer must still handle duplicate events with idempotency. [AWS Transactional Outbox Pattern](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html)
+
+An outbox does not make an external action atomic with the database. It prevents the event from being lost between commit and publish. Idempotency and reconciliation still handle an unknown provider outcome.
 
 ## Add the AI Agent to the Same Workflow
 
@@ -233,6 +328,26 @@ The model should not construct a hidden database query or call a payment provide
 
 The backend resolves the references and decides whether this proposal may become an action.
 
+## Bind Approval to the Exact Proposal
+
+Human approval helps when the person has enough context and the approval is tied to the action that will run. An Approve button alone does not prove that the person understood the action.
+
+The review screen should show at least:
+
+- the person or agent that proposed the action;
+- the customer, tenant, and resource that will be affected;
+- the old value and proposed change;
+- the amount, destination, or permission;
+- the evidence used by the agent;
+- the policy result and reason for approval;
+- the action class, recovery path, and point of no return.
+
+When the person confirms, bind the approval to that exact data. Store values such as `proposal_hash`, action contract version, policy version, and expiry.
+
+If the agent changes the amount, recipient, attachment, or tool parameter, the hash must change. The old approval must no longer work. Do not approve a broad intent such as help this customer and let the agent select the final payload later.
+
+Approval should also expire. The order state, balance, customer request, or policy may change while waiting for review. The backend must load authoritative state and validate it again before execution.
+
 ## Let Risk Choose the Control
 
 Human approval for every tool call makes an agent slow and expensive. No approval makes every model mistake an operational risk.
@@ -272,6 +387,40 @@ Some limits should be hard rules:
 The model can explain why it wants an exception. It should not grant itself one.
 
 OWASP's guidance for agentic applications covers risks such as goal hijacking, tool misuse, identity abuse, and unexpected code execution. Its mitigation material recommends confirmation through human approval, policy engines, or platform guardrails when goals shift or actions become unsafe. [OWASP Agentic Security Initiative](https://genai.owasp.org/initiatives/agentic-security-initiative/)
+
+## Put the Point of No Return Near the End
+
+One request may create several actions. Suppose a customer asks to cancel an order, refund the payment, return inventory, and send a confirmation email.
+
+If the agent selects the order of steps, it may send an email saying the refund succeeded before the payment provider accepted it. It may also return inventory to sale before fulfillment confirms that the shipment stopped.
+
+A safer order is:
+
+1. Validate authoritative state and permission.
+2. Reserve required resources with a timeout.
+3. Store the intent and workflow state.
+4. Run reversible or compensatable steps.
+5. Verify each outcome.
+6. Run the irreversible step after all critical checks pass.
+7. Release reservations and close the workflow.
+
+<MermaidDiagram chart={`
+flowchart LR
+    V["Validate"] --> R["Reserve"]
+    R --> I["Record intent"]
+    I --> C["Compensatable steps"]
+    C --> G{"All critical checks pass?"}
+    G -->|No| B["Compensate or recover"]
+    G -->|Yes| P["Point of no return"]
+    P --> X["Irreversible action"]
+    X --> O["Observe outcome"]
+`} />
+
+When the workflow spans several services, a saga can store progress and choose forward or backward recovery after a step fails. [AWS Saga Patterns](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/saga-patterns.html)
+
+Compensation does not always restore every byte to the starting state. It also does not always run in the opposite order. Business rules may require the system to fix a sensitive resource first. Compensation can fail too. Make each step safe to retry, store checkpoints, and provide manual recovery. [Microsoft Compensating Transaction Pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/compensating-transaction)
+
+For a workflow with an irreversible step, mark the **point of no return** in the design. Move it after critical validation and compensatable work. If important uncertainty remains, do not cross the boundary yet.
 
 ## Design the Recovery Before the Happy Path
 
@@ -314,6 +463,34 @@ Store the important checkpoints:
 - final or unknown outcome;
 - compensation or manual recovery.
 
+## Observe the Action Lifecycle
+
+Model latency and token usage do not show how much operational work an agent creates. Observability for the action layer should follow the flow from proposal to recovery.
+
+| Signal | What it shows |
+|---|---|
+| Proposal count by action and risk | Which actions the agent tries more often |
+| Policy denials by reason | Which rules the prompt, tool, or user request is hitting |
+| Approval rate, expiry, and review time | Whether the human gate helps or becomes a bottleneck |
+| Completed, failed, and outcome unknown | Where the execution path has uncertainty |
+| Reconciliation age | How long unknown cases remain open |
+| Compensation rate and success | How much repair work the agent or workflow creates |
+| Manual recovery queue age | Whether the operations team can handle the workload |
+| Irreversible actions by actor and tenant | Whether an anomaly or blast radius needs to be stopped |
+
+These metrics should link back to the trace, proposal, policy result, approval, and external action ID. Without those links, a dashboard can show a problem while the operator still has to collect all evidence again.
+
+I would add autonomy in stages:
+
+1. **Offline evaluation:** Test proposals with historical cases.
+2. **Shadow mode:** Let the agent propose actions without executing them.
+3. **Decision comparison:** Compare proposals with operator decisions and study disagreement.
+4. **Approval required:** Use the production execution path while every action still waits for a person.
+5. **Bounded automation:** Allow only low-risk cases within amount, tenant, and rate limits.
+6. **Continuous review:** Send samples, incidents, denials, and compensation results back into evaluation.
+
+If unknown outcomes, compensation, or manual recovery increase after more autonomy, the system should be able to reduce access without waiting for a new model deployment.
+
 {/* IMAGE PROMPT (human-vs-agent-action.png): Wide graphic-novel diptych on light parchment. Left panel: a human operator requests a high-impact action through a guarded transaction machine. Right panel: an AI courier requests the same action through the same guarded machine. The safety machine is identical in both panels and includes visible checkpoints, a lock, a journal spool, and an emergency stop lever. Use black ink, vermilion, amber, cream, and small turquoise accents. No text, letters, logos, watermark, dark background, robot head, clay, risograph, glossy 3D, or duplicated panels. */}
 
 ![A human and an AI agent use the same controlled execution boundary](/assets/images/blogs/ai-agent-irreversible-actions/human-vs-agent-action.png)
@@ -333,12 +510,15 @@ Both should use the same:
 
 The agent path adds controls for non-deterministic decisions, tool selection, model context, and evaluation. The human path adds UI controls and operator accountability. The transaction core remains deterministic.
 
-This also makes gradual adoption possible:
+The decision entry path changes when an AI agent is added. The system must accept a structured proposal, check model context, and choose a control from risk. The transaction core still performs the same work:
 
-1. The agent only drafts.
-2. The agent proposes structured actions.
-3. A person approves every action.
-4. Low-risk cases run within strict limits.
-5. The team expands or reduces autonomy using production evidence.
+- validate authoritative state;
+- enforce authorization and business rules;
+- bind approval to the payload;
+- execute with idempotency;
+- keep durable state when the outcome is unknown;
+- reconcile, compensate, or send the case to manual recovery.
 
-With this design, the AI agent can help with context and propose actions without creating a second transaction path. The final safety boundary stays in a system that the team can test, audit, and recover.
+If you remember one point from this article, remember this: **An agent may help decide and propose an action. Permission to create a side effect and responsibility for recovery must stay in the deterministic system.**
+
+This boundary lets the team add autonomy from production evidence without building a second transaction path. It also removes the need to hope that the model will never make another mistake.
