@@ -1,7 +1,7 @@
 ---
-title: "How I Think About Designing Irreversible Actions in the AI Agent Era"
-description: "Design action contracts, idempotency, approval, execution, and recovery for reversible, compensatable, and irreversible actions in the AI agent era."
-pubDate: "2026-08-16"
+title: "[Thinking Out Loud] If AI Agents Are Non-deterministic, How Should We Design Irreversible Actions?"
+description: "If an AI agent can still choose the wrong action, how should we design action contracts, approval, execution, and recovery around it?"
+pubDate: "2026-08-13"
 tags:
   ["AI Agent", "Software Architecture", "Reliability", "Security"]
 heroImage: "/assets/images/blogs/ai-agent-irreversible-actions/hero-banner.png"
@@ -15,7 +15,9 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 {/* IMAGE PROMPT (hero-banner.png): Wide modern graphic-novel storyboard on a light parchment background. Show an AI agent represented as a small masked courier approaching three action doors: a circular return door, a repair workshop door, and a one-way launch door. A calm control operator and a mechanical safety gate stand before the one-way door. Use black ink outlines, vermilion red, amber, cream, and small turquoise accents. Dynamic panels but clean reading order. No text, letters, logos, watermark, gore, dark background, clay style, paper-note collage, risograph transit map, glossy 3D, or robot head. */}
 
 
-When people discuss AI agents, they often worry that an agent may take an action that cannot be undone. This problem did not start with AI. A normal information system can already:
+I have been thinking about one question. If we accept that an AI agent is non-deterministic, it may still choose the wrong action or parameter after a strong evaluation. How much control should we give it over actions that cannot be undone?
+
+Waiting for the next model to make fewer mistakes is not enough. The problem of irreversible actions did not start with AI. A normal information system can already:
 
 - send an email;
 - move money;
@@ -32,9 +34,11 @@ Distributed systems already need validation, idempotency, state machines, audit 
 
 Now place an AI agent above the same APIs. The system still has every old failure mode. It also has a new one: **the agent may choose the wrong action even when every service works correctly.**
 
-I wrote this article to compare these old system failures with the uncertainty that an AI agent adds. Then we can decide where control and recovery should live.
+This changes the question. If the agent can make a mistake, how do we design the surrounding system so that every mistake does not become an incident?
 
-This leads to my main point:
+This article compares old system failures with the uncertainty that an AI agent adds. Then it explores where control and recovery should live.
+
+My working answer is:
 
 **An AI agent may propose or request an action. The deterministic system around it must own permission, execution, and recovery.**
 
@@ -541,6 +545,8 @@ The decision entry path changes when an AI agent is added. The system must accep
 - keep durable state when the outcome is unknown;
 - reconcile, compensate, or send the case to manual recovery.
 
-If you remember one point from this article, remember this: **An agent may help decide and propose an action. Permission to create a side effect and responsibility for recovery must stay in the deterministic system.**
+My answer for now is: **An agent may help decide and propose an action. Permission to create a side effect and responsibility for recovery must stay in the deterministic system.**
 
 This boundary lets the team add autonomy from production evidence without building a second transaction path. It also removes the need to hope that the model will never make another mistake.
+
+This is how I organize the problem today. It does not mean every action needs approval or every agent needs the same limits. Start by accepting the non-deterministic part. Then choose the control from the action class, impact, scope, and recovery that the system can provide.
