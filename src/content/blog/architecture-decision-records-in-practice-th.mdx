@@ -1,0 +1,202 @@
+---
+title: "เก็บเหตุผลของ Architecture Decision ด้วย ADR"
+description: "วิธีเขียน ADR แบบสั้นและใช้งานได้ เพื่อเก็บ context ของ Architecture Decision และเปลี่ยน decision ภายหลังโดยไม่ต้องแก้ประวัติเดิม"
+pubDate: "2026-08-10"
+tags:
+  ["Software Architecture", "Software Engineering", "Leadership", "Documentation"]
+heroImage: "/assets/images/blogs/architecture-decision-records/hero-banner.png"
+language: "th"
+translationSlug: "architecture-decision-records-in-practice"
+servicesNote: true
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+{/* IMAGE PROMPT (hero-banner.png): Wide editorial paper-cut collage on a clean cream background. Show an architecture blueprint on a desk with one red thread connecting a past decision note to the current system and a future change. Use burgundy, ochre, ink black, cream, and muted sage. Handmade paper texture, asymmetric composition, soft natural shadows. No text, letters, logos, watermark, glossy 3D, cartoon robot, dark background, blue-led palette, or green-led system diagram. */}
+
+
+ถ้าคุณเคยเปิด architecture diagram ของระบบเก่า แล้วสงสัยว่าทำไมทีมถึงเลือกออกแบบแบบนี้ คุณน่าจะคุ้นกับสถานการณ์ต่อไปนี้ครับ
+
+สมมุติว่าคุณเพิ่งเข้าทีม แล้วเห็น Kafka คั่นอยู่ระหว่าง 2 services คุณเลยถามว่าทำไมทีมถึงเลือกใช้ Kafka
+
+คำตอบที่ได้อาจประมาณนี้ครับ
+
+- มีคนตัดสินใจไว้เมื่อ 2 ปีก่อน
+- ตอนนั้นคุยกันใน meeting
+- Staff Engineer น่าจะรู้
+- ทีมใช้ Kafka อยู่แล้ว เลยใช้ต่อ
+
+Code กับ diagram ยังอยู่ แต่เหตุผลหายไปแล้ว
+
+ผมเขียนบทความนี้เพราะอยากให้ทีมเก็บเหตุผลเหล่านั้นไว้ โดยไม่เพิ่ม document จนกลายเป็นภาระ **Architecture Decision Record** หรือ ADR เป็น document สั้น ๆ สำหรับเก็บ decision สำคัญ พร้อม context ตอนที่ตัดสินใจและผลที่ทีมต้องรับต่อ
+
+ใจความของบทความนี้มีแค่อย่างเดียว
+
+**ADR ควรเก็บเหตุผลของ decision ไม่ควรกลายเป็น paperwork ที่มีไว้ปกป้องของเดิมไม่ให้ใครเปลี่ยน**
+
+AWS อธิบาย ADR ไว้คล้ายกัน คือใช้บันทึก architecture choice ที่สำคัญ พร้อม context และ consequences เมื่อรวม ADR หลายฉบับเข้าด้วยกัน เราจะได้ decision log ของระบบ [AWS Prescriptive Guidance](https://docs.aws.amazon.com/prescriptive-guidance/latest/architectural-decision-records/adr-process.html)
+
+<MermaidDiagram chart={`
+flowchart LR
+    D["Decision in a meeting"] --> C["Code and architecture"]
+    D -. "Time passes" .-> L["Reason is lost"]
+    C --> N["Next engineer"]
+    L --> N
+    N --> Q["Repeat the old discussion"]
+`} />
+
+## The Smallest ADR That Helps
+
+ADR ไม่ต้องยาวครับ สำหรับ decision ส่วนใหญ่ ผมจะเริ่มจากโครงประมาณนี้
+
+```md
+# Use a queue for invoice generation
+
+Status: Accepted
+Date: 2026-08-10
+Owner: Billing team
+
+## Context
+Invoice generation can take 5–20 seconds. The HTTP request should not wait for it.
+
+## Options
+1. Generate the invoice inside the request
+2. Put the job in a database table and poll it
+3. Publish the job to the existing queue
+
+## Decision
+Use the existing queue and a separate invoice worker.
+
+## Consequences
+- The API can return after accepting the job.
+- The worker needs idempotency and retry handling.
+- The team must monitor queue age and failed jobs.
+```
+
+Format ไม่ใช่ส่วนสำคัญที่สุดครับ สิ่งที่ควรเก็บไว้คือวิธีคิดข้างใน
+
+- **Context:** ตอนนั้นเรามี problem และ constraint อะไร
+- **Options:** เราเทียบทางเลือกไหนบ้าง
+- **Decision:** สุดท้ายเลือกอะไร
+- **Consequences:** ได้อะไรมา แล้วต้องดูแลงานอะไรต่อ
+
+บางทีมอาจเพิ่ม assumption, evidence, reviewer หรือ review date ถ้าข้อมูลนั้นช่วยให้คนอ่านเข้าใจ decision มากขึ้น ไม่ต้องสร้างหัวข้อว่างไว้ 10 หัวข้อเพียงเพราะ template เตรียมมาให้ครบ 10 หัวข้อครับ
+
+## One Decision, One Story
+
+ลองใช้เรื่อง invoice ต่อเป็นตัวอย่างนะครับ
+
+ทางเลือกแรกคือ generate PDF ใน request เลย ระบบมี component น้อย เข้าใจง่าย ถ้า traffic ต่ำและสร้าง invoice ได้เร็ว วิธีนี้อาจเพียงพอ
+
+จากนั้น constraint เริ่มเพิ่มเข้ามา การสร้าง invoice อาจใช้เวลา 20 วินาที ส่วน external tax service ก็ช้าเป็นบางช่วง Customer เห็นหน้าจอค้างแล้วกด retry งานที่ทำอยู่ใน request จึงเริ่มเสี่ยงทั้ง duplicate work และ UX ที่แย่
+
+ถ้าทีมมี queue ที่ดูแลอยู่แล้ว ทางเลือกที่ต้องนำมาเทียบกันก็เปลี่ยนไป
+
+| Option | สิ่งที่ได้ | สิ่งที่ต้องดูแลต่อ |
+|---|---|---|
+| ทำใน request | Flow เรียบง่าย | Request ยาว, timeout, customer retry |
+| ใช้ database job table | ใช้ database ที่มีอยู่ | Polling, locking, cleanup |
+| ใช้ queue เดิม | แยก async work และ scale worker ได้ | Idempotency, DLQ, queue monitoring |
+
+ADR ควรอธิบายว่าทำไม option ที่ 3 ถึงเหมาะกับ **context ชุดนี้** ไม่ได้มีไว้ประกาศว่า queue ดีกว่าทุกทางเลือก
+
+<MermaidDiagram chart={`
+flowchart LR
+    P["Slow invoice generation"] --> O["Compare three options"]
+    O --> C["Existing queue fits the constraints"]
+    C --> B["API returns after acceptance"]
+    C --> K["Team owns worker recovery"]
+`} />
+
+พอมี context แบบนี้ reviewer ก็ถามต่อได้ง่ายขึ้น
+
+- Queue ที่มีอยู่ reliable พอไหม
+- Worker retry ได้โดยไม่สร้าง invoice ซ้ำหรือเปล่า
+- Customer เช็กสถานะ invoice ทางไหน
+- ถ้า tax service ใช้งานไม่ได้ 1 วันจะเกิดอะไรขึ้น
+
+คำถามจะยังอยู่กับ problem และ constraint แทนที่จะวนอยู่กับชื่อ technology
+
+## Accepted Does Not Mean Permanent
+
+ADR ที่ Accepted คือบันทึกว่าทีมรู้อะไรและเลือกอะไรในเวลานั้น ถ้าเราแก้เนื้อหาเก่าให้ decision ดูดีขึ้น ประวัติที่มีประโยชน์จะหายไปครับ
+
+เมื่อ context เปลี่ยน ให้สร้าง ADR ใหม่ แล้วเปลี่ยน status ของอันเดิมเป็น Superseded
+
+สมมุติว่า volume ของ invoice ลดลงมาก และ queue platform เริ่มมีต้นทุนสูง ทีมอาจย้ายงานไปใช้ database-backed scheduler การตัดสินใจรอบใหม่ไม่ได้แปลว่าของเดิมผิดครับ แค่ constraint วันนี้ไม่เหมือนตอนนั้นแล้ว
+
+<MermaidDiagram chart={`
+stateDiagram-v2
+    [*] --> Proposed
+    Proposed --> Accepted
+    Proposed --> Rejected
+    Accepted --> Superseded: New context and new ADR
+    Rejected --> [*]
+    Superseded --> [*]
+`} />
+
+AWS แนะนำให้ Accepted ADR แก้ไขไม่ได้ และสร้าง ADR ใหม่เมื่อต้องเปลี่ยน decision วิธีนี้ช่วยให้ decision log ยังทำหน้าที่เป็นประวัติได้ [AWS Prescriptive Guidance](https://docs.aws.amazon.com/prescriptive-guidance/latest/architectural-decision-records/adr-process.html)
+
+## Not Every Decision Needs an ADR
+
+เขียน ADR ทุกเรื่องก็ไม่ไหวครับ เพราะทุก record ต้องมีคนเขียน ช่วย review ทำให้ค้นหาเจอ และดูแลต่อ ถ้าเรื่องเล็กทุกเรื่องถูกเก็บหมด decision log จะกลายเป็นกองเอกสารที่คนไม่อยากเปิดอ่าน
+
+ผมมักจะเขียน ADR เมื่อ decision มีผลกับระบบหรือทีมในระยะยาว เช่น
+
+- เปลี่ยน system boundary หรือ data flow ที่สำคัญ
+- ทำให้ทีมต้องดูแล dependency ตัวใหม่ไปอีกนาน
+- มีผลกับ security, availability หรือ recovery
+- ถ้าจะเปลี่ยนใจภายหลัง ต้องใช้เวลาหรือค่าใช้จ่ายสูง
+- มีหลายทางเลือกและแต่ละทางมี trade-off ที่ทีมต้องยอมรับ
+- ดูจาก code อย่างเดียวแล้วตอบไม่ได้ว่าทำไมถึงเลือก design นี้
+
+ส่วนเรื่องที่ผลกระทบอยู่แค่ในวงเล็ก และย้อนกลับได้ง่าย ผมมักจะไม่เขียน ADR เช่น
+
+- local refactor ที่ไม่กระทบ architecture
+- library update ขนาดเล็กซึ่ง rollback ได้ง่าย
+- experiment ชั่วคราวที่กำหนดวันจบไว้แล้ว
+- decision ที่ team standard อธิบายเหตุผลไว้ครบอยู่แล้ว
+
+ถ้ายังลังเลว่าจะเขียนดีไหม ลองถามตัวเองแบบนี้ครับ
+
+**อีก 2–3 เดือน ถ้ามีคนถามว่าทำไมระบบถึงเป็นแบบนี้ เขาหาคำตอบจาก code, pull request หรือ team standard ได้ไหม**
+
+ถ้าหาได้ง่าย เราอาจไม่ต้องเพิ่ม ADR แต่ถ้าคำตอบอยู่ในความทรงจำของคนไม่กี่คน การเขียนเก็บไว้ตอนนี้น่าจะคุ้มกว่า
+
+เป้าหมายจึงไม่ใช่จำนวนไฟล์ ADR ครับ เป้าหมายคือเก็บเหตุผลของ decision ที่สำคัญ ก่อนที่ context จะหายไปพร้อมกับเวลา
+
+## Where I Would Keep Them
+
+สำหรับ software system ผมจะเก็บ ADR ไว้ใกล้ code
+
+```text
+docs/
+  adr/
+    0001-use-postgresql.md
+    0002-publish-invoice-jobs.md
+    0003-supersede-invoice-queue.md
+```
+
+Decision history จะได้รับ review และ version control ไปพร้อมระบบ จะเก็บใน documentation platform กลางก็ได้ ถ้าคนหาเจอและทีมดูแล platform นั้นอยู่แล้ว
+
+Tool ที่ใช้เก็บสำคัญน้อยกว่า 3 เรื่องนี้
+
+1. Link ADR จาก change ที่นำ decision ไป implement
+2. ใช้ title สั้นและค้นหาได้
+3. สร้าง record ใหม่เมื่อ decision เปลี่ยน
+
+## A Small Coaching Tool
+
+ADR ใช้ตอน mentor ได้ดี เพราะ engineer ที่เพิ่งเข้าทีมจะมีจุดเริ่มต้นสำหรับถามต่อ
+
+แทนที่จะตอบว่า **เราใช้ Kafka เพราะ scale ได้** ลองเปิด ADR แล้วไล่ context ไปด้วยกัน
+
+- ตอนนั้นมี problem อะไร
+- Option ไหนเรียบง่ายกว่า
+- Constraint ข้อไหนทำให้ option นั้นไม่พอ
+- Design ที่เลือกเพิ่มงานอะไรให้ทีม
+- วันนี้สิ่งที่ได้ยังคุ้มกับสิ่งที่ทีมต้องดูแลต่อไหม
+
+บทสนทนาแบบนี้ช่วยให้คนเห็นวิธีคิด มากกว่าจำชื่อ technology ไปใช้ครับ
+
+ADR ไม่ได้เป็นหลักฐานว่า architecture ถูกต้อง ADR เป็นหลักฐานว่าทีมเคยเลือกภายใต้ context 1 ชุด เมื่อ context เปลี่ยน ทีมก็เลือกใหม่ได้ โดยไม่ต้องทำเหมือนอดีตไม่เคยเกิดขึ้น
