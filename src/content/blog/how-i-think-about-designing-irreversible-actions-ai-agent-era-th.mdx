@@ -1,6 +1,6 @@
 ---
 title: "วิธีที่ผมคิดเรื่อง Irreversible Action ในยุค AI Agent"
-description: "เริ่มจาก failure และ recovery ใน information system แบบเดิม แล้วค่อยเพิ่มความไม่แน่นอนของ AI Agent โดยไม่ยก transaction control ให้ model"
+description: "ออกแบบ action contract, idempotency, approval, execution และ recovery สำหรับ Reversible, Compensatable และ Irreversible Action ในยุค AI Agent"
 pubDate: "2026-08-16"
 tags:
   ["AI Agent", "Software Architecture", "Reliability", "Security"]
@@ -92,6 +92,30 @@ flowchart TD
 
 Classification นี้มีผลกับ design ครับ Reversible work เปิดให้ automate ได้มากกว่า Compensatable work ต้องมี recovery path ที่ test แล้ว ส่วน irreversible work ต้องมี control ที่เข้มก่อนข้าม boundary
 
+## Reversibility Is More Than One Label
+
+Action class เป็นจุดเริ่มต้น ไม่ควรเป็นคำตอบสุดท้ายครับ Action ที่อยู่ class เดียวกันอาจต้องใช้ control ต่างกันมาก
+
+ลองเทียบ email 2 ฉบับ
+
+- Email แจ้งว่า ticket ถูกเปิดแล้ว ส่งผิดคนก็ยังต้องจัดการ แต่ข้อมูลข้างในมี impact จำกัด
+- Email ที่แนบ customer statement ส่งผิดคนครั้งเดียวก็กลายเป็น data incident
+
+ทั้งคู่เป็น irreversible หลังส่งออกไปแล้ว แต่ risk ไม่เท่ากันเลย
+
+เวลาประเมิน action ผมจะดูเพิ่มอีกอย่างน้อย 6 ด้าน
+
+| Dimension | สิ่งที่ต้องดู | ตัวอย่าง |
+|---|---|---|
+| **Undo quality** | ย้อนกลับได้ครบแค่ไหน | Restore draft ได้ครบ แต่ refund แก้ได้เฉพาะ business effect |
+| **Time window** | ยังหยุดหรือย้อนได้อีกนานเท่าไร | Scheduled email cancel ได้ก่อน provider รับงาน |
+| **Blast radius** | กระทบกี่ user, tenant หรือ resource | ปิด feature flag 1 tenant เทียบกับทั้งระบบ |
+| **Data exposure** | ข้อมูลออกจาก trust boundary หรือยัง | Internal note เทียบกับ email ไป external address |
+| **Detectability** | รู้ได้เร็วแค่ไหนว่า action ผิด | Payment มี provider status แต่ข้อมูลรั่วอาจรู้เมื่อมีคนแจ้ง |
+| **Recovery cost** | ต้องใช้เงิน เวลา และคนเท่าไร | แก้ label เทียบกับ recall shipment หลายประเทศ |
+
+เพราะฉะนั้นคำว่า reversible ไม่ได้แปลว่าเปิดให้ agent ทำได้ทุกครั้ง ส่วน irreversible ก็ไม่ได้แปลว่าต้องมีคนกด approve ทุก case เราต้องเอา class มารวมกับ impact, scope, confidence และ recovery quality ก่อนเลือก control
+
 ## Map the Existing Deterministic Workflow First
 
 สมมุติว่า customer-support system ทำ refund และส่ง email หา customer ได้
@@ -108,6 +132,58 @@ Classification นี้มีผลกับ design ครับ Reversible wor
 | ส่ง email หา customer | Irreversible | หลัง email ถูกส่ง เราบังคับให้ recipient ลบหรือไม่อ่านไม่ได้ | Preview, approved template และ approval ก่อนส่ง |
 
 Action class เหล่านี้ควรถูกกำหนดไว้ใน tool definition หรือ action registry ของระบบ ไม่ควรให้ employee, UI หรือ AI Agent เลือกใหม่เองทุกครั้ง
+
+## Turn the Classification into an Action Contract
+
+ถ้า classification อยู่ใน diagram อย่างเดียว runtime ก็ใช้ประโยชน์จากข้อมูลนั้นไม่ได้ครับ ผมอยากให้แต่ละ action มี contract ที่ทั้ง agent, policy engine, execution service และ operator อ่านชุดเดียวกัน
+
+ตัวอย่าง `payment.refund` อาจกำหนดไว้แบบนี้
+
+```yaml
+action: payment.refund
+version: 3
+class: compensatable
+owner: payment-operations
+
+input_schema:
+  order_id: string
+  amount_minor: integer
+  currency: string
+  reason_code: enum
+  evidence_refs: array
+
+authorization:
+  required_scope: refund:propose
+  tenant_bound: true
+
+policy:
+  auto_execute_max_minor: 1000
+  daily_customer_limit_minor: 5000
+  approval_above_minor: 1000
+
+execution:
+  endpoint: POST /internal/refunds
+  idempotency: required
+  timeout_state: outcome_unknown
+
+recovery:
+  verify_with: GET /internal/refunds/{request_id}
+  compensate_with: payment.adjustment.propose
+  manual_queue: payment-recovery
+
+evidence:
+  retain_days: 365
+  fields:
+    - actor
+    - proposal_hash
+    - policy_result
+    - approver
+    - provider_refund_id
+```
+
+Contract นี้ไม่ได้มีไว้ให้ model อ่านอย่างเดียว Backend ใช้ enforce schema กับ limit, approval UI ใช้แสดง impact, monitoring ใช้หา owner ส่วน recovery worker ใช้ตาม outcome กับ compensation ต่อได้
+
+อีกเรื่องที่สำคัญคือ version ครับ ถ้า policy หรือ recovery path เปลี่ยน action ที่ approve ไว้ก่อนหน้าไม่ควรไหลผ่านด้วย contract ชุดใหม่แบบเงียบ ๆ
 
 Backend ไม่ควรเชื่อข้อมูลจากหน้าจอเพียงอย่างเดียว Backend ยังต้อง check ว่า
 
@@ -154,6 +230,25 @@ Recovery tools ที่ system ปกติใช้มีหลายแบบ
 - **compensation:** ทำ business action อีกอันเพื่อแก้ effect
 - **reconciliation:** เทียบ internal state กับ external source of truth
 - **manual recovery:** ให้ operator มี evidence และเครื่องมือพอสำหรับจัดการ case ให้จบ
+
+## Know Where the Side Effect Begins
+
+คำว่า execute กว้างเกินไปสำหรับงานที่มีผลกับระบบอื่นครับ เราต้องรู้ว่า step ไหนเป็นแค่การเตรียม intent และ step ไหนข้าม side-effect boundary ไปแล้ว
+
+สำหรับ refund flow อาจแบ่งได้แบบนี้
+
+1. Agent สร้าง proposal — ยังไม่มี side effect
+2. Backend validate order, amount และ policy — ยังไม่มี side effect
+3. System บันทึก intent กับ idempotency key — มี durable record แต่เงินยังไม่ขยับ
+4. Payment provider รับ refund — ข้าม side-effect boundary
+5. System บันทึก provider result — internal state ตาม external state ทัน
+6. Reconciliation ตรวจซ้ำถ้า outcome ยัง unknown
+
+ปัญหาที่เจอบ่อยคือ step 4 สำเร็จ แต่ process crash ก่อน step 5 ถ้ามองจาก database อย่างเดียวเหมือน refund ยังไม่เกิด ทั้งที่ provider ทำงานไปแล้ว
+
+ระบบจึงต้องแยก **intent, dispatch และ outcome** ออกจากกัน พร้อมเก็บ correlation ID ที่ตามข้าม service ได้ ถ้าต้อง update database แล้วส่ง event ต่อ อย่าทำ dual write แบบหวังว่าทั้ง 2 คำสั่งจะสำเร็จพร้อมกัน Transactional outbox ช่วยบันทึก state change กับ event ใน database transaction เดียว แล้วให้ worker ส่ง event หลัง commit ส่วน consumer ยังต้องรองรับ duplicate ด้วย idempotency [AWS Transactional Outbox Pattern](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html)
+
+Outbox ไม่ได้ทำให้ external action atomic กับ database ครับ หน้าที่ของมันคือไม่ทำ event หล่นระหว่าง commit กับ publish ส่วน unknown outcome ของ provider ยังต้องใช้ idempotency และ reconciliation จัดการอยู่ดี
 
 ## Add the AI Agent to the Same Workflow
 
@@ -233,6 +328,26 @@ Model ไม่ควรสร้าง hidden database query หรือ call 
 
 Backend จะ resolve references แล้วตัดสินว่า proposal นี้ผ่านไปเป็น action ได้หรือไม่
 
+## Bind Approval to the Exact Proposal
+
+Human approval ช่วยได้เมื่อคนเห็นข้อมูลพอและ approval ผูกกับ action ที่กำลังจะ execute ครับ ปุ่ม Approve อย่างเดียวไม่ได้รับประกันว่าคนเข้าใจสิ่งที่กำลังกด
+
+หน้าจอ review ควรแสดงอย่างน้อย
+
+- ใครหรือ agent ตัวไหนเสนอ action
+- Customer, tenant และ resource ที่ได้รับผลกระทบ
+- ค่าเดิมกับค่าที่กำลังจะเปลี่ยน
+- Amount, destination หรือ permission ที่จะใช้
+- Evidence ที่ agent อ้างอิง
+- Policy result และเหตุผลที่ต้อง approve
+- Action class, recovery path และ point of no return
+
+ตอน approver กด confirm ระบบควร bind approval กับข้อมูลชุดนั้น เช่นเก็บ `proposal_hash`, action contract version, policy version และ expiry ไว้ด้วย
+
+ถ้า agent เปลี่ยน amount, recipient, attachment หรือ tool parameter หลัง approval ค่า hash ต้องเปลี่ยนและ approval เดิมต้องใช้ไม่ได้ อย่า approve intent กว้าง ๆ อย่างช่วยลูกค้าคนนี้ แล้วปล่อยให้ agent เลือก execution payload ทีหลัง
+
+Approval ควรหมดอายุด้วยครับ Order state, balance, customer request หรือ policy อาจเปลี่ยนระหว่างรอคน review ก่อน execute backend ต้องโหลด authoritative state และ validate ซ้ำเสมอ
+
 ## Let Risk Choose the Control
 
 ถ้าทุก tool call ต้องมี human approval agent จะช้าและแพง แต่ถ้าไม่มี approval เลย ความผิดพลาดจาก model ทุกครั้งก็จะกลายเป็น operational risk
@@ -272,6 +387,40 @@ Limit บางข้อควรเป็น hard rule
 Model อธิบายเหตุผลที่ขอ exception ได้ แต่อนุมัติ exception ให้ตัวเองไม่ได้
 
 OWASP มี guidance สำหรับ agentic applications ครอบคลุม goal hijacking, tool misuse, identity abuse และ unexpected code execution Mitigation ที่แนะนำรวมถึง confirmation ผ่าน human approval, policy engine หรือ platform guardrail เมื่อ goal เปลี่ยนหรือ action เริ่มไม่ปลอดภัย [OWASP Agentic Security Initiative](https://genai.owasp.org/initiatives/agentic-security-initiative/)
+
+## Put the Point of No Return Near the End
+
+Request เดียวอาจสร้างหลาย actions ครับ สมมุติ customer ขอ cancel order, refund เงิน, คืน inventory และส่ง email ยืนยัน
+
+ถ้าปล่อยให้ agent เลือกลำดับเอง เราอาจส่ง email ว่า refund สำเร็จก่อน payment provider รับคำสั่ง หรือคืน inventory กลับไปขายก่อน fulfillment ยืนยันว่าหยุด shipment แล้ว
+
+ลำดับที่ปลอดภัยกว่าคือ
+
+1. Validate authoritative state และ permission
+2. Reserve resource ที่จำเป็นพร้อม timeout
+3. บันทึก intent และ workflow state
+4. ทำ reversible หรือ compensatable steps
+5. Verify outcome ของแต่ละ step
+6. ทำ irreversible step หลัง critical validations ผ่านแล้ว
+7. Release reservation และปิด workflow
+
+<MermaidDiagram chart={`
+flowchart LR
+    V["Validate"] --> R["Reserve"]
+    R --> I["Record intent"]
+    I --> C["Compensatable steps"]
+    C --> G{"All critical checks pass?"}
+    G -->|No| B["Compensate or recover"]
+    G -->|Yes| P["Point of no return"]
+    P --> X["Irreversible action"]
+    X --> O["Observe outcome"]
+`} />
+
+ถ้า step หลังบ้านหลายตัวอยู่คนละ service เราอาจใช้ Saga เพื่อเก็บ progress และเลือกว่าจะ forward recovery หรือ backward recovery เมื่อบาง step fail [AWS Saga Patterns](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/saga-patterns.html)
+
+Compensation ไม่จำเป็นต้องคืน state ให้เหมือนก่อนเริ่มทุก byte และไม่จำเป็นต้องทำย้อนลำดับเสมอไปครับ Business rule อาจกำหนดให้แก้ resource ที่ sensitive กว่าก่อน อีกอย่างคือ compensation เองก็ fail ได้ จึงต้องทำให้ retry ได้ เก็บ checkpoint และมี manual recovery [Microsoft Compensating Transaction Pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/compensating-transaction)
+
+สำหรับ workflow ที่มี irreversible step ให้ประกาศ **point of no return** ไว้ใน design แล้วขยับ step นั้นไปหลัง validation กับ compensatable work ที่สำคัญ ถ้ายังมี uncertainty สูง อย่ารีบข้าม boundary
 
 ## Design the Recovery Before the Happy Path
 
@@ -314,6 +463,34 @@ stateDiagram-v2
 - Final หรือ unknown outcome
 - Compensation หรือ manual recovery
 
+## Observe the Action Lifecycle
+
+ถ้าเราเก็บแค่ model latency กับ token usage เราจะไม่รู้ว่า agent สร้างภาระให้ operation แค่ไหนครับ Observability ของ action layer ต้องตามตั้งแต่ proposal ไปจนถึง recovery
+
+| Signal | ช่วยให้เห็นอะไร |
+|---|---|
+| Proposal count แยกตาม action และ risk | Agent กำลังพยายามทำอะไรบ่อยขึ้น |
+| Policy denial แยกตาม reason | Prompt, tool description หรือ user request กำลังชน rule ไหน |
+| Approval rate, expiry และ review time | Human gate ช่วยอยู่หรือกลายเป็น bottleneck |
+| Completed, failed และ outcome unknown | Execution path มี uncertainty อยู่จุดไหน |
+| Reconciliation age | Unknown case ค้างนานเท่าไร |
+| Compensation rate และ success | Agent หรือ workflow สร้างงานแก้ตามหลังมากแค่ไหน |
+| Manual recovery queue age | Operation team รับภาระไหวหรือไม่ |
+| Irreversible action แยกตาม actor และ tenant | มี anomaly หรือ blast radius ที่ควรหยุดหรือเปล่า |
+
+Metric พวกนี้ต้องย้อนกลับไปหา trace, proposal, policy result, approval และ external action ID ได้ ไม่อย่างนั้น dashboard จะบอกว่ามีปัญหา แต่คนแก้ยังต้องไล่ข้อมูลใหม่ตั้งแต่ต้น
+
+ก่อนเพิ่ม autonomy ผมจะค่อย ๆ เปิดเป็นขั้นครับ
+
+1. **Offline evaluation:** ทดสอบ proposal กับ historical cases
+2. **Shadow mode:** ให้ agent เสนอ action แต่ยังไม่ execute
+3. **Decision comparison:** เทียบ proposal กับสิ่งที่ operator เลือก พร้อมดู disagreement
+4. **Approval required:** ใช้ execution path ชุด production โดยทุก action ยังรอคน
+5. **Bounded automation:** เปิดเฉพาะ low-risk cases ภายใต้ amount, tenant และ rate limit
+6. **Continuous review:** Sample completed actions, incidents, denials และ compensation กลับเข้า evaluation
+
+ถ้า unknown outcome, compensation หรือ manual recovery เพิ่มขึ้นหลังขยาย autonomy ระบบควรลดสิทธิ์กลับได้โดยไม่ต้องรอ deploy model ใหม่
+
 {/* IMAGE PROMPT (human-vs-agent-action.png): Wide graphic-novel diptych on light parchment. Left panel: a human operator requests a high-impact action through a guarded transaction machine. Right panel: an AI courier requests the same action through the same guarded machine. The safety machine is identical in both panels and includes visible checkpoints, a lock, a journal spool, and an emergency stop lever. Use black ink, vermilion, amber, cream, and small turquoise accents. No text, letters, logos, watermark, dark background, robot head, clay, risograph, glossy 3D, or duplicated panels. */}
 
 ![Human และ AI Agent ใช้ controlled execution boundary ชุดเดียวกัน](/assets/images/blogs/ai-agent-irreversible-actions/human-vs-agent-action.png)
@@ -333,12 +510,15 @@ Human กับ agent ไม่จำเป็นต้องมี transaction 
 
 Agent path ต้องเพิ่ม control สำหรับ non-deterministic decision, tool selection, model context และ evaluation ส่วน human path มี UI control กับ operator accountability ถึงทางเข้าจะต่างกัน transaction core ยัง deterministic เหมือนเดิมครับ
 
-Design แบบนี้ช่วยให้ทีมค่อย ๆ เพิ่ม autonomy ได้ด้วย
+สิ่งที่เปลี่ยนตอนเพิ่ม AI Agent คือทางเข้าของ decision ครับ System ต้องรับ structured proposal, ตรวจ model context และเลือก control จาก risk ส่วน transaction core ยังทำงานแบบเดิม
 
-1. Agent ทำได้แค่ draft
-2. Agent เสนอ structured action
-3. ทุก action มีคน approve
-4. Low-risk cases ทำงานได้ภายใต้ limit ที่เข้ม
-5. ทีมเพิ่มหรือลด autonomy จาก production evidence
+- Validate authoritative state
+- Enforce authorization กับ business rule
+- Bind approval เข้ากับ payload
+- Execute ด้วย idempotency
+- เก็บ durable state เมื่อ outcome ยัง unknown
+- Reconcile, compensate หรือส่งต่อ manual recovery
 
-เมื่อวางแบบนี้ AI Agent จะเข้ามาช่วยตีความและเสนอ action ได้ โดยไม่ต้องสร้าง transaction path ชุดใหม่ ส่วน final safety boundary ยังอยู่ในระบบที่ test, audit และทำ recovery ได้ครับ
+ถ้าจะจำบทความนี้เพียงเรื่องเดียว ผมอยากให้จำว่า **Agent ช่วยคิดและเสนอ action ได้ แต่สิทธิ์ในการสร้าง side effect กับความรับผิดชอบเรื่อง recovery ต้องอยู่ใน deterministic system**
+
+เมื่อวาง boundary แบบนี้ เราเพิ่ม autonomy จาก production evidence ได้โดยไม่ต้องสร้าง transaction path ชุดใหม่ และไม่ต้องหวังว่า model จะไม่พลาดอีกเลยครับ
