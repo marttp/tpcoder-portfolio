@@ -1,0 +1,546 @@
+---
+title: "วิธีที่ผมคิดเรื่อง Irreversible Action ในยุค AI Agent"
+description: "ออกแบบ action contract, idempotency, approval, execution และ recovery สำหรับ Reversible, Compensatable และ Irreversible Action ในยุค AI Agent"
+pubDate: "2026-08-16"
+tags:
+  ["AI Agent", "Software Architecture", "Reliability", "Security"]
+heroImage: "/assets/images/blogs/ai-agent-irreversible-actions/hero-banner.png"
+language: "th"
+translationSlug: "how-i-think-about-designing-irreversible-actions-ai-agent-era"
+servicesNote: true
+---
+
+import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
+
+{/* IMAGE PROMPT (hero-banner.png): Wide modern graphic-novel storyboard on a light parchment background. Show an AI agent represented as a small masked courier approaching three action doors: a circular return door, a repair workshop door, and a one-way launch door. A calm control operator and a mechanical safety gate stand before the one-way door. Use black ink outlines, vermilion red, amber, cream, and small turquoise accents. Dynamic panels but clean reading order. No text, letters, logos, watermark, gore, dark background, clay style, paper-note collage, risograph transit map, glossy 3D, or robot head. */}
+
+
+พอพูดถึง AI Agent หลายคนเริ่มกังวลว่า agent อาจลงมือทำสิ่งที่ย้อนกลับไม่ได้ แต่ปัญหานี้ไม่ได้เริ่มจาก AI เพราะ information system ทั่วไปก็มี action แบบนี้อยู่แล้ว
+
+- ส่ง email
+- โอนเงิน
+- ลบ customer record
+- Publish document
+- เปลี่ยน access ของคน
+- ส่ง order ไปหา external company
+
+Action เหล่านี้ fail ได้โดยไม่ต้องมี AI
+
+Request อาจ timeout หลัง external system รับงานไปแล้ว Worker อาจ crash หลังส่ง message แต่ยังไม่ทัน save result หรือ requests ที่ retry อาจเข้ามาพร้อมกัน 2 ชุด แม้แต่ operator เองก็เลือกลูกค้าผิดคนได้
+
+Distributed system จึงต้องมี validation, idempotency, state machine, audit history, reconciliation และ recovery อยู่ก่อนแล้ว
+
+ทีนี้ลองวาง AI Agent ไว้เหนือ APIs ชุดเดิม ระบบยังมี failure mode เก่าครบทุกข้อ และมีของใหม่เพิ่มมาอีก 1 ข้อคือ **agent อาจเลือก action ผิด แม้ services ทุกตัวจะทำงานตามที่ออกแบบไว้**
+
+ผมเขียนบทความนี้เพื่อเทียบปัญหาเดิมของ information system กับความไม่แน่นอนที่ AI Agent เพิ่มเข้ามา แล้วค่อยดูว่าเราควรวาง control และ recovery ไว้ส่วนไหน
+
+ผมเลยมองเรื่องนี้แบบนี้
+
+**AI Agent เสนอหรือ request action ได้ ส่วนระบบ deterministic รอบข้างต้องควบคุม permission, execution และ recovery**
+
+## First, Separate Three Kinds of Action
+
+หลายคนเรียก high-impact action ทุกอย่างว่า irreversible ผมคิดว่าแยกออกเป็น 3 กลุ่มจะช่วยให้คุณเลือก control ได้ง่ายกว่า
+
+### Reversible
+
+ระบบ restore state ก่อนหน้าได้ด้วย operation สำหรับย้อนการเปลี่ยนแปลงที่เราเชื่อถือได้
+
+ตัวอย่างเช่น
+
+- Save draft แล้ว restore version ก่อนหน้า
+- เปลี่ยน feature flag แล้วเปลี่ยนกลับ
+- ย้าย ticket แล้วส่งกลับ queue เดิม
+
+การย้อนกลับยังต้องมี authorization และ history แต่ old state ยังอยู่ให้ใช้
+
+### Compensatable
+
+Action แรกยังอยู่ใน history เราใช้ action อีกอันเพื่อแก้ผลกระทบทาง business ได้
+
+ตัวอย่างเช่น
+
+- Issue credit หลัง invoice ผิด
+- ส่ง correction notice หลัง publish ข้อมูลผิด
+- คืน access ด้วย permission change ใหม่
+- สร้าง correction entry ใน ledger
+
+Compensation ไม่ได้ลบ action เดิมออก ระบบจะสร้าง action ใหม่เพื่อแก้ผลทาง business ทั้ง 2 records จึงยังอยู่ใน history
+
+### Irreversible
+
+เราไม่สามารถย้อนผลที่เกิดขึ้นไปแล้วได้
+
+ตัวอย่างเช่น
+
+- ส่ง private data ไปผิด address
+- Publish secret ใน public channel
+- เปิดเผยข้อมูลผ่าน model response
+- สั่ง physical shipment ที่ออกเดินทางไปแล้ว
+- ลบ data copy ชุดสุดท้าย
+
+เรารับมือ incident ได้ แต่รับประกันไม่ได้ว่าผู้รับจะลืมข้อมูล หรือทุก copy ถูกลบออกหมด
+
+<MermaidDiagram chart={`
+flowchart TD
+    A["Requested action"] --> C{Can the old state be restored?}
+    C -->|Yes| R["Reversible\nRestore previous state"]
+    C -->|No| B{Can another action correct the effect?}
+    B -->|Yes| P["Compensatable\nKeep both events"]
+    B -->|No| I["Irreversible\nPrevent before execution"]
+`} />
+
+3 classes นี้ช่วยตอบว่าเราต้องเตรียม recovery แบบไหน แต่ยังไม่พอสำหรับตัดสินว่า action ใดควรผ่านได้ง่ายหรือยาก
+
+## Action Class Tells Us How to Recover, Not How Risky It Is
+
+Action class บอกว่า **หลัง action เกิดขึ้นแล้ว เราแก้ผลที่ตามมาได้แบบไหน**
+
+- Reversible มี operation สำหรับกลับไปยัง state ก่อนหน้า
+- Compensatable ต้องสร้าง action ใหม่เพื่อแก้ผลทาง business
+- Irreversible ย้อนผลที่เกิดขึ้นแล้วไม่ได้ จึงต้องเน้น validation และ prevention ก่อน execute
+
+แต่ class อย่างเดียวไม่ได้บอกว่า action อันตรายแค่ไหน
+
+- เปลี่ยน feature flag กลับได้ แต่ถ้าเปิดผิดทั้งระบบก็สร้าง blast radius ใหญ่ได้
+- Financial adjustment เป็น compensatable แต่รายการเดิมยังอยู่ และอาจมีผลกระทบระหว่างรอรายการใหม่
+- ส่ง notification เป็น irreversible แต่ข้อความแจ้ง maintenance กับข้อความที่มี PII สร้างผลกระทบคนละระดับ
+
+เพราะฉะนั้น หลังรู้ action class แล้ว ผมจะดูเพิ่มอีกอย่างน้อย 6 ด้าน
+
+| Dimension | สิ่งที่ต้องดู | ตัวอย่าง |
+|---|---|---|
+| **Undo quality** | ย้อนกลับได้ครบแค่ไหน | Restore draft ได้ครบ ส่วน correction ใน ledger ยังเก็บรายการเดิมไว้ |
+| **Time window** | ยังหยุดหรือย้อนได้อีกนานเท่าไร | Scheduled job cancel ได้ก่อน worker รับงาน |
+| **Blast radius** | กระทบกี่ user, tenant หรือ resource | เปลี่ยน config ของ 1 tenant เทียบกับทุก tenant |
+| **Data exposure** | ข้อมูลออกจาก trust boundary หรือยัง | Internal note เทียบกับ file ที่ส่งออกไปนอก organization |
+| **Detectability** | รู้ได้เร็วแค่ไหนว่า action ผิด | Deployment มี health check ส่วนข้อมูลรั่วอาจรู้เมื่อมีคนแจ้ง |
+| **Recovery cost** | ต้องใช้เงิน เวลา และคนเท่าไร | Rollback deployment เทียบกับ recall shipment หลายประเทศ |
+
+วิธีเลือก control จึงเป็น 2 ขั้น
+
+1. ใช้ action class เพื่อกำหนด recovery model
+2. ใช้ impact, scope, confidence, data boundary และ recovery cost เพื่อกำหนดว่า allow, limit, approve หรือ deny
+
+## Map the Existing Deterministic Workflow First
+
+ก่อนเพิ่ม AI Agent ให้เริ่มจาก actions ที่ระบบมีอยู่แล้ว ไม่ว่าจะถูกเรียกจาก UI, batch job, API หรือ operator tool
+
+| Existing action | Action class | เหตุผล | Control และ recovery |
+|---|---|---|---|
+| Save หรือแก้ draft note | Reversible | ระบบเก็บ version ก่อนหน้าไว้และ restore ได้ | Version history, authorization และ audit |
+| เปลี่ยน access role | Reversible | สร้าง permission change ใหม่เพื่อคืน role เดิมได้ | Authorization, allowed transitions และ audit |
+| บันทึก financial adjustment | Compensatable | รายการเดิมยังอยู่ ต้องใช้รายการใหม่แก้ผลทาง business | Idempotency, limit, reconciliation และ manual recovery |
+| Publish document ออกสู่ public | Irreversible | Unpublish ได้ แต่ควบคุม copy ที่ถูกอ่านหรือบันทึกไปแล้วไม่ได้ | Preview, data classification และ approval ก่อน publish |
+| ส่ง command ไป physical device | ขึ้นอยู่กับ device state | Cancel ได้ก่อน device เริ่มทำงาน แต่หลังจากนั้นอาจ compensate หรือย้อนกลับไม่ได้ | Device status, timeout, safety interlock และ emergency stop |
+| ลบ data copy ชุดสุดท้าย | Irreversible | ไม่มี source สำหรับ restore | Retention policy, backup verification และแยก flow ออกจาก agent |
+
+Action class เหล่านี้ควรถูกกำหนดไว้ใน tool definition หรือ action registry ของระบบ ไม่ควรปล่อยให้ caller แต่ละตัวเลือกใหม่เองทุกครั้ง
+
+## Turn the Classification into an Action Contract
+
+ถ้า classification อยู่ใน diagram อย่างเดียว runtime ก็ใช้ข้อมูลนั้นไม่ได้ ผมอยากให้แต่ละ action มี contract ที่ agent, policy engine, execution service และ operator ใช้ร่วมกัน
+
+ตัวอย่างนี้ใช้ `document.publish` เพื่อให้เห็น contract ของ irreversible action
+
+```yaml
+action: document.publish
+version: 3
+class: irreversible
+owner: content-operations
+
+input_schema:
+  document_id: string
+  destination: enum
+  classification: enum
+  evidence_refs: array
+
+authorization:
+  required_scope: document:publish:propose
+  tenant_bound: true
+
+policy:
+  allowed_destinations:
+    - company_website
+    - partner_portal
+  deny_classifications:
+    - restricted
+    - secret
+  approval_required: true
+
+execution:
+  endpoint: POST /internal/publications
+  idempotency: required
+  timeout_state: outcome_unknown
+
+recovery:
+  verify_with: GET /internal/publications/{request_id}
+  contain_with: document.unpublish
+  manual_queue: content-incident
+
+evidence:
+  retain_days: 365
+  fields:
+    - actor
+    - proposal_hash
+    - policy_result
+    - approver
+    - publication_id
+```
+
+Contract นี้มีไว้ให้หลายส่วนใช้ต่อ
+
+- Backend enforce schema, authorization และ policy
+- Approval UI แสดง destination, data classification และผลกระทบ
+- Execution service ใช้ idempotency และ state transition
+- Monitoring หา owner และ action version
+- Incident tool ใช้ verify, contain และตาม evidence
+
+Version ก็สำคัญ ถ้า policy หรือ recovery path เปลี่ยน action ที่ approve ด้วย contract version เก่า ต้องกลับไปตรวจใหม่ ห้ามนำ approval เดิมมาใช้กับกติกาชุดใหม่
+
+ไม่ว่า action จะมาจากหน้าจอ, batch job หรือ AI Agent ฝั่ง Backend ยังต้องตรวจ authoritative state, permission, policy, duplicate intent และ allowed transition ก่อนบันทึก intent แล้วเรียก external system
+
+<MermaidDiagram chart={`
+sequenceDiagram
+    actor H as Human or agent
+    participant A as Action API
+    participant D as Database
+    participant P as External system
+    H->>A: Submit action with request ID
+    A->>A: Validate access, state, and policy
+    A->>D: Save action intent
+    A->>P: Execute with idempotency key
+    alt External system confirms
+        P-->>A: External action ID
+        A->>D: Mark completed
+    else Timeout or unknown result
+        A->>D: Mark outcome unknown
+        A->>P: Query by request ID
+        P-->>A: Final status
+        A->>D: Reconcile state
+    end
+`} />
+
+State สำคัญไม่ได้มีแค่ `success` หรือ `failed` External action มี **unknown outcome** ได้ Timeout บอกเพียงว่า caller ไม่ได้รับ response เราจึงสรุปไม่ได้ว่า external system ทำงานไปแล้วหรือยัง
+
+ผมเรียนรู้ technique นี้จาก Stripe เป็นหลัก Stripe ให้ client ส่ง `Idempotency-Key` ตอนสร้างหรือ update object ถ้าเกิด connection error แล้วต้อง retry request เดิม Stripe จะคืน result ที่เก็บไว้ แทนการทำ operation ซ้ำ [Stripe API Reference](https://docs.stripe.com/api/idempotent_requests)
+
+AWS อธิบาย problem เดียวกันในมุมของ idempotent APIs ได้ละเอียดขึ้น Caller อาจ timeout หลัง resource ถูกสร้างไปแล้ว ถ้า retry โดยไม่รู้ state ก็อาจสร้างของซ้ำ Caller-provided request ID ช่วยให้ service รู้ว่า request นี้มาจาก intent เดิม และตอบกลับด้วย result เดิมได้ [Amazon Builders’ Library](https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/)
+
+Recovery tools ที่ system ปกติใช้มีหลายแบบ
+
+- **retry:** ทำ safe operation ซ้ำหลัง temporary failure
+- **idempotency:** Request ซ้ำของ intent เดิมไม่สร้าง side effect เพิ่ม
+- **compensation:** ทำ business action อีกอันเพื่อแก้ effect
+- **reconciliation:** เทียบ internal state กับ external source of truth
+- **manual recovery:** ให้ operator มี evidence และเครื่องมือพอสำหรับจัดการ case ให้จบ
+
+## Know Where the Side Effect Begins
+
+คำว่า execute กว้างเกินไปสำหรับงานที่มีผลกับระบบอื่น เราต้องรู้ว่า step ไหนเป็นแค่การเตรียม intent และ step ไหนสร้าง side effect ไปแล้ว
+
+Flow ทั่วไปแบ่งได้แบบนี้
+
+1. รับ request หรือ proposal — ยังไม่มี side effect
+2. Validate schema, authoritative state, permission และ policy
+3. บันทึก intent, request ID และ action version ลง durable storage
+4. Dispatch command ไปยัง execution service หรือ external system
+5. External system รับ action — side effect อาจเริ่มขึ้นที่นี่
+6. บันทึก outcome กลับเข้า internal state
+7. Reconcile ถ้า outcome ยัง unknown
+
+Failure เกิดแทรกได้ทุกช่วง
+
+- Fail ก่อนบันทึก intent: request เดิมอาจส่งใหม่ได้
+- Fail หลังบันทึก intent แต่ก่อน dispatch: worker รับงานต่อจาก durable state ได้
+- Timeout ระหว่าง dispatch: ห้ามสรุปว่า action fail ต้อง query status หรือ retry ด้วย idempotency key เดิม
+- External system ทำงานแล้ว แต่ internal state ยังไม่ update: reconciliation ต้องดึง outcome กลับมา
+- Internal state update แล้ว แต่ event ไม่ถูก publish: downstream system จะไม่รู้ว่า state เปลี่ยน
+
+จึงควรแยก **intent, dispatch และ outcome** เป็น state ที่ตามได้ พร้อมเก็บ correlation ID ข้าม service
+
+ถ้าต้อง update database แล้ว publish event ต่อ อย่าฝากความถูกต้องไว้กับ 2 คำสั่งแยกกัน Transactional outbox จะบันทึก state change กับ event ใน database transaction เดียว แล้วให้ worker publish event หลัง commit ส่วน consumer ยังต้องรองรับ duplicate ด้วย idempotency [AWS Transactional Outbox Pattern](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html)
+
+Transactional outbox แก้เฉพาะช่องว่างระหว่าง database commit กับ event publish มันไม่ได้ทำให้ database กับ external API อยู่ใน transaction เดียวกัน Unknown outcome จาก external system ยังต้องใช้ idempotency, status query และ reconciliation
+
+## Add the AI Agent to the Same Workflow
+
+เมื่อเพิ่ม AI Agent สิ่งที่เปลี่ยนคือผู้เสนอ action จากเดิมที่มี human, UI หรือ scheduled job ตอนนี้มี component ที่ตีความ context และเลือก tool แบบ non-deterministic เพิ่มเข้ามา
+
+Deterministic system ยังจัดการแต่ละ proposal ตาม action contract เดิม
+
+| Agent proposal | Existing action class | Deterministic response |
+|---|---|---|
+| `case.note.update` | Reversible | Validate access แล้ว save พร้อม version history |
+| `access.role.change` | Reversible | Check authority, target scope และ allowed transition |
+| `ledger.adjustment.create` | Compensatable | Check policy, amount และ idempotency จากนั้นขอ approval เมื่อเกิน limit |
+| `customer.email.send` | Irreversible | สร้าง preview และหยุดรอ confirmation ก่อนส่ง |
+| `document.publish` | Irreversible | Check classification, destination และ approval ที่ผูกกับ payload |
+| `data.last_copy.delete` | Irreversible | Deny เพราะ action นี้ไม่ควรถูกเปิดเป็น agent tool |
+
+Agent มีหน้าที่ตีความ request และเตรียม proposal ส่วน backend อ่าน action contract แล้วเลือก permission, policy, approval และ recovery ที่กำหนดไว้
+
+Agent มี failure mode เพิ่มจาก backend code ทั่วไป
+
+- เข้าใจสิ่งที่ customer ขอผิด
+- เอารายละเอียดจากอีก case มาใช้
+- เลือก tool ผิด
+- สร้าง reason code ที่ไม่มีอยู่
+- เลือก parameter ที่ฟังดูสมเหตุผลแต่ผิด policy
+- ทำงานต่อหลัง goal เปลี่ยน
+- ทำตาม malicious instruction ที่ซ่อนใน document หรือ message
+
+Evaluation ที่ดีไม่ได้ลบ uncertainty ชุดนี้ออก
+
+สมมุติว่า agent ทำ evaluation set ถูก 90% เรายังไม่รู้ว่า 10% ที่ผิดจะเกิดกับ request ไหนใน production Input เปลี่ยนอยู่ตลอด Rare case อาจสร้างผลกระทบสูงกว่า common case และ evaluation อาจยังไม่ครอบคลุม tool, policy, language หรือ attack แบบใหม่
+
+Evaluation คือ evidence ไม่ใช่ permission สำหรับถอด system boundary ออก
+
+## Keep Planning and Execution Separate
+
+Agent มีประโยชน์กับงานที่ต้องตีความ
+
+- เข้าใจ request
+- รวบรวม context ที่เกี่ยวข้อง
+- เสนอ action
+- อธิบายเหตุผลที่เลือก
+- เตรียม parameters
+
+ส่วน execution service ควรดูแล deterministic checks
+
+- Validate schema และ required fields
+- Load authoritative data
+- Evaluate permission และ business policy
+- Check scope, value และ frequency limits
+- Require approval เมื่อ risk สูง
+- Apply idempotency และ state transition
+- Record action และ result
+
+<MermaidDiagram chart={`
+flowchart LR
+    U["User request"] --> A["Non-deterministic agent\nUnderstand + propose"]
+    A --> P["Structured action proposal"]
+    P --> C["Action definition\nClass + owner + recovery"]
+    C --> G["Deterministic safety gate"]
+    G -->|Allowed| X["Execution API"]
+    G -->|Needs review| H["Human approval"]
+    G -->|Invalid or unsafe| D["Deny + explain"]
+    H -->|Approved| X
+    X --> R["Result + audit + recovery state"]
+`} />
+
+Model ไม่ควรสร้าง hidden database query หรือ call external system เอง ให้ narrow tool หน้าตาประมาณนี้แทน
+
+```json
+{
+  "tool": "document.publish.propose",
+  "document_id": "doc_84f2",
+  "destination": "partner_portal",
+  "classification": "internal",
+  "evidence_refs": ["approval_request_18", "policy_check_2"]
+}
+```
+
+Backend จะ resolve references แล้วตัดสินว่า proposal นี้ผ่านไปเป็น action ได้หรือไม่
+
+## Bind Approval to the Exact Proposal
+
+Human approval ช่วยได้เมื่อคนเห็นข้อมูลพอและ approval ผูกกับ action ที่กำลังจะ execute ปุ่ม Approve อย่างเดียวไม่ได้แปลว่าคนเข้าใจสิ่งที่กำลังกด
+
+หน้าจอ review ควรแสดงอย่างน้อย
+
+- ใครหรือ agent ตัวไหนเสนอ action
+- Customer, tenant และ resource ที่ได้รับผลกระทบ
+- ค่าเดิมกับค่าที่กำลังจะเปลี่ยน
+- Amount, destination หรือ permission ที่จะใช้
+- Evidence ที่ agent อ้างอิง
+- Policy result และเหตุผลที่ต้อง approve
+- Action class, recovery path และ point of no return
+
+ตอน approver กด confirm ระบบควร bind approval กับข้อมูลชุดนั้น เช่นเก็บ `proposal_hash`, action contract version, policy version และ expiry ไว้ด้วย
+
+ถ้า agent เปลี่ยน amount, recipient, attachment หรือ tool parameter หลัง approval ค่า hash ต้องเปลี่ยนและ approval เดิมต้องใช้ไม่ได้ อย่า approve intent กว้าง ๆ อย่างช่วยลูกค้าคนนี้ แล้วปล่อยให้ agent เลือก execution payload ทีหลัง
+
+Approval ควรหมดอายุด้วย Resource state, user request หรือ policy อาจเปลี่ยนระหว่างรอคน review ก่อน execute backend ต้องโหลด authoritative state และ validate ซ้ำเสมอ
+
+## Let Risk Choose the Control
+
+ถ้าทุก tool call ต้องมี human approval agent จะช้าและแพง แต่ถ้าไม่มี approval เลย ความผิดพลาดจาก model ทุกครั้งก็จะกลายเป็น operational risk
+
+ใช้ action class, impact, confidence และ context มาช่วยเลือก control
+
+| Situation | Control ที่อาจใช้ |
+|---|---|
+| อ่าน public documentation | Allow และ log |
+| เพิ่ม internal draft note | Allow พร้อม undo ง่าย ๆ |
+| ส่ง normal reply จาก approved template | Preview หรือ sample review |
+| ปรับ config ของ 1 tenant ภายใต้ allowlist | Policy limit และ post-action review |
+| เปลี่ยน access ของหลาย users | Human approval |
+| Export sensitive data | Deny by default หรือใช้ controlled flow แยก |
+| ลบ data copy ชุดสุดท้าย | ไม่เปิดเป็น agent tool |
+
+<MermaidDiagram chart={`
+flowchart TD
+    P["Action proposal"] --> R["Risk classification"]
+    R --> L["Low\nAllow + log"]
+    R --> M["Medium\nPreview or bounded execution"]
+    R --> H["High\nHuman approval"]
+    R --> F["Forbidden\nDo not expose the tool"]
+`} />
+
+Limit บางข้อควรเป็น hard rule
+
+- Maximum amount ต่อ action และต่อวัน
+- Allowed customer หรือ tenant boundary
+- Allowed destination domains
+- Approved message templates
+- Time window
+- Maximum tool calls
+- ห้าม delegate ต่อ
+- ห้าม access raw credentials
+
+Model อธิบายเหตุผลที่ขอ exception ได้ แต่อนุมัติ exception ให้ตัวเองไม่ได้
+
+OWASP มี guidance สำหรับ agentic applications ครอบคลุม goal hijacking, tool misuse, identity abuse และ unexpected code execution Mitigation ที่แนะนำรวมถึง confirmation ผ่าน human approval, policy engine หรือ platform guardrail เมื่อ goal เปลี่ยนหรือ action เริ่มไม่ปลอดภัย [OWASP Agentic Security Initiative](https://genai.owasp.org/initiatives/agentic-security-initiative/)
+
+## Put the Point of No Return Near the End
+
+Workflow 1 ชุดอาจมีทั้ง reversible, compensatable และ irreversible steps ปนกัน ลำดับของแต่ละ step จึงเป็นส่วนหนึ่งของ safety design
+
+ตัวอย่างเช่น
+
+- ก่อน publish document ต้อง validate classification, scan secret และยืนยัน destination ให้ครบ
+- ก่อนส่ง command ให้ physical device ต้องตรวจ device state, safety condition และ emergency stop
+- ก่อนลบ data ต้องหยุด writer, ตรวจ retention policy, verify backup และยืนยันว่าไม่ได้ลบ copy ชุดสุดท้าย
+- ก่อนแจ้ง user ว่างานสำเร็จ ต้อง verify outcome จาก system ที่เป็น source of truth
+
+ถ้าทำ irreversible step เร็วเกินไป ต่อให้ steps หลังจากนั้น fail ระบบก็เอาผลที่เกิดขึ้นแล้วกลับมาไม่ได้
+
+ลำดับที่ปลอดภัยกว่าคือ
+
+1. Validate authoritative state และ permission
+2. Reserve resource ที่จำเป็นพร้อม timeout
+3. บันทึก intent และ workflow state
+4. ทำ reversible หรือ compensatable steps
+5. Verify outcome ของแต่ละ step
+6. ทำ irreversible step หลัง critical validations ผ่านแล้ว
+7. Release reservation และปิด workflow
+
+<MermaidDiagram chart={`
+flowchart LR
+    V["Validate"] --> R["Reserve"]
+    R --> I["Record intent"]
+    I --> C["Compensatable steps"]
+    C --> G{"All critical checks pass?"}
+    G -->|No| B["Compensate or recover"]
+    G -->|Yes| P["Point of no return"]
+    P --> X["Irreversible action"]
+    X --> O["Observe outcome"]
+`} />
+
+ถ้า step หลังบ้านหลายตัวอยู่คนละ service เราอาจใช้ Saga เพื่อเก็บ progress และเลือกว่าจะ forward recovery หรือ backward recovery เมื่อบาง step fail [AWS Saga Patterns](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/saga-patterns.html)
+
+Compensation ไม่จำเป็นต้องคืน state ให้เหมือนก่อนเริ่มทุก byte และไม่จำเป็นต้องทำย้อนลำดับเสมอไป Business rule อาจกำหนดให้แก้ resource ที่ sensitive กว่าก่อน อีกอย่างคือ compensation เองก็ fail ได้ จึงต้องทำให้ retry ได้ เก็บ checkpoint และมี manual recovery [Microsoft Compensating Transaction Pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/compensating-transaction)
+
+สำหรับ workflow ที่มี irreversible step ให้ประกาศ **point of no return** ไว้ใน design แล้วขยับ step นั้นไปหลัง validation กับ compensatable work ที่สำคัญ ถ้ายังมี uncertainty สูง อย่ารีบข้าม boundary
+
+## Design the Recovery Before the Happy Path
+
+ก่อนเอา tool ขึ้น production ผมจะถาม 7 ข้อนี้
+
+1. เรารู้ได้อย่างไรว่า action เกิดขึ้นแล้ว
+2. Intent เดิม retry ได้อย่างปลอดภัยไหม
+3. Reverse หรือ compensate ได้หรือเปล่า
+4. State ไหนแทน unknown outcome
+5. ใครรับ recovery task
+6. คนนั้นจะเห็น evidence อะไร
+7. หยุด agent ตัวนี้โดยไม่หยุด workflow ทั้งหมดอย่างไร
+
+<MermaidDiagram chart={`
+stateDiagram-v2
+    [*] --> Proposed
+    Proposed --> Denied
+    Proposed --> AwaitingApproval
+    Proposed --> Executing
+    AwaitingApproval --> Executing
+    AwaitingApproval --> Denied
+    Executing --> Completed
+    Executing --> OutcomeUnknown
+    OutcomeUnknown --> Completed: Reconcile
+    OutcomeUnknown --> Failed: Reconcile
+    Completed --> Compensating
+    Compensating --> Compensated
+`} />
+
+เก็บ checkpoint สำคัญไว้ให้ครบ
+
+- Original request และ actor
+- Agent, model, prompt และ tool versions
+- Evidence ที่ใช้สร้าง proposal
+- Structured proposal
+- Policy result
+- Approval และ approver
+- Idempotency key
+- External action ID
+- Final หรือ unknown outcome
+- Compensation หรือ manual recovery
+
+## Observe the Action Lifecycle
+
+ถ้าเราเก็บแค่ model latency กับ token usage เราจะไม่รู้ว่า agent สร้างภาระให้ operation แค่ไหน Observability ของ action layer ต้องตามตั้งแต่ proposal ไปจนถึง recovery
+
+| Signal | ช่วยให้เห็นอะไร |
+|---|---|
+| Proposal count แยกตาม action และ risk | Agent กำลังพยายามทำอะไรบ่อยขึ้น |
+| Policy denial แยกตาม reason | Prompt, tool description หรือ user request กำลังชน rule ไหน |
+| Approval rate, expiry และ review time | Human gate ช่วยอยู่หรือกลายเป็น bottleneck |
+| Completed, failed และ outcome unknown | Execution path มี uncertainty อยู่จุดไหน |
+| Reconciliation age | Unknown case ค้างนานเท่าไร |
+| Compensation rate และ success | Agent หรือ workflow สร้างงานแก้ตามหลังมากแค่ไหน |
+| Manual recovery queue age | Operation team รับภาระไหวหรือไม่ |
+| Irreversible action แยกตาม actor และ tenant | มี anomaly หรือ blast radius ที่ควรหยุดหรือเปล่า |
+
+Metric พวกนี้ต้องย้อนกลับไปหา trace, proposal, policy result, approval และ external action ID ได้ ไม่อย่างนั้น dashboard จะบอกว่ามีปัญหา แต่คนแก้ยังต้องไล่ข้อมูลใหม่ตั้งแต่ต้น
+
+ก่อนเพิ่ม autonomy ผมจะค่อย ๆ เปิดเป็นขั้น
+
+1. **Offline evaluation:** ทดสอบ proposal กับ historical cases
+2. **Shadow mode:** ให้ agent เสนอ action แต่ยังไม่ execute
+3. **Decision comparison:** เทียบ proposal กับสิ่งที่ operator เลือก พร้อมดู disagreement
+4. **Approval required:** ใช้ execution path ชุด production โดยทุก action ยังรอคน
+5. **Bounded automation:** เปิดเฉพาะ low-risk cases ภายใต้ amount, tenant และ rate limit
+6. **Continuous review:** Sample completed actions, incidents, denials และ compensation กลับเข้า evaluation
+
+ถ้า unknown outcome, compensation หรือ manual recovery เพิ่มขึ้นหลังขยาย autonomy ระบบควรลดสิทธิ์กลับได้โดยไม่ต้องรอ deploy model ใหม่
+
+{/* IMAGE PROMPT (human-vs-agent-action.png): Wide graphic-novel diptych on light parchment. Left panel: a human operator requests a high-impact action through a guarded transaction machine. Right panel: an AI courier requests the same action through the same guarded machine. The safety machine is identical in both panels and includes visible checkpoints, a lock, a journal spool, and an emergency stop lever. Use black ink, vermilion, amber, cream, and small turquoise accents. No text, letters, logos, watermark, dark background, robot head, clay, risograph, glossy 3D, or duplicated panels. */}
+
+![Human และ AI Agent ใช้ controlled execution boundary ชุดเดียวกัน](/assets/images/blogs/ai-agent-irreversible-actions/human-vs-agent-action.png)
+
+## The Human System and Agent System Should Share the Core
+
+Human กับ agent ไม่จำเป็นต้องมี transaction system คนละชุด
+
+ทั้ง 2 path ควรใช้ของร่วมกัน
+
+- authoritative data
+- authorization service
+- business rules
+- state machine
+- idempotent execution API
+- audit และ reconciliation path
+
+Agent path ต้องเพิ่ม control สำหรับ non-deterministic decision, tool selection, model context และ evaluation ส่วน human path มี UI control กับ operator accountability ถึงทางเข้าจะต่างกัน transaction core ยัง deterministic เหมือนเดิม
+
+สิ่งที่เปลี่ยนตอนเพิ่ม AI Agent คือทางเข้าของ decision System ต้องรับ structured proposal, ตรวจ model context และเลือก control จาก risk ส่วน transaction core ยังทำงานแบบเดิม
+
+- Validate authoritative state
+- Enforce authorization กับ business rule
+- Bind approval เข้ากับ payload
+- Execute ด้วย idempotency
+- เก็บ durable state เมื่อ outcome ยัง unknown
+- Reconcile, compensate หรือส่งต่อ manual recovery
+
+ถ้าจะจำบทความนี้เพียงเรื่องเดียว ผมอยากให้จำว่า **Agent ช่วยคิดและเสนอ action ได้ แต่สิทธิ์ในการสร้าง side effect กับความรับผิดชอบเรื่อง recovery ต้องอยู่ใน deterministic system**
+
+เมื่อวาง boundary แบบนี้ เราเพิ่ม autonomy จาก production evidence ได้โดยไม่ต้องสร้าง transaction path ชุดใหม่ และไม่ต้องหวังว่า model จะไม่พลาดอีกเลย
