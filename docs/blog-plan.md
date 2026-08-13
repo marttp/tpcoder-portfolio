@@ -149,7 +149,7 @@ Use hypothetical situations when personal experience is not available. Keep expe
 - Designed infographic: recovery class versus independent risk dimensions
 - Designed infographic: action contract as a machine-enforced safety envelope
 - Designed infographic: prevention before and containment after the point of no return
-- Designed concept: the same action performed by a person and by an AI agent
+- Designed infographic: operational signals reduce autonomy through policy without changing the model
 
 ### AI Governance Is Becoming a Software Architecture Problem
 
