@@ -157,52 +157,31 @@ version: 3
 class: irreversible
 owner: content-operations
 
-input_schema:
-  document_id: string
-  destination: enum
-  classification: enum
-  evidence_refs: array
-
-authorization:
-  required_scope: document:publish:propose
-  tenant_bound: true
+input: [document_id, destination, classification]
 
 policy:
-  allowed_destinations:
-    - company_website
-    - partner_portal
-  deny_classifications:
-    - restricted
-    - secret
+  required_scope: document:publish
   approval_required: true
+  deny_classifications: [restricted, secret]
 
 execution:
-  endpoint: POST /internal/publications
   idempotency: required
-  timeout_state: outcome_unknown
+  on_timeout: verify_before_retry
 
 recovery:
-  verify_with: GET /internal/publications/{request_id}
+  verify_with: publication_status
   contain_with: document.unpublish
-  manual_queue: content-incident
 
-evidence:
-  retain_days: 365
-  fields:
-    - actor
-    - proposal_hash
-    - policy_result
-    - approver
-    - publication_id
+audit: required
 ```
 
 Different parts of the system use this contract:
 
-- the backend enforces schema, authorization, and policy;
+- the backend checks input, authorization, and policy;
 - the approval UI shows the destination, data classification, and impact;
-- the execution service applies idempotency and state transitions;
+- the execution service applies idempotency and verifies a timeout before retrying;
 - monitoring finds the owner and action version;
-- incident tooling uses the verification, containment, and evidence fields.
+- incident tooling uses the verification, containment, and audit rules.
 
 The version also matters. If a policy or recovery path changes, an action approved under the old contract must be reviewed again. The old approval should not run under new rules.
 
