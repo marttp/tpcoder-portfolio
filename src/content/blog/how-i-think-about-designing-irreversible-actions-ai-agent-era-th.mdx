@@ -17,7 +17,7 @@ import MermaidDiagram from '../../components/blog/MermaidDiagram.astro';
 
 ช่วงนี้ผมคิดอยู่เรื่องหนึ่ง ถ้าเรายอมรับตั้งแต่ต้นว่า AI Agent เป็น non-deterministic ต่อให้ evaluation ออกมาดี agent ก็ยังเลือก action หรือ parameter ผิดได้ แล้วเราจะยอมให้ agent แตะงานที่ย้อนผลกลับมาได้มากน้อยแค่ไหน
 
-การรอให้ model รุ่นถัดไปพลาดน้อยลงยังตอบคำถามนี้ไม่พอ เพราะปัญหา Irreversible Action ไม่ได้เริ่มจาก AI อยู่แล้ว Information system ทั่วไปก็มี action แบบนี้
+การรอให้ model รุ่นถัดไปพลาดน้อยลงมันคงแก้ปัญหาไม่ถูกจุดเท่าไหร่ เพราะปัญหา Irreversible Action ไม่ได้เริ่มจาก AI อยู่แล้ว Information system ทั่วไปก็มี action แบบนี้
 
 - ส่ง email
 - โอนเงิน
@@ -56,7 +56,9 @@ Working answer ของผมตอนนี้คือ
 - เปลี่ยน feature flag แล้วเปลี่ยนกลับ
 - ย้าย ticket แล้วส่งกลับ queue เดิม
 
-การย้อนกลับยังต้องมี authorization และ history แต่ old state ยังอยู่ให้ใช้
+การย้อนกลับยังต้องมี authorization และ history แต่ก็ยังพอเก็บข้อมูลให้เราย้อนกลับไปได้
+
+ตัวอย่างง่าย ๆ คือ Git เนี่ยแหละ เขาเลยเรียกว่า Version control
 
 ### Compensatable
 
@@ -83,7 +85,7 @@ Compensation ไม่ได้ลบ action เดิมออก ระบบ�
 - สั่ง physical shipment ที่ออกเดินทางไปแล้ว
 - ลบ data copy ชุดสุดท้าย
 
-เรารับมือ incident ได้ แต่รับประกันไม่ได้ว่าผู้รับจะลืมข้อมูล หรือทุก copy ถูกลบออกหมด
+เรารับมือ incident ได้ แต่รับประกันฝั่ง external ไม่ได้ เพราะพอข้อมูลไปอยู่ในมือเขาแล้ว เขาจะทำยังไงกับข้อมูลต่อก็ได้
 
 <MermaidDiagram chart={`
 flowchart TD
