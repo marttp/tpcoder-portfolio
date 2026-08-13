@@ -185,7 +185,7 @@ Different parts of the system use this contract:
 
 The version also matters. If a policy or recovery path changes, an action approved under the old contract must be reviewed again. The old approval should not run under new rules.
 
-Whether an action comes from a screen, batch job, or AI agent, the backend still checks authoritative state, permission, policy, duplicate intent, and allowed transitions. It then records the intent before calling the external system.
+The sequence below shows how the execution service uses the contract when an external result may remain unknown.
 
 {/* IMAGE PROMPT (action-contract-safety-envelope.png): Wide 16:9 premium enterprise editorial infographic on a warm-white technical grid. Place one structured action proposal at the center of a deterministic safety envelope. Surround it with six distinct control modules for schema validation, identity and scoped permission, policy evaluation, exact-proposal approval, idempotent execution, and durable evidence with recovery. Reject malformed or unauthorized proposals outside the envelope and let one valid proposal leave through a narrow controlled port with a stable request identity. Use deep navy, slate, muted teal, warm amber, and restrained vermilion. No text, letters, numbers, code, logos, watermark, people, comic style, glossy 3D, dark background, clutter, duplicates, or cropped elements. */}
 
@@ -514,27 +514,11 @@ If unknown outcomes, compensation, or manual recovery increase after more autono
 
 ## The Human System and Agent System Should Share the Core
 
-The person and agent do not need two unrelated transaction systems.
-
-Both should use the same:
-
-- authoritative data;
-- authorization service;
-- business rules;
-- state machine;
-- idempotent execution API;
-- audit and reconciliation path.
+The person and agent do not need two unrelated transaction systems. Both should use the same authoritative data, authorization, business rules, state machine, idempotent execution API, audit, and reconciliation path.
 
 The agent path adds controls for non-deterministic decisions, tool selection, model context, and evaluation. The human path adds UI controls and operator accountability. The transaction core remains deterministic.
 
-The decision entry path changes when an AI agent is added. The system must accept a structured proposal, check model context, and choose a control from risk. The transaction core still performs the same work:
-
-- validate authoritative state;
-- enforce authorization and business rules;
-- bind approval to the payload;
-- execute with idempotency;
-- keep durable state when the outcome is unknown;
-- reconcile, compensate, or send the case to manual recovery.
+Only the entry path changes. The agent submits a structured proposal with model context. A person uses the UI. Both paths meet the same controls before they can create a side effect.
 
 My answer for now is: **An agent may help decide and propose an action. Permission to create a side effect and responsibility for recovery must stay in the deterministic system.**
 

@@ -187,7 +187,7 @@ Contract นี้มีไว้ให้หลายส่วนใช้ต�
 
 Version ก็สำคัญ ถ้า policy หรือ recovery path เปลี่ยน action ที่ approve ด้วย contract version เก่า ต้องกลับไปตรวจใหม่ ห้ามนำ approval เดิมมาใช้กับกติกาชุดใหม่
 
-ไม่ว่า action จะมาจากหน้าจอ, batch job หรือ AI Agent ฝั่ง Backend ยังต้องตรวจ authoritative state, permission, policy, duplicate intent และ allowed transition ก่อนบันทึก intent แล้วเรียก external system
+Sequence ด้านล่างแสดงว่า execution service ใช้ contract ยังไง เมื่อ result จาก external system อาจค้างอยู่ใน unknown outcome
 
 {/* IMAGE PROMPT (action-contract-safety-envelope.png): Wide 16:9 premium enterprise editorial infographic on a warm-white technical grid. Place one structured action proposal at the center of a deterministic safety envelope. Surround it with six distinct control modules for schema validation, identity and scoped permission, policy evaluation, exact-proposal approval, idempotent execution, and durable evidence with recovery. Reject malformed or unauthorized proposals outside the envelope and let one valid proposal leave through a narrow controlled port with a stable request identity. Use deep navy, slate, muted teal, warm amber, and restrained vermilion. No text, letters, numbers, code, logos, watermark, people, comic style, glossy 3D, dark background, clutter, duplicates, or cropped elements. */}
 
@@ -516,27 +516,11 @@ Metric พวกนี้ต้องย้อนกลับไปหา trace,
 
 ## The Human System and Agent System Should Share the Core
 
-Human กับ agent ไม่จำเป็นต้องมี transaction system คนละชุด
-
-ทั้ง 2 path ควรใช้ของร่วมกัน
-
-- authoritative data
-- authorization service
-- business rules
-- state machine
-- idempotent execution API
-- audit และ reconciliation path
+Human กับ agent ไม่จำเป็นต้องมี transaction system คนละชุด ทั้ง 2 path ควรใช้ authoritative data, authorization, business rules, state machine, idempotent execution API, audit และ reconciliation path ร่วมกัน
 
 Agent path ต้องเพิ่ม control สำหรับ non-deterministic decision, tool selection, model context และ evaluation ส่วน human path มี UI control กับ operator accountability ถึงทางเข้าจะต่างกัน transaction core ยัง deterministic เหมือนเดิม
 
-สิ่งที่เปลี่ยนตอนเพิ่ม AI Agent คือทางเข้าของ decision System ต้องรับ structured proposal, ตรวจ model context และเลือก control จาก risk ส่วน transaction core ยังทำงานแบบเดิม
-
-- Validate authoritative state
-- Enforce authorization กับ business rule
-- Bind approval เข้ากับ payload
-- Execute ด้วย idempotency
-- เก็บ durable state เมื่อ outcome ยัง unknown
-- Reconcile, compensate หรือส่งต่อ manual recovery
+สิ่งที่เปลี่ยนมีแค่ทางเข้า Agent ส่ง structured proposal พร้อม model context ส่วน human ใช้ UI ทั้ง 2 path ต้องผ่าน control ชุดเดียวกันก่อนสร้าง side effect
 
 ถ้าจะเก็บคำตอบกลับไปจากบทความนี้ 1 ข้อ ผมมองว่า **Agent ช่วยคิดและเสนอ action ได้ แต่สิทธิ์ในการสร้าง side effect กับความรับผิดชอบเรื่อง recovery ต้องอยู่ใน deterministic system**
 
