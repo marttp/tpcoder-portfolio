@@ -159,52 +159,31 @@ version: 3
 class: irreversible
 owner: content-operations
 
-input_schema:
-  document_id: string
-  destination: enum
-  classification: enum
-  evidence_refs: array
-
-authorization:
-  required_scope: document:publish:propose
-  tenant_bound: true
+input: [document_id, destination, classification]
 
 policy:
-  allowed_destinations:
-    - company_website
-    - partner_portal
-  deny_classifications:
-    - restricted
-    - secret
+  required_scope: document:publish
   approval_required: true
+  deny_classifications: [restricted, secret]
 
 execution:
-  endpoint: POST /internal/publications
   idempotency: required
-  timeout_state: outcome_unknown
+  on_timeout: verify_before_retry
 
 recovery:
-  verify_with: GET /internal/publications/{request_id}
+  verify_with: publication_status
   contain_with: document.unpublish
-  manual_queue: content-incident
 
-evidence:
-  retain_days: 365
-  fields:
-    - actor
-    - proposal_hash
-    - policy_result
-    - approver
-    - publication_id
+audit: required
 ```
 
 Contract นี้มีไว้ให้หลายส่วนใช้ต่อ
 
-- Backend enforce schema, authorization และ policy
+- Backend ตรวจ input, authorization และ policy
 - Approval UI แสดง destination, data classification และผลกระทบ
-- Execution service ใช้ idempotency และ state transition
+- Execution service ใช้ idempotency และ verify timeout ก่อน retry
 - Monitoring หา owner และ action version
-- Incident tool ใช้ verify, contain และตาม evidence
+- Incident tool ใช้กติกาสำหรับ verify, contain และ audit
 
 Version ก็สำคัญ ถ้า policy หรือ recovery path เปลี่ยน action ที่ approve ด้วย contract version เก่า ต้องกลับไปตรวจใหม่ ห้ามนำ approval เดิมมาใช้กับกติกาชุดใหม่
 
