@@ -1,0 +1,346 @@
+---
+title: 'Forward Deployed Engineer: อีกเส้นทางอาชีพสำหรับ Software Engineer ในยุค AI'
+description: 'Forward Deployed Engineer ทำอะไร ทำไมบริษัทถึงต้องมี role นี้ สร้าง business impact แบบไหน และทำไมอาจโตไปพร้อมกับ AI Platform Engineer'
+pubDate: '2026-08-19'
+tags:
+  [
+    'AI',
+    'Career',
+    'Software Engineering',
+    'Platform Engineering',
+    'Business',
+  ]
+heroImage: '/assets/images/blogs/forward-deployed-engineer/hero-banner.png'
+language: 'th'
+translationSlug: 'forward-deployed-engineer-potential-career-ai-era'
+---
+
+ช่วงนี้ผมเห็น role หนึ่งโผล่มารอบบริษัท AI บ่อยขึ้นครับ นั่นคือ **Forward Deployed Engineer** หรือ **FDE**
+
+ตอนแรกชื่อมันฟังคล้าย consulting ที่เขียน code เยอะขึ้น แต่พอลองดูขอบเขตงาน ผมคิดว่าคำอธิบายนั้นยังขาดส่วนสำคัญไป
+
+FDE คือ engineer ที่ทำงานใกล้กับ customer หรือ business team ภายในบริษัท หน้าที่คือเอา platform ไปทำให้เกิด production outcome ตั้งแต่ discovery, system design, coding, integration, rollout, adoption ไปจนถึงส่ง feedback กลับเข้า core product
+
+ข้อสรุปหลักของผมคือ:
+
+**FDE คือคำตอบฝั่ง engineering สำหรับ last mile ระหว่าง platform ที่มีพลัง กับ business outcome ที่วัดผลได้**
+
+last mile ช่วงนี้ยากขึ้นเพราะ AI ครับ Model อาจเก่งมาก แต่แต่ละบริษัทมี data, workflow, control, user และนิยามของความสำเร็จไม่เหมือนกัน นี่คือเหตุผลที่ผมมองว่า FDE จะโตไปข้าง ๆ อีก role หนึ่งคือ **AI Platform Engineer**
+
+{/* IMAGE PROMPT (hero-banner.png): Wide editorial infographic for a technical blog. Show one software engineer standing on a bridge between a reusable AI platform on the left and a live customer operation on the right. The left has model, API, cloud, and data symbols. The right has people using a working production workflow with an outcome dashboard. The engineer carries code and field feedback in both directions. No text. Flat vector illustration, warm off-white background, forest green, burnt orange, amber, and charcoal, soft shadows, crisp shapes, serious business tone, no photorealism, no logos, no watermark. */}
+
+![Forward Deployed Engineer เชื่อม AI platform เข้ากับ production outcome ของ customer](/assets/images/blogs/forward-deployed-engineer/hero-banner.png)
+
+## What Is a Forward Deployed Engineer?
+
+Role นี้เป็นที่รู้จักจาก Palantir ครับ ในเอกสารที่ยื่นต่อหน่วยงานรัฐ Palantir อธิบายว่า FDE ทำงานข้าง user เรียนรู้ปัญหา deploy platform แล้วส่งสิ่งที่พบกลับเข้า product development เป้าหมายคือไม่ปล่อยให้ customer แต่ละรายจบลงด้วย custom application คนละก้อน ส่วนที่พบซ้ำควรถูกพัฒนากลับเป็น product ที่ยืดหยุ่นขึ้น
+
+รูปแบบสมัยนี้ยังคล้ายกัน OpenAI อธิบายทีม FDE ว่าทำงานอยู่ระหว่าง customer delivery กับ core platform development โดย engineer ดูแลตั้งแต่ discovery, technical scope จนถึง production rollout ส่วนความสำเร็จวัดจาก adoption, workflow impact และ feedback ที่เปลี่ยน product กับ model roadmap ได้
+
+เราจึงนิยาม role นี้แบบใช้งานได้ว่า:
+
+**FDE คือ builder, deployer และ outcome owner ในคนเดียวกัน**
+
+- **Builder:** เขียน production code และประกอบ system, data, API, AI workflow และ user interface เข้าด้วยกัน
+- **Deployer:** ทำงานใน customer environment พร้อมข้อจำกัดด้าน data, security, operation และคน
+- **Outcome owner:** ยังรับผิดชอบ adoption กับ business impact หลัง demo ใช้งานได้แล้ว
+
+ถ้าตัดส่วนใดส่วนหนึ่งออก role ก็เปลี่ยนครับ คนที่นำเสนอ demo เป็นหลักจะใกล้ pre-sales คนที่ตั้งค่า software เป็นหลักจะใกล้ implementation ส่วนคนที่สร้าง shared platform เป็นหลักจะใกล้ platform engineering
+
+{/* IMAGE PROMPT (role-anatomy.png): Wide infographic with three equal overlapping circles forming one center. Render these labels exactly once and spell exactly: BUILDER, DEPLOYER, OWNER, FDE. Put FDE only in the center intersection. Use icons for code, customer environment, and measurable outcome. Do not print any other words. Flat vector, warm off-white background, forest green, burnt orange, amber, charcoal, soft shadows, high legibility, no duplicate labels, no typos, no logos, no watermark, no photorealism. */}
+
+![FDE อยู่ในจุดร่วมของ builder, deployer และ owner](/assets/images/blogs/forward-deployed-engineer/role-anatomy.png)
+
+## What Does the Work Look Like?
+
+งานของ FDE มักเดินเป็น loop ไม่ได้ส่งมอบทางเดียวแล้วจบครับ
+
+1. **Discover the workflow:** เรียนรู้ว่าคนตัดสินใจอย่างไร data มาจากไหน งานติดที่จุดใด และผลลัพธ์ไหนสำคัญ
+2. **Build the smallest useful path:** เชื่อม platform เข้ากับ system และ data ที่ใช้อยู่ PowerPoint อย่างเดียวเอาไม่อยู่
+3. **Deploy into the operating environment:** จัดการ identity, permission, audit, reliability และข้อจำกัดของ integration
+4. **Measure use and impact:** ดูว่าคนใช้ workflow หรือเปล่า แล้วผลลัพธ์ดีขึ้นแค่ไหน
+5. **Productize the repeated lesson:** ย้ายส่วนที่ใช้ซ้ำได้กลับเข้า platform, SDK, template หรือ playbook แล้วลด one-off code เท่าที่ทำได้
+
+ขั้นสุดท้ายสำคัญมากครับ ถ้าไม่มี productization customer ใหม่ทุกรายจะสร้าง custom branch เพิ่มอีกหนึ่งก้อน สุดท้ายบริษัทจะค่อย ๆ กลายเป็น software agency ที่มี product logo แปะอยู่ด้านหน้า
+
+{/* IMAGE PROMPT (deployment-loop.png): Wide circular workflow infographic with five stages connected clockwise. Render only these labels once and spell exactly: DISCOVER, BUILD, DEPLOY, MEASURE, PRODUCTIZE. Put a customer workflow in the center. Show field feedback returning from PRODUCTIZE to DISCOVER. No other text. Flat vector, warm off-white background, forest green, burnt orange, amber, charcoal, soft shadows, clean enterprise style, no duplicate stages, no typos, no logos, no watermark, no photorealism. */}
+
+![FDE loop เดินจาก discovery ไปถึง productization](/assets/images/blogs/forward-deployed-engineer/deployment-loop.png)
+
+## A Concrete Example: AI-Assisted Claims Review
+
+ลองนึกถึงบริษัทประกันที่อยากใช้ AI ช่วย analyst ตรวจ claim ครับ การซื้อ model access ยังทำให้งานนี้ไม่จบ บริษัทต้องรู้ก่อนว่า cycle time ตอนนี้เป็นเท่าไร งานถูกส่งกลับมาแก้บ่อยแค่ไหน มี exception แบบใด approval rule เป็นอย่างไร และรับความเสี่ยงได้ระดับไหน
+
+AI Platform Engineer สามารถเตรียม shared model access, retrieval, evaluation, observability และ safety control ส่วน FDE นำ capability เหล่านั้นมาเชื่อมกับ claims workflow:
+
+- ทำความเข้าใจวิธีที่ analyst ตรวจ document และจัดการ exception
+- เชื่อม approved data source, identity และ audit log
+- สร้าง analyst interface กับ human-review path
+- deploy ภายใต้ข้อจำกัดด้าน security และ reliability ของบริษัท
+- เทียบ adoption, cycle time, override rate และ quality กับ baseline
+- ส่ง need ที่พบซ้ำกลับไปให้ platform team พัฒนาเป็น capability ที่ใช้ซ้ำได้
+
+ตัวอย่างนี้ช่วยแบ่งขอบเขตของสอง role ครับ AI platform ทำให้ทีมเข้าถึง AI ที่ดูแลได้ ส่วน FDE ทำให้ AI มีประโยชน์ใน business operation หนึ่ง ทั้งสอง role ยังพิสูจน์ value จาก model demo อย่างเดียวไม่ได้
+
+## FDE Is a Team Model, Not a Hero Role
+
+Ownership ที่กว้างไม่ได้แปลว่า engineer หนึ่งคนควรแบก customer ไว้คนเดียว Deployment ที่แข็งแรงต้องมี partner และขอบเขตความรับผิดชอบชัดเจน
+
+| Partner | สิ่งที่รับผิดชอบ |
+| --- | --- |
+| Customer workflow owner | Business outcome, process change และ acceptance |
+| Domain expert | Rule, exception และ quality judgment |
+| Security and compliance | Data access, risk control และ audit requirement |
+| FDE | Discovery, integration, production delivery และ impact measurement |
+| Platform and product teams | Capability ที่ใช้ซ้ำได้และ product ระยะยาว |
+| Executive sponsor | Priority, budget และ organizational blocker |
+
+ถ้าความรับผิดชอบเหล่านี้หายไป FDE จะกลายเป็น coordinator, firefighter หรือทีม custom development แบบถาวร นี่คือ operating-model failure ไม่ใช่หลักฐานว่า engineer ต้องทำงานหนักขึ้น
+
+## FDE vs. Other Engineering and Customer Roles
+
+ชื่อตำแหน่งในตลาดค่อนข้างมั่วครับ สองบริษัทอาจใช้ชื่อเดียวกันกับงานคนละแบบ ขณะที่อีกบริษัทอาจเรียกงาน FDE ว่า Applied AI Engineer, Deployment Engineer, Customer Engineer หรือ Solutions Engineer
+
+วิธีเทียบที่มีประโยชน์กว่าคือดู ownership
+
+| Role | Environment หลัก | Production code | ความใกล้ customer | ตัววัดหลัก |
+| --- | --- | --- | --- | --- |
+| Software Engineer | Core product | สูง | มักต่ำถึงกลาง | Product quality และ delivery |
+| Product Engineer | Product และ user experience | สูง | กลาง | Product usage และ user value |
+| Solutions Engineer | Sales และ technical evaluation | แล้วแต่บริษัท | สูง | Technical win และ deal progress |
+| Implementation Engineer | Customer setup และ integration | กลาง | สูง | Go-live และ delivery scope |
+| Consultant | Customer program | แล้วแต่บริษัท | สูง | Project result และ recommendation |
+| AI Platform Engineer | Shared AI platform | สูง | ส่วนใหญ่เป็น internal team | Reliability, reuse, safety และ developer speed |
+| Forward Deployed Engineer | Customer workflow ใน production | สูง | สูงมาก | Adoption, workflow impact และ product learning ที่นำกลับมาใช้ซ้ำได้ |
+
+ตารางนี้คือ pattern ไม่ใช่เส้นแบ่งตายตัว Solutions Engineer บางคน ship production code ส่วน Product Engineer ภายในองค์กรบางคนก็ทำงานคล้าย FDE กับ business team ชื่อตำแหน่งจึงยืนยันลักษณะงานไม่ได้
+
+{/* IMAGE PROMPT (role-boundaries.png): Wide two-axis role map. Horizontal axis label must be PRODUCTION CODE OWNERSHIP. Vertical axis label must be CUSTOMER PROXIMITY. Place six labeled markers exactly once: SOFTWARE ENGINEER, SOLUTIONS ENGINEER, IMPLEMENTATION ENGINEER, CONSULTANT, AI PLATFORM ENGINEER, FDE. Put FDE in the high-high corner. Use readable short labels, no other text, no duplicate markers, spell every label exactly. Flat vector, warm off-white background, forest green, burnt orange, amber, charcoal, clean grid, soft shadows, no logos, no watermark, no photorealism. */}
+
+![FDE มีทั้ง customer proximity และ production code ownership สูง](/assets/images/blogs/forward-deployed-engineer/role-boundaries.png)
+
+## Why Does This Role Exist?
+
+Enterprise software มักสะดุดในช่วงระหว่าง demo ที่ดูดี กับ daily operation ครับ
+
+Demo ใช้ data ที่เตรียมไว้และเดินตาม flow ที่ควบคุมได้ พอเข้า production เราจะเจอส่วนที่ demo เลี่ยงไว้:
+
+- identity, permission, privacy และ audit
+- old system กับ data ที่รูปแบบไม่เสมอกัน
+- approval step และ manual exception
+- ข้อจำกัดด้าน reliability, latency และ cost
+- พนักงานที่ต้องเชื่อใจและยอมใช้ workflow ใหม่
+- manager ที่ต้องการหลักฐานว่าการเปลี่ยนแปลงนี้คุ้มกับงบ
+
+นี่คือ **last-mile deployment gap** ซึ่งมีทั้งด้าน technical และ organizational การส่งงานต่อกันระหว่าง sales, consulting, product, engineering, security และ customer ทำให้ context หายได้ทุกช่วง
+
+FDE ลดรอยต่อเหล่านั้นด้วยการให้ technical role หนึ่งมี ownership กว้างขึ้น ข้อดีคือเร็วขึ้นและเรียนรู้ไวขึ้น ส่วนต้นทุนคือ role นี้ต้องใช้ judgment หลายด้านและอาจรับภาระเกินขนาดได้ง่าย
+
+{/* IMAGE PROMPT (pilot-production-gap.png): Wide infographic showing a small successful demo island on the left and a stable production operation on the right, separated by a difficult gap. An FDE builds the crossing using six blocks labeled exactly once: DATA, WORKFLOW, SECURITY, INTEGRATION, RELIABILITY, ADOPTION. Add endpoint labels DEMO and PRODUCTION exactly once. Do not print other words. Flat vector, warm off-white background, forest green, burnt orange, amber, charcoal, soft shadows, no duplicate labels, no typos, no logos, no watermark, no photorealism. */}
+
+![FDE ปิดช่องว่างระหว่าง demo กับ production](/assets/images/blogs/forward-deployed-engineer/pilot-production-gap.png)
+
+## Business Impact: Where the Value Comes From
+
+เราไม่ควรวัด FDE จากจำนวนบรรทัดของ code หรือจำนวน workshop เพราะ role นี้มีไว้เพื่อเปลี่ยน business result
+
+Impact มักเกิดในสี่ด้าน:
+
+- **Faster time-to-value:** ลด handoff ระหว่าง discovery, architecture, implementation และ rollout
+- **Higher adoption:** system เข้ากับ workflow ที่คนใช้อยู่ โดยรวม training และ feedback ไว้ใน delivery
+- **Account expansion and retention:** outcome ที่ใช้งานได้ช่วยสร้าง trust แล้วทำให้ platform ขยายไปยัง team หรือ workflow อื่นได้
+- **Better product learning:** ปัญหาจาก field ถูกแปลงเป็น platform capability ที่ใช้ซ้ำ แทนที่จะกระจายเป็น feature request คนละชุด
+
+ตัววัดขึ้นอยู่กับ workflow ครับ อาจเป็น cycle time, error rate, analyst hours, cost per case, revenue captured, adoption หรือเวลาจาก pilot ไป production
+
+ก่อนเริ่มพัฒนา ทีมควรมี measurement contract ขนาดเล็ก:
+
+- **Baseline:** ก่อนมี workflow ใหม่ ผลลัพธ์เป็นอย่างไร?
+- **Outcome:** business result ใดควรเปลี่ยน และวัดในช่วงเวลาใด?
+- **Adoption:** ใครต้องใช้ workflow นี้ ผลลัพธ์จึงจะนับได้?
+- **Guardrail:** quality, risk, cost หรือ safety ด้านใดห้ามแย่ลง?
+- **Productization rule:** need แบบใดที่พบซ้ำแล้วควรย้ายเข้า shared platform?
+
+ถ้าไม่มีข้อตกลงนี้ deployment อาจผ่านด้าน technical แต่ยังไม่มี business value ที่อธิบายด้วยหลักฐานได้
+
+Business logic แบบนี้มีหลักฐานในเอกสารสาธารณะ Palantir เคยอธิบายว่าบริษัทจัดสรร FDE capacity ไปยัง customer opportunity ที่มีโอกาสโตด้าน revenue สูง แม้ช่วงสั้นอาจกด contribution margin ลง โมเดลนี้เชื่อม use case แรกที่ยากเข้ากับการขยาย platform ภายใน customer รายเดิม
+
+แนวคิดนี้ใกล้กับ **land and expand** โดยมี engineering เป็นส่วนหนึ่งของเครื่องยนต์การขยาย Deployment แรกพิสูจน์ value สิ่งที่เรียนรู้แล้วใช้ซ้ำได้ทำให้ product ดีขึ้น และ product ที่ดีขึ้นก็ช่วยให้ deployment ถัดไปเร็วขึ้น
+
+{/* IMAGE PROMPT (business-impact-flywheel.png): Wide four-part business flywheel infographic. Render only these labels once and spell exactly: VALUE, ADOPTION, EXPANSION, PRODUCT LEARNING. Connect them clockwise in that order, returning to VALUE. Show a small production workflow icon at the center. No other text. Flat vector, warm off-white background, forest green, burnt orange, amber, charcoal, soft shadows, clear arrows, no duplicate labels, no typos, no logos, no watermark, no photorealism. */}
+
+![Business impact ของ FDE โตต่อผ่าน value, adoption, expansion และ product learning](/assets/images/blogs/forward-deployed-engineer/business-impact-flywheel.png)
+
+## Two Business Models Can Hide Behind the Same Title
+
+รายงาน FDE jobs ปี 2026 แยก business model ออกเป็นสองแบบครับ
+
+### Product acceleration
+
+บริษัทขาย software platform ส่วน FDE ทำหน้าที่เป็น revenue accelerator
+
+- FDE deploy product ของบริษัท
+- ธุรกิจต้องการ adoption, expansion และ retention ที่เร็วขึ้น
+- งานที่พบซ้ำจาก customer ควรพัฒนากลับเข้า shared product
+- Deployment labor เป็นต้นทุนที่บริษัทยอมรับเพื่อเปิดทางไปสู่ product revenue ก้อนใหญ่ขึ้น
+
+### Services delivery
+
+บริษัทขาย technical delivery และงาน FDE คือ revenue generator
+
+- Customer จ่ายค่า engineering time หรือ delivery project
+- Utilization, project margin, scope และ staffing มีน้ำหนักมากขึ้น
+- Reuse ยังมีประโยชน์ แต่งานส่งมอบให้ customer คือสิ่งที่บริษัทขาย
+- Career path อาจใกล้ technical consulting หรือ systems integration
+
+ไม่มี model ไหนดีกว่าในทุกกรณีครับ แต่ incentive ไม่เหมือนกัน Product company ต้องระวัง custom branch ถาวร ส่วน services company ต้องตั้งราคางาน delivery และจัดการ utilization การเรียกทั้งสอง role ว่า FDE ไม่ได้ทำให้ economics เท่ากัน
+
+{/* IMAGE PROMPT (two-business-models.png): Wide split-screen business infographic. Left side label PRODUCT ACCELERATION with a reusable platform leading to adoption and recurring product revenue. Right side label SERVICES DELIVERY with an engineering team delivering a scoped customer project and billable service revenue. Render these two labels exactly once and no other words. Make the economics visually different. Flat vector, warm off-white background, forest green, burnt orange, amber, charcoal, soft shadows, no duplicate objects or labels, no typos, no logos, no watermark, no photorealism. */}
+
+![FDE อาจเร่ง product revenue หรือสร้างรายได้จาก billable service](/assets/images/blogs/forward-deployed-engineer/two-business-models.png)
+
+## The Economics Can Break
+
+FDE model ฟังน่าสนใจเพราะ team เดียว build, deploy และเรียนรู้ได้ครบ แต่ failure mode ก็คมมากครับ
+
+- **Scope creep:** ความช่วยเหลือเชิงกลยุทธ์กลายเป็นรายการ customer request ที่ยาวต่อไปเรื่อย ๆ
+- **Product fragmentation:** ทุก deployment สร้าง custom code เพิ่ม และไม่มีใครกล้าถอดออก
+- **Margin pressure:** senior engineer ที่ต้นทุนสูงต้องผูกกับ account เดียวนานเกินไป
+- **Roadmap capture:** customer ที่เสียงดังหรือจ่ายเยอะที่สุดดึง product ไปตามความต้องการของตัวเอง
+- **Key-person risk:** มีเพียง FDE คนแรกที่เข้าใจ workflow กับ integration
+- **Burnout:** travel, ambiguity, production incident และ stakeholder pressure มาลงที่คนเดียวกัน
+
+ธุรกิจจึงต้องมี productization boundary ว่าอะไรอยู่เฉพาะ customer อะไรควรกลายเป็น reusable capability และอะไรที่บริษัทจะไม่สร้าง
+
+นี่คือเหตุผลที่ FDE ไม่เหมาะกับทุก product ด้วยครับ Self-service tool ที่ setup สั้นและ contract value ต่ำอาจรับต้นทุนแบบนี้ไม่ไหว โมเดลนี้เข้ากับ problem ที่มีมูลค่าสูง environment ซับซ้อน และ pattern จากงานสำเร็จนำกลับมาใช้ซ้ำได้
+
+{/* IMAGE PROMPT (fde-economics.png): Wide balance-scale infographic about FDE economics. On the value side, show three labeled blocks exactly once: REVENUE, ADOPTION, LEARNING. On the risk side, show three labeled blocks exactly once: SCOPE CREEP, MARGIN, FRAGMENTATION. Keep the scale under visible tension rather than perfectly balanced. No other text. Flat vector, warm off-white background, forest green, burnt orange, amber, charcoal, soft shadows, no duplicate labels, no typos, no logos, no watermark, no photorealism. */}
+
+![FDE economics แลก revenue และ learning กับความเสี่ยงด้าน scope และ margin](/assets/images/blogs/forward-deployed-engineer/fde-economics.png)
+
+## What the 2026 Job Report Shows — and Does Not Show
+
+[State of FDE Jobs in 2026 report](https://forwarddeployedengineer.com/blog/state-of-fde-jobs-2026-report) ที่ให้มา scan live posting 239,428 รายการ จาก employer job board 6,486 แห่งในเดือนมิถุนายน 2026 แล้วคัดเหลือ FDE หรือ FDE-adjacent role 5,426 ตำแหน่ง จาก employer 1,311 ราย
+
+รายงานจัดกลุ่มไว้ว่า:
+
+- 2,045 role เป็น true builder FDE
+- 3,381 role เป็น FDE-adjacent
+- 923 role ใช้ชื่อที่เป็น FDE variant
+- 4,503 role ซ่อนอยู่ใต้ชื่อตำแหน่งใกล้เคียง
+
+รายงานยังพบว่า role ที่ติดตามมีเพียง 12% ที่ remote ได้ ขณะที่ 57% อยู่ระดับ senior, lead หรือ staff ข้อมูลนี้สนับสนุนมุมมองว่า FDE มักเป็น high-trust deployment role มากกว่าจะเป็นชื่อใหม่สำหรับ entry-level
+
+แต่ข้อจำกัดของรายงานสำคัญครับ GPT-5.5 เป็นผู้จัดกลุ่ม job posting ด้วย rubric เก้ามิติ ไม่ได้มี human coder audit ทุก classification ข้อมูลเป็น snapshot รอบเดียว ไม่รวม LinkedIn และหลาย attribute มาจาก company profile ที่ model สร้าง
+
+ดังนั้นผมอ่านรายงานนี้เป็น **directional evidence ว่า work pattern นี้มองเห็นได้ในตลาด** ผมจะไม่ใช้มันยืนยันว่ามี FDE job แบบเดียวกัน 5,426 ตำแหน่ง หรือสรุปว่าตลาดจะโตด้วยอัตราเดิมต่อไป
+
+## Why I Think FDE and AI Platform Engineer Will Grow Together
+
+AI ทำให้เกิด production problem สองแบบครับ
+
+แบบแรกคือ **horizontal platform problem**:
+
+- model access และ routing
+- data และ retrieval infrastructure
+- evaluation และ testing
+- observability, cost, safety และ governance
+- SDK, template และ deployment path ที่ใช้ซ้ำได้
+
+พื้นที่นี้เป็นของ **AI Platform Engineer** ตัวอย่างเช่น Apple เคยลงประกาศ platform role ที่สร้าง self-service evaluation system, API, SDK, orchestration และ production service ให้ AI team อื่นใช้
+
+แบบที่สองคือ **vertical workflow problem**:
+
+- business team ต้องการเปลี่ยนอะไร
+- data และ exception แบบไหนที่กำหนดหน้าตาของ workflow
+- ช่วงไหนเหมาะกับ model และช่วงไหน deterministic software ปลอดภัยกว่า
+- system จะเข้ากับ identity, approval, audit และ human review อย่างไร
+- user ยอมใช้หรือเปล่า แล้วผลลัพธ์สร้าง value ได้ไหม
+
+พื้นที่นี้เป็นของ **FDE**
+
+Frontier Tuning preview ของ Microsoft ในปี 2026 ทำให้เราเห็น role คู่นี้ เทคโนโลยีใช้ data, process และ convention ของบริษัทภายใน compliance boundary และ Microsoft เปิด private preview ผ่าน Forward Deployed Engineers ก่อนจะขยายเข้า platform ให้กว้างขึ้น
+
+สอง role นี้ประกอบกันเป็น feedback system:
+
+1. AI Platform Engineer สร้างทางที่ปลอดภัยและใช้ซ้ำได้ให้หลาย team
+2. FDE ใช้ทางนั้นกับ operation เฉพาะด้าน
+3. ข้อจำกัดจาก field ทำให้เห็น capability ที่ platform ยังขาด
+4. Platform team แปลงข้อจำกัดที่เกิดซ้ำเป็น shared tool
+5. Deployment รอบถัดไปจึงเร็วขึ้นและใช้ custom work น้อยลง
+
+{/* IMAGE PROMPT (platform-and-field.png): Wide feedback-loop infographic with two distinct engineering roles. Left side label AI PLATFORM ENGINEER above a reusable platform with gateways, evaluation, observability, security, and SDK symbols. Right side label FDE above a customer production workflow. Draw a strong arrow from left to right labeled SHARED PLATFORM and a return arrow labeled FIELD FEEDBACK. Put CUSTOMER OUTCOME under the right workflow. Render these five labels exactly once, spell exactly, and print no other words. Flat vector, warm off-white background, forest green, burnt orange, amber, charcoal, soft shadows, no duplicate labels, no typos, no logos, no watermark, no photorealism. */}
+
+![AI Platform Engineer สร้างระบบที่ใช้ซ้ำ ส่วน FDE ส่ง field feedback กลับมา](/assets/images/blogs/forward-deployed-engineer/platform-and-field.png)
+
+AI ทำให้ loop นี้สำคัญขึ้น เพราะ AI system ไม่ได้เป็น fixed business logic คุณภาพขึ้นอยู่กับ context, data, evaluation, guardrail และ feedback ต่อให้ model API พร้อมใช้ business system ก็ยังอาจห่างจาก production อีกเยอะ
+
+ข้อสรุปจากหลักฐานของผมคือ บริษัทจะต้องใช้ leverage สองแบบ:
+
+- **platform leverage:** engineering capability หนึ่งชุดรองรับหลาย team
+- **deployment leverage:** team หนึ่งเปลี่ยน early use case ที่ยากให้กลายเป็น pattern ที่ทำซ้ำได้
+
+ชื่อ role อาจเปลี่ยนไป แต่การแบ่งงานสองฝั่งนี้ยังอยู่ครับ
+
+## Is FDE a Potential Career for a Software Engineer?
+
+เป็นไปได้ครับ โดยเฉพาะ engineer ที่อยากมี ownership กว้างกว่า product backlog แบบเดิม Software engineering background ให้ฐานที่ทำปลอมได้ยาก ได้แก่ production code, system design, debugging, data, API, security และ operational judgment
+
+แต่ software skill อย่างเดียวยังไม่ครบ Role นี้ต้องใช้ด้านอื่นด้วย:
+
+- **Discovery:** เปลี่ยน business problem ที่ยังคลุมเครือให้เป็น system boundary
+- **Communication:** ทำงานกับ engineer, operator, manager, security และ executive
+- **Domain learning:** เข้าใจว่า workflow มีไว้ทำไม และ exception ซ่อนอยู่จุดไหน
+- **Delivery judgment:** ถ่วง speed, quality, scope และ trust ภายใต้แรงกดดัน
+- **Business reasoning:** เชื่อม technical work เข้ากับ adoption, cost, revenue, risk หรือ cycle time
+
+รายงานปี 2026 พบว่า Python, customer-facing experience, LLM, agent, cloud platform, SQL และ data pipeline เป็น signal ที่เจอบ่อยใน job description ส่วนประกาศ FDE ของ OpenAI ตอนที่ผมทำ research ระบุประสบการณ์ engineering หรือ technical deployment อย่างน้อยห้าปี และ travel ได้สูงสุด 50% นี่เป็นตัวอย่างจาก employer รายเดียว ไม่ใช่มาตรฐานของทั้งตลาด แต่มันสะท้อนระดับ responsibility ที่บางบริษัทผูกไว้กับ title นี้
+
+Career นี้เหมาะกับ engineer บางคนและอาจสร้างความเหนื่อยใจให้อีกหลายคนครับ คุณจะได้อยู่ใกล้ decision และเห็น outcome ของงาน ขณะเดียวกันก็ต้องรับ unclear requirement, customer pressure, travel, context switching และ environment ที่ควบคุมได้น้อยลง
+
+{/* IMAGE PROMPT (career-fit.png): Wide career-fit infographic. Show a strong foundation block labeled SOFTWARE ENGINEERING. Above it, four connected capability blocks labeled DOMAIN, COMMUNICATION, DEPLOYMENT, BUSINESS. All five feed into one role label FDE. Beside the role, show small visual symbols for ambiguity, travel, and production ownership without adding text. Render the six stated labels exactly once, spell exactly, no other words. Flat vector, warm off-white background, forest green, burnt orange, amber, charcoal, soft shadows, clean serious style, no duplicate labels, no typos, no logos, no watermark, no photorealism. */}
+
+![Software engineering เป็นฐานของ FDE career](/assets/images/blogs/forward-deployed-engineer/career-fit.png)
+
+## Where MBA Topics Help
+
+MBA ไม่ได้เป็นข้อกำหนดของงาน FDE และศัพท์ธุรกิจก็แทน engineering depth ไม่ได้ครับ แต่ MBA หลายวิชาช่วยได้ เพราะ role นี้อยู่ใกล้ customer, operating decision และ revenue
+
+| MBA topic | ช่วยงาน FDE อย่างไร |
+| --- | --- |
+| Strategy | เลือก use case ที่สนับสนุน business goal สำคัญ แทนการสร้าง demo ที่ดูดีแต่ value ต่ำ |
+| Operations management | วาด workflow หา bottleneck ทำความเข้าใจ handoff และวัดการเปลี่ยนแปลงของ cycle time |
+| Finance and managerial accounting | อธิบาย ROI, total cost of ownership, payback time, contribution margin และต้นทุนจากการผูก engineer ไว้กับ account เดียวนานเกินไป |
+| Marketing and customer analysis | แยก request ของ customer รายเดียวออกจาก market problem ที่กว้างกว่า แล้วมอง adoption จากฝั่ง user |
+| Organizational behavior | มองเห็นว่า system ที่ถูกด้าน technical ยังล้มได้จาก incentive, trust, ownership ที่คลุมเครือ หรือแรงต้านต่อการเปลี่ยนแปลง |
+| Business models | เข้าใจว่า FDE กำลังเร่ง product revenue หรือขาย billable service และความต่างนี้เปลี่ยน priority อย่างไร |
+
+ช่วงนี้คือจุดที่ engineering background กับ MBA study เสริมกันครับ Engineering ช่วยตอบว่า **เราสร้างและดูแลระบบนี้ไหวไหม** ส่วน MBA ช่วยตอบว่า **ธุรกิจควรจ่ายไหม คนจะยอมใช้แบบไหน และ outcome อะไรคุ้มกับต้นทุน**
+
+การมี framework ยังไม่ได้แปลว่าเราเข้าใจ domain ของ customer FDE ต้องเอา business assumption ไปเทียบกับ workflow และคนที่ทำงานนั้นอยู่เสมอ
+
+## My View
+
+ผมไม่ได้คิดว่า software engineer ทุกคนจะกลายเป็น FDE และ FDE ก็ไม่ได้มาแทน Software Engineer, Solutions Engineer, Consultant หรือ Product Manager
+
+ผมมองว่ามันเป็นคำตอบต่อ business problem แบบหนึ่ง บริษัทมี platform ที่มีพลัง แต่ customer ยังเปลี่ยน platform ให้เป็น production outcome ได้ยาก AI ยิ่งขยาย gap เพราะ model เป็นเพียงส่วนหนึ่งของ system
+
+Role นี้มี value เมื่อรักษาสัญญาสามข้อได้:
+
+- build production system ไม่หยุดอยู่ที่ demo
+- รับผิดชอบ measurable outcome ไม่หยุดอยู่ที่ delivery activity
+- เปลี่ยน field learning ให้เป็น shared product ที่ดีขึ้น ไม่ปล่อยเป็น custom work ถาวร
+
+ถ้าสามข้อนี้ยังอยู่ FDE เป็น career path ที่น่าสนใจสำหรับ experienced software engineer ที่อยากทำงานใกล้ customer และ business decision
+
+ถ้าสามข้อนี้หายไป FDE อาจเหลือเพียง title ที่ดูดีสำหรับ unmanaged consulting, pre-sales support หรือ custom development ที่ต่อไม่จบ
+
+ความต่างนี้สำคัญกว่าชื่อตำแหน่งครับ
+
+## References
+
+- [The State of FDE Jobs in 2026](https://forwarddeployedengineer.com/blog/state-of-fde-jobs-2026-report)
+- [OpenAI — Forward Deployed Engineer](https://openai.com/careers/forward-deployed-engineer-%28fde%29-seattle-seattle/)
+- [Palantir 2020 registration statement — front-line engineering and customer deployment](https://www.sec.gov/Archives/edgar/data/1321655/000119312520239121/d904406ds1a.htm)
+- [Apple — Staff Machine Learning Platform Engineer, AI Evaluation](https://jobs.apple.com/en-us/details/200659247-3337/staff-machine-learning-platform-engineer-ai-evaluation)
+- [Microsoft — Frontier Tuning](https://devblogs.microsoft.com/microsoft365dev/frontier-tuning-teaching-ai-to-work-the-way-you-do/)
