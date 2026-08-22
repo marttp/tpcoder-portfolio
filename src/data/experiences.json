@@ -26,7 +26,12 @@
         "Created a new joiner hands-on checklist designed as a gamified walkthrough, enabling newcomers to simulate the real work environment and experience the end-to-end process firsthand, accelerating onboarding ramp-up time.",
         "Enhanced onboarding documentation by authoring the 'Dynamic Environment 101' handbook, clarifying the usage of personal developer workspaces to streamline new hire ramp-up.",
         "Initiated a standardized code formatting guide for the Codapay team using Spotless with Palantir style across Gradle/Maven projects, raising the code quality bar where no prior standard existed.",
-        "Proactively audited departmental PRs to identify consistency gaps, currently piloting the rollout of a unified formatting standard in a core service to set the blueprint for future expansion."
+        "Proactively audited departmental PRs to identify consistency gaps, currently piloting the rollout of a unified formatting standard in a core service to set the blueprint for future expansion.",
+        "Modernized the internal Store Shop service (legacy JSP) used for development testing from Java 8 to JDK 25, eliminating all critical CVEs and reducing high-severity CVEs from 19 to 3.",
+        "Migrated non-card payment webhook notifications from a legacy worker to the Merchant API Service, delivering the pilot integration for publisher partners on the modern notification pipeline.",
+        "Designed and implemented the Account Funding Transfer (AFT) additional data element for the Worldpay provider integration, enabling Worldpay to route Coda payments through the Visa Crypto network and empowering Recharge to issue crypto gift cards redeemable via Coda.",
+        "Enhanced the Hosted Component SDK to resolve PayPal WebView issues across mobile platforms (Android/iOS) and browsers (Chrome, Firefox), improving checkout compatibility.",
+        "Led load testing for the Merchant API Service, defining and applying an SQS-based auto-scaling policy to sustain reliability under peak workloads."
       ]
     },
     {
