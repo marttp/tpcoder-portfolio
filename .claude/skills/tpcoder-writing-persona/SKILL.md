@@ -47,6 +47,7 @@ Operational checklist for writing as TP Coder. The full style guide with example
 **Thai prose:**
 - `จริง` (any usage, any form)
 - `ตรง` and `ตรง ๆ` (use `จุดนี้ / จุดนั้น / ช่วงนี้ / ตอนนั้น` instead)
+- `ติด` (any usage, any form; rewrite with the specific meaning, such as `เจอปัญหา`, `ค้าง`, `ขัดกัน`, or `ต้อง`)
 - the `ไม่ใช่แค่ … แต่ …` pattern (and close variants like `ไม่ได้แค่ … แต่ …`)
 - AI-tell phrases: `นี่เป็นสัญญาณชัดเจนครับ`, `มันชัดเจน`, `เอาแบบตรง ๆ ไม่อ้อมค้อม`, `เล่าให้ฟัง`, `เปลี่ยนเกม`
 - no double quotes and no italics in Thai prose (use **bold** for emphasis)
@@ -162,7 +163,7 @@ For any social post: summarize directly (real value in the post, not a teaser), 
 - **Banned-token check must pass with Python, not `grep`** — this shell mangles Thai multibyte text, so `grep`
   on Thai is unreliable. Example:
   ```bash
-  python3 -c "t=open('PATH').read(); print({b:t.count(b) for b in ['จริง','ตรง','ไม่ใช่แค่','ไม่ได้แค่']})"
+  python3 -c "t=open('PATH').read(); print({b:t.count(b) for b in ['จริง','ตรง','ติด','ไม่ใช่แค่','ไม่ได้แค่']})"
   ```
   All counts must be 0 (identifiers in code/`pm_…` tokens etc. are fine; this is about prose).
   When a new ban is added — or you're asked to audit — re-run this across the **already-published** posts too, not just the one you're editing; they can predate the rule (a stray `ชัดเจน` slipped through the payment-backend TH post exactly this way).
