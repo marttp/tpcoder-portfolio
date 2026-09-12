@@ -2,7 +2,7 @@
 title: 'Reflect งานตัวเองในอนาคต และการพัฒนาทักษะอื่น ๆ ตาม The AI Engineering Skills Map ของจารย์ Andrew Ng'
 description: 'บันทึกที่ผมใช้เทียบงานและทักษะของตัวเองกับ AI Engineering Skills Map ของ Andrew Ng โดยจะค่อย ๆ เพิ่ม reflection ตามรายละเอียดที่เผยแพร่ออกมา'
 pubDate: '2026-08-29'
-updatedDate: '2026-09-05'
+updatedDate: '2026-09-12'
 tags:
   [
     'AI',
@@ -15,19 +15,18 @@ heroImage: '/assets/images/blogs/andrew-ng-ai-engineering-skills-map/skills-map-
 language: 'th'
 ---
 
-บทความนี้ยังเขียนไม่จบครับ
+Skills Map รอบแรกครบแล้วครับ ส่วน reflection ของผมยังเดินต่อ
 
-ผมตั้งใจเก็บไว้เป็น **living reflection** แล้วค่อยเพิ่มเนื้อหาตาม The AI Engineering Skills Map ที่อาจารย์ Andrew Ng กำลังทยอยอธิบายออกมาทีละส่วน
+ผมตั้งใจเก็บบทความนี้ไว้เป็น **living reflection** แล้วค่อยเพิ่มมุมมองเมื่อ Skills Map และงานของผมเปลี่ยนไป
 
 ภาพด้านบนมาจาก [The AI Engineering Skills Map ฉบับเปิดตัวของ Andrew Ng และ DeepLearning.AI](https://charonhub.deeplearning.ai/the-ai-engineering-skills-map/) ครับ ช่วงนี้ผมจะใช้ภาพจากบทความต้นทางเท่านั้น แล้วค่อยปรับภาพประกอบของบทความนี้ในรอบถัดไป
 
-ณ วันที่ 5 กันยายน 2026 มีรายละเอียดออกมาแล้ว 3 จาก 4 กลุ่มใหญ่:
+ณ วันที่ 12 กันยายน 2026 รายละเอียดออกมาครบทั้ง 4 กลุ่มใหญ่แล้ว:
 
 - [Building and Deploying AI Applications](https://x.com/AndrewYNg/status/2090840747738374568)
 - [Software Engineering Fundamentals](https://x.com/AndrewYNg/status/2093388974194872781)
 - [Using Coding Agents](https://charonhub.deeplearning.ai/the-ai-engineering-skills-map-in-detail-using-coding-agents/)
-
-เหลือ **Shaping the Build** ที่ยังมีเพียงภาพรวมจาก [บทความเปิดตัว Skills Map](https://x.com/AndrewYNg/article/2088302050706686198) ผมจะยังไม่เติมรายละเอียดแทน Andrew และจะกลับมา update เมื่อส่วนสุดท้ายออกมาครับ
+- [Shaping the Build](https://charonhub.deeplearning.ai/the-ai-engineering-skills-map-in-detail-shaping-the-build/)
 
 ถ้าคุณเข้ามาหาสรุป Skills Map ทุกช่อง บทความนี้อาจไม่ตอบโจทย์นั้นครับ เป้าหมายของผมคือเอาแผนที่ชุดนี้มาส่องงานของตัวเองว่า:
 
@@ -250,13 +249,56 @@ Andrew ให้น้ำหนักกับการ review งานมา�
 
 ## Shaping the Build
 
-**สถานะ: รอรายละเอียดจาก Andrew Ng**
+![AI Engineering Skills Map for Shaping the Build](/assets/images/blogs/andrew-ng-ai-engineering-skills-map/shaping-the-build.webp)
 
-ส่วนภาพรวมบอกว่า เมื่อ coding agents ทำงานจาก spec ได้ดีขึ้น งานของ engineer จะขยับมาที่การตัดสินใจว่าอะไรควรอยู่ใน spec เราต้องเข้าใจ product, business context และเป้าหมายของ customer มากพอที่จะช่วยกำหนดสิ่งที่จะสร้าง
+ภาพจาก [Shaping the Build โดย Andrew Ng และ DeepLearning.AI](https://charonhub.deeplearning.ai/the-ai-engineering-skills-map-in-detail-shaping-the-build/) ครับ
 
-หัวข้อนี้น่าจะกระทบภาพงานในอนาคตของผมมากที่สุดครับ เพราะเนื้อหาพา Software Engineer ออกจากบทบาทผู้รับ requirement ไปสู่คนที่ร่วมค้นปัญหา เลือก scope และขับงานให้ไปถึงผลลัพธ์
+ส่วนสุดท้ายแบ่งออกเป็น 4 ทักษะ:
 
-คำถามที่ผมเก็บไว้รอ reflect ต่อมี:
+- Driving the build loop
+- Making product decisions
+- Communicating and leading
+- High-agency ownership
+
+Andrew มองว่า AI Engineering ทำให้ขอบเขตระหว่าง developer, product manager และ designer เริ่มซ้อนกันมากขึ้น Developer ที่สร้างของได้เร็วขึ้นจึงมีส่วนเลือก next step, เก็บ feedback และช่วยกำหนด product มากขึ้นตามไปด้วยครับ
+
+จุดนี้ไม่ได้แปลว่า developer ทุกคนต้องกลายเป็น PM งานของแต่ละ role ยังต้องอาศัยความเชี่ยวชาญเฉพาะด้านอยู่ ความหมายที่ผมอ่านได้คือ spec จะครอบคลุมทุกการตัดสินใจไม่ได้ และ engineer ที่อยู่ใกล้ทั้ง technology กับ user problem มีข้อมูลพอจะช่วยขับ loop โดยไม่รอคำสั่งทุกขั้น
+
+### Drive the Loop, Not Only the Task
+
+การสร้าง software เป็น loop อยู่แล้วครับ เราสร้างบางอย่าง เก็บ feedback แล้วเลือกว่าจะทำอะไรต่อ AI ทำให้แต่ละรอบสั้นลง คำถามจึงขยับจาก **ทำ task นี้เสร็จหรือยัง** ไปเป็น **next step แบบไหนให้ข้อมูลหรือคุณค่ามากที่สุด**
+
+บางช่วงอาจต้องทำ prototype เพื่อทดสอบ technical feasibility บางช่วงควรทำ MVP ไปคุยกับ user และบางช่วงต้องลงทุนกับ production quality การเลือกให้ถูกจังหวะต้องมอง product vision, risk, effort, budget และ stage ของงานร่วมกัน
+
+มุมนี้เชื่อมกับ Using Coding Agents ชัดมากครับ Agent ช่วยเร่ง execution ได้ ส่วนคนยังต้องเลือก loop และ feedback ที่มีประโยชน์ ถ้าเลือกโจทย์พลาด ความเร็วก็พางานไปผิดทิศได้ไวขึ้นเหมือนกัน
+
+### Product Sense Starts with User Empathy
+
+ในส่วน Making product decisions Andrew ไล่ตั้งแต่ product sense, design sense ไปจนถึง business sense เช่น go-to-market, market size, unit economics และ P&L แกนกลางของทั้งหมดคือ user empathy
+
+ผมมองว่าจุดนี้สำคัญ เพราะ engineer อาจวิเคราะห์ architecture ได้ดี แต่ถ้าเข้าใจ user จาก assumption อย่างเดียว เราก็ optimize ระบบให้โจทย์ที่ไม่มีน้ำหนักได้ครับ วิธีเก็บข้อมูลมีได้ตั้งแต่คุยกับ user 2–3 คน, ทำ survey, รัน A/B test ไปจนถึงดู behavior ของ user จำนวนมาก วิธีต้องเข้ากับ stage และขนาดของ product
+
+สำหรับงานของผม สิ่งที่ต้องเพิ่มจึงไม่ใช่คำศัพท์ฝั่ง product ให้ครบครับ ผมต้องฝึกเปลี่ยนข้อมูลจาก user, business และระบบให้กลายเป็น product decision ที่อธิบาย trade-off ได้
+
+### Communication Is Part of Delivery
+
+เมื่อขอบเขตงานกว้างกว่า code การสื่อสารกับ product, design, marketing, finance และ legal ก็กลายเป็นส่วนหนึ่งของ delivery
+
+AI ยังเปลี่ยนเร็ว คนที่อยู่นอก engineering อาจยังประเมินไม่ได้ว่าอะไรทำได้ อะไรเสี่ยง หรือข้อเสนอไหนมี cost ซ่อนอยู่ Engineer จึงมีบทบาทช่วยแปล technical feasibility และข้อจำกัดให้ทีมใช้ตัดสินใจร่วมกันครับ
+
+สำหรับผม นี่ไม่ใช่งานเสริมหลัง architecture เสร็จ การอธิบายทางเลือกให้ stakeholder เข้าใจคือกลไกที่พา architecture ไปใช้ได้ ถ้าทีมเข้าใจคนละภาพ ต่อให้ code ผ่าน test งานก็ยังไปไม่ถึง outcome เดียวกัน
+
+### High Agency Still Needs Boundaries
+
+High-agency ownership ในความหมายของ Andrew คือมองเห็นปัญหา เสนอทางแก้ ลงมือภายใต้ priority กับ constraint ขององค์กร และถือผลลัพธ์แบบ end-to-end โดยไม่รอ top-down direction ที่ละเอียดทุกขั้น
+
+คำนี้ฟังดูดีจนเสี่ยงถูกใช้แบบไม่มีขอบเขตครับ สำหรับผม high agency ไม่ได้แปลว่าเดินข้าม owner, policy หรือ production gate สิ่งที่ต้องทำคู่กันคือเปิด assumption, ขอ alignment ใน decision ที่ย้อนกลับยาก และวัดผลงานจาก value ที่สร้างได้ ไม่ใช่จำนวน task ที่ปิดไป
+
+นี่เป็นส่วนที่ใกล้กับ Forward Deployed Engineering มากที่สุด Engineer ต้องเข้าใจ domain, คุยกับ user, หาโอกาส แล้วพา solution ผ่าน implementation ไปจนถึงผลลัพธ์ ขณะเดียวกันก็ต้องรู้ว่าเมื่อไหร่ควรตัด scope หรือดึงผู้เชี่ยวชาญด้านอื่นเข้ามา
+
+### My Current Reflection
+
+เมื่อรายละเอียดออกมาครบ คำถามที่ผมใช้ reflect ตัวเองมีดังนี้:
 
 - ผมเข้าใจปัญหาของ user ลึกแค่ไหนก่อนเริ่มออกแบบ solution
 - ผมแยกได้หรือยังว่าอะไรควรทำเป็น prototype และอะไรต้องออกแบบแบบ production ตั้งแต่ต้น
@@ -264,13 +306,13 @@ Andrew ให้น้ำหนักกับการ review งานมา�
 - ผมอธิบาย cost, risk และ trade-off ให้คนที่ไม่ได้อยู่สาย engineering เข้าใจได้แค่ไหน
 - งานส่วนไหนต้องอาศัย domain knowledge ที่ coding agent หาแทนจาก codebase ไม่ได้
 
-ตอนนี้ผมมองว่า **Shaping the Build** อาจเป็นสะพานระหว่าง Software Engineering, Product Thinking และ Forward Deployed Engineering แต่จะยังไม่สรุปไกลกว่านี้จนกว่าจะได้อ่านรายละเอียดจากต้นทางครับ
+คำตอบตอนนี้ยังไม่ครบทุกข้อครับ แต่ภาพชัดขึ้นว่า skill gap ของผมไม่ได้อยู่ฝั่ง technology อย่างเดียว ถ้าจะรับ ownership กว้างขึ้น ผมต้องฝึก product judgment, user empathy, communication และการขับ build loop ให้เป็นระบบเดียวกับ engineering
 
 ---
 
 ## What This May Mean for My Future Work
 
-หลังอ่านรายละเอียดสามส่วนแรก งานของผมในอนาคตน่าจะไม่ได้แคบลงเหลือการเขียน code ด้วย AI ให้เร็วที่สุด
+หลังอ่านรายละเอียดครบทั้งสี่ส่วน งานของผมในอนาคตน่าจะไม่ได้แคบลงเหลือการเขียน code ด้วย AI ให้เร็วที่สุด
 
 ผมน่าจะขยับไปอยู่กับงานที่ต้องเชื่อมหลายส่วนมากขึ้น:
 
@@ -295,11 +337,11 @@ Reflection รอบแรกของผมเป็นแบบนี้คร
 | Building and deploying AI applications | กำลังต่อยอดจาก backend และ system design ไปสู่ agent, grounding, evaluation และ production AI |
 | Software engineering fundamentals | เป็นฐานหลักที่ใช้คุม architecture, data, reliability, security และ trade-off ของ agent-generated code |
 | Using coding agents | ใช้งานอยู่แล้ว จุดที่ต้องพัฒนาต่อคือการปรับ autonomy, review verifier, จัด context และคุม human attention เมื่อมีหลาย agent |
-| Shaping the build | เป็นพื้นที่ที่อยากพัฒนาเพิ่ม เพราะเชื่อม technical judgment เข้ากับ product, business และ user problem |
+| Shaping the build | ต้องพัฒนา product judgment, user empathy, communication และการขับ build loop โดยไม่ปล่อยให้ความเร็วนำ outcome |
 
-Skills Map เหลือรายละเอียดอีกหนึ่งส่วน และ reflection ของผมก็ยังไม่ครบเหมือนกันครับ ซึ่งผมว่าเข้ากับหัวข้อดี เพราะการพัฒนาทักษะไม่ได้เกิดจากการทำ checklist ให้เต็มครั้งเดียว
+Skills Map รอบแรกครบแล้ว ส่วน reflection ของผมยังไม่ครบครับ ซึ่งผมว่าเข้ากับหัวข้อดี เพราะการพัฒนาทักษะไม่ได้เกิดจากการทำ checklist ให้เต็มครั้งเดียว
 
-ผมจะกลับมา update บทความนี้เมื่อ Andrew Ng เผยรายละเอียดของ **Shaping the Build** รวมถึงเมื่อมุมมองจากงานของผมเปลี่ยนไป
+ผมจะกลับมา update บทความนี้เมื่อ Andrew Ng ขยาย Skills Map ต่อ หรือเมื่อมุมมองจากงานของผมเปลี่ยนไป
 
 ---
 
@@ -311,3 +353,5 @@ Skills Map เหลือรายละเอียดอีกหนึ่ง
 - 29 สิงหาคม 2026 — เริ่มบทความและบันทึก reflection สองส่วนแรก
 - 4 กันยายน 2026 — [Using Coding Agents](https://charonhub.deeplearning.ai/the-ai-engineering-skills-map-in-detail-using-coding-agents/)
 - 5 กันยายน 2026 — เพิ่ม reflection เรื่อง workflow, autonomy, context, review และ coding agent foundations พร้อมตรวจ tone ทั้งบทความ
+- 11 กันยายน 2026 — [Shaping the Build](https://charonhub.deeplearning.ai/the-ai-engineering-skills-map-in-detail-shaping-the-build/)
+- 12 กันยายน 2026 — เพิ่ม reflection เรื่อง build loop, product decision, communication และ high-agency ownership พร้อมตรวจ tone ทั้งบทความ
