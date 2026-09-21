@@ -11,6 +11,8 @@
         "authCaptureSeparation": "https://docs.coda.co/codapay/hosted-payment-page-integration/authorize-and-capture-a-payment-separately"
       },
       "highlights": [
+        "Optimized the Core Pay pull request pipeline by enabling parallel module builds, reducing its runtime from 35 to 26 minutes.",
+        "Designed and implemented an Auth/Capture Separation flow for alternative payment methods (APMs), extending manual capture and cancellation to non-card payments with partners that support these operations.",
         "Diagnosed an organization-wide bottleneck on the shared TeamCity EC2 agent pool, tracing the Tokenized Charge pull request pipeline's 30–40 minute runtime to an unreachable local MySQL datasource in the unit test build; repointing the test profile to an in-memory H2 database cut runtime to ~15 minutes, freeing up shared CI capacity across the entire company, relied on by teams such as Pay, Shop, Webstore, and Fraud.",
         "Reduced boilerplate across the Merchant API Service by introducing a Gradle Convention Plugin, standardizing build configuration and enabling new modules to onboard with minimal setup.",
         "Improved payment routing reliability by implementing a Java-based card brand lookup module using BIN pattern matching (inspired by braintree/credit-card-type), providing resilient card brand detection when primary provider responses are unavailable and reducing downstream payment failures.",
