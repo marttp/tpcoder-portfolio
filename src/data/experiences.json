@@ -13,6 +13,11 @@
       "highlights": [
         "Optimized the Core Pay pull request pipeline by enabling parallel module builds, reducing its runtime from 35 to 26 minutes.",
         "Designed and implemented an Auth/Capture Separation flow for alternative payment methods (APMs), extending manual capture and cancellation to non-card payments with partners that support these operations.",
+        "Modernized the internal Store Shop service (legacy JSP) used for development testing from Java 8 to JDK 25, eliminating all critical CVEs and reducing high-severity CVEs from 19 to 3.",
+        "Migrated non-card payment webhook notifications from a legacy worker to the Merchant API Service, delivering the pilot integration for publisher partners on the modern notification pipeline.",
+        "Enhanced the Hosted Component SDK to resolve PayPal WebView issues across mobile platforms (Android/iOS) and browsers (Chrome, Firefox), improving checkout compatibility.",
+        "Designed and implemented the Account Funding Transfer (AFT) additional data element for the Worldpay provider integration, enabling Worldpay to route Coda payments through the Visa Crypto network and empowering Recharge to issue crypto gift cards redeemable via Coda.",
+        "Led load testing for the Merchant API Service, defining and applying an SQS-based auto-scaling policy to sustain reliability under peak workloads.",
         "Diagnosed an organization-wide bottleneck on the shared TeamCity EC2 agent pool, tracing the Tokenized Charge pull request pipeline's 30–40 minute runtime to an unreachable local MySQL datasource in the unit test build; repointing the test profile to an in-memory H2 database cut runtime to ~15 minutes, freeing up shared CI capacity across the entire company, relied on by teams such as Pay, Shop, Webstore, and Fraud.",
         "Reduced boilerplate across the Merchant API Service by introducing a Gradle Convention Plugin, standardizing build configuration and enabling new modules to onboard with minimal setup.",
         "Improved payment routing reliability by implementing a Java-based card brand lookup module using BIN pattern matching (inspired by braintree/credit-card-type), providing resilient card brand detection when primary provider responses are unavailable and reducing downstream payment failures.",
@@ -28,12 +33,7 @@
         "Created a new joiner hands-on checklist designed as a gamified walkthrough, enabling newcomers to simulate the real work environment and experience the end-to-end process firsthand, accelerating onboarding ramp-up time.",
         "Enhanced onboarding documentation by authoring the 'Dynamic Environment 101' handbook, clarifying the usage of personal developer workspaces to streamline new hire ramp-up.",
         "Initiated a standardized code formatting guide for the Codapay team using Spotless with Palantir style across Gradle/Maven projects, raising the code quality bar where no prior standard existed.",
-        "Proactively audited departmental PRs to identify consistency gaps, currently piloting the rollout of a unified formatting standard in a core service to set the blueprint for future expansion.",
-        "Modernized the internal Store Shop service (legacy JSP) used for development testing from Java 8 to JDK 25, eliminating all critical CVEs and reducing high-severity CVEs from 19 to 3.",
-        "Migrated non-card payment webhook notifications from a legacy worker to the Merchant API Service, delivering the pilot integration for publisher partners on the modern notification pipeline.",
-        "Designed and implemented the Account Funding Transfer (AFT) additional data element for the Worldpay provider integration, enabling Worldpay to route Coda payments through the Visa Crypto network and empowering Recharge to issue crypto gift cards redeemable via Coda.",
-        "Enhanced the Hosted Component SDK to resolve PayPal WebView issues across mobile platforms (Android/iOS) and browsers (Chrome, Firefox), improving checkout compatibility.",
-        "Led load testing for the Merchant API Service, defining and applying an SQS-based auto-scaling policy to sustain reliability under peak workloads."
+        "Proactively audited departmental PRs to identify consistency gaps, currently piloting the rollout of a unified formatting standard in a core service to set the blueprint for future expansion."
       ]
     },
     {
