@@ -1,0 +1,182 @@
+---
+title: "Where Jev Fits in Multi-Agent Systems: A Fast Decision Layer Around Generative Models"
+description: "My notes on Jev, System One models, and a practical multi-agent design rule: use LLMs for open-ended generation, then use typed decisions for routing, permissions, scoring, and confidence gates."
+pubDate: "2026-09-24"
+tags:
+  [
+    "AI",
+    "AI Agents",
+    "Backend",
+    "Multi-Agent Systems",
+    "Software Architecture",
+  ]
+heroImage: "/assets/images/blogs/where-jev-fits-in-multi-agent-systems/hero-banner.png"
+language: "en"
+translationSlug: "where-jev-fits-in-multi-agent-systems-th"
+---
+
+import MermaidDiagram from "../../components/blog/MermaidDiagram.astro";
+
+I am taking a course on multi-agent systems. The recent lessons cover orchestration, routing, shared state, and multi-agent RAG. While learning those topics, I saw a ByteByteGo graphic by Alex Xu showing nine places where [Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev) could replace an LLM call.
+
+The graphic gave me a useful list of use cases. But I do not read it as an architecture diagram. Model routing, inbox triage, reranking, guardrails, and evaluation sit at different points in a system. To use the list in a real design, I first need to ask what role each item plays.
+
+That led me to one idea:
+
+**A multi-agent system does not need an agent for every step. Many steps are decisions, not generation.**
+
+![Open-ended generation and bounded decisions working together](/assets/images/blogs/where-jev-fits-in-multi-agent-systems/generation-vs-decision.png)
+
+If every branch goes through a general-purpose LLM, an agent system pays the cost of open-ended generation even when it only needs to choose from three routes. Jev suggests another design: let generative models reason and write, while a smaller model handles bounded decisions around them.
+
+I have not benchmarked Jev myself. The product details and performance numbers below come from TypeSafe and [LangChain's integration article](https://www.langchain.com/blog/building-a-harness-with-jev). My focus here is the architecture lesson.
+
+## The Short Answer: Put Jev Between Agents
+
+Jev is TypeSafe AI's first **System One model**. Instead of generating free-form text, it reads unstructured state and returns typed probabilistic answers. Its question types cover choosing from known options, scoring ordered levels, and estimating whether a statement is true.
+
+That makes Jev closer to a decision component than an agent. An agent may own a goal, tools, state, and a loop. Jev answers a bounded question inside that loop: Which route? How relevant? How risky? Allow, ask, or deny?
+
+So I would place it on the edges between agents, tools, and shared state—not in place of the agents doing open-ended work.
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A[User request] --> B[Decision layer]
+    B -->|simple request| C[Fast model]
+    B -->|complex request| D[Reasoning model]
+    C --> E[Tool gate]
+    D --> E
+    E -->|allow| F[Specialist agent or tool]
+    E -->|ask| G[Human approval]
+    E -->|deny| H[Stop]
+    F --> I[Evaluator]
+    I -->|pass| J[Answer]
+    I -->|retry| D
+`}
+  size="large"
+/>
+
+The output space gives us a practical dividing line:
+
+| Task shape | Better starting point |
+| --- | --- |
+| Write, explain, plan, or synthesize | Generative LLM |
+| Choose from known routes | Decision model |
+| Score relevance or quality | Decision model |
+| Approve, ask, or deny a tool call | Decision model plus policy code |
+| Perform a high-risk action | Deterministic policy plus human approval |
+
+The last row matters. A probability is evidence, not authority. High-risk actions still need deterministic policy or human approval.
+
+## What Jev Promises—and What It Does Not
+
+TypeSafe reports 70–500 ms end-to-end response times and $0.042 per million input tokens. Its published workflow evaluations show results as high as 193.6 times faster and 444.6 times cheaper than the compared models. TypeSafe also notes that these results are probably near the high end of what normal workloads will see.
+
+Those are vendor-reported results, not a universal guarantee. I would treat them as a reason to test Jev on a specific workload, not as proof that every LLM call will become 100 times faster or cheaper.
+
+The more durable claim is about task shape: a narrow model can be a better fit when the system needs a typed decision rather than new language.
+
+## The Nine Use Cases Are Four Agent Patterns
+
+ByteByteGo's nine examples are useful as a catalogue. For architecture work, I regroup them into four roles. This turns a mixed list of use cases, pipeline stages, and operating constraints into reusable component boundaries.
+
+### 1. Routing Pattern
+
+**Model routing** and **inbox triage** share one pattern: inspect the current state, choose a route from a known set, and write that choice to shared state. A router deciding among billing, technical support, and a general agent does not need to solve the request. It only needs to select the next worker and expose its confidence.
+
+### 2. Control Pattern
+
+**Guardrails**, **tool-call gating**, and **confidence gates** control what an agent may do next. If a coding agent proposes a shell command, a gate can classify the action as:
+
+- allow automatically
+- ask a person
+- deny
+
+The agent proposes the action; the gate checks whether it may cross a permission boundary. Hard rules still belong in code. A model must not override a deny list, authentication check, or transaction limit. It helps in the uncertain area where fixed rules are too brittle.
+
+### 3. Context Pattern
+
+**Reranking** and **bulk labeling** prepare data before another agent consumes it. In multi-agent RAG, several retrieval agents may search different sources. A scoring component can compare all returned passages with the question before a synthesis agent reads them.
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    Q[Question] --> O[Orchestrator]
+    O --> R1[Docs retriever]
+    O --> R2[Database retriever]
+    O --> R3[Web retriever]
+    R1 --> S[Relevance scorer]
+    R2 --> S
+    R3 --> S
+    S -->|top passages plus scores| A[Synthesis agent]
+    A --> V[Answer evaluator]
+`}
+  size="large"
+/>
+
+The scorer does not retrieve or write the answer. It creates a smaller, better-defined context boundary between retrieval and synthesis.
+
+### 4. Feedback Pattern
+
+**LLM evaluation** and **real-time decisions** close a loop. An evaluator may score an answer or decide whether another pass is needed. A controller may read fresh state and select the next action. Both turn changing state into a bounded decision.
+
+The important part is the policy after the score:
+
+- pass the result forward
+- retry with new context
+- switch to a stronger model
+- ask a person
+- stop the workflow
+
+A score without a policy is only a number.
+
+## Shared State Is the Contract
+
+The course material on orchestration and state management changed how I read the Jev examples. A decision has value only when the next component can use it. A router should not return a paragraph that another agent must interpret again. It should return a small contract:
+
+```json
+{
+  "route": "billing_agent",
+  "probability": 0.93,
+  "confidence": 0.88
+}
+```
+
+The orchestrator can then apply policy in code:
+
+```text
+if confidence >= 0.90 -> route automatically
+if confidence >= 0.60 -> ask for confirmation
+otherwise             -> send to a human queue
+```
+
+The model supplies a probabilistic signal. The harness owns the threshold, fallback, timeout, trace, and audit record. This is where backend engineering becomes central: the difficult part is designing contracts and failure paths around uncertainty.
+
+## Type-Safe Does Not Mean Always Correct
+
+TypeSafe says Jev cannot hallucinate because its output must match a predefined type. I would narrow that claim. A schema can prevent invalid keys, broken JSON, and values outside the allowed shape. It cannot prove that the selected value is correct. A valid `billing_agent` route can still be the wrong route.
+
+Probability and confidence help the harness react to uncertainty, but calibration still needs testing on data from the real domain.
+
+Before using a decision model in an important workflow, I would want to know:
+
+- How often is the top choice correct at each confidence band?
+- What kinds of inputs cause confident mistakes?
+- Does the result change across languages or domain vocabulary?
+- What happens when the model or prompt version changes?
+- Can we replay past decisions and compare them with human outcomes?
+
+The typed interface makes the component easier to test. It does not remove the need for testing.
+
+## My Takeaway
+
+The ByteByteGo graphic helped me notice the work hidden inside the arrows of a multi-agent diagram: routing, permissions, reranking, confidence handling, evaluation, and state updates. Its nine examples are a good entry point. The extra step is to turn them into roles, contracts, thresholds, and fallback paths.
+
+Jev is one early option for these bounded decisions. The strongest performance numbers come from its maker, so I still need hands-on evaluation before judging where it holds up in production.
+
+The architecture lesson does not depend on choosing Jev:
+
+**Use agents where the work needs agency. Use typed decision components where the system only needs a decision.**
+
+That separation can make the workflow easier to test, cheaper to run, and easier to control. More importantly, it makes each component's responsibility easier to explain.

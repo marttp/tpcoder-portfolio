@@ -1,0 +1,182 @@
+---
+title: "คิดว่า Jev ควรอยู่ส่วนไหนของ Multi-Agent System"
+description: "บันทึกจากการเรียน multi-agent systems แล้วลองวาง Jev เป็น decision layer ระหว่าง agent, tool และ shared state"
+pubDate: "2026-09-24"
+tags:
+  [
+    "AI",
+    "AI Agents",
+    "Backend",
+    "Multi-Agent Systems",
+    "Software Architecture",
+  ]
+heroImage: "/assets/images/blogs/where-jev-fits-in-multi-agent-systems/hero-banner.png"
+language: "th"
+translationSlug: "where-jev-fits-in-multi-agent-systems"
+---
+
+import MermaidDiagram from "../../components/blog/MermaidDiagram.astro";
+
+ช่วงนี้ผมกำลังเรียน multi-agent systems ครับ เนื้อหาไล่ตั้งแต่ orchestration, routing, shared state ไปจนถึง multi-agent RAG ระหว่างนั้นผมเห็น graphic ของ ByteByteGo โดย Alex Xu สรุป 9 จุดที่ [Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev) อาจเข้าไปแทน LLM call ได้
+
+graphic นี้ช่วยเปิดประเด็นได้ดี แต่ผมไม่ได้มองมันเป็น architecture diagram ครับ เพราะ model routing, inbox triage, reranking, guardrails และ evaluation อยู่คนละช่วงของระบบ ถ้าจะเอาไปออกแบบงาน เราต้องถามต่อว่าแต่ละข้อกำลังทำหน้าที่อะไร
+
+คำถามนั้นพาผมมาถึงข้อสรุปหนึ่ง:
+
+**Multi-agent system ไม่จำเป็นต้องใช้ agent ในทุกขั้น หลายขั้นต้องการแค่ decision ไม่ได้ต้องการ generation ครับ**
+
+![Open-ended generation ทำงานร่วมกับ bounded decisions](/assets/images/blogs/where-jev-fits-in-multi-agent-systems/generation-vs-decision.png)
+
+ถ้าทุก branch วิ่งเข้า general-purpose LLM ระบบย่อมจ่ายต้นทุนของ open-ended generation แม้โจทย์บางช่วงมีแค่สาม route ให้เลือก Jev เสนอทางออกอีกแบบ ให้ generative model รับงาน reason กับเขียน ส่วน model ขนาดเล็กรับงาน decision ที่มีขอบเขต
+
+ผมยังไม่ได้ benchmark Jev ด้วยตัวเองครับ รายละเอียด product และตัวเลข performance ด้านล่างมาจาก TypeSafe กับ [บทความ integration ของ LangChain](https://www.langchain.com/blog/building-a-harness-with-jev) ส่วนที่ผมสนใจคือบทเรียนด้าน architecture
+
+## The Short Answer: Put Jev Between Agents
+
+Jev คือ **System One model** ตัวแรกของ TypeSafe AI ครับ แทนที่จะ generate ข้อความแบบ free-form มันอ่าน unstructured state แล้วคืน typed answer พร้อม probability รูปแบบคำถามครอบคลุมการเลือกจากตัวเลือกที่กำหนด การให้คะแนนตามระดับ และการประเมินว่าข้อความหนึ่งมีโอกาสเป็น true เท่าไร
+
+หน้าที่แบบนี้ทำให้ Jev ใกล้กับ decision component มากกว่า agent ตัว agent อาจมี goal, tools, state และ loop ของตัวเอง ส่วน Jev ตอบคำถามที่ขอบเขตแคบอยู่ข้างใน loop เช่น จะส่งไป route ไหน เกี่ยวข้องแค่ไหน เสี่ยงแค่ไหน หรือควร allow, ask, deny
+
+ดังนั้นตำแหน่งที่ผมจะวาง Jev คือช่วงระหว่าง agent, tool และ shared state ครับ ไม่ได้เอาไปแทน agent ที่รับงาน open-ended
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A[User request] --> B[Decision layer]
+    B -->|simple request| C[Fast model]
+    B -->|complex request| D[Reasoning model]
+    C --> E[Tool gate]
+    D --> E
+    E -->|allow| F[Specialist agent or tool]
+    E -->|ask| G[Human approval]
+    E -->|deny| H[Stop]
+    F --> I[Evaluator]
+    I -->|pass| J[Answer]
+    I -->|retry| D
+`}
+  size="large"
+/>
+
+ขอบเขตของ output ช่วยแบ่งงานได้แบบนี้ครับ:
+
+| หน้าตาของงาน | จุดเริ่มที่เหมาะกว่า |
+| --- | --- |
+| เขียน อธิบาย วางแผน หรือสังเคราะห์ | Generative LLM |
+| เลือก route จากชุดที่รู้ล่วงหน้า | Decision model |
+| ให้คะแนน relevance หรือ quality | Decision model |
+| อนุญาต ถาม หรือปฏิเสธ tool call | Decision model ร่วมกับ policy code |
+| ทำ action ที่มีความเสี่ยงสูง | Deterministic policy ร่วมกับ human approval |
+
+แถวสุดท้ายสำคัญครับ probability เป็น evidence ไม่ใช่อำนาจตัด policy งานที่มีความเสี่ยงสูงยังต้องใช้ deterministic policy หรือ human approval
+
+## What Jev Promises—and What It Does Not
+
+TypeSafe รายงาน latency แบบ end-to-end ที่ 70–500 ms และราคา input $0.042 ต่อหนึ่งล้าน tokens ส่วน workflow evals ที่บริษัทเผยแพร่ให้ผลสูงสุด 193.6 เท่าด้านความเร็ว และ 444.6 เท่าด้านราคาเมื่อเทียบกับ models ในชุดทดสอบ โดย TypeSafe ระบุด้วยว่าผลเหล่านี้น่าจะอยู่ฝั่งสูงของ workload ทั่วไป
+
+นี่คือตัวเลขจากผู้สร้างครับ ผมมองว่ามันเป็นเหตุผลให้ลอง benchmark กับ workload ของเราเอง ยังไม่ใช่หลักฐานว่า LLM call ทุกแบบจะเร็วหรือถูกลง 100 เท่า
+
+ข้อสรุปที่อยู่ได้นานกว่าตัวเลขคือ งานที่ต้องการ typed decision อาจเหมาะกับ model ขอบเขตแคบมากกว่างานที่ต้องสร้างภาษาใหม่
+
+## The Nine Use Cases Are Four Agent Patterns
+
+9 ตัวอย่างของ ByteByteGo เหมาะกับการใช้เป็น catalogue ครับ พอเข้าสู่งาน architecture ผมจัดใหม่เป็น 4 บทบาท เพื่อเปลี่ยนรายการที่มีทั้ง use case, pipeline stage และ operating constraint ให้กลายเป็นขอบเขตของ component ที่นำกลับมาใช้ได้
+
+### 1. Routing Pattern
+
+**Model routing** กับ **inbox triage** ใช้ pattern เดียวกันครับ อ่าน state เลือก route จากชุดที่กำหนด แล้วเขียนผลลง shared state ตัว router ที่เลือกระหว่าง billing, technical support และ general agent ไม่ต้องแก้ request เอง หน้าที่คือเลือก worker ถัดไปพร้อมส่ง confidence
+
+### 2. Control Pattern
+
+**Guardrails**, **tool-call gating** และ **confidence gates** คุมว่า agent ไปต่อได้แค่ไหน ถ้า coding agent เสนอ shell command ขึ้นมาหนึ่งคำสั่ง gate อาจแบ่ง action เป็นสามกลุ่ม:
+
+- allow อัตโนมัติ
+- ask คนก่อน
+- deny
+
+agent เป็นฝ่ายเสนอ action ส่วน gate ตรวจว่า action ผ่าน permission boundary ได้ไหม Hard rules ยังควรอยู่ใน code ครับ model ต้องข้าม deny list, authentication check หรือ transaction limit ไม่ได้ พื้นที่ของ model คือช่วงที่มีความคลุมเครือและ fixed rules เปราะเกินไป
+
+### 3. Context Pattern
+
+**Reranking** และ **bulk labeling** เตรียม data ก่อนส่งให้ agent ตัวถัดไป ใน multi-agent RAG retrieval agents หลายตัวอาจค้นจาก source คนละแบบ จากนั้น scoring component ค่อยเทียบ passages ทั้งหมดกับคำถาม ก่อนส่ง context ที่ผ่านการเลือกให้ synthesis agent
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    Q[Question] --> O[Orchestrator]
+    O --> R1[Docs retriever]
+    O --> R2[Database retriever]
+    O --> R3[Web retriever]
+    R1 --> S[Relevance scorer]
+    R2 --> S
+    R3 --> S
+    S -->|top passages plus scores| A[Synthesis agent]
+    A --> V[Answer evaluator]
+`}
+  size="large"
+/>
+
+scorer ไม่ได้ทำ retrieval และไม่ได้เขียนคำตอบ หน้าที่คือทำให้ context boundary ระหว่าง retrieval กับ synthesis เล็กลงและนิยามได้ง่ายขึ้น
+
+### 4. Feedback Pattern
+
+**LLM evaluation** กับ **real-time decisions** ใช้ปิด loop ของระบบ evaluator อาจให้คะแนนคำตอบหรือเลือกว่าควรวนอีกหนึ่งรอบ ส่วน controller อ่าน state ล่าสุดแล้วเลือก action ถัดไป ทั้งสองแบบเปลี่ยน state ที่เปลี่ยนตลอดให้เป็น decision ที่มีขอบเขต
+
+ส่วนสำคัญคือ policy หลังได้ score:
+
+- ส่งผลลัพธ์ไปขั้นถัดไป
+- retry พร้อม context ใหม่
+- เปลี่ยนไปใช้ model ที่เก่งขึ้น
+- ขอให้คนช่วยดู
+- หยุด workflow
+
+score ที่ไม่มี policy รองรับก็เป็นเพียงตัวเลขครับ
+
+## Shared State Is the Contract
+
+บทเรียนเรื่อง orchestration กับ state management ทำให้ผมอ่านตัวอย่างของ Jev ต่างออกไปครับ decision มีประโยชน์เมื่อ component ถัดไปนำไปใช้ได้ router จึงไม่ควรคืนย่อหน้าหนึ่งก้อนแล้วให้ agent อีกตัวตีความซ้ำ ควรคืน contract สั้น ๆ แบบนี้:
+
+```json
+{
+  "route": "billing_agent",
+  "probability": 0.93,
+  "confidence": 0.88
+}
+```
+
+จากนั้น orchestrator ค่อยใช้ policy ใน code:
+
+```text
+if confidence >= 0.90 -> route automatically
+if confidence >= 0.60 -> ask for confirmation
+otherwise             -> send to a human queue
+```
+
+model ส่ง probabilistic signal ส่วน harness รับผิดชอบ threshold, fallback, timeout, trace และ audit record จุดนี้ทำให้ backend engineering มีบทบาทสูงใน agent systems ครับ งานยากคือการออกแบบ contract กับ failure path ให้รองรับความไม่แน่นอน
+
+## Type-Safe Does Not Mean Always Correct
+
+TypeSafe บอกว่า Jev ไม่ hallucinate เพราะ output ต้องอยู่ใน type ที่กำหนดไว้ ผมขอจำกัดความหมายของ claim นี้ครับ schema ป้องกัน key ที่ไม่มีในระบบ, JSON ที่พัง และ value นอก shape ได้ แต่มันพิสูจน์ไม่ได้ว่า value ที่เลือกถูกด้านความหมาย route ที่คืน `billing_agent` อาจผ่าน schema ครบแล้วเลือก agent ผิดอยู่ดี
+
+probability กับ confidence ช่วยให้ harness รับมือความไม่แน่นอนได้ แต่ calibration ยังต้องทดสอบกับ data จาก domain ที่ใช้งาน
+
+ก่อนเอา decision model ไปวางใน workflow สำคัญ ผมอยากรู้คำตอบของคำถามเหล่านี้ครับ:
+
+- top choice ถูกแค่ไหนในแต่ละ confidence band?
+- input แบบไหนทำให้ model มั่นใจสูงทั้งที่ตอบผิด?
+- ภาษาและศัพท์เฉพาะของ domain ทำให้ผลเปลี่ยนแค่ไหน?
+- พอ model หรือ prompt version เปลี่ยน ผลกระทบอยู่ส่วนไหน?
+- เรา replay decision เก่า แล้วเทียบกับผลจากคนได้ไหม?
+
+typed interface ทำให้ component ทดสอบง่ายขึ้นครับ แต่มันไม่ได้ทำให้เราข้ามการทดสอบได้
+
+## My Takeaway
+
+graphic ของ ByteByteGo ทำให้ผมเห็นงานที่ซ่อนอยู่ในลูกศรของ multi-agent diagram ทั้ง routing, permission, reranking, confidence handling, evaluation และ state update ตัวอย่างทั้ง 9 ข้อเหมาะกับการเปิดประเด็น ส่วนขั้นต่อมาคือแปลงมันให้เป็น role, contract, threshold และ fallback path
+
+Jev เป็นตัวเลือกใหม่สำหรับ bounded decisions ครับ ตอนนี้ยังอยู่ใน early access และตัวเลข performance ที่แรงที่สุดมาจากบริษัทผู้สร้าง ผมยังต้องลองกับ workload ของตัวเองก่อน ถึงจะประเมินได้ว่าช่วงไหนพร้อมใช้ใน production
+
+แต่บทเรียนด้าน architecture ใช้ได้ตั้งแต่ตอนนี้ แม้คุณยังไม่เลือก Jev:
+
+**ใช้ agent เมื่องานต้องการ agency และใช้ typed decision component เมื่องานต้องการเพียง decision ครับ**
+
+การแยกสองหน้าที่นี้ช่วยให้ workflow ทดสอบง่ายขึ้น คุมค่าใช้จ่ายได้มากขึ้น และอธิบายความรับผิดชอบของแต่ละ component ได้ง่ายขึ้นครับ
