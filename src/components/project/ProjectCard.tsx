@@ -107,7 +107,7 @@ const ProjectCard = ({ project }: { project: ProjectItem }): JSX.Element => {
               rel="noopener noreferrer"
               class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300"
             >
-              GitHub
+              {project.privateRepository ? "GitHub (private)" : "GitHub"}
             </a>
           </Show>
           <Show when={project.mediumSlug}>

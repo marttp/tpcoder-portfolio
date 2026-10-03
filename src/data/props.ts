@@ -118,6 +118,7 @@ export type ProjectItem = {
   language: 'en' | 'th';
   mediumSlug?: string;
   github?: string;
+  privateRepository?: boolean;
   heroImage?: string;
   slug?: string;
 };

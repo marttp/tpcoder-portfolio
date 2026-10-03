@@ -124,5 +124,125 @@
     "language": "en",
     "github": "https://github.com/marttp/20260315-demo-elysia-with-openreview",
     "slug": "openreview-vercel-ai-code-review-bot"
+  },
+  {
+    "title": "Transformational AI — Ecommerce Dataset Analysis",
+    "description": "A notebook-based data pipeline that prepares Amazon Reviews 2023 data for downstream machine-learning work. It explores customer and product data, identifies highly rated products, visualizes results, and exports the prepared dataset in CSV and Parquet formats.",
+    "tags": [
+      "Python",
+      "pandas",
+      "Matplotlib",
+      "Seaborn",
+      "Data Pipeline",
+      "MSc AI"
+    ],
+    "pubDate": "2026-10-03",
+    "language": "en",
+    "github": "https://github.com/marttp/msc-ai-udacity-woolf-resource/blob/main/1-IntroPython/PCEP/Udacity%20-%20PCEP%20Project.ipynb",
+    "privateRepository": true
+  },
+  {
+    "title": "Sleep Health and Lifestyle Analysis",
+    "description": "A descriptive-statistics project that examines health and sleep-quality data for 374 adults and explains the dataset's variable types, typical physical activity, daily-step variation, and heart-rate distribution.",
+    "tags": [
+      "Statistics",
+      "Data Analysis",
+      "Descriptive Statistics",
+      "MSc AI"
+    ],
+    "pubDate": "2026-10-03",
+    "language": "en",
+    "github": "https://github.com/marttp/msc-ai-udacity-woolf-resource/blob/main/3-Applied-Data-Analytics/Statistic-for-Data-Analysis/Project-1/README.md",
+    "privateRepository": true
+  },
+  {
+    "title": "Basketball Scoring Probabilities",
+    "description": "A probability analysis of 1,434 Steph Curry shot attempts, covering overall shooting rates, shot-type proportions, binomial probabilities, conditional probabilities, and retrospective inference with Bayes' theorem.",
+    "tags": [
+      "Statistics",
+      "Probability",
+      "Bayesian Inference",
+      "MSc AI"
+    ],
+    "pubDate": "2026-10-03",
+    "language": "en",
+    "github": "https://github.com/marttp/msc-ai-udacity-woolf-resource/blob/main/3-Applied-Data-Analytics/Statistic-for-Data-Analysis/Project-2/README.md",
+    "privateRepository": true
+  },
+  {
+    "title": "Analyze A/B Test Results",
+    "description": "Evaluates whether an e-commerce treatment page improves conversion across 69,889 observations. Treatment converts 15.53% versus 10.53% for control.",
+    "tags": [
+      "Python",
+      "Statistics",
+      "A/B Testing",
+      "Hypothesis Testing",
+      "MSc AI"
+    ],
+    "pubDate": "2026-10-03",
+    "language": "en",
+    "github": "https://github.com/marttp/msc-ai-udacity-woolf-resource/blob/main/3-Applied-Data-Analytics/Statistic-for-Data-Analysis/Project-3/1790833465/analyze_ab_test_results_project.ipynb",
+    "privateRepository": true
+  },
+  {
+    "title": "AgentsVille Trip Planner",
+    "description": "An agentic travel planner that creates and improves a vacation itinerary using destination constraints, weather information, available activities, and evaluation feedback.",
+    "tags": [
+      "Python",
+      "AI Agent",
+      "Tool Calling",
+      "Travel Planning",
+      "MSc AI"
+    ],
+    "pubDate": "2026-10-03",
+    "language": "en",
+    "github": "https://github.com/marttp/msc-ai-udacity-woolf-resource/blob/main/2-IntelligenceSystem/1-Prompting-for-Effective-LLM-Reasoning-and-Planning/1788936400/project_starter.ipynb",
+    "privateRepository": true
+  },
+  {
+    "title": "AI-Powered Agentic Workflow for Project Management",
+    "description": "A reusable agent toolkit and project-planning workflow that turns an Email Router product specification into user stories, product features, and engineering tasks.",
+    "tags": [
+      "Python",
+      "AI Agent",
+      "Embeddings",
+      "Project Management",
+      "MSc AI"
+    ],
+    "pubDate": "2026-10-03",
+    "language": "en",
+    "github": "https://github.com/marttp/msc-ai-udacity-woolf-resource/blob/main/2-IntelligenceSystem/Project/Project2-Agentic-Workflow/project/README.md",
+    "privateRepository": true
+  },
+  {
+    "title": "UdaPlay — AI Game Research Agent",
+    "description": "A stateful research agent that answers questions about video games using a persistent local knowledge base, with web search as a controlled fallback when local evidence is insufficient.",
+    "tags": [
+      "Python",
+      "AI Agent",
+      "RAG",
+      "ChromaDB",
+      "Tavily",
+      "MSc AI"
+    ],
+    "pubDate": "2026-10-03",
+    "language": "en",
+    "github": "https://github.com/marttp/msc-ai-udacity-woolf-resource/blob/main/2-IntelligenceSystem/Project/Project3-Building-Agents/project/README.md",
+    "privateRepository": true
+  },
+  {
+    "title": "Munder Difflin Multi-Agent Business System",
+    "description": "A multi-agent workflow for a fictional paper company that coordinates customer requests, inventory, supplier timing, quote generation, order fulfillment, and financial transactions.",
+    "tags": [
+      "Python",
+      "Multi-Agent Systems",
+      "SQLite",
+      "Business Workflow",
+      "MSc AI"
+    ],
+    "pubDate": "2026-10-03",
+    "language": "en",
+    "github": "https://github.com/marttp/msc-ai-udacity-woolf-resource/blob/main/2-IntelligenceSystem/Project/Project4-Multi-Agent-Systems/project/README.md",
+    "privateRepository": true
   }
 ]
