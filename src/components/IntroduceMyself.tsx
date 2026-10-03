@@ -18,7 +18,7 @@ const IntroduceMyself: Component<Props> = ({ name, nickname, statement }) => {
         <h2 class="text-xl font-bold mb-2">{name}</h2>
         <p class="text-sm mb-2">
           Also known as {' '}
-          <span class="font-semibold text-indigo-600">{nickname}</span>
+          <span class="font-semibold text-primary-dark dark:text-primary-light">{nickname}</span>
         </p>
         <article class="mb-4">{statement}</article>
       </div>
