@@ -11,7 +11,8 @@
         "authCaptureSeparation": "https://docs.coda.co/codapay/hosted-payment-page-integration/authorize-and-capture-a-payment-separately"
       },
       "highlights": [
-        "Optimized the Core Pay pull request pipeline by enabling parallel module builds, reducing its runtime from 35 to 26 minutes.",
+        "Identified and resolved a limitation that tied billing details to user accounts, enabling each transaction to carry its own billing details.",
+        "Cut Core Pay pull request pipeline runtime by 26%, from 35 to 26 minutes, by enabling parallel module builds.",
         "Designed and implemented an Auth/Capture Separation flow for alternative payment methods (APMs), extending manual capture and cancellation to non-card payments with partners that support these operations.",
         "Modernized the internal Store Shop service (legacy JSP) used for development testing from Java 8 to JDK 25, eliminating all critical CVEs and reducing high-severity CVEs from 19 to 3.",
         "Migrated non-card payment webhook notifications from a legacy worker to the Merchant API Service, delivering the pilot integration for publisher partners on the modern notification pipeline.",
