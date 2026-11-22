@@ -1,6 +1,6 @@
 ---
 title: 'When Your AI Agent Gets Confused'
-description: 'Better AI agents help me move faster. I still need to understand what I ship and be able to take over when something goes wrong.'
+description: 'Better AI agents help me move faster. A simple dashboard change shows why I still need to understand what I ship.'
 pubDate: '2026-11-22'
 heroImage: '/assets/images/blogs/when-your-ai-agent-gets-confused/hero.webp'
 tags: ['AI', 'AI Agents', 'Software Engineering']
@@ -8,16 +8,24 @@ language: 'en'
 translationSlug: 'when-your-ai-agent-gets-confused-th'
 ---
 
-I’m happy that models are getting better and agents can do more with them. I can hand an agent a task that spans a few files, come back to a working diff, and spend more of my time thinking about what the system should do. I like working this way.
+I’m happy that models are getting better and agents can do more with them. I can hand an agent a task that spans a few files and come back to a diff with tests. On a good day, I spend less time setting things up and more time thinking about what the product should do. I like working this way.
 
-The part I think about is what happens when the agent gets confused. It can still write a convincing explanation while making the wrong change. In that moment, am I relying on the agent to tell me whether it got things right, or do I understand enough to make that call myself?
+The moment I think about is when something feels off. The agent can explain the code, write a test for it, and tell me everything passes. If I still feel unsure, do I know where to look, or will I just ask the same agent whether it’s sure?
 
-![An engineer traces a flow that branches into duplicate events](/assets/images/blogs/when-your-ai-agent-gets-confused/trace.webp)
+## What does “canceled this month” mean?
 
-Say I ask an agent to add a retry to a notification worker. The tests pass, and the diff looks fine. Now imagine the provider accepts the first request, but the response times out before our worker receives it. The retry could send the same notification again. I’d want to know how we prevent that and what the tests cover before I approve the change. If the agent keeps going in circles, I need to be able to trace the flow myself.
+Say I ask an agent to add a count of subscriptions canceled this month to a dashboard. It finds the date a customer clicked Cancel, groups the rows by month, and adds a test. The query is short. The chart looks fine.
+
+Then I look at one customer. They clicked Cancel on September 28 and could still use the product through October 12. Which month should they appear in? September makes sense if the team wants to see when customers decided to leave. October makes sense if the team wants to see when those customers lost access. A test can pass for either definition.
+
+![An engineer studies a flow that splits into two paths](/assets/images/blogs/when-your-ai-agent-gets-confused/trace.webp)
+
+If the team wants to know when customers lost access, the chart based on cancel clicks puts this customer in the wrong month. I could ask the agent to review the whole diff again and get a careful explanation of why the query matches its test. What would get me unstuck is finding out what the team plans to do with that number. Once I know that, I can give the agent the September–October case and review the result against a number I can work out myself.
+
+## What I still need to understand
+
+I don’t need to memorize every table or write the query from scratch. I’d happily ask the agent to trace where each date comes from and help me check a few rows. I want to understand enough to notice when an assumption changes the answer. If someone from the team asks why a customer shows up in October, I should be able to explain it in a sentence.
 
 ![An engineer makes the final call at his desk](/assets/images/blogs/when-your-ai-agent-gets-confused/decision.webp)
 
-I can ask the agent to read logs, propose a fix, or write the test for that timeout case. That’s exactly the kind of help I want. I still need to decide whether the fix is good enough to ship and be able to explain my reasoning when a teammate asks. If it breaks in production, that same understanding helps me figure out what to do next.
-
-**Once I choose to ship what the agent produced, it’s my work.** A better agent lets me take on more. I want to be able to stand behind what I deliver, even on the days when it gets confused.
+Better models make it easier for me to hand off more of the work. I’m glad they do. **Once I choose to ship what the agent produced, it’s my work.** If the number is wrong, someone will come to me to ask what happened. I want to be able to open the dashboard with them, pick a row, and figure it out together.
