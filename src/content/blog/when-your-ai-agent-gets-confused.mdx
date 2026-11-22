@@ -1,6 +1,6 @@
 ---
 title: 'When Your AI Agent Gets Confused'
-description: 'Better AI agents help me move faster. A simple dashboard change shows why I still need to understand what I ship.'
+description: 'Better AI agents help me move faster. A billing address change at Coda showed me why I still need to check what a proposal means for the customer.'
 pubDate: '2026-11-22'
 heroImage: '/assets/images/blogs/when-your-ai-agent-gets-confused/hero.webp'
 tags: ['AI', 'AI Agents', 'Software Engineering']
@@ -12,20 +12,22 @@ I’m happy that models are getting better and agents can do more with them. I c
 
 The moment I think about is when something feels off. The agent can explain the code, write a test for it, and tell me everything passes. If I still feel unsure, do I know where to look, or will I just ask the same agent whether it’s sure?
 
-## What does “canceled this month” mean?
+## What happens to the first payment when the customer moves?
 
-Say I ask an agent to add a count of subscriptions canceled this month to a dashboard. It finds the date a customer clicked Cancel, groups the rows by month, and adds a test. The query is short. The chart looks fine.
+At Coda, I worked on a payment flow that tied billing details to the user account. The first transaction already had billing address A. If the customer moves and uses address B for the next payment, what should the first transaction show?
 
-Then I look at one customer. They clicked Cancel on September 28 and could still use the product through October 12. Which month should they appear in? September makes sense if the team wants to see when customers decided to leave. October makes sense if the team wants to see when those customers lost access. A test can pass for either definition.
+If the customer enters their billing address for each payment and we only use it for that payment, there’s no saved address to update for next time. Once we let the customer save an address for future payments, we have two things to keep track of. There’s the address to suggest next time, and there’s the address each transaction used.
 
 ![An engineer studies a flow that splits into two paths](/assets/images/blogs/when-your-ai-agent-gets-confused/trace.webp)
 
-If the team wants to know when customers lost access, the chart based on cancel clicks puts this customer in the wrong month. I could ask the agent to review the whole diff again and get a careful explanation of why the query matches its test. What would get me unstuck is finding out what the team plans to do with that number. Once I know that, I can give the agent the September–October case and review the result against a number I can work out myself.
+The Agent proposed adding a PATCH operation that followed the existing design. It would update the billing details on the account. That makes sense if you start from how the code stores the data today. From the customer’s side, they’ve moved and want to use B on their next payment. When an older transaction reads its billing details from that same account record, it now sees B too. The PATCH worked. It changed every transaction that used that reference.
 
-## What I still need to understand
+## The part I had to decide
 
-I don’t need to memorize every table or write the query from scratch. I’d happily ask the agent to trace where each date comes from and help me check a few rows. I want to understand enough to notice when an assumption changes the answer. If someone from the team asks why a customer shows up in October, I should be able to explain it in a sentence.
+We changed the flow so each transaction could carry its own billing details. The check I care about is simple. Take one account, make a payment with A, then make another with B. Look at both transactions again. The first should still show A and the second should show B. A test that only checks whether the account now has B can pass while missing the effect on the first payment.
+
+This is the kind of thing I want to catch when reviewing an Agent’s proposal. It could see where the current code reads and writes the address. I had to think about what the customer meant by changing it, and what that change should do to a payment they’d already made.
 
 ![An engineer makes the final call at his desk](/assets/images/blogs/when-your-ai-agent-gets-confused/decision.webp)
 
-Better models make it easier for me to hand off more of the work. I’m glad they do. **Once I choose to ship what the agent produced, it’s my work.** If the number is wrong, someone will come to me to ask what happened. I want to be able to open the dashboard with them, pick a row, and figure it out together.
+I’m happy to let an Agent trace those references or help write the test. **Once I choose to ship what the Agent produced, it’s my work.** If someone asks why their old payment shows a new address, I need to be able to trace it myself and explain what happened.
