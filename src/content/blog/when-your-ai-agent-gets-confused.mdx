@@ -1,6 +1,6 @@
 ---
 title: 'When Your AI Agent Gets Confused'
-description: 'Better AI agents help me move faster. A billing address change at Coda showed me why I still need to check what a proposal means for the customer.'
+description: 'A billing address change I worked on showed me why I still need to check what an AI agent proposal means for the customer.'
 pubDate: '2026-11-22'
 heroImage: '/assets/images/blogs/when-your-ai-agent-gets-confused/hero.webp'
 tags: ['AI', 'AI Agents', 'Software Engineering']
@@ -14,7 +14,7 @@ The moment I think about is when something feels off. The agent can explain the 
 
 ## What happens to the first payment when the customer moves?
 
-At Coda, I worked on a payment flow that tied billing details to the user account. The first transaction already had billing address A. If the customer moves and uses address B for the next payment, what should the first transaction show?
+I worked on a payment flow that tied billing details to the user account. Say the first transaction used billing address A. If the customer moves and uses address B for the next payment, what should the first transaction show?
 
 If the customer enters their billing address for each payment and we only use it for that payment, there’s no saved address to update for next time. Once we let the customer save an address for future payments, we have two things to keep track of. There’s the address to suggest next time, and there’s the address each transaction used.
 
@@ -30,4 +30,6 @@ This is the kind of thing I want to catch when reviewing an Agent’s proposal. 
 
 ![An engineer makes the final call at his desk](/assets/images/blogs/when-your-ai-agent-gets-confused/decision.webp)
 
-I’m happy to let an Agent trace those references or help write the test. **Once I choose to ship what the Agent produced, it’s my work.** If someone asks why their old payment shows a new address, I need to be able to trace it myself and explain what happened.
+What if the Agent starts returning HTTP 500s or the provider goes down? Do I stop working? I still ship the work. I open the code, trace the problem, and write the test myself, like I used to. It’s just a little less convenient.
+
+**Once I choose to ship what the Agent produced, it’s my work.** If someone asks why an old payment shows a new address, I need to be able to trace it myself and explain what happened.
